@@ -1,0 +1,87 @@
+{
+  "totalTests": 16,
+  "passedTests": 14,
+  "failedTests": 2,
+  "testDetails": [
+    {
+      "name": "翻译文件 en.json",
+      "status": "PASS",
+      "message": "所有翻译键完整 (158 个键)"
+    },
+    {
+      "name": "翻译文件 zh.json",
+      "status": "FAIL",
+      "message": "缺失键: 0, 多余键: 77"
+    },
+    {
+      "name": "翻译文件 ja.json",
+      "status": "PASS",
+      "message": "所有翻译键完整 (158 个键)"
+    },
+    {
+      "name": "翻译文件 ko.json",
+      "status": "PASS",
+      "message": "所有翻译键完整 (158 个键)"
+    },
+    {
+      "name": "硬编码扫描工具",
+      "status": "FAIL",
+      "message": "无法解析硬编码率"
+    },
+    {
+      "name": "工具文件 localeResolver.js",
+      "status": "PASS",
+      "message": "文件存在且非空 (5202 字符)"
+    },
+    {
+      "name": "工具文件 icuFormatter.js",
+      "status": "PASS",
+      "message": "文件存在且非空 (7200 字符)"
+    },
+    {
+      "name": "工具文件 i18nMonitor.js",
+      "status": "PASS",
+      "message": "文件存在且非空 (6931 字符)"
+    },
+    {
+      "name": "工具文件 htmlLangUpdater.js",
+      "status": "PASS",
+      "message": "文件存在且非空 (3559 字符)"
+    },
+    {
+      "name": "工具文件 cookieUtils.js",
+      "status": "PASS",
+      "message": "文件存在且非空 (599 字符)"
+    },
+    {
+      "name": "组件 EnhancedLanguageSwitcher.js",
+      "status": "PASS",
+      "message": "组件存在且包含国际化代码"
+    },
+    {
+      "name": "组件 I18nDashboard.js",
+      "status": "PASS",
+      "message": "组件存在且包含国际化代码"
+    },
+    {
+      "name": "组件 LanguageSwitchTester.js",
+      "status": "PASS",
+      "message": "组件存在且包含国际化代码"
+    },
+    {
+      "name": "配置文件 src/i18n/index.js",
+      "status": "PASS",
+      "message": "配置文件存在且包含国际化配置"
+    },
+    {
+      "name": "配置文件 src/App.js",
+      "status": "PASS",
+      "message": "配置文件存在且包含国际化配置"
+    },
+    {
+      "name": "配置文件 src/components/Layout/Layout.js",
+      "status": "PASS",
+      "message": "配置文件存在且包含国际化配置"
+    }
+  ]
+}

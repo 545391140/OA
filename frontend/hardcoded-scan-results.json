@@ -1,0 +1,5906 @@
+{
+  "timestamp": "2025-09-20T13:10:01.697Z",
+  "config": {
+    "filePatterns": [
+      "src/**/*.js",
+      "src/**/*.jsx",
+      "src/**/*.ts",
+      "src/**/*.tsx"
+    ],
+    "excludePatterns": [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      "**/*.test.js",
+      "**/*.spec.js",
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "scripts/**",
+      "config/**"
+    ],
+    "hardcodedPatterns": [
+      {
+        "name": "String Literals",
+        "pattern": {},
+        "description": "String literals with English text"
+      },
+      {
+        "name": "JSX Text Content",
+        "pattern": {},
+        "description": "JSX text content with English text"
+      },
+      {
+        "name": "Attribute Values",
+        "pattern": {},
+        "description": "Attribute values with English text"
+      },
+      {
+        "name": "Comments",
+        "pattern": {},
+        "description": "Comments with English text"
+      },
+      {
+        "name": "Single Line Comments",
+        "pattern": {},
+        "description": "Single line comments with English text"
+      }
+    ],
+    "allowedStrings": [
+      "React",
+      "JavaScript",
+      "TypeScript",
+      "Node.js",
+      "npm",
+      "yarn",
+      "HTML",
+      "CSS",
+      "JSON",
+      "API",
+      "HTTP",
+      "HTTPS",
+      "URL",
+      "URI",
+      "DOM",
+      "BOM",
+      "AJAX",
+      "REST",
+      "GraphQL",
+      "WebSocket",
+      "Material-UI",
+      "MUI",
+      "Ant Design",
+      "Bootstrap",
+      "Tailwind",
+      "Redux",
+      "MobX",
+      "Vue",
+      "Angular",
+      "Svelte",
+      "ESLint",
+      "Prettier",
+      "Webpack",
+      "Vite",
+      "Rollup",
+      "Babel",
+      "Jest",
+      "Cypress",
+      "Storybook",
+      "Docker",
+      "Kubernetes",
+      "OK",
+      "Yes",
+      "No",
+      "Cancel",
+      "Save",
+      "Delete",
+      "Edit",
+      "View",
+      "Add",
+      "Remove",
+      "Update",
+      "Create",
+      "Submit",
+      "Reset",
+      "Clear",
+      "Search",
+      "Filter",
+      "Sort",
+      "Export",
+      "Import",
+      "Download",
+      "Upload",
+      "Loading",
+      "Error",
+      "Success",
+      "Warning",
+      "Info",
+      "Help",
+      "About",
+      "YYYY-MM-DD",
+      "MM/DD/YYYY",
+      "DD/MM/YYYY",
+      "HH:mm:ss",
+      "USD",
+      "EUR",
+      "GBP",
+      "JPY",
+      "CNY",
+      "KRW",
+      "AUD",
+      "CAD",
+      "en",
+      "zh",
+      "ja",
+      "ko",
+      "ar",
+      "he",
+      "fr",
+      "de",
+      "es",
+      "it",
+      "pt",
+      "ru",
+      ".js",
+      ".jsx",
+      ".ts",
+      ".tsx",
+      ".json",
+      ".css",
+      ".scss",
+      ".html",
+      ".md",
+      "NODE_ENV",
+      "REACT_APP_",
+      "process.env",
+      "localStorage",
+      "sessionStorage",
+      "regex",
+      "pattern",
+      "match",
+      "replace",
+      "split",
+      "join",
+      "Math",
+      "Number",
+      "String",
+      "Array",
+      "Object",
+      "Function",
+      "Boolean",
+      "Date",
+      "RegExp",
+      "Error",
+      "Promise",
+      "Set",
+      "Map",
+      "WeakMap",
+      "WeakSet",
+      "window",
+      "document",
+      "navigator",
+      "location",
+      "history",
+      "screen",
+      "console",
+      "alert",
+      "confirm",
+      "prompt",
+      "setTimeout",
+      "setInterval",
+      "fetch",
+      "XMLHttpRequest",
+      "FormData",
+      "Blob",
+      "File",
+      "URL",
+      "px",
+      "em",
+      "rem",
+      "vh",
+      "vw",
+      "vmin",
+      "vmax",
+      "pt",
+      "pc",
+      "in",
+      "cm",
+      "mm",
+      "flex",
+      "grid",
+      "block",
+      "inline",
+      "none",
+      "auto",
+      "center",
+      "left",
+      "right",
+      "top",
+      "bottom",
+      "middle",
+      "baseline",
+      "stretch",
+      "space-between",
+      "space-around",
+      "200",
+      "201",
+      "400",
+      "401",
+      "403",
+      "404",
+      "500",
+      "502",
+      "503",
+      "504",
+      "Roboto",
+      "Helvetica",
+      "Arial",
+      "PingFang SC",
+      "Hiragino Sans GB",
+      "Microsoft YaHei",
+      "PingFang TC",
+      "Microsoft JhengHei",
+      "Hiragino Sans",
+      "Yu Gothic",
+      "Meiryo",
+      "Malgun Gothic",
+      "Apple SD Gothic Neo",
+      "Cairo",
+      "Amiri",
+      "Heebo",
+      "Assistant",
+      "English",
+      "Chinese",
+      "Simplified Chinese",
+      "Traditional Chinese",
+      "Japanese",
+      "Korean",
+      "Arabic",
+      "Hebrew",
+      "French",
+      "German",
+      "Spanish",
+      "Italian",
+      "Portuguese",
+      "Russian",
+      "Context",
+      "import",
+      "export",
+      "default",
+      "const",
+      "let",
+      "var",
+      "function",
+      "class",
+      "return",
+      "if",
+      "else",
+      "for",
+      "while",
+      "switch",
+      "case",
+      "break",
+      "continue",
+      "try",
+      "catch",
+      "finally",
+      "throw",
+      "new",
+      "this",
+      "super",
+      "extends",
+      "implements",
+      "Catch all route",
+      "Context import",
+      "Basic Information",
+      "Destination",
+      "Travel Dates",
+      "Bookings",
+      "Estimated Cost",
+      "Departure Date",
+      "Return Date",
+      "Add Booking",
+      "Save Draft",
+      "Submit Request",
+      "Cancel",
+      "Edit",
+      "Delete",
+      "View",
+      "Search",
+      "Profile Details",
+      "Change Password Dialog",
+      "Personal Information",
+      "Profile Overview",
+      "Select variant",
+      "Chip variant",
+      "Icon variant",
+      "Default return Select variant",
+      "sans-serif",
+      "serif",
+      "monospace",
+      "cursive",
+      "fantasy",
+      "system-ui",
+      "ui-serif",
+      "ui-sans-serif",
+      "ui-monospace",
+      "ui-rounded",
+      "Locale",
+      "UTC",
+      "ICU",
+      "Sunday",
+      "Monday",
+      "Saturday",
+      "POST",
+      "Cookie",
+      "All Status",
+      "Approved",
+      "Pending",
+      "Rejected",
+      "Draft",
+      "Submitted",
+      "In Progress",
+      "Completed",
+      "Cancelled",
+      "Tokyo",
+      "John",
+      "Doe",
+      "Jane",
+      "South Korea",
+      "Seoul",
+      "Mike",
+      "Johnson",
+      "Smith",
+      "Wilson",
+      "Brown",
+      "Davis",
+      "Miller",
+      "Garcia",
+      "Rodriguez",
+      "New York",
+      "London",
+      "Paris",
+      "Berlin",
+      "Sydney",
+      "Singapore",
+      "Hong Kong",
+      "Beijing",
+      "Shanghai",
+      "Shenzhen",
+      "Guangzhou",
+      "Hangzhou",
+      "Nanjing",
+      "United States",
+      "United Kingdom",
+      "France",
+      "Germany",
+      "Australia",
+      "China",
+      "Japan",
+      "Korea",
+      "Canada",
+      "Brazil",
+      "India",
+      "Russia",
+      "Deluxe",
+      "Hertz",
+      "Michael",
+      "Mock data",
+      "replace with actual API call",
+      "Failed to load travel data",
+      "Action Buttons",
+      "Purpose",
+      "Actual Cost",
+      "Approval Status",
+      "Business Trip",
+      "Conference",
+      "Training",
+      "Meeting",
+      "Client Visit",
+      "Project Review",
+      "Team Building",
+      "Research",
+      "Sales",
+      "Marketing",
+      "Development",
+      "Support",
+      "Consulting",
+      "Audit",
+      "Your Company",
+      "Custom Range",
+      "Operations",
+      "Transportation",
+      "Meals",
+      "Hotel XYZ",
+      "Airline Co",
+      "Restaurant ABC",
+      "Accommodation",
+      "All Departments",
+      "Last 7 Days",
+      "Last 30 Days",
+      "Last 90 Days",
+      "This Year",
+      "Engineering",
+      "HR",
+      "Finance",
+      "IT",
+      "Legal",
+      "Admin",
+      "Office Depot",
+      "Taxi Service",
+      "Office Supplies",
+      "Failed to load report data",
+      "PDF",
+      "Excel",
+      "Travel Analysis",
+      "Report Tabs",
+      "First name is required",
+      "Last name is required",
+      "Email is required",
+      "Phone is required",
+      "Department is required",
+      "Position is required",
+      "Password is required",
+      "Confirm password is required",
+      "Passwords do not match",
+      "Invalid email format",
+      "New password is required",
+      "Failed to update profile",
+      "Failed to change password",
+      "Language",
+      "Timezone",
+      "Paid",
+      "Flight",
+      "Stationery and office materials",
+      "Stationery",
+      "Internal",
+      "External",
+      "Client",
+      "Project",
+      "Billable",
+      "Non-billable",
+      "Reimbursable",
+      "Personal",
+      "Business",
+      "Travel",
+      "Meal",
+      "Accommodation",
+      "Transport",
+      "Entertainment",
+      "Office",
+      "Equipment",
+      "Software",
+      "Training",
+      "Conference",
+      "Meeting",
+      "Phone",
+      "Internet",
+      "Category",
+      "Amount",
+      "Actions",
+      "Fuel",
+      "Airbnb",
+      "Hostel",
+      "Breakfast",
+      "Lunch",
+      "Snacks",
+      "Mobile Data",
+      "Train",
+      "Taxi",
+      "Rental Car",
+      "Public Transport",
+      "Parking",
+      "Apartment Rental",
+      "Dinner",
+      "Coffee/Tea",
+      "Business Meal",
+      "Postage",
+      "Courier",
+      "Office Supplies",
+      "Equipment",
+      "Software License",
+      "Books",
+      "Magazines",
+      "Newspapers",
+      "Printing",
+      "Photocopying",
+      "Shipping",
+      "Delivery",
+      "Cleaning",
+      "Maintenance",
+      "Repair",
+      "Insurance",
+      "Bank Fees",
+      "Legal Fees",
+      "Accounting",
+      "Consulting",
+      "Advertising",
+      "Marketing",
+      "Promotion",
+      "Event",
+      "Gift",
+      "Reward",
+      "Course",
+      "Workshop",
+      "Certification",
+      "Online Training",
+      "Miscellaneous",
+      "Medical",
+      "Prospect A",
+      "Prospect B",
+      "Tags",
+      "Tax ID",
+      "MMM DD",
+      "YYYY-MM-DD",
+      "MM/DD/YYYY",
+      "DD/MM/YYYY",
+      "HH:mm:ss",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+      "Acme Corp",
+      "Tech Solutions",
+      "Global Inc",
+      "Innovation Ltd",
+      "Future Systems",
+      "Digital Works",
+      "Smart Solutions",
+      "Next Gen",
+      "Advanced Tech",
+      "Modern Systems"
+    ],
+    "thresholds": {
+      "hardcodedRate": 0.2,
+      "maxHardcodedStrings": 10
+    }
+  },
+  "results": {
+    "totalFiles": 32,
+    "totalLines": 9241,
+    "hardcodedStrings": [
+      {
+        "text": "Transaction ID\n                  ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 573,
+        "rule": "JSX Text Content",
+        "description": "JSX text content with English text",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">",
+        "severity": "low"
+      },
+      {
+        "text": "David",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 148,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "firstName: 'David',",
+        "severity": "low"
+      },
+      {
+        "text": "Lisa",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 159,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "firstName: 'Lisa',",
+        "severity": "low"
+      },
+      {
+        "text": "Robert",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 171,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "firstName: 'Robert',",
+        "severity": "low"
+      },
+      {
+        "text": "Approval Dialog ",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 436,
+        "rule": "Comments",
+        "description": "Comments with English text",
+        "lineContent": "{/* Approval Dialog */}",
+        "severity": "low"
+      },
+      {
+        "text": "Approval Detail\n      ",
+        "file": "src/pages/Approval/ApprovalDetail.js",
+        "line": 10,
+        "rule": "JSX Text Content",
+        "description": "JSX text content with English text",
+        "lineContent": "<Typography variant=\"h4\" gutterBottom>",
+        "severity": "low"
+      },
+      {
+        "text": "LOGOUT",
+        "file": "src/contexts/AuthContext.js",
+        "line": 34,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "case 'LOGOUT':",
+        "severity": "medium"
+      },
+      {
+        "text": "Authorization",
+        "file": "src/contexts/AuthContext.js",
+        "line": 74,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;",
+        "severity": "low"
+      },
+      {
+        "text": "Authorization",
+        "file": "src/contexts/AuthContext.js",
+        "line": 76,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "delete axios.defaults.headers.common['Authorization'];",
+        "severity": "low"
+      },
+      {
+        "text": "LOGOUT",
+        "file": "src/contexts/AuthContext.js",
+        "line": 120,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "dispatch({ type: 'LOGOUT' });",
+        "severity": "medium"
+      },
+      {
+        "text": "LOGOUT",
+        "file": "src/contexts/AuthContext.js",
+        "line": 246,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "dispatch({ type: 'LOGOUT' });",
+        "severity": "medium"
+      }
+    ],
+    "allowedStrings": [
+      {
+        "text": "Roboto",
+        "file": "src/index.js",
+        "line": 39,
+        "rule": "String Literals",
+        "lineContent": "fontFamily: '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Helvetica",
+        "file": "src/index.js",
+        "line": 39,
+        "rule": "String Literals",
+        "lineContent": "fontFamily: '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Arial",
+        "file": "src/index.js",
+        "line": 39,
+        "rule": "String Literals",
+        "lineContent": "fontFamily: '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Create theme\nconst theme ",
+        "file": "src/index.js",
+        "line": 16,
+        "rule": "Single Line Comments",
+        "lineContent": "// Create theme"
+      },
+      {
+        "text": "Public Routes ",
+        "file": "src/App.js",
+        "line": 40,
+        "rule": "Comments",
+        "lineContent": "{/* Public Routes */}"
+      },
+      {
+        "text": "Protected Routes ",
+        "file": "src/App.js",
+        "line": 44,
+        "rule": "Comments",
+        "lineContent": "{/* Protected Routes */}"
+      },
+      {
+        "text": "Travel Routes ",
+        "file": "src/App.js",
+        "line": 53,
+        "rule": "Comments",
+        "lineContent": "{/* Travel Routes */}"
+      },
+      {
+        "text": "Expense Routes ",
+        "file": "src/App.js",
+        "line": 59,
+        "rule": "Comments",
+        "lineContent": "{/* Expense Routes */}"
+      },
+      {
+        "text": "Approval Routes ",
+        "file": "src/App.js",
+        "line": 65,
+        "rule": "Comments",
+        "lineContent": "{/* Approval Routes */}"
+      },
+      {
+        "text": "Reports Routes ",
+        "file": "src/App.js",
+        "line": 69,
+        "rule": "Comments",
+        "lineContent": "{/* Reports Routes */}"
+      },
+      {
+        "text": "Catch all route ",
+        "file": "src/App.js",
+        "line": 80,
+        "rule": "Comments",
+        "lineContent": "{/* Catch all route */}"
+      },
+      {
+        "text": "Context\nimport ",
+        "file": "src/App.js",
+        "line": 6,
+        "rule": "Single Line Comments",
+        "lineContent": "// Context"
+      },
+      {
+        "text": "Components\nimport Layout from ",
+        "file": "src/App.js",
+        "line": 10,
+        "rule": "Single Line Comments",
+        "lineContent": "// Components"
+      },
+      {
+        "text": "Pages\nimport Login from ",
+        "file": "src/App.js",
+        "line": 15,
+        "rule": "Single Line Comments",
+        "lineContent": "// Pages"
+      },
+      {
+        "text": "English",
+        "file": "src/utils/localeResolver.js",
+        "line": 6,
+        "rule": "String Literals",
+        "lineContent": "'en': 'English',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 192,
+        "rule": "String Literals",
+        "lineContent": "'en': '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Helvetica",
+        "file": "src/utils/localeResolver.js",
+        "line": 192,
+        "rule": "String Literals",
+        "lineContent": "'en': '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Arial",
+        "file": "src/utils/localeResolver.js",
+        "line": 192,
+        "rule": "String Literals",
+        "lineContent": "'en': '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 193,
+        "rule": "String Literals",
+        "lineContent": "'zh': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "PingFang SC",
+        "file": "src/utils/localeResolver.js",
+        "line": 193,
+        "rule": "String Literals",
+        "lineContent": "'zh': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Hiragino Sans GB",
+        "file": "src/utils/localeResolver.js",
+        "line": 193,
+        "rule": "String Literals",
+        "lineContent": "'zh': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Microsoft YaHei",
+        "file": "src/utils/localeResolver.js",
+        "line": 193,
+        "rule": "String Literals",
+        "lineContent": "'zh': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 194,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hans': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "PingFang SC",
+        "file": "src/utils/localeResolver.js",
+        "line": 194,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hans': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Hiragino Sans GB",
+        "file": "src/utils/localeResolver.js",
+        "line": 194,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hans': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Microsoft YaHei",
+        "file": "src/utils/localeResolver.js",
+        "line": 194,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hans': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 195,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hans-CN': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "PingFang SC",
+        "file": "src/utils/localeResolver.js",
+        "line": 195,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hans-CN': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Hiragino Sans GB",
+        "file": "src/utils/localeResolver.js",
+        "line": 195,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hans-CN': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Microsoft YaHei",
+        "file": "src/utils/localeResolver.js",
+        "line": 195,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hans-CN': '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 196,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hant': '\"Roboto\", \"PingFang TC\", \"Microsoft JhengHei\", sans-serif',"
+      },
+      {
+        "text": "PingFang TC",
+        "file": "src/utils/localeResolver.js",
+        "line": 196,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hant': '\"Roboto\", \"PingFang TC\", \"Microsoft JhengHei\", sans-serif',"
+      },
+      {
+        "text": "Microsoft JhengHei",
+        "file": "src/utils/localeResolver.js",
+        "line": 196,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hant': '\"Roboto\", \"PingFang TC\", \"Microsoft JhengHei\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 197,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hant-TW': '\"Roboto\", \"PingFang TC\", \"Microsoft JhengHei\", sans-serif',"
+      },
+      {
+        "text": "PingFang TC",
+        "file": "src/utils/localeResolver.js",
+        "line": 197,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hant-TW': '\"Roboto\", \"PingFang TC\", \"Microsoft JhengHei\", sans-serif',"
+      },
+      {
+        "text": "Microsoft JhengHei",
+        "file": "src/utils/localeResolver.js",
+        "line": 197,
+        "rule": "String Literals",
+        "lineContent": "'zh-Hant-TW': '\"Roboto\", \"PingFang TC\", \"Microsoft JhengHei\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 198,
+        "rule": "String Literals",
+        "lineContent": "'ja': '\"Roboto\", \"Hiragino Sans\", \"Yu Gothic\", \"Meiryo\", sans-serif',"
+      },
+      {
+        "text": "Hiragino Sans",
+        "file": "src/utils/localeResolver.js",
+        "line": 198,
+        "rule": "String Literals",
+        "lineContent": "'ja': '\"Roboto\", \"Hiragino Sans\", \"Yu Gothic\", \"Meiryo\", sans-serif',"
+      },
+      {
+        "text": "Yu Gothic",
+        "file": "src/utils/localeResolver.js",
+        "line": 198,
+        "rule": "String Literals",
+        "lineContent": "'ja': '\"Roboto\", \"Hiragino Sans\", \"Yu Gothic\", \"Meiryo\", sans-serif',"
+      },
+      {
+        "text": "Meiryo",
+        "file": "src/utils/localeResolver.js",
+        "line": 198,
+        "rule": "String Literals",
+        "lineContent": "'ja': '\"Roboto\", \"Hiragino Sans\", \"Yu Gothic\", \"Meiryo\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 199,
+        "rule": "String Literals",
+        "lineContent": "'ko': '\"Roboto\", \"Malgun Gothic\", \"Apple SD Gothic Neo\", sans-serif',"
+      },
+      {
+        "text": "Malgun Gothic",
+        "file": "src/utils/localeResolver.js",
+        "line": 199,
+        "rule": "String Literals",
+        "lineContent": "'ko': '\"Roboto\", \"Malgun Gothic\", \"Apple SD Gothic Neo\", sans-serif',"
+      },
+      {
+        "text": "Apple SD Gothic Neo",
+        "file": "src/utils/localeResolver.js",
+        "line": 199,
+        "rule": "String Literals",
+        "lineContent": "'ko': '\"Roboto\", \"Malgun Gothic\", \"Apple SD Gothic Neo\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 200,
+        "rule": "String Literals",
+        "lineContent": "'ar': '\"Roboto\", \"Cairo\", \"Amiri\", sans-serif',"
+      },
+      {
+        "text": "Cairo",
+        "file": "src/utils/localeResolver.js",
+        "line": 200,
+        "rule": "String Literals",
+        "lineContent": "'ar': '\"Roboto\", \"Cairo\", \"Amiri\", sans-serif',"
+      },
+      {
+        "text": "Amiri",
+        "file": "src/utils/localeResolver.js",
+        "line": 200,
+        "rule": "String Literals",
+        "lineContent": "'ar': '\"Roboto\", \"Cairo\", \"Amiri\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/localeResolver.js",
+        "line": 201,
+        "rule": "String Literals",
+        "lineContent": "'he': '\"Roboto\", \"Heebo\", \"Assistant\", sans-serif'"
+      },
+      {
+        "text": "Heebo",
+        "file": "src/utils/localeResolver.js",
+        "line": 201,
+        "rule": "String Literals",
+        "lineContent": "'he': '\"Roboto\", \"Heebo\", \"Assistant\", sans-serif'"
+      },
+      {
+        "text": "Assistant",
+        "file": "src/utils/localeResolver.js",
+        "line": 201,
+        "rule": "String Literals",
+        "lineContent": "'he': '\"Roboto\", \"Heebo\", \"Assistant\", sans-serif'"
+      },
+      {
+        "text": "Locale",
+        "file": "src/utils/localeResolver.js",
+        "line": 1,
+        "rule": "Single Line Comments",
+        "lineContent": "// Locale解析优先级：URL ?lang= → 用户 Profile → Cookie → Accept-Language → 租户默认 → 系统默认"
+      },
+      {
+        "text": "USD",
+        "file": "src/utils/icuFormatter.js",
+        "line": 7,
+        "rule": "String Literals",
+        "lineContent": "export const formatCurrency = (amount, currency = 'USD', locale = 'en') => {"
+      },
+      {
+        "text": "UTC",
+        "file": "src/utils/icuFormatter.js",
+        "line": 248,
+        "rule": "String Literals",
+        "lineContent": "return 'UTC';"
+      },
+      {
+        "text": "USD",
+        "file": "src/utils/icuFormatter.js",
+        "line": 260,
+        "rule": "String Literals",
+        "lineContent": "currency(amount, currency = 'USD', options = {}) {"
+      },
+      {
+        "text": "ICU",
+        "file": "src/utils/icuFormatter.js",
+        "line": 1,
+        "rule": "Single Line Comments",
+        "lineContent": "// ICU/CLDR格式化工具"
+      },
+      {
+        "text": "Sunday\n      ",
+        "file": "src/utils/icuFormatter.js",
+        "line": 221,
+        "rule": "Single Line Comments",
+        "lineContent": "'en': 0, // Sunday"
+      },
+      {
+        "text": "Monday\n      ",
+        "file": "src/utils/icuFormatter.js",
+        "line": 222,
+        "rule": "Single Line Comments",
+        "lineContent": "'zh': 1, // Monday"
+      },
+      {
+        "text": "Saturday\n      ",
+        "file": "src/utils/icuFormatter.js",
+        "line": 229,
+        "rule": "Single Line Comments",
+        "lineContent": "'ar': 6, // Saturday"
+      },
+      {
+        "text": "POST",
+        "file": "src/utils/i18nMonitor.js",
+        "line": 202,
+        "rule": "String Literals",
+        "lineContent": "//   method: 'POST',"
+      },
+      {
+        "text": "Modern Travel and Expense Management System",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 18,
+        "rule": "String Literals",
+        "lineContent": "en: 'Modern Travel and Expense Management System',"
+      },
+      {
+        "text": "Travel Expense",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 51,
+        "rule": "String Literals",
+        "lineContent": "en: 'Travel Expense',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 92,
+        "rule": "String Literals",
+        "lineContent": "en: '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Helvetica",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 92,
+        "rule": "String Literals",
+        "lineContent": "en: '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Arial",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 92,
+        "rule": "String Literals",
+        "lineContent": "en: '\"Roboto\", \"Helvetica\", \"Arial\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 93,
+        "rule": "String Literals",
+        "lineContent": "zh: '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "PingFang SC",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 93,
+        "rule": "String Literals",
+        "lineContent": "zh: '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Hiragino Sans GB",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 93,
+        "rule": "String Literals",
+        "lineContent": "zh: '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Microsoft YaHei",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 93,
+        "rule": "String Literals",
+        "lineContent": "zh: '\"Roboto\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 94,
+        "rule": "String Literals",
+        "lineContent": "ja: '\"Roboto\", \"Hiragino Sans\", \"Yu Gothic\", \"Meiryo\", sans-serif',"
+      },
+      {
+        "text": "Hiragino Sans",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 94,
+        "rule": "String Literals",
+        "lineContent": "ja: '\"Roboto\", \"Hiragino Sans\", \"Yu Gothic\", \"Meiryo\", sans-serif',"
+      },
+      {
+        "text": "Yu Gothic",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 94,
+        "rule": "String Literals",
+        "lineContent": "ja: '\"Roboto\", \"Hiragino Sans\", \"Yu Gothic\", \"Meiryo\", sans-serif',"
+      },
+      {
+        "text": "Meiryo",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 94,
+        "rule": "String Literals",
+        "lineContent": "ja: '\"Roboto\", \"Hiragino Sans\", \"Yu Gothic\", \"Meiryo\", sans-serif',"
+      },
+      {
+        "text": "Roboto",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 95,
+        "rule": "String Literals",
+        "lineContent": "ko: '\"Roboto\", \"Malgun Gothic\", \"Apple SD Gothic Neo\", sans-serif'"
+      },
+      {
+        "text": "Malgun Gothic",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 95,
+        "rule": "String Literals",
+        "lineContent": "ko: '\"Roboto\", \"Malgun Gothic\", \"Apple SD Gothic Neo\", sans-serif'"
+      },
+      {
+        "text": "Apple SD Gothic Neo",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 95,
+        "rule": "String Literals",
+        "lineContent": "ko: '\"Roboto\", \"Malgun Gothic\", \"Apple SD Gothic Neo\", sans-serif'"
+      },
+      {
+        "text": "HTML",
+        "file": "src/utils/htmlLangUpdater.js",
+        "line": 1,
+        "rule": "Single Line Comments",
+        "lineContent": "// HTML语言更新工具"
+      },
+      {
+        "text": "Cookie",
+        "file": "src/utils/cookieUtils.js",
+        "line": 1,
+        "rule": "Single Line Comments",
+        "lineContent": "// Cookie工具函数"
+      },
+      {
+        "text": "All Status",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 67,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'all', label: 'All Status' },"
+      },
+      {
+        "text": "Draft",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 68,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'draft', label: 'Draft' },"
+      },
+      {
+        "text": "Submitted",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 69,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'submitted', label: 'Submitted' },"
+      },
+      {
+        "text": "Approved",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 70,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'approved', label: 'Approved' },"
+      },
+      {
+        "text": "Rejected",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 71,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'rejected', label: 'Rejected' },"
+      },
+      {
+        "text": "In Progress",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 72,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'in-progress', label: 'In Progress' },"
+      },
+      {
+        "text": "Completed",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 73,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'completed', label: 'Completed' },"
+      },
+      {
+        "text": "Cancelled",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 74,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'cancelled', label: 'Cancelled' }"
+      },
+      {
+        "text": "Business Trip to Tokyo",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 101,
+        "rule": "String Literals",
+        "lineContent": "title: 'Business Trip to Tokyo',"
+      },
+      {
+        "text": "Client meeting and product demonstration",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 102,
+        "rule": "String Literals",
+        "lineContent": "purpose: 'Client meeting and product demonstration',"
+      },
+      {
+        "text": "Japan",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 104,
+        "rule": "String Literals",
+        "lineContent": "country: 'Japan',"
+      },
+      {
+        "text": "Tokyo",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 105,
+        "rule": "String Literals",
+        "lineContent": "city: 'Tokyo',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 113,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "John",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 117,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'John',"
+      },
+      {
+        "text": "Doe",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Doe',"
+      },
+      {
+        "text": "Conference in Singapore",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "title: 'Conference in Singapore',"
+      },
+      {
+        "text": "Tech conference and networking",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 125,
+        "rule": "String Literals",
+        "lineContent": "purpose: 'Tech conference and networking',"
+      },
+      {
+        "text": "Singapore",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "country: 'Singapore',"
+      },
+      {
+        "text": "Singapore",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 128,
+        "rule": "String Literals",
+        "lineContent": "city: 'Singapore',"
+      },
+      {
+        "text": "Marina Bay Sands",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 129,
+        "rule": "String Literals",
+        "lineContent": "address: 'Marina Bay Sands'"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 136,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Jane",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 140,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Jane',"
+      },
+      {
+        "text": "Smith",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 141,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Smith',"
+      },
+      {
+        "text": "Client Meeting in Seoul",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 147,
+        "rule": "String Literals",
+        "lineContent": "title: 'Client Meeting in Seoul',"
+      },
+      {
+        "text": "Quarterly business review",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 148,
+        "rule": "String Literals",
+        "lineContent": "purpose: 'Quarterly business review',"
+      },
+      {
+        "text": "South Korea",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 150,
+        "rule": "String Literals",
+        "lineContent": "country: 'South Korea',"
+      },
+      {
+        "text": "Seoul",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 151,
+        "rule": "String Literals",
+        "lineContent": "city: 'Seoul',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 159,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Mike",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 163,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Mike',"
+      },
+      {
+        "text": "Johnson",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 164,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Johnson',"
+      },
+      {
+        "text": "Failed to load travel requests",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 171,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to load travel requests', 'error');"
+      },
+      {
+        "text": "Travel request deleted successfully",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 208,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Travel request deleted successfully', 'success');"
+      },
+      {
+        "text": "Failed to delete travel request",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 210,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to delete travel request', 'error');"
+      },
+      {
+        "text": "MMM DD",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 355,
+        "rule": "String Literals",
+        "lineContent": "{dayjs(travel.dates.departure).format('MMM DD')} - {dayjs(travel.dates.return).format('MMM DD')}"
+      },
+      {
+        "text": "MMM DD",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 355,
+        "rule": "String Literals",
+        "lineContent": "{dayjs(travel.dates.departure).format('MMM DD')} - {dayjs(travel.dates.return).format('MMM DD')}"
+      },
+      {
+        "text": "YYYY",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 358,
+        "rule": "String Literals",
+        "lineContent": "{dayjs(travel.dates.departure).format('YYYY')}"
+      },
+      {
+        "text": "Try adjusting your search criteria",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 407,
+        "rule": "String Literals",
+        "lineContent": "? 'Try adjusting your search criteria'"
+      },
+      {
+        "text": "Create your first travel request to get started",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 408,
+        "rule": "String Literals",
+        "lineContent": ": 'Create your first travel request to get started'"
+      },
+      {
+        "text": "New Travel Request\n          ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 247,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Clear Filters\n                ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 295,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Title",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 308,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Title</TableCell>"
+      },
+      {
+        "text": "Destination",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 309,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Destination</TableCell>"
+      },
+      {
+        "text": "Dates",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 310,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Dates</TableCell>"
+      },
+      {
+        "text": "Estimated Cost",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 311,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Estimated Cost</TableCell>"
+      },
+      {
+        "text": "Status",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 312,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Status</TableCell>"
+      },
+      {
+        "text": "Created",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 313,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Created</TableCell>"
+      },
+      {
+        "text": "No travel requests found\n            ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 402,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Create Travel Request\n              ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 417,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "View Details\n          ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 431,
+        "rule": "JSX Text Content",
+        "lineContent": "<ViewIcon sx={{ mr: 1 }} />"
+      },
+      {
+        "text": "Edit\n          ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 435,
+        "rule": "JSX Text Content",
+        "lineContent": "<EditIcon sx={{ mr: 1 }} />"
+      },
+      {
+        "text": "Delete\n          ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 439,
+        "rule": "JSX Text Content",
+        "lineContent": "<DeleteIcon sx={{ mr: 1 }} />"
+      },
+      {
+        "text": "Cancel\n            ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 457,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button onClick={() => setDeleteDialogOpen(false)}>"
+      },
+      {
+        "text": "Delete\n            ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 460,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button onClick={confirmDelete} color=\"error\" variant=\"contained\">"
+      },
+      {
+        "text": "Header ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 238,
+        "rule": "Comments",
+        "lineContent": "{/* Header */}"
+      },
+      {
+        "text": "Filters ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 252,
+        "rule": "Comments",
+        "lineContent": "{/* Filters */}"
+      },
+      {
+        "text": "Travel Requests Table ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 303,
+        "rule": "Comments",
+        "lineContent": "{/* Travel Requests Table */}"
+      },
+      {
+        "text": "Action Menu ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 424,
+        "rule": "Comments",
+        "lineContent": "{/* Action Menu */}"
+      },
+      {
+        "text": "Delete Confirmation Dialog ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 444,
+        "rule": "Comments",
+        "lineContent": "{/* Delete Confirmation Dialog */}"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 97,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API call"
+      },
+      {
+        "text": "Mock API call ",
+        "file": "src/pages/Travel/TravelList.js",
+        "line": 204,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock API call - replace with actual implementation"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 62,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 72,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'USD', label: 'USD - US Dollar' },"
+      },
+      {
+        "text": "CNY",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 73,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'CNY', label: 'CNY - Chinese Yuan' },"
+      },
+      {
+        "text": "JPY",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 74,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'JPY', label: 'JPY - Japanese Yen' },"
+      },
+      {
+        "text": "KRW",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 75,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'KRW', label: 'KRW - Korean Won' },"
+      },
+      {
+        "text": "EUR",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 76,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'EUR', label: 'EUR - Euro' }"
+      },
+      {
+        "text": "Business Trip to Tokyo",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 98,
+        "rule": "String Literals",
+        "lineContent": "title: 'Business Trip to Tokyo',"
+      },
+      {
+        "text": "Client meeting and product demonstration",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 99,
+        "rule": "String Literals",
+        "lineContent": "purpose: 'Client meeting and product demonstration',"
+      },
+      {
+        "text": "Japan",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 101,
+        "rule": "String Literals",
+        "lineContent": "country: 'Japan',"
+      },
+      {
+        "text": "Tokyo",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 102,
+        "rule": "String Literals",
+        "lineContent": "city: 'Tokyo',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 110,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Important client meeting",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 111,
+        "rule": "String Literals",
+        "lineContent": "notes: 'Important client meeting',"
+      },
+      {
+        "text": "Japan Airlines",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 115,
+        "rule": "String Literals",
+        "lineContent": "provider: 'Japan Airlines',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Business",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 119,
+        "rule": "String Literals",
+        "lineContent": "details: { flightNumber: 'JL123', class: 'Business' },"
+      },
+      {
+        "text": "Grand Hyatt Tokyo",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "provider: 'Grand Hyatt Tokyo',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Deluxe",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 128,
+        "rule": "String Literals",
+        "lineContent": "details: { roomType: 'Deluxe', nights: 5 },"
+      },
+      {
+        "text": "Failed to load travel data",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 135,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to load travel data', 'error');"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 177,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Return date must be after departure date",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 230,
+        "rule": "String Literals",
+        "lineContent": "newErrors.return = 'Return date must be after departure date';"
+      },
+      {
+        "text": "Valid estimated cost is required",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 234,
+        "rule": "String Literals",
+        "lineContent": "newErrors.estimatedCost = 'Valid estimated cost is required';"
+      },
+      {
+        "text": "Travel request saved as draft",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 262,
+        "rule": "String Literals",
+        "lineContent": "status === 'draft' ? 'Travel request saved as draft' : 'Travel request submitted successfully',"
+      },
+      {
+        "text": "Travel request submitted successfully",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 262,
+        "rule": "String Literals",
+        "lineContent": "status === 'draft' ? 'Travel request saved as draft' : 'Travel request submitted successfully',"
+      },
+      {
+        "text": "Failed to save travel request",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 268,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to save travel request', 'error');"
+      },
+      {
+        "text": "Basic Information ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 295,
+        "rule": "Comments",
+        "lineContent": "{/* Basic Information */}"
+      },
+      {
+        "text": "Destination ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 344,
+        "rule": "Comments",
+        "lineContent": "{/* Destination */}"
+      },
+      {
+        "text": "Dates ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 383,
+        "rule": "Comments",
+        "lineContent": "{/* Dates */}"
+      },
+      {
+        "text": "Estimated Cost ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 421,
+        "rule": "Comments",
+        "lineContent": "{/* Estimated Cost */}"
+      },
+      {
+        "text": "Bookings ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 441,
+        "rule": "Comments",
+        "lineContent": "{/* Bookings */}"
+      },
+      {
+        "text": "Notes ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 530,
+        "rule": "Comments",
+        "lineContent": "{/* Notes */}"
+      },
+      {
+        "text": "Action Buttons ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 543,
+        "rule": "Comments",
+        "lineContent": "{/* Action Buttons */}"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 96,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API call"
+      },
+      {
+        "text": "Clear error when user starts typing\n    if ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 158,
+        "rule": "Single Line Comments",
+        "lineContent": "// Clear error when user starts typing"
+      },
+      {
+        "text": "Mock API call ",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 255,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock API call - replace with actual implementation"
+      },
+      {
+        "text": "Simulate API delay\n      await new Promise",
+        "file": "src/pages/Travel/TravelForm.js",
+        "line": 258,
+        "rule": "Single Line Comments",
+        "lineContent": "// Simulate API delay"
+      },
+      {
+        "text": "Business Trip to Tokyo",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 105,
+        "rule": "String Literals",
+        "lineContent": "title: 'Business Trip to Tokyo',"
+      },
+      {
+        "text": "Japan",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 108,
+        "rule": "String Literals",
+        "lineContent": "country: 'Japan',"
+      },
+      {
+        "text": "Tokyo",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 109,
+        "rule": "String Literals",
+        "lineContent": "city: 'Tokyo',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "John",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 123,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'John',"
+      },
+      {
+        "text": "Doe",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Doe',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 126,
+        "rule": "String Literals",
+        "lineContent": "department: 'Sales',"
+      },
+      {
+        "text": "Senior Sales Manager",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "position: 'Senior Sales Manager'"
+      },
+      {
+        "text": "Japan Airlines",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 132,
+        "rule": "String Literals",
+        "lineContent": "provider: 'Japan Airlines',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 135,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Business",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 138,
+        "rule": "String Literals",
+        "lineContent": "class: 'Business',"
+      },
+      {
+        "text": "Grand Hyatt Tokyo",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 146,
+        "rule": "String Literals",
+        "lineContent": "provider: 'Grand Hyatt Tokyo',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 149,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Deluxe King Room",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 151,
+        "rule": "String Literals",
+        "lineContent": "roomType: 'Deluxe King Room',"
+      },
+      {
+        "text": "Hertz",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 160,
+        "rule": "String Literals",
+        "lineContent": "provider: 'Hertz',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 163,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Sarah",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 176,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Sarah',"
+      },
+      {
+        "text": "Wilson",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 177,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Wilson',"
+      },
+      {
+        "text": "Sales Director",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 179,
+        "rule": "String Literals",
+        "lineContent": "position: 'Sales Director'"
+      },
+      {
+        "text": "Michael",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 188,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Michael',"
+      },
+      {
+        "text": "Brown",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 189,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Brown',"
+      },
+      {
+        "text": "VP of Sales",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 191,
+        "rule": "String Literals",
+        "lineContent": "position: 'VP of Sales'"
+      },
+      {
+        "text": "Failed to load travel details",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 217,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to load travel details', 'error');"
+      },
+      {
+        "text": "Delete functionality not implemented yet",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 229,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Delete functionality not implemented yet', 'info');"
+      },
+      {
+        "text": "Travel request not found\n          ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 246,
+        "rule": "JSX Text Content",
+        "lineContent": "<Alert severity=\"error\">"
+      },
+      {
+        "text": "Edit\n            ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 282,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Delete\n            ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 290,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Basic Information\n              ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 300,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Purpose\n                  ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 307,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Destination\n                    ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 318,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Travel Dates\n                    ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 335,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Estimated Cost\n                    ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 350,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Actual Cost\n                    ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 362,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Bookings\n              ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 375,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Additional Notes\n                ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 427,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Employee Information\n              ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 442,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Approval Status\n              ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 467,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Attachments\n                ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 515,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Header ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 257,
+        "rule": "Comments",
+        "lineContent": "{/* Header */}"
+      },
+      {
+        "text": "Basic Information ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 297,
+        "rule": "Comments",
+        "lineContent": "{/* Basic Information */}"
+      },
+      {
+        "text": "Bookings ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 373,
+        "rule": "Comments",
+        "lineContent": "{/* Bookings */}"
+      },
+      {
+        "text": "Notes ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 424,
+        "rule": "Comments",
+        "lineContent": "{/* Notes */}"
+      },
+      {
+        "text": "Sidebar ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 438,
+        "rule": "Comments",
+        "lineContent": "{/* Sidebar */}"
+      },
+      {
+        "text": "Employee Information ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 440,
+        "rule": "Comments",
+        "lineContent": "{/* Employee Information */}"
+      },
+      {
+        "text": "Approval Status ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 465,
+        "rule": "Comments",
+        "lineContent": "{/* Approval Status */}"
+      },
+      {
+        "text": "Attachments ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 512,
+        "rule": "Comments",
+        "lineContent": "{/* Attachments */}"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 102,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API call"
+      },
+      {
+        "text": "Implement delete functionality\n    showNotification",
+        "file": "src/pages/Travel/TravelDetail.js",
+        "line": 228,
+        "rule": "Single Line Comments",
+        "lineContent": "// Implement delete functionality"
+      },
+      {
+        "text": "UTC",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 40,
+        "rule": "String Literals",
+        "lineContent": "timezone: 'UTC',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 41,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD'"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 61,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'USD', label: 'USD - US Dollar' },"
+      },
+      {
+        "text": "CNY",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 62,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'CNY', label: 'CNY - Chinese Yuan' },"
+      },
+      {
+        "text": "JPY",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 63,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'JPY', label: 'JPY - Japanese Yen' },"
+      },
+      {
+        "text": "EUR",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 64,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'EUR', label: 'EUR - Euro' }"
+      },
+      {
+        "text": "UTC",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 68,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'UTC', label: 'UTC' },"
+      },
+      {
+        "text": "UTC",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 68,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'UTC', label: 'UTC' },"
+      },
+      {
+        "text": "Settings saved successfully",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 89,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Settings saved successfully', 'success');"
+      },
+      {
+        "text": "Failed to save settings",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 91,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to save settings', 'error');"
+      },
+      {
+        "text": "Save Settings",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 284,
+        "rule": "String Literals",
+        "lineContent": "{loading ? <CircularProgress size={20} /> : 'Save Settings'}"
+      },
+      {
+        "text": "Default Currency",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 133,
+        "rule": "JSX Text Content",
+        "lineContent": "<InputLabel>Default Currency</InputLabel>"
+      },
+      {
+        "text": "General Settings ",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 117,
+        "rule": "Comments",
+        "lineContent": "{/* General Settings */}"
+      },
+      {
+        "text": "Approval Settings ",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 166,
+        "rule": "Comments",
+        "lineContent": "{/* Approval Settings */}"
+      },
+      {
+        "text": "Notification Settings ",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 204,
+        "rule": "Comments",
+        "lineContent": "{/* Notification Settings */}"
+      },
+      {
+        "text": "Security Settings ",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 246,
+        "rule": "Comments",
+        "lineContent": "{/* Security Settings */}"
+      },
+      {
+        "text": "Save Button ",
+        "file": "src/pages/Settings/Settings.js",
+        "line": 275,
+        "rule": "Comments",
+        "lineContent": "{/* Save Button */}"
+      },
+      {
+        "text": "This Year",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 81,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'thisYear', label: 'This Year' },"
+      },
+      {
+        "text": "All Departments",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 86,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'all', label: 'All Departments' },"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 87,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'sales', label: 'Sales' },"
+      },
+      {
+        "text": "Marketing",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 88,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'marketing', label: 'Marketing' },"
+      },
+      {
+        "text": "Engineering",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 89,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'engineering', label: 'Engineering' },"
+      },
+      {
+        "text": "Finance",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 92,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'finance', label: 'Finance' }"
+      },
+      {
+        "text": "Jan",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 113,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Jan', expenses: 4200, travel: 2100, approved: 15, pending: 3 },"
+      },
+      {
+        "text": "Feb",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 114,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Feb', expenses: 4800, travel: 2400, approved: 18, pending: 2 },"
+      },
+      {
+        "text": "Mar",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 115,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Mar', expenses: 5200, travel: 2600, approved: 22, pending: 4 },"
+      },
+      {
+        "text": "Apr",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 116,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Apr', expenses: 4500, travel: 2250, approved: 19, pending: 3 },"
+      },
+      {
+        "text": "May",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 117,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'May', expenses: 5100, travel: 2550, approved: 21, pending: 2 },"
+      },
+      {
+        "text": "Jun",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Jun', expenses: 5800, travel: 2900, approved: 25, pending: 5 }"
+      },
+      {
+        "text": "Transportation",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 121,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Transportation', value: 12000, count: 45 },"
+      },
+      {
+        "text": "Accommodation",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 122,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Accommodation', value: 8500, count: 28 },"
+      },
+      {
+        "text": "Meals",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 123,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Meals', value: 6800, count: 67 },"
+      },
+      {
+        "text": "Entertainment",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Entertainment', value: 3200, count: 15 },"
+      },
+      {
+        "text": "Office Supplies",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 125,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Office Supplies', value: 2100, count: 23 },"
+      },
+      {
+        "text": "Other",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 126,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Other', value: 1500, count: 12 }"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 129,
+        "rule": "String Literals",
+        "lineContent": "{ department: 'Sales', expenses: 18500, travel: 12000, count: 45 },"
+      },
+      {
+        "text": "Marketing",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 130,
+        "rule": "String Literals",
+        "lineContent": "{ department: 'Marketing', expenses: 12500, travel: 8000, count: 32 },"
+      },
+      {
+        "text": "Engineering",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 131,
+        "rule": "String Literals",
+        "lineContent": "{ department: 'Engineering', expenses: 9800, travel: 6000, count: 28 },"
+      },
+      {
+        "text": "Operations",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 132,
+        "rule": "String Literals",
+        "lineContent": "{ department: 'Operations', expenses: 4200, travel: 2000, count: 15 },"
+      },
+      {
+        "text": "Tokyo",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 136,
+        "rule": "String Literals",
+        "lineContent": "{ destination: 'Tokyo', trips: 8, cost: 12000, avgCost: 1500 },"
+      },
+      {
+        "text": "Singapore",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 137,
+        "rule": "String Literals",
+        "lineContent": "{ destination: 'Singapore', trips: 6, cost: 9000, avgCost: 1500 },"
+      },
+      {
+        "text": "Seoul",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 138,
+        "rule": "String Literals",
+        "lineContent": "{ destination: 'Seoul', trips: 4, cost: 6000, avgCost: 1500 },"
+      },
+      {
+        "text": "New York",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 139,
+        "rule": "String Literals",
+        "lineContent": "{ destination: 'New York', trips: 3, cost: 4500, avgCost: 1500 },"
+      },
+      {
+        "text": "London",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 140,
+        "rule": "String Literals",
+        "lineContent": "{ destination: 'London', trips: 2, cost: 3000, avgCost: 1500 }"
+      },
+      {
+        "text": "Restaurant ABC",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 143,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Restaurant ABC', amount: 2500, count: 15, category: 'Meals' },"
+      },
+      {
+        "text": "Meals",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 143,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Restaurant ABC', amount: 2500, count: 15, category: 'Meals' },"
+      },
+      {
+        "text": "Hotel XYZ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 144,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Hotel XYZ', amount: 4200, count: 8, category: 'Accommodation' },"
+      },
+      {
+        "text": "Accommodation",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 144,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Hotel XYZ', amount: 4200, count: 8, category: 'Accommodation' },"
+      },
+      {
+        "text": "Airline Co",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 145,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Airline Co', amount: 8500, count: 12, category: 'Transportation' },"
+      },
+      {
+        "text": "Transportation",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 145,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Airline Co', amount: 8500, count: 12, category: 'Transportation' },"
+      },
+      {
+        "text": "Office Depot",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 146,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Office Depot', amount: 1200, count: 6, category: 'Office Supplies' },"
+      },
+      {
+        "text": "Office Supplies",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 146,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Office Depot', amount: 1200, count: 6, category: 'Office Supplies' },"
+      },
+      {
+        "text": "Taxi Service",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 147,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Taxi Service', amount: 800, count: 20, category: 'Transportation' }"
+      },
+      {
+        "text": "Transportation",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 147,
+        "rule": "String Literals",
+        "lineContent": "{ vendor: 'Taxi Service', amount: 800, count: 20, category: 'Transportation' }"
+      },
+      {
+        "text": "Failed to load report data",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 152,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to load report data', 'error');"
+      },
+      {
+        "text": "PDF",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 251,
+        "rule": "String Literals",
+        "lineContent": "onClick={() => handleExport('PDF')}"
+      },
+      {
+        "text": "Excel",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 258,
+        "rule": "String Literals",
+        "lineContent": "onClick={() => handleExport('Excel')}"
+      },
+      {
+        "text": "Date Range",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 216,
+        "rule": "JSX Text Content",
+        "lineContent": "<InputLabel>Date Range</InputLabel>"
+      },
+      {
+        "text": "Department",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 232,
+        "rule": "JSX Text Content",
+        "lineContent": "<InputLabel>Department</InputLabel>"
+      },
+      {
+        "text": "Export PDF\n                ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 252,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Export Excel\n                ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 259,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Monthly Trends\n                ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 323,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Expense Categories\n                    ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 356,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Approval Status\n                    ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 382,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Expense Analysis\n                ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 405,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Travel Analysis\n                ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 424,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Department Analysis\n                ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 443,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Filters ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 211,
+        "rule": "Comments",
+        "lineContent": "{/* Filters */}"
+      },
+      {
+        "text": "Summary Cards ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 267,
+        "rule": "Comments",
+        "lineContent": "{/* Summary Cards */}"
+      },
+      {
+        "text": "Report Tabs ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 306,
+        "rule": "Comments",
+        "lineContent": "{/* Report Tabs */}"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Reports/Reports.js",
+        "line": 104,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API call"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 63,
+        "rule": "String Literals",
+        "lineContent": "currency: user?.preferences?.currency || 'USD',"
+      },
+      {
+        "text": "UTC",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 64,
+        "rule": "String Literals",
+        "lineContent": "timezone: user?.preferences?.timezone || 'UTC'"
+      },
+      {
+        "text": "English",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 77,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'en', label: 'English' },"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 84,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'USD', label: 'USD - US Dollar' },"
+      },
+      {
+        "text": "CNY",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 85,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'CNY', label: 'CNY - Chinese Yuan' },"
+      },
+      {
+        "text": "JPY",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 86,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'JPY', label: 'JPY - Japanese Yen' },"
+      },
+      {
+        "text": "KRW",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 87,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'KRW', label: 'KRW - Korean Won' },"
+      },
+      {
+        "text": "EUR",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 88,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'EUR', label: 'EUR - Euro' }"
+      },
+      {
+        "text": "UTC",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 92,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'UTC', label: 'UTC' },"
+      },
+      {
+        "text": "UTC",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 92,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'UTC', label: 'UTC' },"
+      },
+      {
+        "text": "First name is required",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 141,
+        "rule": "String Literals",
+        "lineContent": "newErrors.firstName = 'First name is required';"
+      },
+      {
+        "text": "Last name is required",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 145,
+        "rule": "String Literals",
+        "lineContent": "newErrors.lastName = 'Last name is required';"
+      },
+      {
+        "text": "Email is required",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 149,
+        "rule": "String Literals",
+        "lineContent": "newErrors.email = 'Email is required';"
+      },
+      {
+        "text": "Please enter a valid email address",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 151,
+        "rule": "String Literals",
+        "lineContent": "newErrors.email = 'Please enter a valid email address';"
+      },
+      {
+        "text": "Current password is required",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 162,
+        "rule": "String Literals",
+        "lineContent": "newErrors.currentPassword = 'Current password is required';"
+      },
+      {
+        "text": "New password is required",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 166,
+        "rule": "String Literals",
+        "lineContent": "newErrors.newPassword = 'New password is required';"
+      },
+      {
+        "text": "Passwords do not match",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 172,
+        "rule": "String Literals",
+        "lineContent": "newErrors.confirmPassword = 'Passwords do not match';"
+      },
+      {
+        "text": "Profile updated successfully",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 191,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Profile updated successfully', 'success');"
+      },
+      {
+        "text": "Failed to update profile",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 197,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to update profile', 'error');"
+      },
+      {
+        "text": "Password changed successfully",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 214,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Password changed successfully', 'success');"
+      },
+      {
+        "text": "Failed to change password",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 225,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to change password', 'error');"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 241,
+        "rule": "String Literals",
+        "lineContent": "currency: user?.preferences?.currency || 'USD',"
+      },
+      {
+        "text": "UTC",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 242,
+        "rule": "String Literals",
+        "lineContent": "timezone: user?.preferences?.timezone || 'UTC'"
+      },
+      {
+        "text": "Save",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 341,
+        "rule": "String Literals",
+        "lineContent": "{loading ? <CircularProgress size={20} /> : 'Save'}"
+      },
+      {
+        "text": "Change Password",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 548,
+        "rule": "String Literals",
+        "lineContent": "{loading ? <CircularProgress size={20} /> : 'Change Password'}"
+      },
+      {
+        "text": "Edit Profile\n                ",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 300,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Change Password\n                ",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 311,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Cancel\n                    ",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 332,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Preferences\n              ",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 431,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Language",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 438,
+        "rule": "JSX Text Content",
+        "lineContent": "<InputLabel>Language</InputLabel>"
+      },
+      {
+        "text": "Currency",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 457,
+        "rule": "JSX Text Content",
+        "lineContent": "<InputLabel>Currency</InputLabel>"
+      },
+      {
+        "text": "Timezone",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 476,
+        "rule": "JSX Text Content",
+        "lineContent": "<InputLabel>Timezone</InputLabel>"
+      },
+      {
+        "text": "Cancel\n            ",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 540,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button onClick={() => setPasswordDialogOpen(false)}>"
+      },
+      {
+        "text": "Profile Overview ",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 257,
+        "rule": "Comments",
+        "lineContent": "{/* Profile Overview */}"
+      },
+      {
+        "text": "Clear error when user starts typing\n    if ",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 121,
+        "rule": "Single Line Comments",
+        "lineContent": "// Clear error when user starts typing"
+      },
+      {
+        "text": "Update preferences\n      const result ",
+        "file": "src/pages/Profile/Profile.js",
+        "line": 187,
+        "rule": "Single Line Comments",
+        "lineContent": "// Update preferences"
+      },
+      {
+        "text": "All Status",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 67,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'all', label: 'All Status' },"
+      },
+      {
+        "text": "Draft",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 68,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'draft', label: 'Draft' },"
+      },
+      {
+        "text": "Submitted",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 69,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'submitted', label: 'Submitted' },"
+      },
+      {
+        "text": "Approved",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 70,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'approved', label: 'Approved' },"
+      },
+      {
+        "text": "Rejected",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 71,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'rejected', label: 'Rejected' },"
+      },
+      {
+        "text": "Paid",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 72,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'paid', label: 'Paid' },"
+      },
+      {
+        "text": "Cancelled",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 73,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'cancelled', label: 'Cancelled' }"
+      },
+      {
+        "text": "All Categories",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 77,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'all', label: 'All Categories' },"
+      },
+      {
+        "text": "Transportation",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 78,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'transportation', label: 'Transportation' },"
+      },
+      {
+        "text": "Accommodation",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 79,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'accommodation', label: 'Accommodation' },"
+      },
+      {
+        "text": "Meals",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 80,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'meals', label: 'Meals' },"
+      },
+      {
+        "text": "Entertainment",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 81,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'entertainment', label: 'Entertainment' },"
+      },
+      {
+        "text": "Communication",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 82,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'communication', label: 'Communication' },"
+      },
+      {
+        "text": "Office Supplies",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 83,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'office_supplies', label: 'Office Supplies' },"
+      },
+      {
+        "text": "Training",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 84,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'training', label: 'Training' },"
+      },
+      {
+        "text": "Other",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 85,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'other', label: 'Other' }"
+      },
+      {
+        "text": "Business Lunch with Client",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 125,
+        "rule": "String Literals",
+        "lineContent": "title: 'Business Lunch with Client',"
+      },
+      {
+        "text": "Lunch meeting with key client to discuss project requirements",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 126,
+        "rule": "String Literals",
+        "lineContent": "description: 'Lunch meeting with key client to discuss project requirements',"
+      },
+      {
+        "text": "Business Meal",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 128,
+        "rule": "String Literals",
+        "lineContent": "subcategory: 'Business Meal',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 130,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Restaurant ABC",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 134,
+        "rule": "String Literals",
+        "lineContent": "name: 'Restaurant ABC',"
+      },
+      {
+        "text": "Client A Engagement",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 137,
+        "rule": "String Literals",
+        "lineContent": "project: 'Client A Engagement',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 138,
+        "rule": "String Literals",
+        "lineContent": "costCenter: 'Sales',"
+      },
+      {
+        "text": "Client A",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 140,
+        "rule": "String Literals",
+        "lineContent": "client: 'Client A',"
+      },
+      {
+        "text": "John",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 144,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'John',"
+      },
+      {
+        "text": "Doe",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 145,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Doe',"
+      },
+      {
+        "text": "Flight to Tokyo",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 158,
+        "rule": "String Literals",
+        "lineContent": "title: 'Flight to Tokyo',"
+      },
+      {
+        "text": "Business class flight for client meeting",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 159,
+        "rule": "String Literals",
+        "lineContent": "description: 'Business class flight for client meeting',"
+      },
+      {
+        "text": "Flight",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 161,
+        "rule": "String Literals",
+        "lineContent": "subcategory: 'Flight',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 163,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Japan Airlines",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 167,
+        "rule": "String Literals",
+        "lineContent": "name: 'Japan Airlines',"
+      },
+      {
+        "text": "Client B Engagement",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 170,
+        "rule": "String Literals",
+        "lineContent": "project: 'Client B Engagement',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 171,
+        "rule": "String Literals",
+        "lineContent": "costCenter: 'Sales',"
+      },
+      {
+        "text": "Client B",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 173,
+        "rule": "String Literals",
+        "lineContent": "client: 'Client B',"
+      },
+      {
+        "text": "Jane",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 177,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Jane',"
+      },
+      {
+        "text": "Smith",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 178,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Smith',"
+      },
+      {
+        "text": "Office Supplies",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 185,
+        "rule": "String Literals",
+        "lineContent": "title: 'Office Supplies',"
+      },
+      {
+        "text": "Stationery and office materials",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 186,
+        "rule": "String Literals",
+        "lineContent": "description: 'Stationery and office materials',"
+      },
+      {
+        "text": "Stationery",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 188,
+        "rule": "String Literals",
+        "lineContent": "subcategory: 'Stationery',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 190,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Office Depot",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 194,
+        "rule": "String Literals",
+        "lineContent": "name: 'Office Depot',"
+      },
+      {
+        "text": "Internal Development",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 197,
+        "rule": "String Literals",
+        "lineContent": "project: 'Internal Development',"
+      },
+      {
+        "text": "Operations",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 198,
+        "rule": "String Literals",
+        "lineContent": "costCenter: 'Operations',"
+      },
+      {
+        "text": "Internal",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 200,
+        "rule": "String Literals",
+        "lineContent": "client: 'Internal',"
+      },
+      {
+        "text": "Mike",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 204,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Mike',"
+      },
+      {
+        "text": "Johnson",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 205,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Johnson',"
+      },
+      {
+        "text": "Failed to load expenses",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 213,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to load expenses', 'error');"
+      },
+      {
+        "text": "Expense deleted successfully",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 250,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Expense deleted successfully', 'success');"
+      },
+      {
+        "text": "Failed to delete expense",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 252,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to delete expense', 'error');"
+      },
+      {
+        "text": "Try adjusting your search criteria",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 482,
+        "rule": "String Literals",
+        "lineContent": "? 'Try adjusting your search criteria'"
+      },
+      {
+        "text": "Create your first expense to get started",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 483,
+        "rule": "String Literals",
+        "lineContent": ": 'Create your first expense to get started'"
+      },
+      {
+        "text": "New Expense\n          ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 290,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Clear\n              ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 355,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Expense",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 367,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Expense</TableCell>"
+      },
+      {
+        "text": "Category",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 368,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Category</TableCell>"
+      },
+      {
+        "text": "Vendor",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 369,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Vendor</TableCell>"
+      },
+      {
+        "text": "Amount",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 370,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Amount</TableCell>"
+      },
+      {
+        "text": "Date",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 371,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Date</TableCell>"
+      },
+      {
+        "text": "Status",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 372,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Status</TableCell>"
+      },
+      {
+        "text": "Receipts",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 373,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Receipts</TableCell>"
+      },
+      {
+        "text": "Actions",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 374,
+        "rule": "JSX Text Content",
+        "lineContent": "<TableCell>Actions</TableCell>"
+      },
+      {
+        "text": "No expenses found\n            ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 477,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Create Expense\n              ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 492,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "View Details\n          ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 506,
+        "rule": "JSX Text Content",
+        "lineContent": "<ViewIcon sx={{ mr: 1 }} />"
+      },
+      {
+        "text": "Edit\n          ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 510,
+        "rule": "JSX Text Content",
+        "lineContent": "<EditIcon sx={{ mr: 1 }} />"
+      },
+      {
+        "text": "Delete\n          ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 514,
+        "rule": "JSX Text Content",
+        "lineContent": "<DeleteIcon sx={{ mr: 1 }} />"
+      },
+      {
+        "text": "Cancel\n            ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 532,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button onClick={() => setDeleteDialogOpen(false)}>"
+      },
+      {
+        "text": "Delete\n            ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 535,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button onClick={confirmDelete} color=\"error\" variant=\"contained\">"
+      },
+      {
+        "text": "Header ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 281,
+        "rule": "Comments",
+        "lineContent": "{/* Header */}"
+      },
+      {
+        "text": "Filters ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 295,
+        "rule": "Comments",
+        "lineContent": "{/* Filters */}"
+      },
+      {
+        "text": "Expenses Table ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 362,
+        "rule": "Comments",
+        "lineContent": "{/* Expenses Table */}"
+      },
+      {
+        "text": "Action Menu ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 499,
+        "rule": "Comments",
+        "lineContent": "{/* Action Menu */}"
+      },
+      {
+        "text": "Delete Confirmation Dialog ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 519,
+        "rule": "Comments",
+        "lineContent": "{/* Delete Confirmation Dialog */}"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 121,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API call"
+      },
+      {
+        "text": "Mock API call ",
+        "file": "src/pages/Expense/ExpenseList.js",
+        "line": 246,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock API call - replace with actual implementation"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 67,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 89,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'USD', label: 'USD - US Dollar' },"
+      },
+      {
+        "text": "CNY",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 90,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'CNY', label: 'CNY - Chinese Yuan' },"
+      },
+      {
+        "text": "JPY",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 91,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'JPY', label: 'JPY - Japanese Yen' },"
+      },
+      {
+        "text": "KRW",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 92,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'KRW', label: 'KRW - Korean Won' },"
+      },
+      {
+        "text": "EUR",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 93,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'EUR', label: 'EUR - Euro' }"
+      },
+      {
+        "text": "Transportation",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 97,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'transportation', label: 'Transportation' },"
+      },
+      {
+        "text": "Accommodation",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 98,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'accommodation', label: 'Accommodation' },"
+      },
+      {
+        "text": "Meals",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 99,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'meals', label: 'Meals' },"
+      },
+      {
+        "text": "Entertainment",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 100,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'entertainment', label: 'Entertainment' },"
+      },
+      {
+        "text": "Communication",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 101,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'communication', label: 'Communication' },"
+      },
+      {
+        "text": "Office Supplies",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 102,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'office_supplies', label: 'Office Supplies' },"
+      },
+      {
+        "text": "Training",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 103,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'training', label: 'Training' },"
+      },
+      {
+        "text": "Other",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 104,
+        "rule": "String Literals",
+        "lineContent": "{ value: 'other', label: 'Other' }"
+      },
+      {
+        "text": "Flight",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 109,
+        "rule": "String Literals",
+        "lineContent": "'Flight', 'Train', 'Taxi', 'Rental Car', 'Public Transport', 'Parking', 'Fuel'"
+      },
+      {
+        "text": "Train",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 109,
+        "rule": "String Literals",
+        "lineContent": "'Flight', 'Train', 'Taxi', 'Rental Car', 'Public Transport', 'Parking', 'Fuel'"
+      },
+      {
+        "text": "Taxi",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 109,
+        "rule": "String Literals",
+        "lineContent": "'Flight', 'Train', 'Taxi', 'Rental Car', 'Public Transport', 'Parking', 'Fuel'"
+      },
+      {
+        "text": "Rental Car",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 109,
+        "rule": "String Literals",
+        "lineContent": "'Flight', 'Train', 'Taxi', 'Rental Car', 'Public Transport', 'Parking', 'Fuel'"
+      },
+      {
+        "text": "Public Transport",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 109,
+        "rule": "String Literals",
+        "lineContent": "'Flight', 'Train', 'Taxi', 'Rental Car', 'Public Transport', 'Parking', 'Fuel'"
+      },
+      {
+        "text": "Parking",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 109,
+        "rule": "String Literals",
+        "lineContent": "'Flight', 'Train', 'Taxi', 'Rental Car', 'Public Transport', 'Parking', 'Fuel'"
+      },
+      {
+        "text": "Fuel",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 109,
+        "rule": "String Literals",
+        "lineContent": "'Flight', 'Train', 'Taxi', 'Rental Car', 'Public Transport', 'Parking', 'Fuel'"
+      },
+      {
+        "text": "Hotel",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 112,
+        "rule": "String Literals",
+        "lineContent": "'Hotel', 'Airbnb', 'Hostel', 'Apartment Rental'"
+      },
+      {
+        "text": "Airbnb",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 112,
+        "rule": "String Literals",
+        "lineContent": "'Hotel', 'Airbnb', 'Hostel', 'Apartment Rental'"
+      },
+      {
+        "text": "Hostel",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 112,
+        "rule": "String Literals",
+        "lineContent": "'Hotel', 'Airbnb', 'Hostel', 'Apartment Rental'"
+      },
+      {
+        "text": "Apartment Rental",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 112,
+        "rule": "String Literals",
+        "lineContent": "'Hotel', 'Airbnb', 'Hostel', 'Apartment Rental'"
+      },
+      {
+        "text": "Breakfast",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 115,
+        "rule": "String Literals",
+        "lineContent": "'Breakfast', 'Lunch', 'Dinner', 'Coffee/Tea', 'Snacks', 'Business Meal'"
+      },
+      {
+        "text": "Lunch",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 115,
+        "rule": "String Literals",
+        "lineContent": "'Breakfast', 'Lunch', 'Dinner', 'Coffee/Tea', 'Snacks', 'Business Meal'"
+      },
+      {
+        "text": "Dinner",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 115,
+        "rule": "String Literals",
+        "lineContent": "'Breakfast', 'Lunch', 'Dinner', 'Coffee/Tea', 'Snacks', 'Business Meal'"
+      },
+      {
+        "text": "Snacks",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 115,
+        "rule": "String Literals",
+        "lineContent": "'Breakfast', 'Lunch', 'Dinner', 'Coffee/Tea', 'Snacks', 'Business Meal'"
+      },
+      {
+        "text": "Business Meal",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 115,
+        "rule": "String Literals",
+        "lineContent": "'Breakfast', 'Lunch', 'Dinner', 'Coffee/Tea', 'Snacks', 'Business Meal'"
+      },
+      {
+        "text": "Client Entertainment",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "'Client Entertainment', 'Team Building', 'Conference', 'Event'"
+      },
+      {
+        "text": "Team Building",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "'Client Entertainment', 'Team Building', 'Conference', 'Event'"
+      },
+      {
+        "text": "Conference",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "'Client Entertainment', 'Team Building', 'Conference', 'Event'"
+      },
+      {
+        "text": "Event",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "'Client Entertainment', 'Team Building', 'Conference', 'Event'"
+      },
+      {
+        "text": "Phone",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 121,
+        "rule": "String Literals",
+        "lineContent": "'Phone', 'Internet', 'Mobile Data', 'Postage', 'Courier'"
+      },
+      {
+        "text": "Internet",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 121,
+        "rule": "String Literals",
+        "lineContent": "'Phone', 'Internet', 'Mobile Data', 'Postage', 'Courier'"
+      },
+      {
+        "text": "Mobile Data",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 121,
+        "rule": "String Literals",
+        "lineContent": "'Phone', 'Internet', 'Mobile Data', 'Postage', 'Courier'"
+      },
+      {
+        "text": "Postage",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 121,
+        "rule": "String Literals",
+        "lineContent": "'Phone', 'Internet', 'Mobile Data', 'Postage', 'Courier'"
+      },
+      {
+        "text": "Courier",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 121,
+        "rule": "String Literals",
+        "lineContent": "'Phone', 'Internet', 'Mobile Data', 'Postage', 'Courier'"
+      },
+      {
+        "text": "Stationery",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "'Stationery', 'Printing', 'Software', 'Hardware', 'Books'"
+      },
+      {
+        "text": "Printing",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "'Stationery', 'Printing', 'Software', 'Hardware', 'Books'"
+      },
+      {
+        "text": "Software",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "'Stationery', 'Printing', 'Software', 'Hardware', 'Books'"
+      },
+      {
+        "text": "Hardware",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "'Stationery', 'Printing', 'Software', 'Hardware', 'Books'"
+      },
+      {
+        "text": "Books",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "'Stationery', 'Printing', 'Software', 'Hardware', 'Books'"
+      },
+      {
+        "text": "Course",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "'Course', 'Workshop', 'Certification', 'Conference', 'Online Training'"
+      },
+      {
+        "text": "Workshop",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "'Course', 'Workshop', 'Certification', 'Conference', 'Online Training'"
+      },
+      {
+        "text": "Certification",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "'Course', 'Workshop', 'Certification', 'Conference', 'Online Training'"
+      },
+      {
+        "text": "Conference",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "'Course', 'Workshop', 'Certification', 'Conference', 'Online Training'"
+      },
+      {
+        "text": "Online Training",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "'Course', 'Workshop', 'Certification', 'Conference', 'Online Training'"
+      },
+      {
+        "text": "Miscellaneous",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 130,
+        "rule": "String Literals",
+        "lineContent": "'Miscellaneous', 'Bank Fees', 'Insurance', 'Medical', 'Other'"
+      },
+      {
+        "text": "Bank Fees",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 130,
+        "rule": "String Literals",
+        "lineContent": "'Miscellaneous', 'Bank Fees', 'Insurance', 'Medical', 'Other'"
+      },
+      {
+        "text": "Insurance",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 130,
+        "rule": "String Literals",
+        "lineContent": "'Miscellaneous', 'Bank Fees', 'Insurance', 'Medical', 'Other'"
+      },
+      {
+        "text": "Medical",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 130,
+        "rule": "String Literals",
+        "lineContent": "'Miscellaneous', 'Bank Fees', 'Insurance', 'Medical', 'Other'"
+      },
+      {
+        "text": "Other",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 130,
+        "rule": "String Literals",
+        "lineContent": "'Miscellaneous', 'Bank Fees', 'Insurance', 'Medical', 'Other'"
+      },
+      {
+        "text": "Project Alpha",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 135,
+        "rule": "String Literals",
+        "lineContent": "'Project Alpha',"
+      },
+      {
+        "text": "Project Beta",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 136,
+        "rule": "String Literals",
+        "lineContent": "'Project Beta',"
+      },
+      {
+        "text": "Project Gamma",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 137,
+        "rule": "String Literals",
+        "lineContent": "'Project Gamma',"
+      },
+      {
+        "text": "Client A Engagement",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 138,
+        "rule": "String Literals",
+        "lineContent": "'Client A Engagement',"
+      },
+      {
+        "text": "Client B Engagement",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 139,
+        "rule": "String Literals",
+        "lineContent": "'Client B Engagement',"
+      },
+      {
+        "text": "Internal Development",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 140,
+        "rule": "String Literals",
+        "lineContent": "'Internal Development'"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 144,
+        "rule": "String Literals",
+        "lineContent": "'Sales',"
+      },
+      {
+        "text": "Marketing",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 145,
+        "rule": "String Literals",
+        "lineContent": "'Marketing',"
+      },
+      {
+        "text": "Engineering",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 146,
+        "rule": "String Literals",
+        "lineContent": "'Engineering',"
+      },
+      {
+        "text": "Operations",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 147,
+        "rule": "String Literals",
+        "lineContent": "'Operations',"
+      },
+      {
+        "text": "Finance",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 149,
+        "rule": "String Literals",
+        "lineContent": "'Finance',"
+      },
+      {
+        "text": "Legal",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 150,
+        "rule": "String Literals",
+        "lineContent": "'Legal'"
+      },
+      {
+        "text": "Client A",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 154,
+        "rule": "String Literals",
+        "lineContent": "'Client A',"
+      },
+      {
+        "text": "Client B",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 155,
+        "rule": "String Literals",
+        "lineContent": "'Client B',"
+      },
+      {
+        "text": "Client C",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 156,
+        "rule": "String Literals",
+        "lineContent": "'Client C',"
+      },
+      {
+        "text": "Internal",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 157,
+        "rule": "String Literals",
+        "lineContent": "'Internal',"
+      },
+      {
+        "text": "Prospect A",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 158,
+        "rule": "String Literals",
+        "lineContent": "'Prospect A',"
+      },
+      {
+        "text": "Prospect B",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 159,
+        "rule": "String Literals",
+        "lineContent": "'Prospect B'"
+      },
+      {
+        "text": "Business Lunch with Client",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 185,
+        "rule": "String Literals",
+        "lineContent": "title: 'Business Lunch with Client',"
+      },
+      {
+        "text": "Lunch meeting with key client to discuss project requirements",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 186,
+        "rule": "String Literals",
+        "lineContent": "description: 'Lunch meeting with key client to discuss project requirements',"
+      },
+      {
+        "text": "Business Meal",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 188,
+        "rule": "String Literals",
+        "lineContent": "subcategory: 'Business Meal',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 190,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Restaurant ABC",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 193,
+        "rule": "String Literals",
+        "lineContent": "name: 'Restaurant ABC',"
+      },
+      {
+        "text": "Client A Engagement",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 197,
+        "rule": "String Literals",
+        "lineContent": "project: 'Client A Engagement',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 198,
+        "rule": "String Literals",
+        "lineContent": "costCenter: 'Sales',"
+      },
+      {
+        "text": "Client A",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 200,
+        "rule": "String Literals",
+        "lineContent": "client: 'Client A',"
+      },
+      {
+        "text": "Important client discussion about upcoming project",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 202,
+        "rule": "String Literals",
+        "lineContent": "notes: 'Important client discussion about upcoming project',"
+      },
+      {
+        "text": "Failed to load expense data",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 214,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to load expense data', 'error');"
+      },
+      {
+        "text": "Title is required",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 276,
+        "rule": "String Literals",
+        "lineContent": "newErrors.title = 'Title is required';"
+      },
+      {
+        "text": "Category is required",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 280,
+        "rule": "String Literals",
+        "lineContent": "newErrors.category = 'Category is required';"
+      },
+      {
+        "text": "Date is required",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 288,
+        "rule": "String Literals",
+        "lineContent": "newErrors.date = 'Date is required';"
+      },
+      {
+        "text": "Vendor name is required",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 292,
+        "rule": "String Literals",
+        "lineContent": "newErrors.vendorName = 'Vendor name is required';"
+      },
+      {
+        "text": "Expense saved as draft",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 320,
+        "rule": "String Literals",
+        "lineContent": "status === 'draft' ? 'Expense saved as draft' : 'Expense submitted successfully',"
+      },
+      {
+        "text": "Expense submitted successfully",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 320,
+        "rule": "String Literals",
+        "lineContent": "status === 'draft' ? 'Expense saved as draft' : 'Expense submitted successfully',"
+      },
+      {
+        "text": "Failed to save expense",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 326,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to save expense', 'error');"
+      },
+      {
+        "text": "Save Draft",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 689,
+        "rule": "String Literals",
+        "lineContent": "{saving ? <CircularProgress size={20} /> : 'Save Draft'}"
+      },
+      {
+        "text": "Submit Expense",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 698,
+        "rule": "String Literals",
+        "lineContent": "{saving ? <CircularProgress size={20} /> : 'Submit Expense'}"
+      },
+      {
+        "text": "Basic Information\n              ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 355,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Yes",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 581,
+        "rule": "JSX Text Content",
+        "lineContent": "<MenuItem value={true}>Yes</MenuItem>"
+      },
+      {
+        "text": "Receipts\n                ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 618,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\">"
+      },
+      {
+        "text": "Upload Receipts\n                ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 626,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Cancel\n                ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 680,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Choose Files\n                ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 729,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Cancel\n            ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 739,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button onClick={() => setUploadDialogOpen(false)}>"
+      },
+      {
+        "text": "Basic Information ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 353,
+        "rule": "Comments",
+        "lineContent": "{/* Basic Information */}"
+      },
+      {
+        "text": "Category and Amount ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 401,
+        "rule": "Comments",
+        "lineContent": "{/* Category and Amount */}"
+      },
+      {
+        "text": "Date and Vendor ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 460,
+        "rule": "Comments",
+        "lineContent": "{/* Date and Vendor */}"
+      },
+      {
+        "text": "Project and Cost Center ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 519,
+        "rule": "Comments",
+        "lineContent": "{/* Project and Cost Center */}"
+      },
+      {
+        "text": "Billable and Client ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 553,
+        "rule": "Comments",
+        "lineContent": "{/* Billable and Client */}"
+      },
+      {
+        "text": "Tags ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 587,
+        "rule": "Comments",
+        "lineContent": "{/* Tags */}"
+      },
+      {
+        "text": "Receipts ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 615,
+        "rule": "Comments",
+        "lineContent": "{/* Receipts */}"
+      },
+      {
+        "text": "Notes ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 660,
+        "rule": "Comments",
+        "lineContent": "{/* Notes */}"
+      },
+      {
+        "text": "Action Buttons ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 673,
+        "rule": "Comments",
+        "lineContent": "{/* Action Buttons */}"
+      },
+      {
+        "text": "File Upload Dialog ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 705,
+        "rule": "Comments",
+        "lineContent": "{/* File Upload Dialog */}"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 183,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API call"
+      },
+      {
+        "text": "Clear error when user starts typing\n    if ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 237,
+        "rule": "Single Line Comments",
+        "lineContent": "// Clear error when user starts typing"
+      },
+      {
+        "text": "Mock API call ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 313,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock API call - replace with actual implementation"
+      },
+      {
+        "text": "Simulate API delay\n      await new Promise",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 316,
+        "rule": "Single Line Comments",
+        "lineContent": "// Simulate API delay"
+      },
+      {
+        "text": "Reset subcategory\n                  ",
+        "file": "src/pages/Expense/ExpenseForm.js",
+        "line": 410,
+        "rule": "Single Line Comments",
+        "lineContent": "handleChange('subcategory', ''); // Reset subcategory"
+      },
+      {
+        "text": "Business Lunch with Client",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 107,
+        "rule": "String Literals",
+        "lineContent": "title: 'Business Lunch with Client',"
+      },
+      {
+        "text": "Business Meal",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 110,
+        "rule": "String Literals",
+        "lineContent": "subcategory: 'Business Meal',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 112,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Restaurant ABC",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "name: 'Restaurant ABC',"
+      },
+      {
+        "text": "Client A Engagement",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 124,
+        "rule": "String Literals",
+        "lineContent": "project: 'Client A Engagement',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 125,
+        "rule": "String Literals",
+        "lineContent": "costCenter: 'Sales',"
+      },
+      {
+        "text": "Client A",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 127,
+        "rule": "String Literals",
+        "lineContent": "client: 'Client A',"
+      },
+      {
+        "text": "John",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 131,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'John',"
+      },
+      {
+        "text": "Doe",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 132,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Doe',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 134,
+        "rule": "String Literals",
+        "lineContent": "department: 'Sales',"
+      },
+      {
+        "text": "Senior Sales Manager",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 135,
+        "rule": "String Literals",
+        "lineContent": "position: 'Senior Sales Manager'"
+      },
+      {
+        "text": "Sarah",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 156,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Sarah',"
+      },
+      {
+        "text": "Wilson",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 157,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Wilson',"
+      },
+      {
+        "text": "Sales Director",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 159,
+        "rule": "String Literals",
+        "lineContent": "position: 'Sales Director'"
+      },
+      {
+        "text": "Company Credit Card",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 168,
+        "rule": "String Literals",
+        "lineContent": "method: 'Company Credit Card',"
+      },
+      {
+        "text": "Failed to load expense details",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 176,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to load expense details', 'error');"
+      },
+      {
+        "text": "Delete functionality not implemented yet",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 188,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Delete functionality not implemented yet', 'info');"
+      },
+      {
+        "text": "Expense not found\n          ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 210,
+        "rule": "JSX Text Content",
+        "lineContent": "<Alert severity=\"error\">"
+      },
+      {
+        "text": "Edit\n            ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 249,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Delete\n            ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 257,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Expense Information\n              ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 268,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Description\n                  ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 275,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Amount\n                    ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 286,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Expense Date\n                    ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 298,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Category\n                    ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 309,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Vendor Information\n              ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 349,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Vendor Name\n                  ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 356,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Tax ID\n                  ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 365,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Address\n                  ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 374,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Phone\n                    ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 384,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Email\n                    ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 395,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "No receipts uploaded\n                ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 441,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"body2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Additional Notes\n                ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 450,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Tags\n                ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 463,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Employee Information\n              ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 485,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Approval Status\n              ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 510,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Payment Information\n                ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 558,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"h6\" gutterBottom>"
+      },
+      {
+        "text": "Payment Method\n                  ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 564,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Payment Date\n                  ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 582,
+        "rule": "JSX Text Content",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">"
+      },
+      {
+        "text": "Header ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 221,
+        "rule": "Comments",
+        "lineContent": "{/* Header */}"
+      },
+      {
+        "text": "Main Content ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 264,
+        "rule": "Comments",
+        "lineContent": "{/* Main Content */}"
+      },
+      {
+        "text": "Basic Information ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 266,
+        "rule": "Comments",
+        "lineContent": "{/* Basic Information */}"
+      },
+      {
+        "text": "Vendor Information ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 347,
+        "rule": "Comments",
+        "lineContent": "{/* Vendor Information */}"
+      },
+      {
+        "text": "Receipts ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 406,
+        "rule": "Comments",
+        "lineContent": "{/* Receipts */}"
+      },
+      {
+        "text": "Notes ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 447,
+        "rule": "Comments",
+        "lineContent": "{/* Notes */}"
+      },
+      {
+        "text": "Tags ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 460,
+        "rule": "Comments",
+        "lineContent": "{/* Tags */}"
+      },
+      {
+        "text": "Sidebar ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 481,
+        "rule": "Comments",
+        "lineContent": "{/* Sidebar */}"
+      },
+      {
+        "text": "Employee Information ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 483,
+        "rule": "Comments",
+        "lineContent": "{/* Employee Information */}"
+      },
+      {
+        "text": "Approval Status ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 508,
+        "rule": "Comments",
+        "lineContent": "{/* Approval Status */}"
+      },
+      {
+        "text": "Payment Information ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 555,
+        "rule": "Comments",
+        "lineContent": "{/* Payment Information */}"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 104,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API call"
+      },
+      {
+        "text": "Implement delete functionality\n    showNotification",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 187,
+        "rule": "Single Line Comments",
+        "lineContent": "// Implement delete functionality"
+      },
+      {
+        "text": "Implement download functionality\n    showNotification",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 192,
+        "rule": "Single Line Comments",
+        "lineContent": "// Implement download functionality"
+      },
+      {
+        "text": "Business Trip to Tokyo",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 67,
+        "rule": "String Literals",
+        "lineContent": "{ id: 1, title: 'Business Trip to Tokyo', status: 'approved', date: '2024-01-15' },"
+      },
+      {
+        "text": "Client Meeting in Seoul",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 68,
+        "rule": "String Literals",
+        "lineContent": "{ id: 2, title: 'Client Meeting in Seoul', status: 'pending', date: '2024-01-20' },"
+      },
+      {
+        "text": "Conference in Singapore",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 69,
+        "rule": "String Literals",
+        "lineContent": "{ id: 3, title: 'Conference in Singapore', status: 'draft', date: '2024-01-25' }"
+      },
+      {
+        "text": "Hotel accommodation",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 72,
+        "rule": "String Literals",
+        "lineContent": "{ id: 1, description: 'Hotel accommodation', amount: 450.00, category: 'accommodation', date: '2024-01-15' },"
+      },
+      {
+        "text": "Flight ticket",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 73,
+        "rule": "String Literals",
+        "lineContent": "{ id: 2, description: 'Flight ticket', amount: 320.00, category: 'transportation', date: '2024-01-14' },"
+      },
+      {
+        "text": "Business dinner",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 74,
+        "rule": "String Literals",
+        "lineContent": "{ id: 3, description: 'Business dinner', amount: 85.50, category: 'meals', date: '2024-01-13' }"
+      },
+      {
+        "text": "Jan",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 77,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Jan', amount: 2450.50 },"
+      },
+      {
+        "text": "Feb",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 78,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Feb', amount: 1890.25 },"
+      },
+      {
+        "text": "Mar",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 79,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Mar', amount: 3200.75 },"
+      },
+      {
+        "text": "Apr",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 80,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Apr', amount: 2100.00 },"
+      },
+      {
+        "text": "May",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 81,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'May', amount: 2750.30 },"
+      },
+      {
+        "text": "Jun",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 82,
+        "rule": "String Literals",
+        "lineContent": "{ month: 'Jun', amount: 1980.45 }"
+      },
+      {
+        "text": "Transportation",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 85,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Transportation', value: 35, color: '#8884d8' },"
+      },
+      {
+        "text": "Accommodation",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 86,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Accommodation', value: 30, color: '#82ca9d' },"
+      },
+      {
+        "text": "Meals",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 87,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Meals', value: 20, color: '#ffc658' },"
+      },
+      {
+        "text": "Other",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 88,
+        "rule": "String Literals",
+        "lineContent": "{ name: 'Other', value: 15, color: '#ff7300' }"
+      },
+      {
+        "text": "Failed to load dashboard data",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 95,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to load dashboard data', 'error');"
+      },
+      {
+        "text": "Amount",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 211,
+        "rule": "String Literals",
+        "lineContent": "<Tooltip formatter={(value) => [`$${value}`, 'Amount']} />"
+      },
+      {
+        "text": "View All\n              ",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 252,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button size=\"small\" href=\"/travel\">"
+      },
+      {
+        "text": "View All\n              ",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 284,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button size=\"small\" href=\"/expenses\">"
+      },
+      {
+        "text": "Stats Cards ",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 159,
+        "rule": "Comments",
+        "lineContent": "{/* Stats Cards */}"
+      },
+      {
+        "text": "Monthly Spending Chart ",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 200,
+        "rule": "Comments",
+        "lineContent": "{/* Monthly Spending Chart */}"
+      },
+      {
+        "text": "Category Breakdown ",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 218,
+        "rule": "Comments",
+        "lineContent": "{/* Category Breakdown */}"
+      },
+      {
+        "text": "Recent Travel Requests ",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 245,
+        "rule": "Comments",
+        "lineContent": "{/* Recent Travel Requests */}"
+      },
+      {
+        "text": "Recent Expenses ",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 277,
+        "rule": "Comments",
+        "lineContent": "{/* Recent Expenses */}"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Dashboard/Dashboard.js",
+        "line": 58,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API calls"
+      },
+      {
+        "text": "First name is required",
+        "file": "src/pages/Auth/Register.js",
+        "line": 70,
+        "rule": "String Literals",
+        "lineContent": "if (!formData.firstName) newErrors.firstName = 'First name is required';"
+      },
+      {
+        "text": "Last name is required",
+        "file": "src/pages/Auth/Register.js",
+        "line": 71,
+        "rule": "String Literals",
+        "lineContent": "if (!formData.lastName) newErrors.lastName = 'Last name is required';"
+      },
+      {
+        "text": "Email is required",
+        "file": "src/pages/Auth/Register.js",
+        "line": 72,
+        "rule": "String Literals",
+        "lineContent": "if (!formData.email) newErrors.email = 'Email is required';"
+      },
+      {
+        "text": "Password is required",
+        "file": "src/pages/Auth/Register.js",
+        "line": 73,
+        "rule": "String Literals",
+        "lineContent": "if (!formData.password) newErrors.password = 'Password is required';"
+      },
+      {
+        "text": "Passwords do not match",
+        "file": "src/pages/Auth/Register.js",
+        "line": 75,
+        "rule": "String Literals",
+        "lineContent": "newErrors.confirmPassword = 'Passwords do not match';"
+      },
+      {
+        "text": "Department is required",
+        "file": "src/pages/Auth/Register.js",
+        "line": 77,
+        "rule": "String Literals",
+        "lineContent": "if (!formData.department) newErrors.department = 'Department is required';"
+      },
+      {
+        "text": "Position is required",
+        "file": "src/pages/Auth/Register.js",
+        "line": 78,
+        "rule": "String Literals",
+        "lineContent": "if (!formData.position) newErrors.position = 'Position is required';"
+      },
+      {
+        "text": "Basic validation\n    const newErrors ",
+        "file": "src/pages/Auth/Register.js",
+        "line": 67,
+        "rule": "Single Line Comments",
+        "lineContent": "// Basic validation"
+      },
+      {
+        "text": "Please enter a valid email address",
+        "file": "src/pages/Auth/Login.js",
+        "line": 65,
+        "rule": "String Literals",
+        "lineContent": "newErrors.email = 'Please enter a valid email address';"
+      },
+      {
+        "text": "Clear error when user starts typing\n    if ",
+        "file": "src/pages/Auth/Login.js",
+        "line": 46,
+        "rule": "Single Line Comments",
+        "lineContent": "// Clear error when user starts typing"
+      },
+      {
+        "text": "Business Trip to Tokyo",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 77,
+        "rule": "String Literals",
+        "lineContent": "title: 'Business Trip to Tokyo',"
+      },
+      {
+        "text": "John",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 79,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'John',"
+      },
+      {
+        "text": "Doe",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 80,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Doe',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 82,
+        "rule": "String Literals",
+        "lineContent": "department: 'Sales'"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 85,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Business Lunch with Client",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 95,
+        "rule": "String Literals",
+        "lineContent": "title: 'Business Lunch with Client',"
+      },
+      {
+        "text": "Jane",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 97,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Jane',"
+      },
+      {
+        "text": "Smith",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 98,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Smith',"
+      },
+      {
+        "text": "Marketing",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 100,
+        "rule": "String Literals",
+        "lineContent": "department: 'Marketing'"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 103,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Conference in Singapore",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 113,
+        "rule": "String Literals",
+        "lineContent": "title: 'Conference in Singapore',"
+      },
+      {
+        "text": "Mike",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 115,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Mike',"
+      },
+      {
+        "text": "Johnson",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 116,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Johnson',"
+      },
+      {
+        "text": "Engineering",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 118,
+        "rule": "String Literals",
+        "lineContent": "department: 'Engineering'"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 121,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Office Supplies",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 134,
+        "rule": "String Literals",
+        "lineContent": "title: 'Office Supplies',"
+      },
+      {
+        "text": "Sarah",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 136,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'Sarah',"
+      },
+      {
+        "text": "Wilson",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 137,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Wilson',"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 142,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Brown",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 149,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Brown',"
+      },
+      {
+        "text": "HR Manager",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 150,
+        "rule": "String Literals",
+        "lineContent": "position: 'HR Manager'"
+      },
+      {
+        "text": "Client Meeting in Seoul",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 157,
+        "rule": "String Literals",
+        "lineContent": "title: 'Client Meeting in Seoul',"
+      },
+      {
+        "text": "Garcia",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 160,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Garcia',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 162,
+        "rule": "String Literals",
+        "lineContent": "department: 'Sales'"
+      },
+      {
+        "text": "USD",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 165,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "Davis",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 172,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Davis',"
+      },
+      {
+        "text": "Sales Director",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 173,
+        "rule": "String Literals",
+        "lineContent": "position: 'Sales Director'"
+      },
+      {
+        "text": "Failed to process approval",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 237,
+        "rule": "String Literals",
+        "lineContent": "showNotification('Failed to process approval', 'error');"
+      },
+      {
+        "text": "Travel Request",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 277,
+        "rule": "String Literals",
+        "lineContent": "{item.type === 'travel' ? 'Travel Request' : 'Expense Report'}"
+      },
+      {
+        "text": "Expense Report",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 277,
+        "rule": "String Literals",
+        "lineContent": "{item.type === 'travel' ? 'Travel Request' : 'Expense Report'}"
+      },
+      {
+        "text": "Approve Request",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 444,
+        "rule": "String Literals",
+        "lineContent": "{approvalAction === 'approve' ? 'Approve Request' : 'Reject Request'}"
+      },
+      {
+        "text": "Reject Request",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 444,
+        "rule": "String Literals",
+        "lineContent": "{approvalAction === 'approve' ? 'Approve Request' : 'Reject Request'}"
+      },
+      {
+        "text": "Approve",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 484,
+        "rule": "String Literals",
+        "lineContent": "{approvalAction === 'approve' ? 'Approve' : 'Reject'}"
+      },
+      {
+        "text": "Reject",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 484,
+        "rule": "String Literals",
+        "lineContent": "{approvalAction === 'approve' ? 'Approve' : 'Reject'}"
+      },
+      {
+        "text": "Reject\n            ",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 346,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Approve\n            ",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 354,
+        "rule": "JSX Text Content",
+        "lineContent": ">"
+      },
+      {
+        "text": "Cancel\n            ",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 476,
+        "rule": "JSX Text Content",
+        "lineContent": "<Button onClick={() => setApprovalDialogOpen(false)}>"
+      },
+      {
+        "text": "Mock data ",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 72,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock data - replace with actual API call"
+      },
+      {
+        "text": "Mock API call ",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 201,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock API call - replace with actual implementation"
+      },
+      {
+        "text": "Update local state\n      if ",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 208,
+        "rule": "Single Line Comments",
+        "lineContent": "// Update local state"
+      },
+      {
+        "text": "Import translation files\nimport en from ",
+        "file": "src/i18n/index.js",
+        "line": 7,
+        "rule": "Single Line Comments",
+        "lineContent": "// Import translation files"
+      },
+      {
+        "text": "Notification reducer\nconst notificationReducer ",
+        "file": "src/contexts/NotificationContext.js",
+        "line": 6,
+        "rule": "Single Line Comments",
+        "lineContent": "// Notification reducer"
+      },
+      {
+        "text": "Initial state\nconst initialState ",
+        "file": "src/contexts/NotificationContext.js",
+        "line": 20,
+        "rule": "Single Line Comments",
+        "lineContent": "// Initial state"
+      },
+      {
+        "text": "Notification provider component\nexport const NotificationProvider ",
+        "file": "src/contexts/NotificationContext.js",
+        "line": 23,
+        "rule": "Single Line Comments",
+        "lineContent": "// Notification provider component"
+      },
+      {
+        "text": "Custom hook to use notification context\nexport const useNotification ",
+        "file": "src/contexts/NotificationContext.js",
+        "line": 80,
+        "rule": "Single Line Comments",
+        "lineContent": "// Custom hook to use notification context"
+      },
+      {
+        "text": "John",
+        "file": "src/contexts/AuthContext.js",
+        "line": 90,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'John',"
+      },
+      {
+        "text": "Doe",
+        "file": "src/contexts/AuthContext.js",
+        "line": 91,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Doe',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/contexts/AuthContext.js",
+        "line": 92,
+        "rule": "String Literals",
+        "lineContent": "department: 'Sales',"
+      },
+      {
+        "text": "Senior Manager",
+        "file": "src/contexts/AuthContext.js",
+        "line": 93,
+        "rule": "String Literals",
+        "lineContent": "position: 'Senior Manager',"
+      },
+      {
+        "text": "USD",
+        "file": "src/contexts/AuthContext.js",
+        "line": 95,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "UTC",
+        "file": "src/contexts/AuthContext.js",
+        "line": 96,
+        "rule": "String Literals",
+        "lineContent": "timezone: 'UTC'"
+      },
+      {
+        "text": "John",
+        "file": "src/contexts/AuthContext.js",
+        "line": 143,
+        "rule": "String Literals",
+        "lineContent": "firstName: 'John',"
+      },
+      {
+        "text": "Doe",
+        "file": "src/contexts/AuthContext.js",
+        "line": 144,
+        "rule": "String Literals",
+        "lineContent": "lastName: 'Doe',"
+      },
+      {
+        "text": "Sales",
+        "file": "src/contexts/AuthContext.js",
+        "line": 145,
+        "rule": "String Literals",
+        "lineContent": "department: 'Sales',"
+      },
+      {
+        "text": "Senior Manager",
+        "file": "src/contexts/AuthContext.js",
+        "line": 146,
+        "rule": "String Literals",
+        "lineContent": "position: 'Senior Manager',"
+      },
+      {
+        "text": "USD",
+        "file": "src/contexts/AuthContext.js",
+        "line": 148,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "UTC",
+        "file": "src/contexts/AuthContext.js",
+        "line": 149,
+        "rule": "String Literals",
+        "lineContent": "timezone: 'UTC'"
+      },
+      {
+        "text": "USD",
+        "file": "src/contexts/AuthContext.js",
+        "line": 206,
+        "rule": "String Literals",
+        "lineContent": "currency: 'USD',"
+      },
+      {
+        "text": "UTC",
+        "file": "src/contexts/AuthContext.js",
+        "line": 207,
+        "rule": "String Literals",
+        "lineContent": "timezone: 'UTC'"
+      },
+      {
+        "text": "Auth reducer\nconst authReducer ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 7,
+        "rule": "Single Line Comments",
+        "lineContent": "// Auth reducer"
+      },
+      {
+        "text": "Initial state\nconst initialState ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 57,
+        "rule": "Single Line Comments",
+        "lineContent": "// Initial state"
+      },
+      {
+        "text": "Auth provider component\nexport const AuthProvider ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 66,
+        "rule": "Single Line Comments",
+        "lineContent": "// Auth provider component"
+      },
+      {
+        "text": "Set up axios defaults\n  useEffect",
+        "file": "src/contexts/AuthContext.js",
+        "line": 71,
+        "rule": "Single Line Comments",
+        "lineContent": "// Set up axios defaults"
+      },
+      {
+        "text": "Check if user is logged in on app start\n  useEffect",
+        "file": "src/contexts/AuthContext.js",
+        "line": 80,
+        "rule": "Single Line Comments",
+        "lineContent": "// Check if user is logged in on app start"
+      },
+      {
+        "text": "Mock auth check for development\n        if ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 85,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock auth check for development"
+      },
+      {
+        "text": "Login function\n  const login ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 130,
+        "rule": "Single Line Comments",
+        "lineContent": "// Login function"
+      },
+      {
+        "text": "Mock login for development\n    if ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 134,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock login for development"
+      },
+      {
+        "text": "Simulate API delay\n      await new Promise",
+        "file": "src/contexts/AuthContext.js",
+        "line": 136,
+        "rule": "Single Line Comments",
+        "lineContent": "// Simulate API delay"
+      },
+      {
+        "text": "Mock user data\n      const mockUser ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 139,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock user data"
+      },
+      {
+        "text": "Register function\n  const register ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 188,
+        "rule": "Single Line Comments",
+        "lineContent": "// Register function"
+      },
+      {
+        "text": "Mock register for development\n    if ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 192,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock register for development"
+      },
+      {
+        "text": "Simulate API delay\n      await new Promise",
+        "file": "src/contexts/AuthContext.js",
+        "line": 194,
+        "rule": "Single Line Comments",
+        "lineContent": "// Simulate API delay"
+      },
+      {
+        "text": "Mock user data\n      const mockUser ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 197,
+        "rule": "Single Line Comments",
+        "lineContent": "// Mock user data"
+      },
+      {
+        "text": "Logout function\n  const logout ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 243,
+        "rule": "Single Line Comments",
+        "lineContent": "// Logout function"
+      },
+      {
+        "text": "Update user preferences\n  const updatePreferences ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 249,
+        "rule": "Single Line Comments",
+        "lineContent": "// Update user preferences"
+      },
+      {
+        "text": "Change password\n  const changePassword ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 264,
+        "rule": "Single Line Comments",
+        "lineContent": "// Change password"
+      },
+      {
+        "text": "Custom hook to use auth context\nexport const useAuth ",
+        "file": "src/contexts/AuthContext.js",
+        "line": 294,
+        "rule": "Single Line Comments",
+        "lineContent": "// Custom hook to use auth context"
+      },
+      {
+        "text": "English\n        ",
+        "file": "src/components/Layout/Layout.js",
+        "line": 287,
+        "rule": "JSX Text Content",
+        "lineContent": "<MenuItem onClick={() => handleLanguageChange('en')}>"
+      },
+      {
+        "text": "Profile Menu ",
+        "file": "src/components/Layout/Layout.js",
+        "line": 231,
+        "rule": "Comments",
+        "lineContent": "{/* Profile Menu */}"
+      },
+      {
+        "text": "Language Menu ",
+        "file": "src/components/Layout/Layout.js",
+        "line": 281,
+        "rule": "Comments",
+        "lineContent": "{/* Language Menu */}"
+      },
+      {
+        "text": "English",
+        "file": "src/components/Common/LanguageSwitcher.js",
+        "line": 18,
+        "rule": "String Literals",
+        "lineContent": "{ code: 'en', name: 'English', flag: '🇺🇸' },"
+      },
+      {
+        "text": "English",
+        "file": "src/components/Common/LanguageSwitchTester.js",
+        "line": 31,
+        "rule": "String Literals",
+        "lineContent": "'en': { name: 'English', flag: '🇺🇸' },"
+      },
+      {
+        "text": "English",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 34,
+        "rule": "String Literals",
+        "lineContent": "name: 'English',"
+      },
+      {
+        "text": "English",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 35,
+        "rule": "String Literals",
+        "lineContent": "nativeName: 'English',"
+      },
+      {
+        "text": "Chinese",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 40,
+        "rule": "String Literals",
+        "lineContent": "name: 'Chinese',"
+      },
+      {
+        "text": "Simplified Chinese",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 46,
+        "rule": "String Literals",
+        "lineContent": "name: 'Simplified Chinese',"
+      },
+      {
+        "text": "Traditional Chinese",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 58,
+        "rule": "String Literals",
+        "lineContent": "name: 'Traditional Chinese',"
+      },
+      {
+        "text": "Japanese",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 70,
+        "rule": "String Literals",
+        "lineContent": "name: 'Japanese',"
+      },
+      {
+        "text": "Korean",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 76,
+        "rule": "String Literals",
+        "lineContent": "name: 'Korean',"
+      },
+      {
+        "text": "Arabic",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 82,
+        "rule": "String Literals",
+        "lineContent": "name: 'Arabic',"
+      },
+      {
+        "text": "Hebrew",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 88,
+        "rule": "String Literals",
+        "lineContent": "name: 'Hebrew',"
+      },
+      {
+        "text": "Select variant\n  if ",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 140,
+        "rule": "Single Line Comments",
+        "lineContent": "// Select variant"
+      },
+      {
+        "text": "Chip variant\n  if ",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 191,
+        "rule": "Single Line Comments",
+        "lineContent": "// Chip variant"
+      },
+      {
+        "text": "Icon variant\n  if ",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 205,
+        "rule": "Single Line Comments",
+        "lineContent": "// Icon variant"
+      },
+      {
+        "text": "Default return Select variant\n  return null",
+        "file": "src/components/Common/EnhancedLanguageSwitcher.js",
+        "line": 257,
+        "rule": "Single Line Comments",
+        "lineContent": "// Default return Select variant"
+      }
+    ],
+    "violations": [
+      {
+        "text": "Transaction ID\n                  ",
+        "file": "src/pages/Expense/ExpenseDetail.js",
+        "line": 573,
+        "rule": "JSX Text Content",
+        "description": "JSX text content with English text",
+        "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">",
+        "severity": "low"
+      },
+      {
+        "text": "David",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 148,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "firstName: 'David',",
+        "severity": "low"
+      },
+      {
+        "text": "Lisa",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 159,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "firstName: 'Lisa',",
+        "severity": "low"
+      },
+      {
+        "text": "Robert",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 171,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "firstName: 'Robert',",
+        "severity": "low"
+      },
+      {
+        "text": "Approval Dialog ",
+        "file": "src/pages/Approval/ApprovalList.js",
+        "line": 436,
+        "rule": "Comments",
+        "description": "Comments with English text",
+        "lineContent": "{/* Approval Dialog */}",
+        "severity": "low"
+      },
+      {
+        "text": "Approval Detail\n      ",
+        "file": "src/pages/Approval/ApprovalDetail.js",
+        "line": 10,
+        "rule": "JSX Text Content",
+        "description": "JSX text content with English text",
+        "lineContent": "<Typography variant=\"h4\" gutterBottom>",
+        "severity": "low"
+      },
+      {
+        "text": "LOGOUT",
+        "file": "src/contexts/AuthContext.js",
+        "line": 34,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "case 'LOGOUT':",
+        "severity": "medium"
+      },
+      {
+        "text": "Authorization",
+        "file": "src/contexts/AuthContext.js",
+        "line": 74,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;",
+        "severity": "low"
+      },
+      {
+        "text": "Authorization",
+        "file": "src/contexts/AuthContext.js",
+        "line": 76,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "delete axios.defaults.headers.common['Authorization'];",
+        "severity": "low"
+      },
+      {
+        "text": "LOGOUT",
+        "file": "src/contexts/AuthContext.js",
+        "line": 120,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "dispatch({ type: 'LOGOUT' });",
+        "severity": "medium"
+      },
+      {
+        "text": "LOGOUT",
+        "file": "src/contexts/AuthContext.js",
+        "line": 246,
+        "rule": "String Literals",
+        "description": "String literals with English text",
+        "lineContent": "dispatch({ type: 'LOGOUT' });",
+        "severity": "medium"
+      }
+    ],
+    "summary": {
+      "hardcodedRate": 0.11903473650037874,
+      "totalViolations": 11,
+      "violationsBySeverity": {
+        "high": [],
+        "medium": [
+          {
+            "text": "LOGOUT",
+            "file": "src/contexts/AuthContext.js",
+            "line": 34,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "case 'LOGOUT':",
+            "severity": "medium"
+          },
+          {
+            "text": "LOGOUT",
+            "file": "src/contexts/AuthContext.js",
+            "line": 120,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "dispatch({ type: 'LOGOUT' });",
+            "severity": "medium"
+          },
+          {
+            "text": "LOGOUT",
+            "file": "src/contexts/AuthContext.js",
+            "line": 246,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "dispatch({ type: 'LOGOUT' });",
+            "severity": "medium"
+          }
+        ],
+        "low": [
+          {
+            "text": "Transaction ID\n                  ",
+            "file": "src/pages/Expense/ExpenseDetail.js",
+            "line": 573,
+            "rule": "JSX Text Content",
+            "description": "JSX text content with English text",
+            "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">",
+            "severity": "low"
+          },
+          {
+            "text": "David",
+            "file": "src/pages/Approval/ApprovalList.js",
+            "line": 148,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "firstName: 'David',",
+            "severity": "low"
+          },
+          {
+            "text": "Lisa",
+            "file": "src/pages/Approval/ApprovalList.js",
+            "line": 159,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "firstName: 'Lisa',",
+            "severity": "low"
+          },
+          {
+            "text": "Robert",
+            "file": "src/pages/Approval/ApprovalList.js",
+            "line": 171,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "firstName: 'Robert',",
+            "severity": "low"
+          },
+          {
+            "text": "Approval Dialog ",
+            "file": "src/pages/Approval/ApprovalList.js",
+            "line": 436,
+            "rule": "Comments",
+            "description": "Comments with English text",
+            "lineContent": "{/* Approval Dialog */}",
+            "severity": "low"
+          },
+          {
+            "text": "Approval Detail\n      ",
+            "file": "src/pages/Approval/ApprovalDetail.js",
+            "line": 10,
+            "rule": "JSX Text Content",
+            "description": "JSX text content with English text",
+            "lineContent": "<Typography variant=\"h4\" gutterBottom>",
+            "severity": "low"
+          },
+          {
+            "text": "Authorization",
+            "file": "src/contexts/AuthContext.js",
+            "line": 74,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;",
+            "severity": "low"
+          },
+          {
+            "text": "Authorization",
+            "file": "src/contexts/AuthContext.js",
+            "line": 76,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "delete axios.defaults.headers.common['Authorization'];",
+            "severity": "low"
+          }
+        ]
+      },
+      "violationsByFile": {
+        "src/pages/Expense/ExpenseDetail.js": [
+          {
+            "text": "Transaction ID\n                  ",
+            "file": "src/pages/Expense/ExpenseDetail.js",
+            "line": 573,
+            "rule": "JSX Text Content",
+            "description": "JSX text content with English text",
+            "lineContent": "<Typography variant=\"subtitle2\" color=\"text.secondary\">",
+            "severity": "low"
+          }
+        ],
+        "src/pages/Approval/ApprovalList.js": [
+          {
+            "text": "David",
+            "file": "src/pages/Approval/ApprovalList.js",
+            "line": 148,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "firstName: 'David',",
+            "severity": "low"
+          },
+          {
+            "text": "Lisa",
+            "file": "src/pages/Approval/ApprovalList.js",
+            "line": 159,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "firstName: 'Lisa',",
+            "severity": "low"
+          },
+          {
+            "text": "Robert",
+            "file": "src/pages/Approval/ApprovalList.js",
+            "line": 171,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "firstName: 'Robert',",
+            "severity": "low"
+          },
+          {
+            "text": "Approval Dialog ",
+            "file": "src/pages/Approval/ApprovalList.js",
+            "line": 436,
+            "rule": "Comments",
+            "description": "Comments with English text",
+            "lineContent": "{/* Approval Dialog */}",
+            "severity": "low"
+          }
+        ],
+        "src/pages/Approval/ApprovalDetail.js": [
+          {
+            "text": "Approval Detail\n      ",
+            "file": "src/pages/Approval/ApprovalDetail.js",
+            "line": 10,
+            "rule": "JSX Text Content",
+            "description": "JSX text content with English text",
+            "lineContent": "<Typography variant=\"h4\" gutterBottom>",
+            "severity": "low"
+          }
+        ],
+        "src/contexts/AuthContext.js": [
+          {
+            "text": "LOGOUT",
+            "file": "src/contexts/AuthContext.js",
+            "line": 34,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "case 'LOGOUT':",
+            "severity": "medium"
+          },
+          {
+            "text": "Authorization",
+            "file": "src/contexts/AuthContext.js",
+            "line": 74,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;",
+            "severity": "low"
+          },
+          {
+            "text": "Authorization",
+            "file": "src/contexts/AuthContext.js",
+            "line": 76,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "delete axios.defaults.headers.common['Authorization'];",
+            "severity": "low"
+          },
+          {
+            "text": "LOGOUT",
+            "file": "src/contexts/AuthContext.js",
+            "line": 120,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "dispatch({ type: 'LOGOUT' });",
+            "severity": "medium"
+          },
+          {
+            "text": "LOGOUT",
+            "file": "src/contexts/AuthContext.js",
+            "line": 246,
+            "rule": "String Literals",
+            "description": "String literals with English text",
+            "lineContent": "dispatch({ type: 'LOGOUT' });",
+            "severity": "medium"
+          }
+        ]
+      },
+      "thresholdExceeded": false,
+      "maxViolationsExceeded": true
+    }
+  }
+}

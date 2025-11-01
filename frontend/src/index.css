@@ -1,0 +1,261 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Smooth transitions */
+* {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Focus styles */
+.MuiButton-root:focus,
+.MuiTextField-root:focus-within,
+.MuiIconButton-root:focus {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Container width overrides */
+.MuiContainer-maxWidthXl {
+  max-width: 1536px !important;
+}
+
+.MuiContainer-root {
+  max-width: 1536px !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .MuiContainer-root {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* 强制输入框边框样式 - 最简洁有效的方法 */
+.MuiOutlinedInput-root {
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+}
+
+/* 直接设置边框 - 最简单直接的方法 */
+.MuiOutlinedInput-notchedOutline {
+  border: 2px solid #d1d5db !important;
+  border-radius: 8px !important;
+}
+
+/* 悬停效果 */
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #3b82f6 !important;
+}
+
+/* 聚焦效果 */
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+/* 错误状态 */
+.MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline {
+  border-color: #dc2626 !important;
+}
+
+/* Specifically target DatePicker inputs */
+.MuiDatePicker-root .MuiTextField-root .MuiOutlinedInput-root,
+.MuiDesktopDatePicker-root .MuiTextField-root .MuiOutlinedInput-root {
+  border-radius: 8px !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.MuiDatePicker-root .MuiTextField-root .MuiOutlinedInput-notchedOutline,
+.MuiDesktopDatePicker-root .MuiTextField-root .MuiOutlinedInput-notchedOutline {
+  border-radius: 8px !important;
+  border: 1px solid #d1d5db !important;
+}
+
+/* Target any remaining border sources */
+.MuiTextField-root,
+.MuiFormControl-root,
+.MuiInputBase-root {
+  border: none !important;
+  outline: none !important;
+}
+
+/* Remove any potential container borders but keep notched outline */
+.MuiTextField-root *:not(.MuiOutlinedInput-notchedOutline),
+.MuiFormControl-root *:not(.MuiOutlinedInput-notchedOutline),
+.MuiInputBase-root *:not(.MuiOutlinedInput-notchedOutline) {
+  border: none !important;
+  outline: none !important;
+}
+
+/* Force override for the specific notched outline */
+.MuiTextField-root .MuiOutlinedInput-notchedOutline {
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+}
+
+/* Unified styling for all input controls */
+/* Text inputs, Select dropdowns, Date pickers */
+.MuiOutlinedInput-root,
+.MuiTextField-root .MuiOutlinedInput-root,
+.MuiFormControl-root .MuiOutlinedInput-root,
+.MuiSelect-root,
+.MuiTextField-root .MuiSelect-root,
+.MuiFormControl-root .MuiSelect-root {
+  min-height: 56px !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  font-size: 16px !important;
+}
+
+/* Unified borders for all controls */
+.MuiOutlinedInput-notchedOutline,
+.MuiTextField-root .MuiOutlinedInput-notchedOutline,
+.MuiFormControl-root .MuiOutlinedInput-notchedOutline,
+.MuiSelect-root .MuiOutlinedInput-notchedOutline {
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+}
+
+/* Unified hover effects */
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+.MuiTextField-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+.MuiFormControl-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+.MuiSelect-root:hover .MuiOutlinedInput-notchedOutline {
+  border: 2px solid #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Unified focus effects */
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline,
+.MuiTextField-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline,
+.MuiFormControl-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline,
+.MuiSelect-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border: 2px solid #2563eb !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+/* Unified error states */
+.MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline,
+.MuiTextField-root .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline,
+.MuiFormControl-root .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline,
+.MuiSelect-root.Mui-error .MuiOutlinedInput-notchedOutline {
+  border: 2px solid #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+/* Unified label styling */
+.MuiInputLabel-root,
+.MuiTextField-root .MuiInputLabel-root,
+.MuiFormControl-root .MuiInputLabel-root {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  color: #6b7280 !important;
+}
+
+/* Focused label color */
+.MuiInputLabel-root.Mui-focused,
+.MuiTextField-root .MuiInputLabel-root.Mui-focused,
+.MuiFormControl-root .MuiInputLabel-root.Mui-focused {
+  color: #2563eb !important;
+}
+
+/* DatePicker specific styling */
+.MuiDatePicker-root .MuiTextField-root,
+.MuiDesktopDatePicker-root .MuiTextField-root {
+  width: 100%;
+}
+
+.MuiDatePicker-root .MuiTextField-root .MuiOutlinedInput-root,
+.MuiDesktopDatePicker-root .MuiTextField-root .MuiOutlinedInput-root {
+  min-height: 56px !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+}
+
+/* Select dropdown icon styling */
+.MuiSelect-icon {
+  color: #6b7280 !important;
+  font-size: 24px !important;
+}
+
+.MuiSelect-root.Mui-focused .MuiSelect-icon {
+  color: #2563eb !important;
+}
+
+/* ULTIMATE OVERRIDE - Highest priority border rules */
+/* Force visible borders for all input types */
+.MuiTextField-root .MuiOutlinedInput-notchedOutline,
+.MuiFormControl-root .MuiOutlinedInput-notchedOutline,
+[class*="MuiOutlinedInput-notchedOutline"] {
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+  border-color: #d1d5db !important;
+  border-width: 1px !important;
+}
+
+/* Force hover state */
+.MuiTextField-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+.MuiFormControl-root .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+[class*="MuiOutlinedInput-root"]:hover [class*="MuiOutlinedInput-notchedOutline"] {
+  border: 2px solid #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  border-width: 2px !important;
+}
+
+/* Force focus state */
+.MuiTextField-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline,
+.MuiFormControl-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline,
+[class*="MuiOutlinedInput-root"].Mui-focused [class*="MuiOutlinedInput-notchedOutline"] {
+  border: 2px solid #2563eb !important;
+  border-color: #2563eb !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}

@@ -1,0 +1,120 @@
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Box, ThemeProvider } from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import modernTheme from './theme/modernTheme';
+
+// Context
+import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+
+// Components
+import Layout from './components/Layout/Layout';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
+import LoadingSpinner from './components/Common/LoadingSpinner';
+
+// Pages
+import Login from './pages/Auth/Login';
+import Register from './pages/Auth/Register';
+import Dashboard from './pages/Dashboard/Dashboard';
+import TravelList from './pages/Travel/TravelList';
+import TravelForm from './pages/Travel/TravelForm';
+import TravelDetail from './pages/Travel/TravelDetail';
+import ExpenseList from './pages/Expense/ExpenseList';
+import ExpenseForm from './pages/Expense/ExpenseForm';
+import ExpenseDetail from './pages/Expense/ExpenseDetail';
+import ApprovalList from './pages/Approval/ApprovalList';
+import ApprovalDetail from './pages/Approval/ApprovalDetail';
+import Reports from './pages/Reports/Reports';
+import Profile from './pages/Profile/Profile';
+import Settings from './pages/Settings/Settings';
+import I18nDashboardPage from './pages/I18n/I18nDashboard';
+import LocationManagement from './pages/Location/LocationManagement';
+import LocationTest from './pages/Test/LocationTest';
+import ApiTest from './pages/Test/ApiTest';
+import StandardQuery from './pages/TravelStandard/StandardQuery';
+import StandardList from './pages/TravelStandard/StandardList';
+import StandardForm from './pages/TravelStandard/StandardForm';
+import ExpenseItemsManagement from './pages/TravelStandard/ExpenseItemsManagement';
+import ExpenseItemsMaintenance from './pages/TravelStandard/ExpenseItemsMaintenance';
+import MatchTester from './pages/TravelStandard/MatchTester';
+
+function App() {
+  const { i18n } = useTranslation();
+
+  return (
+    <ThemeProvider theme={modernTheme}>
+      <AuthProvider>
+        <NotificationProvider>
+          <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Protected Routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              
+              {/* Travel Routes */}
+              <Route path="travel" element={<TravelList />} />
+              <Route path="travel/new" element={<TravelForm />} />
+              <Route path="travel/:id" element={<TravelDetail />} />
+              <Route path="travel/:id/edit" element={<TravelForm />} />
+              
+              {/* Expense Routes */}
+              <Route path="expenses" element={<ExpenseList />} />
+              <Route path="expenses/new" element={<ExpenseForm />} />
+              <Route path="expenses/:id" element={<ExpenseDetail />} />
+              <Route path="expenses/:id/edit" element={<ExpenseForm />} />
+              
+              {/* Approval Routes */}
+              <Route path="approvals" element={<ApprovalList />} />
+              <Route path="approvals/:id" element={<ApprovalDetail />} />
+              
+              {/* Reports Routes */}
+              <Route path="reports" element={<Reports />} />
+              
+              {/* Profile & Settings */}
+              <Route path="profile" element={<Profile />} />
+              <Route path="settings" element={<Settings />} />
+              
+              {/* I18n Dashboard */}
+              <Route path="i18n" element={<I18nDashboardPage />} />
+              
+              {/* Location Management */}
+              <Route path="location" element={<LocationManagement />} />
+              <Route path="location/test" element={<LocationTest />} />
+              
+              {/* API Test */}
+              <Route path="api/test" element={<ApiTest />} />
+              
+              {/* Travel Standard Routes */}
+              <Route path="travel-standards" element={<StandardList />} />
+              <Route path="travel-standards/new" element={<StandardForm />} />
+              <Route path="travel-standards/query" element={<StandardQuery />} />
+              <Route path="travel-standards/test" element={<MatchTester />} />
+              <Route path="travel-standards/:standardId/expense-items" element={<ExpenseItemsManagement />} />
+              <Route path="travel-standards/:id/edit" element={<StandardForm />} />
+              <Route path="travel-standards/:id" element={<StandardList />} />
+              
+              {/* Expense Items Maintenance */}
+              <Route path="expense-items" element={<ExpenseItemsMaintenance />} />
+            </Route>
+            
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Box>
+        </NotificationProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
+export default App;
