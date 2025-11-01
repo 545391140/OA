@@ -40,7 +40,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 
 const ExpenseItemsManagement = () => {
@@ -135,7 +135,7 @@ const ExpenseItemsManagement = () => {
 
   const fetchStandardInfo = async () => {
     try {
-      const response = await axios.get(`/api/travel-standards/${standardId}`);
+      const response = await apiClient.get(`/api/travel-standards/${standardId}`);
       if (response.data.success) {
         setStandardInfo(response.data.data);
       }
@@ -147,7 +147,7 @@ const ExpenseItemsManagement = () => {
 
   const fetchJobLevels = async () => {
     try {
-      const response = await axios.get('/api/job-levels');
+      const response = await apiClient.get('/api/job-levels');
       if (response.data.success) {
         setJobLevels(response.data.data || []);
       }
@@ -161,31 +161,31 @@ const ExpenseItemsManagement = () => {
     try {
       switch (tabIndex) {
         case 0: // 交通
-          const transportRes = await axios.get(`/api/expense-items/${standardId}/transport`);
+          const transportRes = await apiClient.get(`/api/expense-items/${standardId}/transport`);
           if (transportRes.data.success) {
             setTransportStandards(transportRes.data.data || []);
           }
           break;
         case 1: // 住宿
-          const accommodationRes = await axios.get(`/api/expense-items/${standardId}/accommodation`);
+          const accommodationRes = await apiClient.get(`/api/expense-items/${standardId}/accommodation`);
           if (accommodationRes.data.success) {
             setAccommodationStandards(accommodationRes.data.data || []);
           }
           break;
         case 2: // 餐饮
-          const mealRes = await axios.get(`/api/expense-items/${standardId}/meal`);
+          const mealRes = await apiClient.get(`/api/expense-items/${standardId}/meal`);
           if (mealRes.data.success) {
             setMealStandards(mealRes.data.data || []);
           }
           break;
         case 3: // 津贴
-          const allowanceRes = await axios.get(`/api/expense-items/${standardId}/allowance`);
+          const allowanceRes = await apiClient.get(`/api/expense-items/${standardId}/allowance`);
           if (allowanceRes.data.success) {
             setAllowanceStandards(allowanceRes.data.data || []);
           }
           break;
         case 4: // 其他费用
-          const otherRes = await axios.get(`/api/expense-items/${standardId}/other`);
+          const otherRes = await apiClient.get(`/api/expense-items/${standardId}/other`);
           if (otherRes.data.success) {
             setOtherExpenseStandards(otherRes.data.data || []);
           }
@@ -240,10 +240,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (transportDialog.mode === 'create') {
-        await axios.post(`/api/expense-items/${standardId}/transport`, payload);
+        await apiClient.post(`/api/expense-items/${standardId}/transport`, payload);
         showNotification('交通标准创建成功', 'success');
       } else {
-        await axios.put(`/api/expense-items/transport/${transportDialog.data._id}`, payload);
+        await apiClient.put(`/api/expense-items/transport/${transportDialog.data._id}`, payload);
         showNotification('交通标准更新成功', 'success');
       }
 
@@ -288,10 +288,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (accommodationDialog.mode === 'create') {
-        await axios.post(`/api/expense-items/${standardId}/accommodation`, payload);
+        await apiClient.post(`/api/expense-items/${standardId}/accommodation`, payload);
         showNotification('住宿标准创建成功', 'success');
       } else {
-        await axios.put(`/api/expense-items/accommodation/${accommodationDialog.data._id}`, payload);
+        await apiClient.put(`/api/expense-items/accommodation/${accommodationDialog.data._id}`, payload);
         showNotification('住宿标准更新成功', 'success');
       }
 
@@ -343,10 +343,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (mealDialog.mode === 'create') {
-        await axios.post(`/api/expense-items/${standardId}/meal`, payload);
+        await apiClient.post(`/api/expense-items/${standardId}/meal`, payload);
         showNotification('餐饮标准创建成功', 'success');
       } else {
-        await axios.put(`/api/expense-items/meal/${mealDialog.data._id}`, payload);
+        await apiClient.put(`/api/expense-items/meal/${mealDialog.data._id}`, payload);
         showNotification('餐饮标准更新成功', 'success');
       }
 
@@ -390,10 +390,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (allowanceDialog.mode === 'create') {
-        await axios.post(`/api/expense-items/${standardId}/allowance`, payload);
+        await apiClient.post(`/api/expense-items/${standardId}/allowance`, payload);
         showNotification('津贴标准创建成功', 'success');
       } else {
-        await axios.put(`/api/expense-items/allowance/${allowanceDialog.data._id}`, payload);
+        await apiClient.put(`/api/expense-items/allowance/${allowanceDialog.data._id}`, payload);
         showNotification('津贴标准更新成功', 'success');
       }
 
@@ -459,10 +459,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (otherExpenseDialog.mode === 'create') {
-        await axios.post(`/api/expense-items/${standardId}/other`, payload);
+        await apiClient.post(`/api/expense-items/${standardId}/other`, payload);
         showNotification('其他费用标准创建成功', 'success');
       } else {
-        await axios.put(`/api/expense-items/other/${otherExpenseDialog.data._id}`, payload);
+        await apiClient.put(`/api/expense-items/other/${otherExpenseDialog.data._id}`, payload);
         showNotification('其他费用标准更新成功', 'success');
       }
 
@@ -499,7 +499,7 @@ const ExpenseItemsManagement = () => {
           break;
       }
 
-      await axios.delete(endpoint);
+      await apiClient.delete(endpoint);
       showNotification('删除成功', 'success');
       setDeleteDialog({ open: false, type: '', id: null });
       fetchDataForTab(currentTab);

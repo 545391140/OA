@@ -28,7 +28,7 @@ import {
   Visibility as ViewIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../../utils/axiosConfig';
 import { useAuth } from '../../contexts/AuthContext';
 
 const StandardList = () => {
@@ -47,7 +47,7 @@ const StandardList = () => {
 
   const fetchExpenseItems = async () => {
     try {
-      const response = await axios.get('/api/expense-items');
+      const response = await apiClient.get('/api/expense-items');
       if (response.data && response.data.success) {
         const items = response.data.data || [];
         // 创建ID到名称的映射
@@ -67,7 +67,7 @@ const StandardList = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get('/api/travel-standards');
+      const response = await apiClient.get('/api/travel-standards');
       // 处理不同的响应格式
       if (response.data) {
         if (response.data.success === true || response.data.success === false) {
@@ -126,7 +126,7 @@ const StandardList = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`/api/travel-standards/${deleteDialog.id}`);
+      await apiClient.delete(`/api/travel-standards/${deleteDialog.id}`);
       setDeleteDialog({ open: false, id: null });
       fetchStandards();
     } catch (err) {
@@ -137,7 +137,7 @@ const StandardList = () => {
 
   const handleActivate = async (id) => {
     try {
-      await axios.put(`/api/travel-standards/${id}/activate`);
+      await apiClient.put(`/api/travel-standards/${id}/activate`);
       fetchStandards();
     } catch (err) {
       console.error('Activate standard error:', err);
@@ -147,7 +147,7 @@ const StandardList = () => {
 
   const handleDeactivate = async (id) => {
     try {
-      await axios.put(`/api/travel-standards/${id}/deactivate`);
+      await apiClient.put(`/api/travel-standards/${id}/deactivate`);
       fetchStandards();
     } catch (err) {
       console.error('Deactivate standard error:', err);

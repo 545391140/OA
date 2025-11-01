@@ -8,7 +8,11 @@ const router = express.Router();
 
 // Generate JWT Token
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+  const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+  if (!process.env.JWT_SECRET) {
+    console.warn('⚠️  WARNING: JWT_SECRET not set, using default. This is insecure for production!');
+  }
+  return jwt.sign({ id }, secret, {
     expiresIn: process.env.JWT_EXPIRE || '7d',
   });
 };

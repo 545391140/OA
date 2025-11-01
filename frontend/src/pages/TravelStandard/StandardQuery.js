@@ -22,7 +22,7 @@ import {
   QueryBuilder as QueryIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+import apiClient from '../../utils/axiosConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import RegionSelector from '../../components/Common/RegionSelector';
 
@@ -50,7 +50,7 @@ const StandardQuery = () => {
     setStandardData(null);
 
     try {
-      const response = await axios.post('/api/standard-match/match', {
+      const response = await apiClient.post('/api/standard-match/match', {
         destination: queryParams.destination.split(',')[0], // 提取城市名
         startDate: queryParams.startDate,
         transportType: queryParams.transportType,

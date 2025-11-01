@@ -32,7 +32,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import axios from 'axios';
+import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 import BasicInfoStep from './StandardFormSteps/BasicInfoStep';
 import ConditionStep from './StandardFormSteps/ConditionStep';
@@ -88,9 +88,9 @@ const StandardForm = () => {
     try {
       setLoadingOptions(true);
       const [jobLevelsRes, cityLevelsRes, expenseItemsRes] = await Promise.all([
-        axios.get('/api/job-levels'),
-        axios.get('/api/city-levels'),
-        axios.get('/api/expense-items')
+        apiClient.get('/api/job-levels'),
+        apiClient.get('/api/city-levels'),
+        apiClient.get('/api/expense-items')
       ]);
       
       setOptions({
@@ -110,7 +110,7 @@ const StandardForm = () => {
   const fetchStandard = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/travel-standards/${id}`);
+      const response = await apiClient.get(`/api/travel-standards/${id}`);
       if (response.data.success) {
         const standard = response.data.data;
         
@@ -251,9 +251,9 @@ const StandardForm = () => {
           conditionGroupsLength: updateData.conditionGroups?.length,
           expenseStandardsLength: updateData.expenseStandards?.length
         }, null, 2));
-        response = await axios.put(`/api/travel-standards/${id}`, updateData);
+        response = await apiClient.put(`/api/travel-standards/${id}`, updateData);
       } else {
-        response = await axios.post('/api/travel-standards', payload);
+        response = await apiClient.post('/api/travel-standards', payload);
       }
 
       if (response.data.success) {

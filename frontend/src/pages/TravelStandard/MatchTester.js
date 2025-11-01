@@ -20,7 +20,7 @@ import {
 import {
   Science as ScienceIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import apiClient from '../../utils/axiosConfig';
 
 const MatchTester = () => {
   const [testData, setTestData] = useState({
@@ -48,7 +48,7 @@ const MatchTester = () => {
       setMatchResult(null);
       
       // 调用匹配API
-        const response = await axios.post('/api/travel-standards/match', {
+        const response = await apiClient.post('/api/travel-standards/match', {
           country: testData.country,
           city: testData.city,
           cityLevel: testData.cityLevel,

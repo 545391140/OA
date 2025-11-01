@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../utils/axiosConfig';
 import { useTranslation } from 'react-i18next';
 
 const AuthContext = createContext();
@@ -68,22 +68,15 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const { t } = useTranslation();
 
-  // Set up axios defaults
-  useEffect(() => {
-    if (state.token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [state.token]);
+  // Token 已经通过 axios 拦截器自动添加，这里不再需要手动设置
 
   // Check if user is logged in on app start
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
       if (token) {
-        // Mock auth check for development
-        if (process.env.NODE_ENV === 'development') {
+        // Mock auth check for development (仅在开发环境且未配置API URL时使用)
+        if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
           const mockUser = {
             id: 1,
             email: 'demo@company.com',
@@ -108,7 +101,7 @@ export const AuthProvider = ({ children }) => {
         }
         
         try {
-          const response = await axios.get('/api/auth/me');
+          const response = await apiClient.get('/api/auth/me');
           dispatch({
             type: 'LOGIN_SUCCESS',
             payload: {
@@ -117,6 +110,7 @@ export const AuthProvider = ({ children }) => {
             }
           });
         } catch (error) {
+          console.error('Auth check failed:', error);
           localStorage.removeItem('token');
           dispatch({ type: 'LOGOUT' });
         }
@@ -132,8 +126,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     dispatch({ type: 'LOGIN_START' });
     
-    // Mock login for development
-    if (process.env.NODE_ENV === 'development') {
+    // Mock login for development (仅在开发环境且未配置API URL时使用)
+    if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -163,12 +157,20 @@ export const AuthProvider = ({ children }) => {
     }
     
     try {
-      const response = await axios.post('/api/auth/login', {
+      const response = await apiClient.post('/api/auth/login', {
         email,
         password
       });
 
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Login failed');
+      }
+
       const { token, user } = response.data;
+      
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
       
       localStorage.setItem('token', token);
       dispatch({
@@ -178,7 +180,8 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, message: t('auth.loginSuccess') };
     } catch (error) {
-      const message = error.response?.data?.message || t('auth.loginError');
+      console.error('Login error:', error);
+      const message = error.response?.data?.message || error.message || t('auth.loginError');
       dispatch({
         type: 'LOGIN_FAILURE',
         payload: message
@@ -191,8 +194,8 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     dispatch({ type: 'LOGIN_START' });
     
-    // Mock register for development
-    if (process.env.NODE_ENV === 'development') {
+    // Mock register for development (仅在开发环境且未配置API URL时使用)
+    if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -221,9 +224,17 @@ export const AuthProvider = ({ children }) => {
     }
     
     try {
-      const response = await axios.post('/api/auth/register', userData);
+      const response = await apiClient.post('/api/auth/register', userData);
       
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Registration failed');
+      }
+
       const { token, user } = response.data;
+      
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
       
       localStorage.setItem('token', token);
       dispatch({
@@ -233,7 +244,8 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, message: t('auth.registerSuccess') };
     } catch (error) {
-      const message = error.response?.data?.message || t('auth.registerError');
+      console.error('Register error:', error);
+      const message = error.response?.data?.message || error.message || t('auth.registerError');
       dispatch({
         type: 'LOGIN_FAILURE',
         payload: message
@@ -251,14 +263,15 @@ export const AuthProvider = ({ children }) => {
   // Update user preferences
   const updatePreferences = async (preferences) => {
     try {
-      const response = await axios.put('/api/auth/preferences', preferences);
+      const response = await apiClient.put('/api/auth/preferences', preferences);
       dispatch({
         type: 'UPDATE_USER',
         payload: { preferences: response.data.preferences }
       });
       return { success: true, message: t('messages.success.saved') };
     } catch (error) {
-      const message = error.response?.data?.message || t('messages.error.general');
+      console.error('Update preferences error:', error);
+      const message = error.response?.data?.message || error.message || t('messages.error.general');
       return { success: false, message };
     }
   };
@@ -266,13 +279,14 @@ export const AuthProvider = ({ children }) => {
   // Change password
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      await axios.put('/api/auth/change-password', {
+      await apiClient.put('/api/auth/change-password', {
         currentPassword,
         newPassword
       });
       return { success: true, message: t('messages.success.saved') };
     } catch (error) {
-      const message = error.response?.data?.message || t('messages.error.general');
+      console.error('Change password error:', error);
+      const message = error.response?.data?.message || error.message || t('messages.error.general');
       return { success: false, message };
     }
   };

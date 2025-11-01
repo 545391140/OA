@@ -35,7 +35,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -71,8 +71,8 @@ const ExpenseItemsMaintenance = () => {
     try {
       setLoading(true);
       const [standardsRes, expenseItemsRes] = await Promise.all([
-        axios.get('/api/travel-standards'),
-        axios.get('/api/expense-items') // 获取所有费用项
+        apiClient.get('/api/travel-standards'),
+        apiClient.get('/api/expense-items') // 获取所有费用项
       ]);
 
       if (standardsRes.data && standardsRes.data.success) {
@@ -263,7 +263,7 @@ const ExpenseItemsMaintenance = () => {
       }
 
       if (formDialog.mode === 'create') {
-        await axios.post('/api/expense-items', payload);
+        await apiClient.post('/api/expense-items', payload);
         showNotification('费用项创建成功', 'success');
       } else {
         // 编辑时也包含standardId（如果修改了标准）
@@ -282,7 +282,7 @@ const ExpenseItemsMaintenance = () => {
         } else if (parentItemIdToSend === '' || parentItemIdToSend === null) {
           payload.parentItem = null; // 空字符串或null表示解除关联
         }
-        await axios.put(`/api/expense-items/item/${formDialog.item._id}`, payload);
+        await apiClient.put(`/api/expense-items/item/${formDialog.item._id}`, payload);
         showNotification('费用项更新成功', 'success');
       }
 
@@ -297,7 +297,7 @@ const ExpenseItemsMaintenance = () => {
   const handleDelete = async () => {
     try {
       const { item } = deleteDialog;
-      await axios.delete(`/api/expense-items/item/${item._id}`);
+      await apiClient.delete(`/api/expense-items/item/${item._id}`);
       showNotification('删除成功', 'success');
       setDeleteDialog({ open: false, item: null });
       fetchAllData();
@@ -459,7 +459,7 @@ const ExpenseItemsMaintenance = () => {
                               color="error"
                               onClick={async () => {
                                 try {
-                                  await axios.put(`/api/expense-items/item/${item._id}/disable`);
+                                  await apiClient.put(`/api/expense-items/item/${item._id}/disable`);
                                   showNotification('费用项已禁用', 'success');
                                   fetchAllData();
                                 } catch (err) {
@@ -476,7 +476,7 @@ const ExpenseItemsMaintenance = () => {
                               color="success"
                               onClick={async () => {
                                 try {
-                                  await axios.put(`/api/expense-items/item/${item._id}/enable`);
+                                  await apiClient.put(`/api/expense-items/item/${item._id}/enable`);
                                   showNotification('费用项已启用', 'success');
                                   fetchAllData();
                                 } catch (err) {
