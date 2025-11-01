@@ -17,7 +17,9 @@ const getApiBaseURL = () => {
   }
   
   // 生产环境默认值（应该通过环境变量配置）
-  return 'http://localhost:3001'; // 这个需要在实际部署时配置
+  // 如果没有配置 REACT_APP_API_URL，在生产环境会报错
+  console.warn('⚠️  REACT_APP_API_URL not configured! API requests will fail in production.');
+  return ''; // 返回空字符串，让错误更明显
 };
 
 // 创建 axios 实例
