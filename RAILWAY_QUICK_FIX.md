@@ -1,11 +1,35 @@
 # Railway 部署快速修复
 
-## ❌ 错误信息
+## ❌ 常见错误及解决方案
+
+### 错误 1: Dockerfile 构建失败 - "/backend": not found
+
+**错误信息**：
+```
+ERROR: failed to build: failed to solve: failed to compute cache key: 
+failed to calculate checksum of ref: "/backend": not found
+```
+
+**原因**：Railway 检测到了 Dockerfile，但构建上下文与 Dockerfile 期望的路径不匹配。
+
+**解决方案**：
+项目现在提供了两个 Dockerfile：
+1. **根目录的 Dockerfile** - 当 Root Directory 留空时使用
+2. **backend/Dockerfile** - 当 Root Directory 设置为 `backend` 时使用
+
+**推荐配置**（根据 railway.json 建议）：
+- **Root Directory**: `backend`
+- Railway 会自动使用 `backend/Dockerfile`
+- 无需手动设置 Build Command 和 Start Command
+
+### 错误 2: The executable `cd` could not be found
+
+**错误信息**：
 ```
 The executable `cd` could not be found.
 ```
 
-## ✅ 解决方案
+**解决方案**：
 
 Railway 容器环境不支持 `cd` 命令，需要在 Railway Dashboard 中手动配置。
 

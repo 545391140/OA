@@ -1,19 +1,23 @@
-# ---------- Base image ----------
-FROM node:18-alpine AS base
-WORKDIR /app
+# Dockerfile for Railway deployment
+# 当 Railway Root Directory 留空（项目根目录）时使用此文件
+# 如果 Root Directory 设置为 'backend'，请使用 backend/Dockerfile
 
-# ---------- Copy backend code ----------
-COPY backend/package*.json ./backend/
+FROM node:18-alpine
+
 WORKDIR /app/backend
-RUN npm install --production
 
-# ---------- Copy remaining source ----------
-COPY backend /app/backend
+# 复制 package 文件并安装依赖
+COPY backend/package*.json ./
+RUN npm ci --only=production
 
-# ---------- Expose port ----------
+# 复制所有后端源代码
+COPY backend/ ./
+
+# 设置环境变量
 ENV NODE_ENV=production
-ENV PORT=3001
+
+# 暴露端口（Railway 会自动提供 PORT 环境变量）
 EXPOSE 3001
 
-# ---------- Start server ----------
+# 启动服务器
 CMD ["npm", "start"]
