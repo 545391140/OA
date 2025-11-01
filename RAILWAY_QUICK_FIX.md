@@ -22,6 +22,25 @@ failed to calculate checksum of ref: "/backend": not found
 - Railway 会自动使用 `backend/Dockerfile`
 - 无需手动设置 Build Command 和 Start Command
 
+### 错误 1.5: 构建失败 - "/frontend": not found
+
+**错误信息**：
+```
+[frontend-builder 5/6] COPY frontend/ ./
+failed to calculate checksum of ref: "/frontend": not found
+```
+
+**原因**：Railway 使用 NIXPACKS 自动构建器时，可能会检测到 frontend 目录并尝试构建它，但 Root Directory 设置为 `backend` 时找不到 frontend。
+
+**解决方案**：
+1. **推荐**：使用 Dockerfile 构建器（已在 railway.json 中配置）
+   - `railway.json` 已设置为使用 `"builder": "DOCKERFILE"`
+   - Railway 会使用 `backend/Dockerfile` 而不是 NIXPACKS
+
+2. **备选方案**：在 Railway Dashboard 中手动设置
+   - Settings > Build > Builder: 选择 `DOCKERFILE`
+   - 确保 Root Directory 设置为 `backend`
+
 ### 错误 2: The executable `cd` could not be found
 
 **错误信息**：
