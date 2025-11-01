@@ -1,8 +1,8 @@
 {
-  "$schema": "https://railway.com/railway.schema.json",
+  "$schema": "https://railway.app/railway.schema.json",
+  "$comment": "注意：在 Railway Dashboard 中设置 Root Directory 为 'backend'，Start Command 为 'npm start'",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd backend && npm install"
+    "builder": "NIXPACKS"
   },
   "deploy": {
     "runtime": "V2",
