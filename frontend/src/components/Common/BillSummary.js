@@ -27,11 +27,8 @@ import {
 
 const BillSummary = ({ 
   formData, 
-  bookings = [], 
   estimatedCost = 0,
-  currency = 'USD',
-  onEditBooking,
-  onAddBooking 
+  currency = 'USD'
 }) => {
   // 计算各项费用
   const calculateCosts = () => {
@@ -81,7 +78,6 @@ const BillSummary = ({
   };
 
   const costs = calculateCosts();
-  const hasBookings = bookings.length > 0;
   const hasEstimatedCost = estimatedCost > 0;
 
   // 费用项目配置
@@ -245,77 +241,15 @@ const BillSummary = ({
         )}
       </Box>
 
-      {/* 预订信息 */}
-      {hasBookings && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-            预订信息
-          </Typography>
-          <List dense>
-            {bookings.map((booking, index) => (
-              <ListItem key={index} sx={{ px: 0 }}>
-                <ListItemText 
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2" fontWeight="medium">
-                        {booking.provider}
-                      </Typography>
-                      <Chip 
-                        label={booking.type} 
-                        size="small" 
-                        variant="outlined"
-                        sx={{ height: 20, fontSize: '0.7rem' }}
-                      />
-                    </Box>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        {booking.bookingReference}
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium">
-                        {formatAmount(parseFloat(booking.cost))}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      )}
 
       {/* 提示信息 */}
-      {!hasBookings && !hasEstimatedCost && (
+      {!hasEstimatedCost && (
         <Alert severity="info" sx={{ mt: 2 }}>
           <Typography variant="body2">
-            请填写费用预算或添加预订信息以查看费用明细
+            请填写费用预算以查看费用明细
           </Typography>
         </Alert>
       )}
-
-      {/* 操作按钮 */}
-      <Box sx={{ mt: 3 }}>
-        <Button
-          variant="outlined"
-          fullWidth
-          startIcon={<MoneyIcon />}
-          onClick={onAddBooking}
-          sx={{ mb: 1 }}
-        >
-          添加预订
-        </Button>
-        {hasBookings && (
-          <Button
-            variant="text"
-            fullWidth
-            size="small"
-            onClick={onEditBooking}
-          >
-            编辑预订
-          </Button>
-        )}
-      </Box>
     </Paper>
   );
 };

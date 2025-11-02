@@ -9,8 +9,6 @@ import {
   Grid,
   Chip,
   IconButton,
-  Card,
-  CardContent,
   Divider,
   Alert,
   CircularProgress,
@@ -27,13 +25,10 @@ import {
   Save as SaveIcon,
   Send as SendIcon,
   Flight as FlightIcon,
-  Hotel as HotelIcon,
   Train as TrainIcon,
   DirectionsCar as CarIcon,
   DirectionsBus as BusIcon,
   AttachMoney as MoneyIcon,
-  NavigateNext as NavigateNextIcon,
-  NavigateBefore as NavigateBeforeIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useTranslation } from 'react-i18next';
@@ -103,8 +98,7 @@ const TravelForm = () => {
     inboundBudget: {},
     estimatedCost: '',
     currency: 'USD',
-    notes: '',
-    bookings: []
+    notes: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -133,11 +127,6 @@ const TravelForm = () => {
       label: '费用预算',
       description: '设置详细的费用预算项目',
       icon: '3'
-    },
-    {
-      label: '预订信息',
-      description: '添加预订详情',
-      icon: '4'
     }
   ];
 
@@ -193,13 +182,6 @@ const TravelForm = () => {
   ];
 
 
-  const bookingTypes = [
-    { value: 'flight', label: t('travel.flight'), icon: <FlightIcon /> },
-    { value: 'hotel', label: t('travel.hotel'), icon: <HotelIcon /> },
-    { value: 'car', label: t('travel.carRental'), icon: <CarIcon /> },
-    { value: 'train', label: t('travel.train'), icon: <TrainIcon /> },
-    { value: 'other', label: t('travel.other'), icon: <MoneyIcon /> }
-  ];
 
   useEffect(() => {
     if (isEdit) {
@@ -435,8 +417,6 @@ const TravelForm = () => {
         return renderTravelArrangementStep();
       case 2:
         return renderBudgetStep();
-      case 3:
-        return renderBookingsStep();
       default:
         return null;
     }
@@ -539,7 +519,6 @@ const TravelForm = () => {
             })),
             outboundBudget: processBudget(data.outboundBudget),
             inboundBudget: processBudget(data.inboundBudget),
-            bookings: data.bookings || [],
             currency: data.currency || 'USD',
             estimatedCost: data.estimatedCost !== undefined ? String(data.estimatedCost) : '',
             notes: data.notes || '',
@@ -1008,58 +987,12 @@ const TravelForm = () => {
       });
     }
 
-    // 步骤4: 预订信息（可选）
-    if (formData.bookings.length > 0) {
-      newCompletedSteps.push(3);
-      newValidationResults.push({
-        message: '预订信息已添加',
-        status: 'valid'
-      });
-    } else {
-      newValidationResults.push({
-        message: '预订信息为可选项，可以稍后添加',
-        status: 'info'
-      });
-    }
 
     setCompletedSteps(newCompletedSteps);
     setErrorSteps(newErrorSteps);
     setValidationResults(newValidationResults);
   };
 
-  const addBooking = () => {
-    setFormData(prev => ({
-      ...prev,
-      bookings: [
-        ...prev.bookings,
-        {
-          type: 'flight',
-          provider: '',
-          bookingReference: '',
-          cost: '',
-          currency: 'USD',
-          details: {},
-          status: 'pending'
-        }
-      ]
-    }));
-  };
-
-  const removeBooking = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      bookings: prev.bookings.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateBooking = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      bookings: prev.bookings.map((booking, i) =>
-        i === index ? { ...booking, [field]: value } : booking
-      )
-    }));
-  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -2167,122 +2100,6 @@ const TravelForm = () => {
     </ModernFormSection>
   );
 
-  // 渲染预订信息步骤
-  const renderBookingsStep = () => (
-    <FormSection
-      title="预订信息"
-      description="添加预订详情"
-      icon="✈️"
-      stepNumber={4}
-      status={completedSteps.includes(3) ? 'completed' : errorSteps.includes(3) ? 'error' : currentStep === 3 ? 'active' : 'pending'}
-      required={false}
-    >
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  {t('travel.bookings')}
-                </Typography>
-                <Button
-                  startIcon={<AddIcon />}
-                  onClick={addBooking}
-                  variant="outlined"
-                  size="small"
-                >
-                  {t('travel.addBooking')}
-                </Button>
-              </Box>
-            </Grid>
-
-            {formData.bookings.map((booking, index) => (
-              <Grid item xs={12} key={index}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="subtitle1">
-                        {t('travel.booking')} {index + 1}
-                      </Typography>
-                      <IconButton
-                        onClick={() => removeBooking(index)}
-                        color="error"
-                        size="small"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={3}>
-                        <FormControl fullWidth>
-                          <InputLabel>{t('travel.bookingType')}</InputLabel>
-                          <Select
-                            value={booking.type}
-                            label={t('travel.bookingType')}
-                            onChange={(e) => updateBooking(index, 'type', e.target.value)}
-                          >
-                            {bookingTypes.map((type) => (
-                              <MenuItem key={type.value} value={type.value}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  {type.icon}
-                                  {type.label}
-                                </Box>
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-
-                      <Grid item xs={12} md={3}>
-                        <TextField
-                          fullWidth
-                          label={t('travel.provider')}
-                          value={booking.provider}
-                          onChange={(e) => updateBooking(index, 'provider', e.target.value)}
-                      sx={{}}
-                        />
-                      </Grid>
-
-                      <Grid item xs={12} md={3}>
-                        <TextField
-                          fullWidth
-                          label={t('travel.bookingReference')}
-                          value={booking.bookingReference}
-                          onChange={(e) => updateBooking(index, 'bookingReference', e.target.value)}
-                      sx={{}}
-                        />
-                      </Grid>
-
-                      <Grid item xs={12} md={3}>
-                        <TextField
-                          fullWidth
-                          label={t('travel.cost')}
-                          type="number"
-                          value={booking.cost}
-                          onChange={(e) => updateBooking(index, 'cost', e.target.value)}
-                      sx={{}}
-                        />
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label={t('travel.additionalNotes')}
-                value={formData.notes}
-                onChange={(e) => handleChange('notes', e.target.value)}
-                placeholder={t('placeholders.additionalTravelInfo')}
-            sx={{}}
-              />
-            </Grid>
-      </Grid>
-    </FormSection>
-  );
 
   if (loading) {
     return (

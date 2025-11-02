@@ -29,10 +29,6 @@ import {
   ArrowBack as ArrowBackIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Flight as FlightIcon,
-  Hotel as HotelIcon,
-  DirectionsCar as CarIcon,
-  Train as TrainIcon,
   AttachMoney as MoneyIcon,
   LocationOn as LocationIcon,
   CalendarToday as CalendarIcon,
@@ -69,16 +65,6 @@ const TravelDetail = () => {
     return colors[status] || 'default';
   };
 
-  const getBookingIcon = (type) => {
-    const icons = {
-      flight: <FlightIcon />,
-      hotel: <HotelIcon />,
-      car: <CarIcon />,
-      train: <TrainIcon />,
-      other: <MoneyIcon />
-    };
-    return icons[type] || <MoneyIcon />;
-  };
 
   const getApprovalIcon = (status) => {
     switch (status) {
@@ -127,50 +113,6 @@ const TravelDetail = () => {
           department: 'Sales',
           position: 'Senior Sales Manager'
         },
-        bookings: [
-          {
-            type: 'flight',
-            provider: 'Japan Airlines',
-            bookingReference: 'JL123456',
-            cost: 1200,
-            currency: 'USD',
-            details: {
-              flightNumber: 'JL123',
-              class: 'Business',
-              departure: '2024-02-15T08:00:00Z',
-              arrival: '2024-02-15T14:30:00Z'
-            },
-            status: 'confirmed'
-          },
-          {
-            type: 'hotel',
-            provider: 'Grand Hyatt Tokyo',
-            bookingReference: 'GH456789',
-            cost: 800,
-            currency: 'USD',
-            details: {
-              roomType: 'Deluxe King Room',
-              nights: 5,
-              checkIn: '2024-02-15',
-              checkOut: '2024-02-20'
-            },
-            status: 'confirmed'
-          },
-          {
-            type: 'car',
-            provider: 'Hertz',
-            bookingReference: 'HZ789012',
-            cost: 350,
-            currency: 'USD',
-            details: {
-              carType: 'Mid-size Sedan',
-              days: 5,
-              pickup: '2024-02-15',
-              dropoff: '2024-02-20'
-            },
-            status: 'confirmed'
-          }
-        ],
         approvals: [
           {
             approver: {
@@ -371,56 +313,6 @@ const TravelDetail = () => {
               </Grid>
             </Paper>
 
-            {/* Bookings */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Bookings
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              
-              {travel.bookings.map((booking, index) => (
-                <Card key={index} variant="outlined" sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <Avatar sx={{ bgcolor: 'primary.main' }}>
-                        {getBookingIcon(booking.type)}
-                      </Avatar>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {booking.provider}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {booking.type.charAt(0).toUpperCase() + booking.type.slice(1)} • {booking.bookingReference}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="h6" color="primary">
-                          {booking.currency} {booking.cost.toLocaleString()}
-                        </Typography>
-                        <Chip
-                          label={booking.status}
-                          color={booking.status === 'confirmed' ? 'success' : 'warning'}
-                          size="small"
-                        />
-                      </Box>
-                    </Box>
-                    
-                    {Object.keys(booking.details).length > 0 && (
-                      <Box sx={{ ml: 6 }}>
-                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                          Details:
-                        </Typography>
-                        {Object.entries(booking.details).map(([key, value]) => (
-                          <Typography key={key} variant="body2" sx={{ mb: 0.5 }}>
-                            <strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {value}
-                          </Typography>
-                        ))}
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </Paper>
 
             {/* Notes */}
             {travel.notes && (

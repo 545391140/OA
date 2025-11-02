@@ -206,39 +206,82 @@ const ModernCostOverview = ({
 
   // 计算完成度
   const getCompletionStatus = () => {
+    // 判断是否为往返行程
+    const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
+    
     // 如果有matchedExpenseItems，基于实际费用项数量计算
     if (matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0) {
-      const totalExpenseItems = Object.keys(matchedExpenseItems).length;
-      const completedItems = Object.entries(matchedExpenseItems).filter(([itemId, expense]) => {
-        const outboundAmount = parseFloat(formData.outboundBudget?.[itemId]?.subtotal || 0);
-        const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
-        const inboundAmount = isRoundTrip 
-          ? parseFloat(formData.inboundBudget?.[itemId]?.subtotal || 0) 
-          : 0;
-        return outboundAmount > 0 || inboundAmount > 0;
-      }).length;
-      const completionPercentage = totalExpenseItems > 0 ? (completedItems / totalExpenseItems) * 100 : 0;
+      let totalRequiredFields = 0; // 总需要填写的字段数
+      let completedFields = 0; // 已完成的字段数
       
-      if (completionPercentage === 100) {
-        return { status: 'completed', color: theme.palette.success.main, text: '预算完整' };
-      } else if (completionPercentage >= 50) {
-        return { status: 'partial', color: theme.palette.warning.main, text: '预算进行中' };
-      } else {
-        return { status: 'pending', color: theme.palette.grey[500], text: '预算待完善' };
-      }
+      Object.entries(matchedExpenseItems).forEach(([itemId, expense]) => {
+        const outboundItem = formData.outboundBudget?.[itemId];
+        const inboundItem = formData.inboundBudget?.[itemId];
+        
+        // 检查去程
+        const outboundUnitPrice = parseFloat(outboundItem?.unitPrice || 0);
+        const outboundSubtotal = parseFloat(outboundItem?.subtotal || 0);
+        const outboundCompleted = outboundUnitPrice > 0 || (expense.limitType === 'ACTUAL' && outboundSubtotal > 0);
+        
+        // 单程：只需去程；往返：需要去程和返程
+        if (isRoundTrip) {
+          // 往返行程：需要填写去程和返程
+          totalRequiredFields += 2;
+          
+          const inboundUnitPrice = parseFloat(inboundItem?.unitPrice || 0);
+          const inboundSubtotal = parseFloat(inboundItem?.subtotal || 0);
+          const inboundCompleted = inboundUnitPrice > 0 || (expense.limitType === 'ACTUAL' && inboundSubtotal > 0);
+          
+          if (outboundCompleted) completedFields += 1;
+          if (inboundCompleted) completedFields += 1;
+        } else {
+          // 单程行程：只需填写去程
+          totalRequiredFields += 1;
+          if (outboundCompleted) completedFields += 1;
+        }
+      });
+      
+      const completionPercentage = totalRequiredFields > 0 
+        ? (completedFields / totalRequiredFields) * 100 
+        : 0;
+      
+      // 返回完成状态和统计信息
+      return {
+        status: completionPercentage === 100 ? 'completed' 
+          : completionPercentage >= 50 ? 'partial' 
+          : 'pending',
+        color: completionPercentage === 100 ? theme.palette.success.main
+          : completionPercentage >= 50 ? theme.palette.warning.main
+          : theme.palette.grey[500],
+        text: completionPercentage === 100 ? '预算完整'
+          : completionPercentage >= 50 ? '预算进行中'
+          : '预算待完善',
+        completedFields,
+        totalRequiredFields,
+        percentage: completionPercentage
+      };
     } else {
-      // 基于固定类别计算
+      // 基于固定类别计算（向后兼容）
       const totalItems = costItemsConfig.length;
       const completedItems = costItemsConfig.filter(item => item.amount > 0).length;
-      const completionPercentage = (completedItems / totalItems) * 100;
+      const completionPercentage = totalItems > 0 
+        ? (completedItems / totalItems) * 100 
+        : 0;
       
-      if (completionPercentage === 100) {
-        return { status: 'completed', color: theme.palette.success.main, text: '预算完整' };
-      } else if (completionPercentage >= 50) {
-        return { status: 'partial', color: theme.palette.warning.main, text: '预算进行中' };
-      } else {
-        return { status: 'pending', color: theme.palette.grey[500], text: '预算待完善' };
-      }
+      return {
+        status: completionPercentage === 100 ? 'completed' 
+          : completionPercentage >= 50 ? 'partial' 
+          : 'pending',
+        color: completionPercentage === 100 ? theme.palette.success.main
+          : completionPercentage >= 50 ? theme.palette.warning.main
+          : theme.palette.grey[500],
+        text: completionPercentage === 100 ? '预算完整'
+          : completionPercentage >= 50 ? '预算进行中'
+          : '预算待完善',
+        completedFields: completedItems,
+        totalRequiredFields: totalItems,
+        percentage: completionPercentage
+      };
     }
   };
 
@@ -300,35 +343,14 @@ const ModernCostOverview = ({
               预算完成度
             </Typography>
             <Typography variant="body2" fontWeight={500}>
-              {matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0
-                ? `${Object.entries(matchedExpenseItems).filter(([itemId, expense]) => {
-                    const outboundAmount = parseFloat(formData.outboundBudget?.[itemId]?.subtotal || 0);
-                    const inboundAmount = formData.tripType === 'roundTrip' 
-                      ? parseFloat(formData.inboundBudget?.[itemId]?.subtotal || 0) 
-                      : 0;
-                    return outboundAmount > 0 || inboundAmount > 0;
-                  }).length} / ${Object.keys(matchedExpenseItems).length}`
-                : `${costItems.filter(item => item.amount > 0).length} / ${costItems.length}`
-              }
+              {completionStatus.completedFields !== undefined && completionStatus.totalRequiredFields !== undefined
+                ? `${completionStatus.completedFields} / ${completionStatus.totalRequiredFields}`
+                : '0 / 0'}
             </Typography>
           </Box>
           <LinearProgress
             variant="determinate"
-            value={(() => {
-              if (matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0) {
-                const totalExpenseItems = Object.keys(matchedExpenseItems).length;
-                const completedItems = Object.entries(matchedExpenseItems).filter(([itemId, expense]) => {
-                  const outboundAmount = parseFloat(formData.outboundBudget?.[itemId]?.subtotal || 0);
-                  const inboundAmount = formData.tripType === 'roundTrip' 
-                    ? parseFloat(formData.inboundBudget?.[itemId]?.subtotal || 0) 
-                    : 0;
-                  return outboundAmount > 0 || inboundAmount > 0;
-                }).length;
-                return totalExpenseItems > 0 ? (completedItems / totalExpenseItems) * 100 : 0;
-              } else {
-                return costItems.length > 0 ? (costItems.filter(item => item.amount > 0).length / costItems.length) * 100 : 0;
-              }
-            })()}
+            value={completionStatus.percentage || 0}
             sx={{
               height: 8,
               borderRadius: 4,
