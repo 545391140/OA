@@ -17,9 +17,33 @@ NC='\033[0m' # No Color
 if [ -f "deploy.config" ]; then
     source deploy.config
 else
-    echo -e "${RED}❌ 错误: 未找到 deploy.config 配置文件${NC}"
-    echo "请先创建 deploy.config 文件并配置服务器信息"
-    exit 1
+    # 如果在服务器上运行（检测是否已经 SSH 到服务器），使用默认配置
+    if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_CONNECTION" ] || [ "$(hostname)" != "$(hostname -f)" ]; then
+        echo -e "${YELLOW}⚠️  未找到 deploy.config，使用服务器默认配置...${NC}"
+        # 服务器端默认配置
+        GITHUB_REPO="https://github.com/545391140/OA.git"
+        GITHUB_BRANCH="main"
+        SERVER_HOST="52.35.195.251"
+        SERVER_USER="ec2-user"
+        SERVER_PORT="3000"
+        DEPLOY_PATH="/home/ec2-user/oa"
+        RESTART_COMMAND="pm2 restart oa-backend || pm2 start backend/server.js --name oa-backend"
+        echo -e "${GREEN}✅ 使用默认配置${NC}"
+    else
+        echo -e "${RED}❌ 错误: 未找到 deploy.config 配置文件${NC}"
+        echo "请先创建 deploy.config 文件并配置服务器信息"
+        echo ""
+        echo "快速创建配置（服务器上）："
+        echo "  cat > deploy.config << 'EOF'"
+        echo "  GITHUB_REPO=\"https://github.com/545391140/OA.git\""
+        echo "  SERVER_HOST=\"52.35.195.251\""
+        echo "  SERVER_USER=\"ec2-user\""
+        echo "  SERVER_PORT=\"3000\""
+        echo "  DEPLOY_PATH=\"/home/ec2-user/oa\""
+        echo "  RESTART_COMMAND=\"pm2 restart oa-backend || pm2 start backend/server.js --name oa-backend\""
+        echo "  EOF"
+        exit 1
+    fi
 fi
 
 # 配置验证
