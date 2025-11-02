@@ -157,6 +157,34 @@ else
     
     echo -e "${GREEN}✅ 代码更新完成${NC}"
     
+    # 检查 Node.js 和 npm 是否已安装
+    if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
+        echo -e "${RED}❌ 错误: 未找到 Node.js 或 npm${NC}"
+        echo ""
+        echo "请先安装 Node.js 和 npm："
+        echo ""
+        echo "方法 1: 使用 nvm 安装（推荐）"
+        echo "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash"
+        echo "  source ~/.bashrc"
+        echo "  nvm install 18"
+        echo "  nvm use 18"
+        echo ""
+        echo "方法 2: 使用 yum 安装（Amazon Linux）"
+        echo "  curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -"
+        echo "  sudo yum install -y nodejs"
+        echo ""
+        echo "方法 3: 使用 apt 安装（Ubuntu/Debian）"
+        echo "  curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -"
+        echo "  sudo apt-get install -y nodejs"
+        echo ""
+        exit 1
+    fi
+    
+    # 显示 Node.js 和 npm 版本
+    echo -e "${GREEN}✅ Node.js 版本: $(node --version)${NC}"
+    echo -e "${GREEN}✅ npm 版本: $(npm --version)${NC}"
+    echo ""
+    
     # 服务器端：直接构建和部署
     echo -e "${YELLOW}[2/4] 构建和部署...${NC}"
     
