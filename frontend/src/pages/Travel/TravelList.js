@@ -191,15 +191,47 @@ const TravelList = () => {
         return;
       }
       
-      await apiClient.delete(`/travel/${travelId}`);
-      setTravels(prev => prev.filter(travel => {
-        const id = travel._id || travel.id;
-        return id !== travelId;
-      }));
-      showNotification('Travel request deleted successfully', 'success');
+      const response = await apiClient.delete(`/travel/${travelId}`);
+      
+      // 检查响应是否成功
+      if (response.data && response.data.success) {
+        setTravels(prev => prev.filter(travel => {
+          const id = travel._id || travel.id;
+          return id !== travelId;
+        }));
+        showNotification(response.data.message || '差旅申请已成功删除', 'success');
+      } else {
+        showNotification(response.data?.message || '删除失败', 'error');
+      }
     } catch (error) {
       console.error('Delete travel error:', error);
-      showNotification(error.response?.data?.message || 'Failed to delete travel request', 'error');
+      console.error('Error response:', error.response);
+      
+      // 处理不同类型的错误
+      let errorMessage = '删除差旅申请失败';
+      
+      if (error.response) {
+        // 服务器返回了错误响应
+        if (error.response.data && error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.status === 404) {
+          errorMessage = '差旅申请不存在';
+        } else if (error.response.status === 403) {
+          errorMessage = '您没有权限删除此差旅申请';
+        } else if (error.response.status === 400) {
+          errorMessage = error.response.data?.message || '只能删除草稿状态的差旅申请';
+        } else if (error.response.status === 401) {
+          errorMessage = '未授权，请重新登录';
+        }
+      } else if (error.request) {
+        // 请求已发出但没有收到响应
+        errorMessage = '无法连接到服务器，请检查网络连接';
+      } else {
+        // 其他错误
+        errorMessage = error.message || '删除失败';
+      }
+      
+      showNotification(errorMessage, 'error');
     } finally {
       setDeleteDialogOpen(false);
       setSelectedTravel(null);

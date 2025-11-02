@@ -375,26 +375,43 @@ router.delete('/:id', protect, async (req, res) => {
     }
 
     // 检查权限：只能删除自己的申请或管理员
-    let employeeId;
-    if (travel.employee) {
-      if (travel.employee._id) {
-        employeeId = travel.employee._id.toString();
-      } else if (travel.employee.id) {
-        employeeId = String(travel.employee.id);
-      } else if (typeof travel.employee === 'object' && travel.employee.toString) {
-        employeeId = travel.employee.toString();
+    // 如果是管理员，允许删除所有申请（包括employee为null的情况）
+    if (req.user.role === 'admin') {
+      // 管理员可以删除，继续执行
+    } else {
+      // 非管理员需要检查权限
+      let employeeId;
+      if (!travel.employee) {
+        // 如果没有employee字段，在开发模式下允许删除，否则返回错误
+        const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+        if (!isDevMode) {
+          console.error('Travel request missing employee field:', req.params.id);
+          return res.status(500).json({
+            success: false,
+            message: 'Travel request data is incomplete'
+          });
+        }
       } else {
-        employeeId = String(travel.employee);
+        // 处理 employee 可能是 ObjectId 或 populated 对象的情况
+        if (travel.employee._id) {
+          employeeId = travel.employee._id.toString();
+        } else if (travel.employee.id) {
+          employeeId = String(travel.employee.id);
+        } else if (typeof travel.employee === 'object' && travel.employee.toString) {
+          employeeId = travel.employee.toString();
+        } else {
+          employeeId = String(travel.employee);
+        }
+        
+        const userId = req.user.id.toString();
+        
+        if (employeeId !== userId) {
+          return res.status(403).json({
+            success: false,
+            message: 'Not authorized to delete this travel request'
+          });
+        }
       }
-    }
-    
-    const userId = req.user.id.toString();
-    
-    if (employeeId !== userId && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this travel request'
-      });
     }
 
     // 只能删除草稿状态的申请
@@ -413,6 +430,9 @@ router.delete('/:id', protect, async (req, res) => {
     });
   } catch (error) {
     console.error('Delete travel error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request params:', req.params);
+    console.error('User ID:', req.user?.id);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'

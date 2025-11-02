@@ -140,33 +140,50 @@ exports.getTravelById = async (req, res) => {
     }
 
     // 检查权限：只能查看自己的申请或管理员
-    // 安全地获取employee ID（可能是ObjectId或populated对象）
-    let employeeId;
-    if (!travel.employee) {
-      // 如果没有employee字段，可能是数据损坏
-      console.error('Travel request missing employee field:', req.params.id);
-      return res.status(500).json({
-        success: false,
-        message: 'Travel request data is incomplete'
-      });
-    }
-    
-    if (travel.employee._id) {
-      // Populated对象
-      employeeId = travel.employee._id.toString();
-    } else if (typeof travel.employee.toString === 'function') {
-      // ObjectId
-      employeeId = travel.employee.toString();
+    // 如果是管理员，允许访问所有申请（包括employee为null的情况）
+    if (req.user.role === 'admin') {
+      // 管理员可以访问，继续执行
     } else {
-      // 已经是字符串
-      employeeId = String(travel.employee);
-    }
-    
-    if (employeeId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this travel request'
-      });
+      // 非管理员需要检查权限
+      let employeeId;
+      if (!travel.employee) {
+        // 如果没有employee字段，在开发模式下允许访问，否则返回错误
+        const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+        if (isDevMode) {
+          console.warn('Travel request missing employee field, allowing access in dev mode:', req.params.id);
+          // 在开发模式下允许访问，继续执行
+        } else {
+          console.error('Travel request missing employee field:', req.params.id);
+          return res.status(500).json({
+            success: false,
+            message: 'Travel request data is incomplete'
+          });
+        }
+      } else {
+        // 处理 employee 可能是 ObjectId 或 populated 对象的情况
+        if (travel.employee._id) {
+          // Populated对象（有 _id 属性）
+          employeeId = travel.employee._id.toString();
+        } else if (travel.employee.id) {
+          // Populated对象（可能有 id 属性）
+          employeeId = String(travel.employee.id);
+        } else if (typeof travel.employee === 'object' && travel.employee.toString) {
+          // ObjectId 对象
+          employeeId = travel.employee.toString();
+        } else {
+          // 字符串或其他格式
+          employeeId = String(travel.employee);
+        }
+        
+        const userId = req.user.id.toString();
+        
+        if (employeeId !== userId) {
+          return res.status(403).json({
+            success: false,
+            message: 'Not authorized to access this travel request'
+          });
+        }
+      }
     }
 
     res.json({
@@ -270,16 +287,43 @@ exports.updateTravel = async (req, res) => {
     }
 
     // 检查权限：只能更新自己的申请或管理员
-    // 安全地获取employee ID（可能是ObjectId或populated对象）
-    const employeeId = travel.employee 
-      ? (travel.employee._id ? travel.employee._id.toString() : travel.employee.toString())
-      : travel.employee;
-    
-    if (employeeId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this travel request'
-      });
+    // 如果是管理员，允许更新所有申请（包括employee为null的情况）
+    if (req.user.role === 'admin') {
+      // 管理员可以更新，继续执行
+    } else {
+      // 非管理员需要检查权限
+      let employeeId;
+      if (!travel.employee) {
+        // 如果没有employee字段，在开发模式下允许更新，否则返回错误
+        const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+        if (!isDevMode) {
+          console.error('Travel request missing employee field:', req.params.id);
+          return res.status(500).json({
+            success: false,
+            message: 'Travel request data is incomplete'
+          });
+        }
+      } else {
+        // 处理 employee 可能是 ObjectId 或 populated 对象的情况
+        if (travel.employee._id) {
+          employeeId = travel.employee._id.toString();
+        } else if (travel.employee.id) {
+          employeeId = String(travel.employee.id);
+        } else if (typeof travel.employee === 'object' && travel.employee.toString) {
+          employeeId = travel.employee.toString();
+        } else {
+          employeeId = String(travel.employee);
+        }
+        
+        const userId = req.user.id.toString();
+        
+        if (employeeId !== userId) {
+          return res.status(403).json({
+            success: false,
+            message: 'Not authorized to update this travel request'
+          });
+        }
+      }
     }
 
     // 处理日期字段转换
@@ -356,16 +400,43 @@ exports.deleteTravel = async (req, res) => {
     }
 
     // 检查权限：只能删除自己的申请或管理员
-    // 安全地获取employee ID（可能是ObjectId或populated对象）
-    const employeeId = travel.employee 
-      ? (travel.employee._id ? travel.employee._id.toString() : travel.employee.toString())
-      : travel.employee;
-    
-    if (employeeId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this travel request'
-      });
+    // 如果是管理员，允许删除所有申请（包括employee为null的情况）
+    if (req.user.role === 'admin') {
+      // 管理员可以删除，继续执行
+    } else {
+      // 非管理员需要检查权限
+      let employeeId;
+      if (!travel.employee) {
+        // 如果没有employee字段，在开发模式下允许删除，否则返回错误
+        const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+        if (!isDevMode) {
+          console.error('Travel request missing employee field:', req.params.id);
+          return res.status(500).json({
+            success: false,
+            message: 'Travel request data is incomplete'
+          });
+        }
+      } else {
+        // 处理 employee 可能是 ObjectId 或 populated 对象的情况
+        if (travel.employee._id) {
+          employeeId = travel.employee._id.toString();
+        } else if (travel.employee.id) {
+          employeeId = String(travel.employee.id);
+        } else if (typeof travel.employee === 'object' && travel.employee.toString) {
+          employeeId = travel.employee.toString();
+        } else {
+          employeeId = String(travel.employee);
+        }
+        
+        const userId = req.user.id.toString();
+        
+        if (employeeId !== userId) {
+          return res.status(403).json({
+            success: false,
+            message: 'Not authorized to delete this travel request'
+          });
+        }
+      }
     }
 
     // 只能删除草稿状态的申请
@@ -384,9 +455,12 @@ exports.deleteTravel = async (req, res) => {
     });
   } catch (error) {
     console.error('Delete travel error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request params:', req.params);
+    console.error('User ID:', req.user?.id);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
