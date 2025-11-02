@@ -71,58 +71,116 @@ if [ -n "$SSH_KEY" ]; then
     fi
 fi
 
+# 检测是否在服务器上运行
+IS_ON_SERVER=false
+if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_CONNECTION" ] || [ "$DEPLOY_PATH" = "$(pwd)" ] || [ "$(hostname)" = "ip-172-31-40-210" ]; then
+    IS_ON_SERVER=true
+fi
+
 # 获取当前分支
-CURRENT_BRANCH=$(git branch --show-current)
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}🚀 开始部署到 AWS 服务器${NC}"
+if [ "$IS_ON_SERVER" = true ]; then
+    echo -e "${BLUE}🚀 服务器端部署（直接拉取和部署）${NC}"
+else
+    echo -e "${BLUE}🚀 开始部署到 AWS 服务器${NC}"
+fi
 echo -e "${BLUE}========================================${NC}"
 echo ""
 echo "📦 仓库: $GITHUB_REPO"
 echo "🌿 分支: $CURRENT_BRANCH"
-echo "🌐 服务器: $SERVER_USER@$SERVER_HOST:$DEPLOY_PATH"
+if [ "$IS_ON_SERVER" = false ]; then
+    echo "🌐 服务器: $SERVER_USER@$SERVER_HOST:$DEPLOY_PATH"
+fi
 echo ""
 
-# 1. 检查 Git 状态
-echo -e "${YELLOW}[1/6] 检查 Git 状态...${NC}"
-if ! git diff-index --quiet HEAD --; then
-    echo -e "${YELLOW}⚠️  检测到未提交的更改${NC}"
-    git status --short
-    read -p "是否提交并推送这些更改? (y/n): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        read -p "请输入提交信息: " COMMIT_MSG
-        if [ -z "$COMMIT_MSG" ]; then
-            COMMIT_MSG="部署更新: $(date '+%Y-%m-%d %H:%M:%S')"
+# 如果在服务器上运行，跳过推送步骤
+if [ "$IS_ON_SERVER" = false ]; then
+    # 1. 检查 Git 状态
+    echo -e "${YELLOW}[1/6] 检查 Git 状态...${NC}"
+    if ! git diff-index --quiet HEAD --; then
+        echo -e "${YELLOW}⚠️  检测到未提交的更改${NC}"
+        git status --short
+        read -p "是否提交并推送这些更改? (y/n): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            read -p "请输入提交信息: " COMMIT_MSG
+            if [ -z "$COMMIT_MSG" ]; then
+                COMMIT_MSG="部署更新: $(date '+%Y-%m-%d %H:%M:%S')"
+            fi
+            git add .
+            git commit -m "$COMMIT_MSG"
+        else
+            echo -e "${RED}❌ 部署已取消${NC}"
+            exit 1
         fi
-        git add .
-        git commit -m "$COMMIT_MSG"
+    fi
+
+    # 2. 推送到 GitHub
+    echo -e "${YELLOW}[2/6] 推送到 GitHub...${NC}"
+    echo "推送分支: $CURRENT_BRANCH -> origin/$CURRENT_BRANCH"
+
+    if git push origin "$CURRENT_BRANCH"; then
+        echo -e "${GREEN}✅ 代码已推送到 GitHub${NC}"
     else
-        echo -e "${RED}❌ 部署已取消${NC}"
+        echo -e "${RED}❌ 推送到 GitHub 失败${NC}"
         exit 1
     fi
-fi
 
-# 2. 推送到 GitHub
-echo -e "${YELLOW}[2/6] 推送到 GitHub...${NC}"
-echo "推送分支: $CURRENT_BRANCH -> origin/$CURRENT_BRANCH"
+    # 3. 等待 GitHub 同步
+    echo ""
+    echo -e "${YELLOW}等待 3 秒以确保 GitHub 同步...${NC}"
+    sleep 3
 
-if git push origin "$CURRENT_BRANCH"; then
-    echo -e "${GREEN}✅ 代码已推送到 GitHub${NC}"
+    # 4. 在服务器上拉取最新代码
+    echo -e "${YELLOW}[3/6] 在服务器上拉取最新代码...${NC}"
 else
-    echo -e "${RED}❌ 推送到 GitHub 失败${NC}"
-    exit 1
+    # 服务器端：直接拉取代码
+    echo -e "${YELLOW}[1/4] 拉取最新代码...${NC}"
+    CURRENT_DIR=$(pwd)
+    TARGET_DIR="${DEPLOY_PATH:-$CURRENT_DIR}"
+    
+    if [ "$TARGET_DIR" != "$CURRENT_DIR" ] && [ -d "$TARGET_DIR" ]; then
+        cd "$TARGET_DIR"
+    fi
+    
+    if [ ! -d '.git' ]; then
+        echo '📦 首次部署: 克隆仓库...'
+        git clone "$GITHUB_REPO" .
+    else
+        echo '🔄 更新代码...'
+        git fetch origin
+        git reset --hard "origin/$CURRENT_BRANCH"
+        git clean -fd
+    fi
+    
+    echo -e "${GREEN}✅ 代码更新完成${NC}"
+    
+    # 服务器端：直接构建和部署
+    echo -e "${YELLOW}[2/4] 构建和部署...${NC}"
+    
+    echo '📦 安装后端依赖...'
+    cd backend
+    npm install --production --silent
+    
+    echo '📦 安装前端依赖...'
+    cd ../frontend
+    npm install --silent
+    
+    echo '🏗️  构建前端...'
+    npm run build
+    
+    echo '🔄 重启服务...'
+    cd ..
+    eval "$RESTART_COMMAND"
+    
+    echo -e "${GREEN}✅ 部署完成！${NC}"
 fi
 
-# 3. 等待 GitHub 同步（可选，根据网络情况）
-echo ""
-echo -e "${YELLOW}等待 3 秒以确保 GitHub 同步...${NC}"
-sleep 3
-
-# 4. 在服务器上拉取最新代码
-echo -e "${YELLOW}[3/6] 在服务器上拉取最新代码...${NC}"
-
-REMOTE_DEPLOY_COMMANDS="
+if [ "$IS_ON_SERVER" = false ]; then
+    # 本地执行：通过 SSH 在服务器上拉取代码
+    REMOTE_DEPLOY_COMMANDS="
 set -e
 echo '📥 拉取最新代码...'
 cd $DEPLOY_PATH
@@ -141,14 +199,12 @@ fi
 echo '✅ 代码更新完成'
 "
 
-$SSH_CMD "$SERVER_USER@$SERVER_HOST" "$REMOTE_DEPLOY_COMMANDS"
+    $SSH_CMD "$SERVER_USER@$SERVER_HOST" "$REMOTE_DEPLOY_COMMANDS"
+    echo -e "${GREEN}✅ 代码已同步到服务器${NC}"
 
-echo -e "${GREEN}✅ 代码已同步到服务器${NC}"
-
-# 5. 在服务器上构建和部署
-echo -e "${YELLOW}[4/6] 在服务器上构建和部署...${NC}"
-
-REMOTE_BUILD_COMMANDS="
+    # 5. 在服务器上构建和部署
+    echo -e "${YELLOW}[4/6] 在服务器上构建和部署...${NC}"
+    REMOTE_BUILD_COMMANDS="
 set -e
 cd $DEPLOY_PATH
 
@@ -170,11 +226,17 @@ $RESTART_COMMAND
 echo '✅ 部署完成！'
 "
 
-$SSH_CMD "$SERVER_USER@$SERVER_HOST" "$REMOTE_BUILD_COMMANDS"
+if [ "$IS_ON_SERVER" = false ]; then
+    $SSH_CMD "$SERVER_USER@$SERVER_HOST" "$REMOTE_BUILD_COMMANDS"
+    echo -e "${GREEN}✅ 服务器部署完成${NC}"
+fi
 
-echo -e "${GREEN}✅ 服务器部署完成${NC}"
-
-# 6. 健康检查
+# 健康检查
+if [ "$IS_ON_SERVER" = false ]; then
+    echo -e "${YELLOW}[6/6]${NC}"
+else
+    echo -e "${YELLOW}[3/4]${NC}"
+fi
 echo ""
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}🏥 执行健康检查...${NC}"
@@ -204,16 +266,21 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}🎉 部署完成！${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo "🌐 访问地址:"
-echo "   前端: http://$SERVER_HOST:$SERVER_PORT"
-echo "   后端: http://$SERVER_HOST:$SERVER_PORT/api"
-echo "   健康检查: http://$SERVER_HOST:$SERVER_PORT/health"
-echo ""
-echo "📝 查看日志:"
-if [ -n "$SSH_KEY" ]; then
-    SSH_KEY_EXPANDED="${SSH_KEY/#\~/$HOME}"
-    echo "   ssh -i $SSH_KEY_EXPANDED $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+if [ "$IS_ON_SERVER" = false ]; then
+    echo "🌐 访问地址:"
+    echo "   前端: http://$SERVER_HOST:$SERVER_PORT"
+    echo "   后端: http://$SERVER_HOST:$SERVER_PORT/api"
+    echo "   健康检查: http://$SERVER_HOST:$SERVER_PORT/health"
+    echo ""
+    echo "📝 查看日志:"
+    if [ -n "$SSH_KEY" ]; then
+        SSH_KEY_EXPANDED="${SSH_KEY/#\~/$HOME}"
+        echo "   ssh -i $SSH_KEY_EXPANDED $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+    else
+        echo "   ssh $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+    fi
 else
-    echo "   ssh $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+    echo "📝 查看日志:"
+    echo "   cd $DEPLOY_PATH/backend && tail -f server.log"
 fi
 echo ""
