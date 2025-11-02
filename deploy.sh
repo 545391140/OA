@@ -33,6 +33,20 @@ if [ -z "$SERVER_HOST" ] || [ -z "$SERVER_USER" ] || [ -z "$DEPLOY_PATH" ] || [ 
     exit 1
 fi
 
+# 构建 SSH 命令前缀（如果配置了密钥文件）
+SSH_CMD="ssh"
+if [ -n "$SSH_KEY" ]; then
+    # 展开 ~ 路径
+    SSH_KEY_EXPANDED="${SSH_KEY/#\~/$HOME}"
+    if [ -f "$SSH_KEY_EXPANDED" ]; then
+        SSH_CMD="ssh -i $SSH_KEY_EXPANDED"
+        echo -e "${BLUE}使用 SSH 密钥: $SSH_KEY_EXPANDED${NC}"
+    else
+        echo -e "${YELLOW}⚠️  警告: SSH 密钥文件不存在: $SSH_KEY_EXPANDED${NC}"
+        echo "   将使用默认 SSH 配置"
+    fi
+fi
+
 # 获取当前分支
 CURRENT_BRANCH=$(git branch --show-current)
 
@@ -103,7 +117,7 @@ fi
 echo '✅ 代码更新完成'
 "
 
-ssh "$SERVER_USER@$SERVER_HOST" "$REMOTE_DEPLOY_COMMANDS"
+$SSH_CMD "$SERVER_USER@$SERVER_HOST" "$REMOTE_DEPLOY_COMMANDS"
 
 echo -e "${GREEN}✅ 代码已同步到服务器${NC}"
 
@@ -132,7 +146,7 @@ $RESTART_COMMAND
 echo '✅ 部署完成！'
 "
 
-ssh "$SERVER_USER@$SERVER_HOST" "$REMOTE_BUILD_COMMANDS"
+$SSH_CMD "$SERVER_USER@$SERVER_HOST" "$REMOTE_BUILD_COMMANDS"
 
 echo -e "${GREEN}✅ 服务器部署完成${NC}"
 
@@ -153,7 +167,12 @@ if curl -f -s --max-time 10 "$HEALTH_URL" > /dev/null 2>&1; then
 else
     echo -e "${YELLOW}⚠️  健康检查失败，请检查服务器日志${NC}"
     echo "   可以通过以下命令查看日志："
-    echo "   ssh $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+    if [ -n "$SSH_KEY" ]; then
+        SSH_KEY_EXPANDED="${SSH_KEY/#\~/$HOME}"
+        echo "   ssh -i $SSH_KEY_EXPANDED $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+    else
+        echo "   ssh $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+    fi
 fi
 
 echo ""
@@ -167,5 +186,10 @@ echo "   后端: http://$SERVER_HOST:$SERVER_PORT/api"
 echo "   健康检查: http://$SERVER_HOST:$SERVER_PORT/health"
 echo ""
 echo "📝 查看日志:"
-echo "   ssh $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+if [ -n "$SSH_KEY" ]; then
+    SSH_KEY_EXPANDED="${SSH_KEY/#\~/$HOME}"
+    echo "   ssh -i $SSH_KEY_EXPANDED $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+else
+    echo "   ssh $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+fi
 echo ""
