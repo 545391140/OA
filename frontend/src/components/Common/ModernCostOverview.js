@@ -21,50 +21,110 @@ import {
 
 const ModernCostOverview = ({
   formData,
+  matchedExpenseItems = null,
   currency = 'USD',
   sx = {},
 }) => {
   const theme = useTheme();
+
+  // 根据费用项信息将其分类到对应的费用类别
+  const categorizeExpense = (expense) => {
+    if (!expense) return 'other';
+    
+    const category = expense.category?.toLowerCase() || '';
+    const itemName = (expense.itemName || '').toLowerCase();
+    
+    // 根据category分类
+    if (category === 'transport' || itemName.includes('机票') || itemName.includes('航班') || itemName.includes('flight') || itemName.includes('飞机')) {
+      return 'flight';
+    }
+    if (category === 'accommodation' || itemName.includes('住宿') || itemName.includes('酒店') || itemName.includes('hotel')) {
+      return 'accommodation';
+    }
+    if (category === 'meal' || itemName.includes('餐饮') || itemName.includes('餐费') || itemName.includes('meal')) {
+      return 'meal';
+    }
+    if (category === 'allowance' || itemName.includes('补助') || itemName.includes('津贴') || itemName.includes('allowance')) {
+      return 'allowance';
+    }
+    if (itemName.includes('交通') || itemName.includes('transport') || itemName.includes('市内') || itemName.includes('local')) {
+      return 'localTransport';
+    }
+    if (itemName.includes('接送') || itemName.includes('transfer') || itemName.includes('机场')) {
+      return 'airportTransfer';
+    }
+    
+    return 'other';
+  };
 
   // 计算各项费用
   const calculateCosts = () => {
     const costs = {
       flight: 0,
       accommodation: 0,
+      meal: 0,
       localTransport: 0,
       airportTransfer: 0,
       allowance: 0,
+      other: 0,
       outboundTotal: 0,
       inboundTotal: 0,
       grandTotal: 0,
     };
 
-    // 计算去程费用
-    if (formData.outboundBudget) {
-      costs.flight += parseFloat(formData.outboundBudget.flight?.subtotal || 0);
-      costs.accommodation += parseFloat(formData.outboundBudget.accommodation?.subtotal || 0);
-      costs.localTransport += parseFloat(formData.outboundBudget.localTransport?.subtotal || 0);
-      costs.airportTransfer += parseFloat(formData.outboundBudget.airportTransfer?.subtotal || 0);
-      costs.allowance += parseFloat(formData.outboundBudget.allowance?.subtotal || 0);
-      costs.outboundTotal = costs.flight + costs.accommodation + costs.localTransport + costs.airportTransfer + costs.allowance;
-    }
+    // 如果没有matchedExpenseItems，尝试旧的固定字段方式（向后兼容）
+    if (!matchedExpenseItems || Object.keys(matchedExpenseItems).length === 0) {
+      // 计算去程费用（旧方式，向后兼容）
+      if (formData.outboundBudget) {
+        costs.flight += parseFloat(formData.outboundBudget.flight?.subtotal || 0);
+        costs.accommodation += parseFloat(formData.outboundBudget.accommodation?.subtotal || 0);
+        costs.localTransport += parseFloat(formData.outboundBudget.localTransport?.subtotal || 0);
+        costs.airportTransfer += parseFloat(formData.outboundBudget.airportTransfer?.subtotal || 0);
+        costs.allowance += parseFloat(formData.outboundBudget.allowance?.subtotal || 0);
+        costs.outboundTotal = costs.flight + costs.accommodation + costs.localTransport + costs.airportTransfer + costs.allowance;
+      }
 
-    // 计算返程费用（如果是往返行程）
-    if (formData.tripType === 'roundTrip' && formData.inboundBudget) {
-      const inboundFlight = parseFloat(formData.inboundBudget.flight?.subtotal || 0);
-      const inboundAccommodation = parseFloat(formData.inboundBudget.accommodation?.subtotal || 0);
-      const inboundLocalTransport = parseFloat(formData.inboundBudget.localTransport?.subtotal || 0);
-      const inboundAirportTransfer = parseFloat(formData.inboundBudget.airportTransfer?.subtotal || 0);
-      const inboundAllowance = parseFloat(formData.inboundBudget.allowance?.subtotal || 0);
-      
-      costs.inboundTotal = inboundFlight + inboundAccommodation + inboundLocalTransport + inboundAirportTransfer + inboundAllowance;
-      
-      // 累加到总费用中
-      costs.flight += inboundFlight;
-      costs.accommodation += inboundAccommodation;
-      costs.localTransport += inboundLocalTransport;
-      costs.airportTransfer += inboundAirportTransfer;
-      costs.allowance += inboundAllowance;
+      // 计算返程费用（旧方式，向后兼容）
+      const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
+      if (isRoundTrip && formData.inboundBudget) {
+        const inboundFlight = parseFloat(formData.inboundBudget.flight?.subtotal || 0);
+        const inboundAccommodation = parseFloat(formData.inboundBudget.accommodation?.subtotal || 0);
+        const inboundLocalTransport = parseFloat(formData.inboundBudget.localTransport?.subtotal || 0);
+        const inboundAirportTransfer = parseFloat(formData.inboundBudget.airportTransfer?.subtotal || 0);
+        const inboundAllowance = parseFloat(formData.inboundBudget.allowance?.subtotal || 0);
+        
+        costs.inboundTotal = inboundFlight + inboundAccommodation + inboundLocalTransport + inboundAirportTransfer + inboundAllowance;
+        
+        costs.flight += inboundFlight;
+        costs.accommodation += inboundAccommodation;
+        costs.localTransport += inboundLocalTransport;
+        costs.airportTransfer += inboundAirportTransfer;
+        costs.allowance += inboundAllowance;
+      }
+    } else {
+      // 新方式：根据matchedExpenseItems动态计算
+      // 计算去程费用
+      if (formData.outboundBudget) {
+        Object.entries(formData.outboundBudget).forEach(([itemId, budgetItem]) => {
+          const expense = matchedExpenseItems[itemId];
+          const subtotal = parseFloat(budgetItem.subtotal || 0);
+          const category = categorizeExpense(expense);
+          costs[category] += subtotal;
+          costs.outboundTotal += subtotal;
+        });
+      }
+
+      // 计算返程费用（如果是往返行程）
+      const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
+      if (isRoundTrip && formData.inboundBudget) {
+        Object.entries(formData.inboundBudget).forEach(([itemId, budgetItem]) => {
+          const expense = matchedExpenseItems[itemId];
+          const subtotal = parseFloat(budgetItem.subtotal || 0);
+          const category = categorizeExpense(expense);
+          costs[category] += subtotal;
+          costs.inboundTotal += subtotal;
+        });
+      }
     }
 
     costs.grandTotal = costs.outboundTotal + costs.inboundTotal;
@@ -74,43 +134,69 @@ const ModernCostOverview = ({
   const costs = calculateCosts();
 
   // 费用项目配置
-  const costItems = [
+  const costItemsConfig = [
     {
       key: 'flight',
-      label: 'Flight',
+      label: '机票',
+      enLabel: 'Flight',
       amount: costs.flight,
       color: theme.palette.primary.main,
       icon: '✈️',
     },
     {
       key: 'accommodation',
-      label: 'Accommodations',
+      label: '住宿',
+      enLabel: 'Accommodations',
       amount: costs.accommodation,
       color: theme.palette.secondary.main,
       icon: '🏨',
     },
     {
+      key: 'meal',
+      label: '餐饮',
+      enLabel: 'Meals',
+      amount: costs.meal,
+      color: theme.palette.info.main,
+      icon: '🍽️',
+    },
+    {
       key: 'localTransport',
-      label: 'Intra-city Transportation',
+      label: '市内交通',
+      enLabel: 'Intra-city Transportation',
       amount: costs.localTransport,
       color: theme.palette.info.main,
       icon: '🚗',
     },
     {
       key: 'airportTransfer',
-      label: 'After Hours Airport Transfer',
+      label: '机场接送',
+      enLabel: 'Airport Transfer',
       amount: costs.airportTransfer,
       color: theme.palette.warning.main,
       icon: '🚌',
     },
     {
       key: 'allowance',
-      label: 'Travel Allowances',
+      label: '津贴补助',
+      enLabel: 'Travel Allowances',
       amount: costs.allowance,
       color: theme.palette.success.main,
       icon: '💰',
     },
+    {
+      key: 'other',
+      label: '其他费用',
+      enLabel: 'Other Expenses',
+      amount: costs.other,
+      color: theme.palette.grey[600],
+      icon: '💵',
+    },
   ];
+
+  // 只显示有金额或所有预算项的类别（如果matchedExpenseItems存在则显示所有匹配的类别）
+  const costItems = matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0
+    ? costItemsConfig.filter(item => item.amount > 0)
+    : costItemsConfig.filter(item => item.key !== 'other' || item.amount > 0);
 
   // 格式化金额
   const formatAmount = (amount) => {
@@ -120,16 +206,39 @@ const ModernCostOverview = ({
 
   // 计算完成度
   const getCompletionStatus = () => {
-    const totalItems = costItems.length;
-    const completedItems = costItems.filter(item => item.amount > 0).length;
-    const completionPercentage = (completedItems / totalItems) * 100;
-    
-    if (completionPercentage === 100) {
-      return { status: 'completed', color: theme.palette.success.main, text: '预算完整' };
-    } else if (completionPercentage >= 50) {
-      return { status: 'partial', color: theme.palette.warning.main, text: '预算进行中' };
+    // 如果有matchedExpenseItems，基于实际费用项数量计算
+    if (matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0) {
+      const totalExpenseItems = Object.keys(matchedExpenseItems).length;
+      const completedItems = Object.entries(matchedExpenseItems).filter(([itemId, expense]) => {
+        const outboundAmount = parseFloat(formData.outboundBudget?.[itemId]?.subtotal || 0);
+        const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
+        const inboundAmount = isRoundTrip 
+          ? parseFloat(formData.inboundBudget?.[itemId]?.subtotal || 0) 
+          : 0;
+        return outboundAmount > 0 || inboundAmount > 0;
+      }).length;
+      const completionPercentage = totalExpenseItems > 0 ? (completedItems / totalExpenseItems) * 100 : 0;
+      
+      if (completionPercentage === 100) {
+        return { status: 'completed', color: theme.palette.success.main, text: '预算完整' };
+      } else if (completionPercentage >= 50) {
+        return { status: 'partial', color: theme.palette.warning.main, text: '预算进行中' };
+      } else {
+        return { status: 'pending', color: theme.palette.grey[500], text: '预算待完善' };
+      }
     } else {
-      return { status: 'pending', color: theme.palette.grey[500], text: '预算待完善' };
+      // 基于固定类别计算
+      const totalItems = costItemsConfig.length;
+      const completedItems = costItemsConfig.filter(item => item.amount > 0).length;
+      const completionPercentage = (completedItems / totalItems) * 100;
+      
+      if (completionPercentage === 100) {
+        return { status: 'completed', color: theme.palette.success.main, text: '预算完整' };
+      } else if (completionPercentage >= 50) {
+        return { status: 'partial', color: theme.palette.warning.main, text: '预算进行中' };
+      } else {
+        return { status: 'pending', color: theme.palette.grey[500], text: '预算待完善' };
+      }
     }
   };
 
@@ -191,12 +300,35 @@ const ModernCostOverview = ({
               预算完成度
             </Typography>
             <Typography variant="body2" fontWeight={500}>
-              {costItems.filter(item => item.amount > 0).length} / {costItems.length}
+              {matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0
+                ? `${Object.entries(matchedExpenseItems).filter(([itemId, expense]) => {
+                    const outboundAmount = parseFloat(formData.outboundBudget?.[itemId]?.subtotal || 0);
+                    const inboundAmount = formData.tripType === 'roundTrip' 
+                      ? parseFloat(formData.inboundBudget?.[itemId]?.subtotal || 0) 
+                      : 0;
+                    return outboundAmount > 0 || inboundAmount > 0;
+                  }).length} / ${Object.keys(matchedExpenseItems).length}`
+                : `${costItems.filter(item => item.amount > 0).length} / ${costItems.length}`
+              }
             </Typography>
           </Box>
           <LinearProgress
             variant="determinate"
-            value={(costItems.filter(item => item.amount > 0).length / costItems.length) * 100}
+            value={(() => {
+              if (matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0) {
+                const totalExpenseItems = Object.keys(matchedExpenseItems).length;
+                const completedItems = Object.entries(matchedExpenseItems).filter(([itemId, expense]) => {
+                  const outboundAmount = parseFloat(formData.outboundBudget?.[itemId]?.subtotal || 0);
+                  const inboundAmount = formData.tripType === 'roundTrip' 
+                    ? parseFloat(formData.inboundBudget?.[itemId]?.subtotal || 0) 
+                    : 0;
+                  return outboundAmount > 0 || inboundAmount > 0;
+                }).length;
+                return totalExpenseItems > 0 ? (completedItems / totalExpenseItems) * 100 : 0;
+              } else {
+                return costItems.length > 0 ? (costItems.filter(item => item.amount > 0).length / costItems.length) * 100 : 0;
+              }
+            })()}
             sx={{
               height: 8,
               borderRadius: 4,
@@ -234,7 +366,10 @@ const ModernCostOverview = ({
               </Box>
             </Grid>
             
-            {formData.tripType === 'roundTrip' && (
+            {(() => {
+              const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
+              return isRoundTrip;
+            })() && (
               <Grid item xs={6}>
                 <Box
                   sx={{
