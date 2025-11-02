@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# AWS 服务器一键部署脚本
+# AWS 服务器一键部署脚本 (GitHub 方式)
 # ==========================================
 
 set -e  # 遇到错误立即退出
@@ -23,118 +23,120 @@ else
 fi
 
 # 配置验证
-if [ -z "$SERVER_HOST" ] || [ -z "$SERVER_USER" ] || [ -z "$DEPLOY_PATH" ]; then
+if [ -z "$SERVER_HOST" ] || [ -z "$SERVER_USER" ] || [ -z "$DEPLOY_PATH" ] || [ -z "$GITHUB_REPO" ]; then
     echo -e "${RED}❌ 错误: deploy.config 配置不完整${NC}"
+    echo "请检查以下配置："
+    echo "  - SERVER_HOST"
+    echo "  - SERVER_USER"
+    echo "  - DEPLOY_PATH"
+    echo "  - GITHUB_REPO"
     exit 1
 fi
+
+# 获取当前分支
+CURRENT_BRANCH=$(git branch --show-current)
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}🚀 开始部署到 AWS 服务器${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
+echo "📦 仓库: $GITHUB_REPO"
+echo "🌿 分支: $CURRENT_BRANCH"
+echo "🌐 服务器: $SERVER_USER@$SERVER_HOST:$DEPLOY_PATH"
+echo ""
 
 # 1. 检查 Git 状态
-echo -e "${YELLOW}[1/7] 检查 Git 状态...${NC}"
+echo -e "${YELLOW}[1/6] 检查 Git 状态...${NC}"
 if ! git diff-index --quiet HEAD --; then
     echo -e "${YELLOW}⚠️  检测到未提交的更改${NC}"
-    read -p "是否继续部署? (y/n): " -n 1 -r
+    git status --short
+    read -p "是否提交并推送这些更改? (y/n): " -n 1 -r
     echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        read -p "请输入提交信息: " COMMIT_MSG
+        if [ -z "$COMMIT_MSG" ]; then
+            COMMIT_MSG="部署更新: $(date '+%Y-%m-%d %H:%M:%S')"
+        fi
+        git add .
+        git commit -m "$COMMIT_MSG"
+    else
+        echo -e "${RED}❌ 部署已取消${NC}"
         exit 1
     fi
 fi
 
-# 2. 安装依赖
-echo -e "${YELLOW}[2/7] 安装依赖...${NC}"
-echo "安装后端依赖..."
+# 2. 推送到 GitHub
+echo -e "${YELLOW}[2/6] 推送到 GitHub...${NC}"
+echo "推送分支: $CURRENT_BRANCH -> origin/$CURRENT_BRANCH"
+
+if git push origin "$CURRENT_BRANCH"; then
+    echo -e "${GREEN}✅ 代码已推送到 GitHub${NC}"
+else
+    echo -e "${RED}❌ 推送到 GitHub 失败${NC}"
+    exit 1
+fi
+
+# 3. 等待 GitHub 同步（可选，根据网络情况）
+echo ""
+echo -e "${YELLOW}等待 3 秒以确保 GitHub 同步...${NC}"
+sleep 3
+
+# 4. 在服务器上拉取最新代码
+echo -e "${YELLOW}[3/6] 在服务器上拉取最新代码...${NC}"
+
+REMOTE_DEPLOY_COMMANDS="
+set -e
+echo '📥 拉取最新代码...'
+cd $DEPLOY_PATH
+
+# 如果目录不存在，克隆仓库
+if [ ! -d '.git' ]; then
+    echo '📦 首次部署: 克隆仓库...'
+    git clone $GITHUB_REPO .
+else
+    echo '🔄 更新代码...'
+    git fetch origin
+    git reset --hard origin/$CURRENT_BRANCH
+    git clean -fd
+fi
+
+echo '✅ 代码更新完成'
+"
+
+ssh "$SERVER_USER@$SERVER_HOST" "$REMOTE_DEPLOY_COMMANDS"
+
+echo -e "${GREEN}✅ 代码已同步到服务器${NC}"
+
+# 5. 在服务器上构建和部署
+echo -e "${YELLOW}[4/6] 在服务器上构建和部署...${NC}"
+
+REMOTE_BUILD_COMMANDS="
+set -e
+cd $DEPLOY_PATH
+
+echo '📦 安装后端依赖...'
 cd backend
-if [ ! -d "node_modules" ]; then
-    npm install --production
-else
-    npm install --production --silent
-fi
-cd ..
+npm install --production --silent
 
-echo "安装前端依赖..."
-cd frontend
-if [ ! -d "node_modules" ]; then
-    npm install
-else
-    npm install --silent
-fi
-cd ..
+echo '📦 安装前端依赖...'
+cd ../frontend
+npm install --silent
 
-# 3. 构建前端
-echo -e "${YELLOW}[3/7] 构建前端...${NC}"
-cd frontend
+echo '🏗️  构建前端...'
 npm run build
+
+echo '🔄 重启服务...'
 cd ..
-echo -e "${GREEN}✅ 前端构建完成${NC}"
+$RESTART_COMMAND
 
-# 4. 创建部署包
-echo -e "${YELLOW}[4/7] 创建部署包...${NC}"
-DEPLOY_DIR="deploy_temp_$(date +%s)"
-mkdir -p "$DEPLOY_DIR"
-
-# 复制后端文件
-echo "复制后端文件..."
-mkdir -p "$DEPLOY_DIR/backend"
-rsync -av --exclude='node_modules' \
-          --exclude='*.log' \
-          --exclude='.env*' \
-          --exclude='uploads/*' \
-          backend/ "$DEPLOY_DIR/backend/"
-
-# 复制前端构建文件
-echo "复制前端构建文件..."
-mkdir -p "$DEPLOY_DIR/frontend"
-cp -r frontend/build/* "$DEPLOY_DIR/frontend/"
-
-# 复制必要的配置文件
-if [ -f "package.json" ]; then
-    cp package.json "$DEPLOY_DIR/"
-fi
-
-echo -e "${GREEN}✅ 部署包创建完成${NC}"
-
-# 5. 上传到服务器
-echo -e "${YELLOW}[5/7] 上传文件到服务器...${NC}"
-echo "服务器: $SERVER_USER@$SERVER_HOST:$DEPLOY_PATH"
-
-# 使用 rsync 上传（更快且支持断点续传）
-rsync -avz --progress \
-    --exclude='.git' \
-    --exclude='node_modules' \
-    --exclude='*.log' \
-    "$DEPLOY_DIR/" "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
-
-echo -e "${GREEN}✅ 文件上传完成${NC}"
-
-# 6. 在服务器上执行部署
-echo -e "${YELLOW}[6/7] 在服务器上执行部署...${NC}"
-
-# 构建远程命令
-REMOTE_COMMANDS="
-cd $DEPLOY_PATH && \
-echo '📦 安装后端依赖...' && \
-cd backend && \
-npm install --production && \
-echo '🔄 重启服务...' && \
-$RESTART_COMMAND && \
 echo '✅ 部署完成！'
 "
 
-# 执行远程命令
-ssh "$SERVER_USER@$SERVER_HOST" "$REMOTE_COMMANDS"
+ssh "$SERVER_USER@$SERVER_HOST" "$REMOTE_BUILD_COMMANDS"
 
 echo -e "${GREEN}✅ 服务器部署完成${NC}"
 
-# 7. 清理临时文件
-echo -e "${YELLOW}[7/7] 清理临时文件...${NC}"
-rm -rf "$DEPLOY_DIR"
-echo -e "${GREEN}✅ 清理完成${NC}"
-
-# 8. 健康检查
+# 6. 健康检查
 echo ""
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}🏥 执行健康检查...${NC}"
@@ -143,10 +145,15 @@ echo -e "${BLUE}========================================${NC}"
 HEALTH_URL="http://$SERVER_HOST:$SERVER_PORT/health"
 echo "检查: $HEALTH_URL"
 
-if curl -f -s "$HEALTH_URL" > /dev/null; then
+# 等待几秒让服务启动
+sleep 3
+
+if curl -f -s --max-time 10 "$HEALTH_URL" > /dev/null 2>&1; then
     echo -e "${GREEN}✅ 健康检查通过！服务运行正常${NC}"
 else
     echo -e "${YELLOW}⚠️  健康检查失败，请检查服务器日志${NC}"
+    echo "   可以通过以下命令查看日志："
+    echo "   ssh $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
 fi
 
 echo ""
@@ -159,4 +166,6 @@ echo "   前端: http://$SERVER_HOST:$SERVER_PORT"
 echo "   后端: http://$SERVER_HOST:$SERVER_PORT/api"
 echo "   健康检查: http://$SERVER_HOST:$SERVER_PORT/health"
 echo ""
-
+echo "📝 查看日志:"
+echo "   ssh $SERVER_USER@$SERVER_HOST 'cd $DEPLOY_PATH/backend && tail -f server.log'"
+echo ""

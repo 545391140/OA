@@ -1,4 +1,4 @@
-# AWS 服务器一键部署指南
+# AWS 服务器一键部署指南 (GitHub 方式)
 
 ## 📋 快速开始
 
@@ -13,10 +13,15 @@ cp deploy.config.example deploy.config
 编辑 `deploy.config` 文件，填入你的服务器信息：
 
 ```bash
+# GitHub 仓库信息
+GITHUB_REPO="https://github.com/545391140/OA.git"  # GitHub 仓库地址
+GITHUB_BRANCH="main"                                # 部署分支
+
+# 服务器信息
 SERVER_HOST="your-server-ip-or-domain"  # 你的服务器地址
 SERVER_USER="ubuntu"                     # SSH 用户名
-SERVER_PORT="3000"                        # 服务端口
-DEPLOY_PATH="/var/www/oa"                 # 部署路径
+SERVER_PORT="3000"                       # 服务端口
+DEPLOY_PATH="/var/www/oa"                # 部署路径
 
 # 根据你的服务管理方式选择重启命令
 RESTART_COMMAND="pm2 restart oa-backend"
@@ -114,17 +119,58 @@ RESTART_COMMAND="cd /var/www/oa && docker-compose restart backend"
 
 部署脚本会执行以下步骤：
 
-1. ✅ **检查 Git 状态** - 确保代码已提交
-2. ✅ **安装依赖** - 安装前端和后端依赖
-3. ✅ **构建前端** - 执行 `npm run build`
-4. ✅ **创建部署包** - 打包需要部署的文件
-5. ✅ **上传到服务器** - 使用 rsync 同步文件
-6. ✅ **执行部署** - 在服务器上安装依赖并重启服务
-7. ✅ **健康检查** - 验证服务是否正常运行
+1. ✅ **检查 Git 状态** - 检查是否有未提交的更改
+2. ✅ **推送到 GitHub** - 将代码推送到 GitHub 仓库
+3. ✅ **在服务器上拉取代码** - 通过 SSH 连接到服务器，从 GitHub 拉取最新代码
+4. ✅ **构建和部署** - 在服务器上安装依赖、构建前端并重启服务
+5. ✅ **健康检查** - 验证服务是否正常运行
+
+**工作流程：**
+```
+本地代码 → GitHub → AWS 服务器
+```
+
+**优势：**
+- ✅ 代码版本可控（通过 Git 管理）
+- ✅ 无需直接上传大文件
+- ✅ 支持回滚到任意版本
+- ✅ 部署过程更透明
 
 ## 🔧 服务器环境准备
 
-### 1. 安装 Node.js
+### 1. 配置 Git（重要）
+
+服务器需要能够访问 GitHub 仓库。有两种方式：
+
+**方式 A：使用 HTTPS（推荐，简单）**
+```bash
+# 在服务器上
+cd /var/www/oa
+git config --global credential.helper store
+
+# 首次拉取时会要求输入 GitHub 用户名和密码
+# 或者使用 Personal Access Token（更安全）
+```
+
+**方式 B：使用 SSH 密钥（更安全）**
+```bash
+# 在服务器上生成 SSH 密钥
+ssh-keygen -t ed25519 -C "server@your-domain"
+
+# 查看公钥
+cat ~/.ssh/id_ed25519.pub
+
+# 将公钥添加到 GitHub: Settings > SSH and GPG keys > New SSH key
+```
+
+**首次部署时，服务器会自动克隆仓库：**
+```bash
+# 脚本会自动执行（如果目录不存在）
+cd /var/www/oa
+git clone https://github.com/545391140/OA.git .
+```
+
+### 2. 安装 Node.js
 
 ```bash
 # 使用 nvm 安装（推荐）
