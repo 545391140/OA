@@ -197,7 +197,40 @@ else
     npm install --silent
     
     echo '🏗️  构建前端...'
-    npm run build
+    echo '   (这可能需要几分钟，请耐心等待...)'
+    
+    # 检查可用内存
+    AVAILABLE_MEM=$(free -m | awk 'NR==2{printf "%.0f", $7}')
+    echo "   可用内存: ${AVAILABLE_MEM}MB"
+    
+    # 设置 Node.js 内存限制（根据可用内存调整）
+    if [ "$AVAILABLE_MEM" -lt 2048 ]; then
+        echo -e "${YELLOW}⚠️  警告: 可用内存较低，设置较小的内存限制${NC}"
+        export NODE_OPTIONS="--max-old-space-size=1536"
+    else
+        export NODE_OPTIONS="--max-old-space-size=2048"
+    fi
+    
+    # 使用 timeout 防止无限卡住（设置 15 分钟超时）
+    # 移除 --silent 以查看构建进度
+    timeout 900 npm run build 2>&1 | tee /tmp/build.log || {
+        echo -e "${RED}❌ 构建超时或失败${NC}"
+        echo ""
+        echo "构建日志（最后 20 行）:"
+        tail -20 /tmp/build.log 2>/dev/null || echo "  无日志文件"
+        echo ""
+        echo "可能的原因："
+        echo "  1. 服务器内存不足（React 构建需要至少 2GB 内存）"
+        echo "  2. 磁盘空间不足"
+        echo "  3. 网络问题"
+        echo ""
+        echo "建议："
+        echo "  1. 检查内存: free -h"
+        echo "  2. 检查磁盘: df -h"
+        echo "  3. 尝试增加交换空间: sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile"
+        echo "  4. 或者在本地构建后上传（推荐）"
+        exit 1
+    }
     
     echo '🔄 重启服务...'
     cd ..
