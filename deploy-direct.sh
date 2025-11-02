@@ -27,8 +27,8 @@ SSH_CMD="ssh"
 if [ -n "$SSH_KEY" ]; then
     SSH_KEY_EXPANDED="${SSH_KEY/#\~/$HOME}"
     if [ -f "$SSH_KEY_EXPANDED" ]; then
-        SSH_CMD="ssh -i $SSH_KEY_EXPANDED"
-        RSYNC_SSH="ssh -i $SSH_KEY_EXPANDED"
+        SSH_CMD="ssh -i $SSH_KEY_EXPANDED -o StrictHostKeyChecking=accept-new"
+        RSYNC_SSH="ssh -i $SSH_KEY_EXPANDED -o StrictHostKeyChecking=accept-new"
     else
         echo -e "${YELLOW}⚠️  警告: SSH 密钥文件不存在，使用默认 SSH 配置${NC}"
         RSYNC_SSH="ssh"
@@ -94,12 +94,15 @@ echo -e "${GREEN}✅ 部署文件准备完成${NC}"
 # 3. 上传到服务器
 echo -e "${YELLOW}[3/5] 上传文件到服务器...${NC}"
 
-# 使用 rsync 上传
+# 使用 rsync 上传到 AWS EC2
+# 注意：确保 AWS 安全组允许 SSH (端口 22) 访问
 rsync -avz --progress \
     -e "$RSYNC_SSH" \
     --exclude='.git' \
     --exclude='node_modules' \
     --exclude='*.log' \
+    --exclude='.DS_Store' \
+    --exclude='*.swp' \
     "$DEPLOY_DIR/" "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
 
 echo -e "${GREEN}✅ 文件上传完成${NC}"
@@ -111,13 +114,48 @@ REMOTE_DEPLOY="
 set -e
 cd $DEPLOY_PATH
 
+# 确保目录权限正确（AWS EC2 需要）
+chmod -R 755 backend frontend 2>/dev/null || true
+
 echo '📦 安装后端依赖...'
 cd backend
 npm install --production --silent
 
 echo '🔄 重启服务...'
 cd ..
-$RESTART_COMMAND
+
+# 检查 PM2 是否已安装
+if command -v pm2 &> /dev/null; then
+    echo '使用 PM2 重启服务...'
+    pm2 restart oa-backend || pm2 start backend/server.js --name oa-backend
+    pm2 save 2>/dev/null || true
+else
+    echo 'PM2 未安装，尝试安装 PM2...'
+    # 尝试使用 sudo 安装 PM2
+    if sudo npm install -g pm2 2>&1 | grep -q "pm2@"; then
+        echo 'PM2 安装成功，启动服务...'
+        pm2 start backend/server.js --name oa-backend || pm2 restart oa-backend
+        pm2 save 2>/dev/null || true
+        echo '✅ PM2 服务已启动'
+    else
+        echo '⚠️  PM2 安装失败，使用 npm start 启动服务...'
+        cd backend
+        # 停止旧进程
+        pkill -f 'node.*server.js' 2>/dev/null || true
+        sleep 1
+        # 启动新进程
+        nohup npm start > /tmp/oa-backend.log 2>&1 &
+        sleep 2
+        if pgrep -f 'node.*server.js' > /dev/null; then
+            echo '✅ 服务已在后台启动'
+            echo '   日志文件: /tmp/oa-backend.log'
+            echo '   查看日志: tail -f /tmp/oa-backend.log'
+        else
+            echo '❌ 服务启动失败，请检查日志: /tmp/oa-backend.log'
+        fi
+        echo '⚠️  建议稍后手动安装 PM2: sudo npm install -g pm2'
+    fi
+fi
 
 echo '✅ 部署完成！'
 "
@@ -142,10 +180,29 @@ echo "检查: $HEALTH_URL"
 
 sleep 3
 
-if curl -f -s --max-time 10 "$HEALTH_URL" > /dev/null 2>&1; then
+# 尝试健康检查
+HEALTH_RESPONSE=$(curl -f -s --max-time 10 "$HEALTH_URL" 2>&1)
+if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ 健康检查通过！服务运行正常${NC}"
+    echo "   响应: $HEALTH_RESPONSE"
 else
-    echo -e "${YELLOW}⚠️  健康检查失败，请检查服务器日志${NC}"
+    echo -e "${YELLOW}⚠️  健康检查失败${NC}"
+    echo "   可能原因："
+    echo "     1. AWS 安全组未开放端口 $SERVER_PORT"
+    echo "     2. 服务正在启动中（等待片刻后重试）"
+    echo "     3. 防火墙阻止访问"
+    echo ""
+    echo "   请在 AWS 控制台检查安全组设置："
+    echo "     - 入站规则应允许 TCP 端口 $SERVER_PORT"
+    echo "     - 来源可以是: 0.0.0.0/0（公开访问）或特定 IP"
+    echo ""
+    echo "   服务器端检查："
+    if [ -n "$SSH_KEY" ]; then
+        SSH_KEY_EXPANDED="${SSH_KEY/#\~/$HOME}"
+        echo "     ssh -i $SSH_KEY_EXPANDED $SERVER_USER@$SERVER_HOST 'netstat -tlnp | grep $SERVER_PORT'"
+    else
+        echo "     ssh $SERVER_USER@$SERVER_HOST 'netstat -tlnp | grep $SERVER_PORT'"
+    fi
 fi
 
 echo ""

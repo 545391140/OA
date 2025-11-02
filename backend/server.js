@@ -86,6 +86,12 @@ if (process.env.NODE_ENV === 'development') {
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Serve frontend static files (if deployed together)
+const frontendBuildPath = path.join(__dirname, '..', 'frontend');
+if (require('fs').existsSync(frontendBuildPath)) {
+  app.use(express.static(frontendBuildPath));
+}
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -116,6 +122,18 @@ app.use('*', (req, res) => {
     message: 'Route not found'
   });
 });
+
+// Serve frontend for all non-API routes (SPA fallback)
+const frontendBuildPath = path.join(__dirname, '..', 'frontend');
+if (require('fs').existsSync(frontendBuildPath)) {
+  app.get('*', (req, res) => {
+    // Don't serve frontend for API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use(errorHandler);
