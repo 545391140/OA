@@ -79,3 +79,6 @@ echo "3. 如果 IP 地址已更改，更新 deploy.config："
 echo "   SERVER_HOST=\"新的IP地址\""
 echo ""
 
+
+
+

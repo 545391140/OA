@@ -1,3 +1,4 @@
+
 /**
  * 地理位置服务 - 基于携程商旅API
  * 提供机场、火车站等地理位置信息的获取和缓存
@@ -69,6 +70,17 @@ const getTicket = async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), CTRIP_API_CONFIG.timeout);
     
+    // 注意：直接调用外部API会有CORS问题，应该通过后端代理
+    // 这里暂时禁用外部API调用，返回一个模拟的Ticket（用于开发测试）
+    console.warn('外部API调用已禁用，使用模拟Ticket');
+    
+    // 返回一个模拟的Ticket（仅用于开发测试）
+    const mockTicket = 'mock_ticket_' + Date.now();
+    setCachedData(CACHE_CONFIG.TICKET_KEY, mockTicket);
+    return mockTicket;
+    
+    /*
+    // 原始API调用代码（已禁用）
     const response = await fetch(`${CTRIP_API_CONFIG.baseURL}${CTRIP_API_CONFIG.endpoints.getTicket}`, {
       method: 'POST',
       headers: {
@@ -95,9 +107,13 @@ const getTicket = async () => {
     } else {
       throw new Error(`Ticket获取失败: ${result.Status?.Message || '未知错误'}`);
     }
+    */
   } catch (error) {
     console.error('获取Ticket失败:', error);
-    throw error;
+    // 如果出错，返回一个模拟Ticket（用于开发测试）
+    const mockTicket = 'mock_ticket_error_' + Date.now();
+    setCachedData(CACHE_CONFIG.TICKET_KEY, mockTicket);
+    return mockTicket;
   }
 };
 
@@ -189,6 +205,22 @@ export const getAllAirports = async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), CTRIP_API_CONFIG.timeout);
     
+    // 注意：直接调用外部API会有CORS问题，应该使用后端API
+    // 暂时禁用外部API调用，直接返回默认数据或缓存数据
+    console.warn('外部API调用已禁用，使用默认或缓存数据');
+    
+    // 尝试返回缓存数据（即使过期）
+    const fallbackData = getCachedData(CACHE_CONFIG.AIRPORTS_KEY);
+    if (fallbackData) {
+      console.log('使用缓存数据');
+      return fallbackData;
+    }
+    
+    // 返回默认数据
+    return getDefaultAirports();
+    
+    /*
+    // 原始API调用代码（已禁用）
     const response = await fetch(`${CTRIP_API_CONFIG.baseURL}/airport/list`, {
       method: 'GET',
       headers: getApiHeaders(),
@@ -226,6 +258,7 @@ export const getAllAirports = async () => {
     setCachedData(CACHE_CONFIG.AIRPORTS_KEY, standardizedAirports);
     
     return standardizedAirports;
+    */
   } catch (error) {
     console.error('获取机场数据失败:', error);
     
@@ -259,6 +292,22 @@ export const getAllStations = async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), CTRIP_API_CONFIG.timeout);
     
+    // 注意：直接调用外部API会有CORS问题，应该使用后端API
+    // 暂时禁用外部API调用，直接返回默认数据或缓存数据
+    console.warn('外部API调用已禁用，使用默认或缓存数据');
+    
+    // 尝试返回缓存数据（即使过期）
+    const fallbackData = getCachedData(CACHE_CONFIG.STATIONS_KEY);
+    if (fallbackData) {
+      console.log('使用缓存数据');
+      return fallbackData;
+    }
+    
+    // 返回默认数据
+    return getDefaultStations();
+    
+    /*
+    // 原始API调用代码（已禁用）
     const response = await fetch(`${CTRIP_API_CONFIG.baseURL}/station/list`, {
       method: 'GET',
       headers: getApiHeaders(),
@@ -296,6 +345,7 @@ export const getAllStations = async () => {
     setCachedData(CACHE_CONFIG.STATIONS_KEY, standardizedStations);
     
     return standardizedStations;
+    */
   } catch (error) {
     console.error('获取火车站数据失败:', error);
     
@@ -345,6 +395,22 @@ export const getAllCountries = async () => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), CTRIP_API_CONFIG.timeout);
     
+    // 注意：直接调用外部API会有CORS问题，应该使用后端API
+    // 暂时禁用外部API调用，直接返回默认数据或缓存数据
+    console.warn('外部API调用已禁用，使用默认或缓存数据');
+    
+    // 尝试返回缓存数据（即使过期）
+    const fallbackData = getCachedData(CACHE_CONFIG.COUNTRIES_KEY);
+    if (fallbackData) {
+      console.log('使用缓存数据');
+      return fallbackData;
+    }
+    
+    // 返回默认数据
+    return getDefaultCountries();
+    
+    /*
+    // 原始API调用代码（已禁用）
     const response = await fetch(`${CTRIP_API_CONFIG.baseURL}${CTRIP_API_CONFIG.endpoints.getCountries}`, {
       method: 'POST',
       headers: getApiHeaders(ticket),
@@ -384,6 +450,7 @@ export const getAllCountries = async () => {
     console.log(`国家数据获取成功: ${standardizedCountries.length}条`);
     
     return standardizedCountries;
+    */
   } catch (error) {
     console.error('获取国家数据失败:', error);
     
@@ -415,6 +482,22 @@ export const getAllPOIInfo = async (countryId = 1) => {
   try {
     console.log('从API获取POI数据...');
     
+    // 注意：直接调用外部API会有CORS问题，应该使用后端API
+    // 暂时禁用外部API调用，直接返回默认数据或缓存数据
+    console.warn('外部API调用已禁用，使用默认或缓存数据');
+    
+    // 尝试返回缓存数据（即使过期）
+    const fallbackData = getCachedData(cacheKey);
+    if (fallbackData) {
+      console.log('使用缓存数据');
+      return fallbackData;
+    }
+    
+    // 返回默认数据
+    return getDefaultCities();
+    
+    /*
+    // 原始API调用代码（已禁用）
     // 获取Ticket
     const ticket = await getTicket();
     
@@ -553,6 +636,7 @@ export const getAllPOIInfo = async (countryId = 1) => {
     console.log(`POI数据获取成功: ${allLocations.length}条`);
     
     return allLocations;
+    */
   } catch (error) {
     console.error('获取POI数据失败:', error);
     

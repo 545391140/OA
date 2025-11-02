@@ -18,6 +18,7 @@ const TravelStandard = require('../models/TravelStandard');
 // @access  Private
 exports.getExpenseItems = async (req, res) => {
   try {
+    console.log('Get expense items - Request params:', req.params);
     const query = {};
     
     // 如果提供了standardId参数，则过滤该标准的费用项
@@ -26,10 +27,76 @@ exports.getExpenseItems = async (req, res) => {
       query.standard = req.params.standardId;
     }
 
-    const items = await ExpenseItem.find(query)
-      .populate('standard', 'standardCode standardName')
-      .populate('parentItem', 'itemName')
+    console.log('Get expense items - Query:', JSON.stringify(query));
+
+    // 先查询数据，不使用populate，避免populate失败
+    let items = await ExpenseItem.find(query)
       .sort({ isSystemDefault: -1, status: 1, createdAt: -1 }); // 系统默认项优先，启用状态优先显示
+
+    console.log(`Get expense items - Found ${items.length} items`);
+
+    // 手动populate standard（如果存在）
+    if (items.length > 0) {
+      const standardIds = items
+        .map(item => item.standard)
+        .filter(id => id && mongoose.Types.ObjectId.isValid(id));
+      
+      if (standardIds.length > 0) {
+        try {
+          const standards = await TravelStandard.find({ _id: { $in: standardIds } })
+            .select('standardCode standardName');
+          const standardMap = new Map(standards.map(s => [s._id.toString(), s]));
+          
+          items = items.map(item => {
+            if (item.standard) {
+              const standardId = item.standard.toString();
+              const standard = standardMap.get(standardId);
+              if (standard) {
+                item.standard = {
+                  _id: standard._id,
+                  standardCode: standard.standardCode,
+                  standardName: standard.standardName
+                };
+              }
+            }
+            return item;
+          });
+        } catch (standardError) {
+          console.error('Error populating standards:', standardError.message);
+          // 继续执行，standard保持为ObjectId
+        }
+      }
+      
+      // 手动populate parentItem（如果存在）
+      const parentItemIds = items
+        .map(item => item.parentItem)
+        .filter(id => id && mongoose.Types.ObjectId.isValid(id));
+      
+      if (parentItemIds.length > 0) {
+        try {
+          const parentItems = await ExpenseItem.find({ _id: { $in: parentItemIds } })
+            .select('itemName');
+          const parentItemMap = new Map(parentItems.map(p => [p._id.toString(), p]));
+          
+          items = items.map(item => {
+            if (item.parentItem) {
+              const parentId = item.parentItem.toString();
+              const parent = parentItemMap.get(parentId);
+              if (parent) {
+                item.parentItem = {
+                  _id: parent._id,
+                  itemName: parent.itemName
+                };
+              }
+            }
+            return item;
+          });
+        } catch (parentError) {
+          console.error('Error populating parent items:', parentError.message);
+          // 继续执行，parentItem保持为ObjectId
+        }
+      }
+    }
 
     res.json({
       success: true,
@@ -38,9 +105,11 @@ exports.getExpenseItems = async (req, res) => {
     });
   } catch (error) {
     console.error('Get expense items error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || '获取费用项失败',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };

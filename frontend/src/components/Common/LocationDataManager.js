@@ -39,15 +39,11 @@ import {
   Error as ErrorIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
+import apiClient from '../../utils/axiosConfig';
 import {
-  getAllLocations,
-  getAllAirports,
-  getAllStations,
-  getAllCities,
   clearAllCache,
   getCacheStatus
 } from '../../services/locationService';
-import { testLocationService } from '../../utils/locationTest';
 
 const LocationDataManager = () => {
   const [loading, setLoading] = useState(false);
@@ -55,8 +51,6 @@ const LocationDataManager = () => {
   const [locations, setLocations] = useState([]);
   const [error, setError] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResults, setTestResults] = useState(null);
 
   // 获取缓存状态
   const fetchCacheStatus = () => {
@@ -70,12 +64,21 @@ const LocationDataManager = () => {
     setError(null);
     
     try {
-      const allLocations = await getAllLocations();
-      setLocations(allLocations);
-      fetchCacheStatus();
-      console.log('地理位置数据获取成功:', allLocations.length);
+      // 从地理位置管理API获取所有启用的地理位置数据
+      const response = await apiClient.get('/locations', {
+        params: { status: 'active' }
+      });
+      
+      if (response.data && response.data.success) {
+        const allLocations = response.data.data || [];
+        setLocations(allLocations);
+        fetchCacheStatus();
+        console.log('地理位置数据获取成功:', allLocations.length);
+      } else {
+        throw new Error(response.data?.message || '获取地理位置数据失败');
+      }
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message || '获取地理位置数据失败');
       console.error('获取地理位置数据失败:', err);
     } finally {
       setLoading(false);
@@ -87,23 +90,6 @@ const LocationDataManager = () => {
     clearAllCache();
     fetchCacheStatus();
     setLocations([]);
-  };
-
-  // 运行功能测试
-  const handleRunTest = async () => {
-    setTesting(true);
-    setTestResults(null);
-    
-    try {
-      const results = await testLocationService();
-      setTestResults(results);
-      console.log('测试完成:', results);
-    } catch (error) {
-      console.error('测试失败:', error);
-      setError('测试运行失败: ' + error.message);
-    } finally {
-      setTesting(false);
-    }
   };
 
   // 组件挂载时获取缓存状态
@@ -197,17 +183,6 @@ const LocationDataManager = () => {
           sx={{ minWidth: 120 }}
         >
           查看详情
-        </Button>
-        
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={testing ? <CircularProgress size={16} /> : <InfoIcon />}
-          onClick={handleRunTest}
-          disabled={testing}
-          sx={{ minWidth: 120 }}
-        >
-          {testing ? '测试中...' : '运行测试'}
         </Button>
       </Box>
 
@@ -331,51 +306,6 @@ const LocationDataManager = () => {
                 variant="outlined"
               />
             </Box>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 测试结果 */}
-      {testResults && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              🧪 功能测试结果
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-              <Chip
-                label={`总测试: ${testResults.total}`}
-                color="default"
-                variant="outlined"
-              />
-              <Chip
-                label={`通过: ${testResults.passed}`}
-                color="success"
-                variant="outlined"
-              />
-              <Chip
-                label={`失败: ${testResults.failed}`}
-                color={testResults.failed > 0 ? "error" : "default"}
-                variant="outlined"
-              />
-              <Chip
-                label={`成功率: ${((testResults.passed / testResults.total) * 100).toFixed(1)}%`}
-                color={testResults.failed === 0 ? "success" : "warning"}
-                variant="outlined"
-              />
-            </Box>
-            {testResults.errors.length > 0 && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  错误详情:
-                </Typography>
-                {testResults.errors.map((error, index) => (
-                  <Typography key={index} variant="body2">
-                    {index + 1}. {error}
-                  </Typography>
-                ))}
-              </Alert>
-            )}
           </CardContent>
         </Card>
       )}

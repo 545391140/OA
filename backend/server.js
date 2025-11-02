@@ -23,6 +23,7 @@ const cityLevelRoutes = require('./routes/cityLevels');
 const jobLevelRoutes = require('./routes/jobLevels');
 const standardMatchRoutes = require('./routes/standardMatch');
 const expenseItemRoutes = require('./routes/expenseItems');
+const locationRoutes = require('./routes/locations');
 
 // Connect to database
 connectDB();
@@ -30,7 +31,18 @@ connectDB();
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginOpenerPolicy: false, // 禁用 COOP 以支持 HTTP（生产环境建议使用 HTTPS）
+  crossOriginEmbedderPolicy: false, // 禁用 COEP 以支持 HTTP
+  contentSecurityPolicy: false, // 可根据需要启用
+}));
+
+// 移除可能引起警告的响应头（HTTP 环境下）
+app.use((req, res, next) => {
+  res.removeHeader('Cross-Origin-Opener-Policy');
+  res.removeHeader('Origin-Agent-Cluster');
+  next();
+});
 app.use(compression());
 
 // Rate limiting - 增加限制以支持开发环境
@@ -56,16 +68,24 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       'http://localhost:3000',
-      'https://localhost:3000'
+      'https://localhost:3000',
+      `http://localhost:${process.env.PORT || 3001}`,
+      // 生产环境可以通过 SERVER_HOST 环境变量配置
+      process.env.SERVER_HOST ? `http://${process.env.SERVER_HOST}:${process.env.PORT || 3001}` : null
     ].filter(Boolean); // 移除 undefined 值
     
-    // 开发环境允许所有源，生产环境检查白名单
+    // 开发环境允许所有源，生产环境也允许所有源（因为前后端在同一服务器）
+    // 如果前后端分离部署，可以通过环境变量 FRONTEND_URL 配置
     if (process.env.NODE_ENV === 'development' || !origin) {
       callback(null, true);
-    } else if (allowedOrigins.includes(origin)) {
+    } else if (allowedOrigins.includes(origin) || !origin) {
+      // 允许白名单中的源，或者没有origin（如移动应用）
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // 生产环境：前后端在同一服务器，允许所有请求
+      callback(null, true);
+      // 如果前后端分离，取消上面的注释，启用下面的检查：
+      // callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
@@ -86,13 +106,12 @@ if (process.env.NODE_ENV === 'development') {
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve frontend static files (if deployed together)
+// Frontend build path (defined once at top level)
+const fs = require('fs');
 const frontendBuildPath = path.join(__dirname, '..', 'frontend');
-if (require('fs').existsSync(frontendBuildPath)) {
-  app.use(express.static(frontendBuildPath));
-}
+const frontendExists = fs.existsSync(frontendBuildPath);
 
-// Health check endpoint
+// Health check endpoint (must be before static files)
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -100,6 +119,34 @@ app.get('/health', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// Serve frontend static files (if deployed together)
+if (frontendExists) {
+  // IMPORTANT: Handle root path FIRST, before express.static
+  // This ensures '/' always returns index.html for React Router
+  app.get('/', (req, res) => {
+    const indexPath = path.resolve(frontendBuildPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error(`❌ index.html not found at: ${indexPath}`);
+      res.status(404).json({ error: 'Frontend index.html not found' });
+    }
+  });
+  
+  // Serve static files from frontend build directory
+  // express.static will handle /static/* and other assets
+  app.use(express.static(path.resolve(frontendBuildPath), {
+    index: false,  // Don't auto-serve index.html for '/', we handle it above
+    fallthrough: true  // Continue to next middleware if file not found
+  }));
+  
+  console.log(`✅ 前端静态文件服务已启用: ${path.resolve(frontendBuildPath)}`);
+  console.log(`    index.html 路径: ${path.resolve(frontendBuildPath, 'index.html')}`);
+  console.log(`    index.html 存在: ${fs.existsSync(path.resolve(frontendBuildPath, 'index.html'))}`);
+} else {
+  console.log(`⚠️  前端目录不存在: ${path.resolve(frontendBuildPath)}`);
+}
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -114,24 +161,49 @@ app.use('/api/city-levels', cityLevelRoutes);
 app.use('/api/job-levels', jobLevelRoutes);
 app.use('/api/standard-match', standardMatchRoutes);
 app.use('/api/expense-items', expenseItemRoutes);
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
-  });
-});
+app.use('/api/locations', locationRoutes);
 
 // Serve frontend for all non-API routes (SPA fallback)
-const frontendBuildPath = path.join(__dirname, '..', 'frontend');
-if (require('fs').existsSync(frontendBuildPath)) {
-  app.get('*', (req, res) => {
-    // Don't serve frontend for API routes
+// This must be after API routes but before error handler
+// Only set up SPA fallback if frontend exists
+if (frontendExists) {
+  // SPA fallback: serve index.html for all non-API routes
+  // Note: app.get('/') is already defined above, but this catches all other routes
+  // IMPORTANT: This must come AFTER app.get('/') to avoid conflicts
+  app.get('*', (req, res, next) => {
+    // Skip API routes - they should have been handled by API routes above
     if (req.path.startsWith('/api')) {
-      return res.status(404).json({ error: 'API endpoint not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'API endpoint not found' 
+      });
     }
-    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+    
+    // IMPORTANT: Root path should already be handled by app.get('/') above
+    // But if for some reason it reaches here, handle it explicitly
+    if (req.path === '/' || req.path === '') {
+      const indexPath = path.resolve(frontendBuildPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+      }
+    }
+    
+    // Serve index.html for all other routes (React Router SPA)
+    const indexPath = path.resolve(frontendBuildPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error(`❌ SPA fallback: index.html not found at ${indexPath}`);
+      next(); // Pass to error handler if file doesn't exist
+    }
+  });
+} else {
+  // If frontend doesn't exist, add a catch-all route for debugging
+  app.get('*', (req, res) => {
+    res.status(404).json({ 
+      success: false,
+      message: 'Frontend not deployed. Please check deployment.'
+    });
   });
 }
 

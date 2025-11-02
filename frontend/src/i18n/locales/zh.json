@@ -73,6 +73,7 @@
     "newTravel": "新建差旅申请",
     "editTravel": "编辑差旅申请",
     "travelList": "差旅申请列表",
+    "travelNumber": "差旅单号",
     "basicInformation": "基本信息",
     "purpose": "出差目的",
     "destination": "目的地",
@@ -161,8 +162,10 @@
       "sarah_wilson": "莎拉·威尔逊",
       "david_brown": "大卫·布朗"
     },
+    "comment": "备注",
     "placeholders": {
-      "tripDescription": "请提供出差目的、详细理由、预期成果/交付物。"
+      "tripDescription": "请提供出差目的、详细理由、预期成果/交付物。",
+      "comment": "请输入备注信息（可选）"
     }
   },
   "expense": {

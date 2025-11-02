@@ -13,6 +13,7 @@ const Expense = require('../models/Expense');
 const TravelStandard = require('../models/TravelStandard');
 const CityLevel = require('../models/CityLevel');
 const JobLevel = require('../models/JobLevel');
+const Location = require('../models/Location');
 const TravelTransportStandard = require('../models/TravelTransportStandard');
 const TravelAccommodationStandard = require('../models/TravelAccommodationStandard');
 const TravelMealStandard = require('../models/TravelMealStandard');
@@ -44,6 +45,7 @@ const createIndexes = async () => {
       TravelStandard.createIndexes(),
       CityLevel.createIndexes(),
       JobLevel.createIndexes(),
+      Location.createIndexes(),
       TravelTransportStandard.createIndexes(),
       TravelAccommodationStandard.createIndexes(),
       TravelMealStandard.createIndexes(),

@@ -1,9 +1,6 @@
-
-const express = require('express');
-const { protect } = require('../middleware/auth');
+const mongoose = require('mongoose');
 const Travel = require('../models/Travel');
-
-const router = express.Router();
+const User = require('../models/User');
 
 // 生成差旅单号
 const generateTravelNumber = async () => {
@@ -36,9 +33,16 @@ const generateTravelNumber = async () => {
 // @desc    Get all travel requests
 // @route   GET /api/travel
 // @access  Private
-router.get('/', protect, async (req, res) => {
+exports.getTravels = async (req, res) => {
   try {
-    const travels = await Travel.find({ employee: req.user.id })
+    const { status } = req.query;
+    const query = { employee: req.user.id };
+    
+    if (status) {
+      query.status = status;
+    }
+
+    const travels = await Travel.find(query)
       .populate('employee', 'firstName lastName email')
       .populate('approvals.approver', 'firstName lastName email')
       .sort({ createdAt: -1 });
@@ -55,15 +59,14 @@ router.get('/', protect, async (req, res) => {
       message: 'Server error'
     });
   }
-});
+};
 
 // @desc    Get single travel request
 // @route   GET /api/travel/:id
 // @access  Private
-router.get('/:id', protect, async (req, res) => {
+exports.getTravelById = async (req, res) => {
   try {
     // 验证ID格式
-    const mongoose = require('mongoose');
     if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
         success: false,
@@ -71,9 +74,63 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
 
-    const travel = await Travel.findById(req.params.id)
-      .populate('employee', 'firstName lastName email')
-      .populate('approvals.approver', 'firstName lastName email');
+    // 先查询travel，不populate，避免populate失败
+    let travel = await Travel.findById(req.params.id);
+    
+    if (travel) {
+      // 手动populate employee（如果存在）
+      if (travel.employee) {
+        try {
+          const employeeDoc = await User.findById(travel.employee).select('firstName lastName email');
+          if (employeeDoc) {
+            travel.employee = {
+              _id: employeeDoc._id,
+              firstName: employeeDoc.firstName,
+              lastName: employeeDoc.lastName,
+              email: employeeDoc.email
+            };
+          }
+        } catch (userError) {
+          console.error('Error populating employee:', userError.message);
+          // employee保持为ObjectId，不影响后续逻辑
+        }
+      }
+      
+      // 手动populate approvals.approver（如果存在）
+      if (travel.approvals && Array.isArray(travel.approvals) && travel.approvals.length > 0) {
+        try {
+          // 收集所有approver IDs
+          const approverIds = travel.approvals
+            .map(approval => approval.approver)
+            .filter(id => id);
+          
+          if (approverIds.length > 0) {
+            // 批量查询所有approvers
+            const approvers = await User.find({ _id: { $in: approverIds } }).select('firstName lastName email');
+            const approverMap = new Map(approvers.map(a => [a._id.toString(), a]));
+            
+            // 填充approvals中的approver字段
+            for (let approval of travel.approvals) {
+              if (approval.approver) {
+                const approverId = approval.approver.toString();
+                const approverDoc = approverMap.get(approverId);
+                if (approverDoc) {
+                  approval.approver = {
+                    _id: approverDoc._id,
+                    firstName: approverDoc.firstName,
+                    lastName: approverDoc.lastName,
+                    email: approverDoc.email
+                  };
+                }
+              }
+            }
+          }
+        } catch (approverError) {
+          console.error('Error populating approvers:', approverError.message);
+          // 继续执行，approver保持为ObjectId
+        }
+      }
+    }
 
     if (!travel) {
       return res.status(404).json({
@@ -82,52 +139,30 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
 
-    // 权限检查：只能查看自己的申请或管理员
-    // 如果是管理员，允许访问所有申请（包括employee为null的情况）
-    if (req.user.role === 'admin') {
-      return res.json({
-        success: true,
-        data: travel
+    // 检查权限：只能查看自己的申请或管理员
+    // 安全地获取employee ID（可能是ObjectId或populated对象）
+    let employeeId;
+    if (!travel.employee) {
+      // 如果没有employee字段，可能是数据损坏
+      console.error('Travel request missing employee field:', req.params.id);
+      return res.status(500).json({
+        success: false,
+        message: 'Travel request data is incomplete'
       });
     }
     
-    let employeeId;
-    if (!travel.employee) {
-      // 如果没有employee字段，在开发模式下允许访问，否则返回错误
-      const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-      if (isDevMode) {
-        console.warn('Travel request missing employee field, allowing access in dev mode:', req.params.id);
-        return res.json({
-          success: true,
-          data: travel
-        });
-      } else {
-        console.error('Travel request missing employee field:', req.params.id);
-        return res.status(500).json({
-          success: false,
-          message: 'Travel request data is incomplete'
-        });
-      }
-    }
-    
-    // 处理 employee 可能是 ObjectId 或 populated 对象的情况
     if (travel.employee._id) {
-      // Populated对象（有 _id 属性）
+      // Populated对象
       employeeId = travel.employee._id.toString();
-    } else if (travel.employee.id) {
-      // Populated对象（可能有 id 属性）
-      employeeId = String(travel.employee.id);
-    } else if (typeof travel.employee === 'object' && travel.employee.toString) {
-      // ObjectId 对象
+    } else if (typeof travel.employee.toString === 'function') {
+      // ObjectId
       employeeId = travel.employee.toString();
     } else {
-      // 字符串或其他格式
+      // 已经是字符串
       employeeId = String(travel.employee);
     }
     
-    const userId = req.user.id.toString();
-    
-    if (employeeId !== userId) {
+    if (employeeId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this travel request'
@@ -148,19 +183,20 @@ router.get('/:id', protect, async (req, res) => {
       message: error.message || 'Server error'
     });
   }
-});
+};
 
 // @desc    Create new travel request
 // @route   POST /api/travel
 // @access  Private
-router.post('/', protect, async (req, res) => {
+exports.createTravel = async (req, res) => {
   try {
+    // 处理日期字段转换
     const travelData = {
       ...req.body,
       employee: req.user.id
     };
 
-    // 处理日期字段转换
+    // 转换日期字符串为Date对象
     if (travelData.startDate && typeof travelData.startDate === 'string') {
       travelData.startDate = new Date(travelData.startDate);
     }
@@ -217,22 +253,13 @@ router.post('/', protect, async (req, res) => {
       message: error.message || 'Server error'
     });
   }
-});
+};
 
 // @desc    Update travel request
 // @route   PUT /api/travel/:id
 // @access  Private
-router.put('/:id', protect, async (req, res) => {
+exports.updateTravel = async (req, res) => {
   try {
-    // 验证ID格式
-    const mongoose = require('mongoose');
-    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid travel ID format'
-      });
-    }
-
     let travel = await Travel.findById(req.params.id);
 
     if (!travel) {
@@ -243,43 +270,16 @@ router.put('/:id', protect, async (req, res) => {
     }
 
     // 检查权限：只能更新自己的申请或管理员
-    // 如果是管理员，允许更新所有申请（包括employee为null的情况）
-    if (req.user.role === 'admin') {
-      // 管理员可以更新，继续执行
-    } else {
-      // 非管理员需要检查权限
-      let employeeId;
-      if (!travel.employee) {
-        // 如果没有employee字段，在开发模式下允许更新，否则返回错误
-        const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-        if (!isDevMode) {
-          console.error('Travel request missing employee field:', req.params.id);
-          return res.status(500).json({
-            success: false,
-            message: 'Travel request data is incomplete'
-          });
-        }
-      } else {
-        // 处理 employee 可能是 ObjectId 或 populated 对象的情况
-        if (travel.employee._id) {
-          employeeId = travel.employee._id.toString();
-        } else if (travel.employee.id) {
-          employeeId = String(travel.employee.id);
-        } else if (typeof travel.employee === 'object' && travel.employee.toString) {
-          employeeId = travel.employee.toString();
-        } else {
-          employeeId = String(travel.employee);
-        }
-        
-        const userId = req.user.id.toString();
-        
-        if (employeeId !== userId) {
-          return res.status(403).json({
-            success: false,
-            message: 'Not authorized to update this travel request'
-          });
-        }
-      }
+    // 安全地获取employee ID（可能是ObjectId或populated对象）
+    const employeeId = travel.employee 
+      ? (travel.employee._id ? travel.employee._id.toString() : travel.employee.toString())
+      : travel.employee;
+    
+    if (employeeId !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this travel request'
+      });
     }
 
     // 处理日期字段转换
@@ -323,16 +323,6 @@ router.put('/:id', protect, async (req, res) => {
       };
     }
 
-    // 不允许更新差旅单号（保持原值）
-    if (updateData.travelNumber !== undefined && updateData.travelNumber !== travel.travelNumber) {
-      delete updateData.travelNumber;
-    }
-    
-    // 不允许更新或删除 employee 字段（如果原值为 null，且更新数据中包含 null，则删除该字段）
-    if (updateData.employee === null || updateData.employee === undefined) {
-      delete updateData.employee;
-    }
-
     travel = await Travel.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true
@@ -349,22 +339,13 @@ router.put('/:id', protect, async (req, res) => {
       message: error.message || 'Server error'
     });
   }
-});
+};
 
 // @desc    Delete travel request
 // @route   DELETE /api/travel/:id
 // @access  Private
-router.delete('/:id', protect, async (req, res) => {
+exports.deleteTravel = async (req, res) => {
   try {
-    // 验证ID格式
-    const mongoose = require('mongoose');
-    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid travel ID format'
-      });
-    }
-
     const travel = await Travel.findById(req.params.id);
 
     if (!travel) {
@@ -375,22 +356,12 @@ router.delete('/:id', protect, async (req, res) => {
     }
 
     // 检查权限：只能删除自己的申请或管理员
-    let employeeId;
-    if (travel.employee) {
-      if (travel.employee._id) {
-        employeeId = travel.employee._id.toString();
-      } else if (travel.employee.id) {
-        employeeId = String(travel.employee.id);
-      } else if (typeof travel.employee === 'object' && travel.employee.toString) {
-        employeeId = travel.employee.toString();
-      } else {
-        employeeId = String(travel.employee);
-      }
-    }
+    // 安全地获取employee ID（可能是ObjectId或populated对象）
+    const employeeId = travel.employee 
+      ? (travel.employee._id ? travel.employee._id.toString() : travel.employee.toString())
+      : travel.employee;
     
-    const userId = req.user.id.toString();
-    
-    if (employeeId !== userId && req.user.role !== 'admin') {
+    if (employeeId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this travel request'
@@ -415,9 +386,9 @@ router.delete('/:id', protect, async (req, res) => {
     console.error('Delete travel error:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Server error'
+      message: 'Server error'
     });
   }
-});
+};
 
-module.exports = router;
+

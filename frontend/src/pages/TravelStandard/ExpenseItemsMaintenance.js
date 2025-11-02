@@ -71,12 +71,25 @@ const ExpenseItemsMaintenance = () => {
     try {
       setLoading(true);
       const [standardsRes, expenseItemsRes] = await Promise.all([
-        apiClient.get('/api/travel-standards'),
-        apiClient.get('/api/expense-items') // 获取所有费用项
+        apiClient.get('/travel-standards'),
+        apiClient.get('/expense-items') // 获取所有费用项
       ]);
 
       if (standardsRes.data && standardsRes.data.success) {
         setStandards(standardsRes.data.data || []);
+      }
+
+      // 检查费用项响应
+      if (!expenseItemsRes.data) {
+        console.error('费用项响应为空:', expenseItemsRes);
+        showNotification('费用项响应为空，请检查服务器', 'error');
+        return;
+      }
+
+      if (expenseItemsRes.data.success === false) {
+        console.error('费用项加载失败:', expenseItemsRes.data.message || expenseItemsRes.data.error);
+        showNotification(expenseItemsRes.data.message || '加载费用项失败', 'error');
+        return;
       }
 
       if (expenseItemsRes.data && expenseItemsRes.data.success) {
@@ -171,7 +184,16 @@ const ExpenseItemsMaintenance = () => {
       }
     } catch (err) {
       console.error('Fetch data error:', err);
-      showNotification('加载数据失败', 'error');
+      const errorMessage = err.response?.data?.message 
+        || err.message 
+        || '加载数据失败';
+      showNotification(`加载数据失败: ${errorMessage}`, 'error');
+      console.error('错误详情:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        url: err.config?.url
+      });
     } finally {
       setLoading(false);
     }
@@ -263,7 +285,7 @@ const ExpenseItemsMaintenance = () => {
       }
 
       if (formDialog.mode === 'create') {
-        await apiClient.post('/api/expense-items', payload);
+        await apiClient.post('/expense-items', payload);
         showNotification('费用项创建成功', 'success');
       } else {
         // 编辑时也包含standardId（如果修改了标准）
@@ -282,7 +304,7 @@ const ExpenseItemsMaintenance = () => {
         } else if (parentItemIdToSend === '' || parentItemIdToSend === null) {
           payload.parentItem = null; // 空字符串或null表示解除关联
         }
-        await apiClient.put(`/api/expense-items/item/${formDialog.item._id}`, payload);
+        await apiClient.put(`/expense-items/item/${formDialog.item._id}`, payload);
         showNotification('费用项更新成功', 'success');
       }
 
@@ -297,7 +319,7 @@ const ExpenseItemsMaintenance = () => {
   const handleDelete = async () => {
     try {
       const { item } = deleteDialog;
-      await apiClient.delete(`/api/expense-items/item/${item._id}`);
+      await apiClient.delete(`/expense-items/item/${item._id}`);
       showNotification('删除成功', 'success');
       setDeleteDialog({ open: false, item: null });
       fetchAllData();
@@ -459,7 +481,7 @@ const ExpenseItemsMaintenance = () => {
                               color="error"
                               onClick={async () => {
                                 try {
-                                  await apiClient.put(`/api/expense-items/item/${item._id}/disable`);
+                                  await apiClient.put(`/expense-items/item/${item._id}/disable`);
                                   showNotification('费用项已禁用', 'success');
                                   fetchAllData();
                                 } catch (err) {
@@ -476,7 +498,7 @@ const ExpenseItemsMaintenance = () => {
                               color="success"
                               onClick={async () => {
                                 try {
-                                  await apiClient.put(`/api/expense-items/item/${item._id}/enable`);
+                                  await apiClient.put(`/expense-items/item/${item._id}/enable`);
                                   showNotification('费用项已启用', 'success');
                                   fetchAllData();
                                 } catch (err) {

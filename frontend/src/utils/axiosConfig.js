@@ -1,3 +1,4 @@
+
 /**
  * Axios 配置文件
  * 统一管理 API 基础 URL 和请求拦截器
@@ -13,13 +14,14 @@ const getApiBaseURL = () => {
   
   // 开发环境使用代理（package.json 中的 proxy）
   if (process.env.NODE_ENV === 'development') {
-    return ''; // 空字符串表示使用相对路径，会被 proxy 处理
+    return '/api'; // 开发环境也使用 /api 前缀，proxy 会转发到后端
   }
   
-  // 生产环境默认值（应该通过环境变量配置）
-  // 如果没有配置 REACT_APP_API_URL，在生产环境会报错
-  console.warn('⚠️  REACT_APP_API_URL not configured! API requests will fail in production.');
-  return ''; // 返回空字符串，让错误更明显
+  // 生产环境：前后端在同一服务器，使用相对路径
+  // 如果前后端分离部署，可以通过环境变量 REACT_APP_API_URL 配置完整URL
+  // 例如：REACT_APP_API_URL=http://your-api-server:3001/api
+  // 不再显示警告，直接返回相对路径
+  return '/api'; // 相对路径，指向同一服务器的 /api 路由
 };
 
 // 创建 axios 实例

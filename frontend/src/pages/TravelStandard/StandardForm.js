@@ -88,9 +88,9 @@ const StandardForm = () => {
     try {
       setLoadingOptions(true);
       const [jobLevelsRes, cityLevelsRes, expenseItemsRes] = await Promise.all([
-        apiClient.get('/api/job-levels'),
-        apiClient.get('/api/city-levels'),
-        apiClient.get('/api/expense-items')
+        apiClient.get('/job-levels'),
+        apiClient.get('/city-levels'),
+        apiClient.get('/expense-items')
       ]);
       
       setOptions({
@@ -110,7 +110,7 @@ const StandardForm = () => {
   const fetchStandard = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`/api/travel-standards/${id}`);
+      const response = await apiClient.get(`/travel-standards/${id}`);
       if (response.data.success) {
         const standard = response.data.data;
         
@@ -251,9 +251,9 @@ const StandardForm = () => {
           conditionGroupsLength: updateData.conditionGroups?.length,
           expenseStandardsLength: updateData.expenseStandards?.length
         }, null, 2));
-        response = await apiClient.put(`/api/travel-standards/${id}`, updateData);
+        response = await apiClient.put(`/travel-standards/${id}`, updateData);
       } else {
-        response = await apiClient.post('/api/travel-standards', payload);
+        response = await apiClient.post('/travel-standards', payload);
       }
 
       if (response.data.success) {

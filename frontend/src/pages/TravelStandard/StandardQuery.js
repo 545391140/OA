@@ -50,7 +50,7 @@ const StandardQuery = () => {
     setStandardData(null);
 
     try {
-      const response = await apiClient.post('/api/standard-match/match', {
+      const response = await apiClient.post('/standard-match/match', {
         destination: queryParams.destination.split(',')[0], // 提取城市名
         startDate: queryParams.startDate,
         transportType: queryParams.transportType,

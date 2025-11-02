@@ -147,7 +147,7 @@ const ExpenseItemsManagement = () => {
 
   const fetchJobLevels = async () => {
     try {
-      const response = await apiClient.get('/api/job-levels');
+      const response = await apiClient.get('/job-levels');
       if (response.data.success) {
         setJobLevels(response.data.data || []);
       }
@@ -167,25 +167,25 @@ const ExpenseItemsManagement = () => {
           }
           break;
         case 1: // 住宿
-          const accommodationRes = await apiClient.get(`/api/expense-items/${standardId}/accommodation`);
+          const accommodationRes = await apiClient.get(`/expense-items/${standardId}/accommodation`);
           if (accommodationRes.data.success) {
             setAccommodationStandards(accommodationRes.data.data || []);
           }
           break;
         case 2: // 餐饮
-          const mealRes = await apiClient.get(`/api/expense-items/${standardId}/meal`);
+          const mealRes = await apiClient.get(`/expense-items/${standardId}/meal`);
           if (mealRes.data.success) {
             setMealStandards(mealRes.data.data || []);
           }
           break;
         case 3: // 津贴
-          const allowanceRes = await apiClient.get(`/api/expense-items/${standardId}/allowance`);
+          const allowanceRes = await apiClient.get(`/expense-items/${standardId}/allowance`);
           if (allowanceRes.data.success) {
             setAllowanceStandards(allowanceRes.data.data || []);
           }
           break;
         case 4: // 其他费用
-          const otherRes = await apiClient.get(`/api/expense-items/${standardId}/other`);
+          const otherRes = await apiClient.get(`/expense-items/${standardId}/other`);
           if (otherRes.data.success) {
             setOtherExpenseStandards(otherRes.data.data || []);
           }
@@ -240,10 +240,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (transportDialog.mode === 'create') {
-        await apiClient.post(`/api/expense-items/${standardId}/transport`, payload);
+        await apiClient.post(`/expense-items/${standardId}/transport`, payload);
         showNotification('交通标准创建成功', 'success');
       } else {
-        await apiClient.put(`/api/expense-items/transport/${transportDialog.data._id}`, payload);
+        await apiClient.put(`/expense-items/transport/${transportDialog.data._id}`, payload);
         showNotification('交通标准更新成功', 'success');
       }
 
@@ -288,10 +288,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (accommodationDialog.mode === 'create') {
-        await apiClient.post(`/api/expense-items/${standardId}/accommodation`, payload);
+        await apiClient.post(`/expense-items/${standardId}/accommodation`, payload);
         showNotification('住宿标准创建成功', 'success');
       } else {
-        await apiClient.put(`/api/expense-items/accommodation/${accommodationDialog.data._id}`, payload);
+        await apiClient.put(`/expense-items/accommodation/${accommodationDialog.data._id}`, payload);
         showNotification('住宿标准更新成功', 'success');
       }
 
@@ -343,10 +343,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (mealDialog.mode === 'create') {
-        await apiClient.post(`/api/expense-items/${standardId}/meal`, payload);
+        await apiClient.post(`/expense-items/${standardId}/meal`, payload);
         showNotification('餐饮标准创建成功', 'success');
       } else {
-        await apiClient.put(`/api/expense-items/meal/${mealDialog.data._id}`, payload);
+        await apiClient.put(`/expense-items/meal/${mealDialog.data._id}`, payload);
         showNotification('餐饮标准更新成功', 'success');
       }
 
@@ -390,10 +390,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (allowanceDialog.mode === 'create') {
-        await apiClient.post(`/api/expense-items/${standardId}/allowance`, payload);
+        await apiClient.post(`/expense-items/${standardId}/allowance`, payload);
         showNotification('津贴标准创建成功', 'success');
       } else {
-        await apiClient.put(`/api/expense-items/allowance/${allowanceDialog.data._id}`, payload);
+        await apiClient.put(`/expense-items/allowance/${allowanceDialog.data._id}`, payload);
         showNotification('津贴标准更新成功', 'success');
       }
 
@@ -459,10 +459,10 @@ const ExpenseItemsManagement = () => {
       };
 
       if (otherExpenseDialog.mode === 'create') {
-        await apiClient.post(`/api/expense-items/${standardId}/other`, payload);
+        await apiClient.post(`/expense-items/${standardId}/other`, payload);
         showNotification('其他费用标准创建成功', 'success');
       } else {
-        await apiClient.put(`/api/expense-items/other/${otherExpenseDialog.data._id}`, payload);
+        await apiClient.put(`/expense-items/other/${otherExpenseDialog.data._id}`, payload);
         showNotification('其他费用标准更新成功', 'success');
       }
 
@@ -483,19 +483,19 @@ const ExpenseItemsManagement = () => {
 
       switch (type) {
         case 'transport':
-          endpoint = `/api/expense-items/transport/${id}`;
+          endpoint = `/expense-items/transport/${id}`;
           break;
         case 'accommodation':
-          endpoint = `/api/expense-items/accommodation/${id}`;
+          endpoint = `/expense-items/accommodation/${id}`;
           break;
         case 'meal':
-          endpoint = `/api/expense-items/meal/${id}`;
+          endpoint = `/expense-items/meal/${id}`;
           break;
         case 'allowance':
-          endpoint = `/api/expense-items/allowance/${id}`;
+          endpoint = `/expense-items/allowance/${id}`;
           break;
         case 'other':
-          endpoint = `/api/expense-items/other/${id}`;
+          endpoint = `/expense-items/other/${id}`;
           break;
       }
 

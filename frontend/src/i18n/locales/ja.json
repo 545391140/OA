@@ -71,6 +71,7 @@
     "newTravel": "新しい出張申請",
     "editTravel": "出張申請編集",
     "travelList": "出張申請一覧",
+    "travelNumber": "出張番号",
     "purpose": "目的",
     "destination": "目的地",
     "country": "国",

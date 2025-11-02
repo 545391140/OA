@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -47,6 +48,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
 const TravelList = () => {
@@ -94,81 +96,51 @@ const TravelList = () => {
   const fetchTravels = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockData = [
-        {
-          id: 1,
-          title: 'Business Trip to Tokyo',
-          purpose: 'Client meeting and product demonstration',
-          destination: {
-            country: 'Japan',
-            city: 'Tokyo',
-            address: 'Shibuya, Tokyo'
-          },
-          dates: {
-            departure: '2024-02-15',
-            return: '2024-02-20'
-          },
-          estimatedCost: 2500,
-          currency: 'USD',
-          status: 'approved',
-          createdAt: '2024-01-15T10:30:00Z',
-          employee: {
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@company.com'
+      const response = await apiClient.get('/travel');
+      
+      if (response.data && response.data.success) {
+        // 处理返回的数据，确保每个 travel 都有 id 字段（使用 _id 或 id）
+        const travels = (response.data.data || []).map(travel => {
+          // 处理 destination 字段：可能是字符串或对象
+          let processedDestination = {
+            city: '',
+            country: '',
+            address: travel.destinationAddress || ''
+          };
+          
+          if (travel.destination) {
+            if (typeof travel.destination === 'string') {
+              // 如果是字符串，解析为 city, country
+              const parts = travel.destination.split(',');
+              processedDestination.city = parts[0]?.trim() || '';
+              processedDestination.country = parts[1]?.trim() || '';
+            } else if (typeof travel.destination === 'object') {
+              // 如果是对象，提取字段
+              processedDestination.city = travel.destination.city || travel.destination.name || '';
+              processedDestination.country = travel.destination.country || '';
+              processedDestination.address = travel.destination.address || travel.destinationAddress || processedDestination.address;
+            }
           }
-        },
-        {
-          id: 2,
-          title: 'Conference in Singapore',
-          purpose: 'Tech conference and networking',
-          destination: {
-            country: 'Singapore',
-            city: 'Singapore',
-            address: 'Marina Bay Sands'
-          },
-          dates: {
-            departure: '2024-03-10',
-            return: '2024-03-15'
-          },
-          estimatedCost: 1800,
-          currency: 'USD',
-          status: 'submitted',
-          createdAt: '2024-01-20T14:15:00Z',
-          employee: {
-            firstName: 'Jane',
-            lastName: 'Smith',
-            email: 'jane.smith@company.com'
-          }
-        },
-        {
-          id: 3,
-          title: 'Client Meeting in Seoul',
-          purpose: 'Quarterly business review',
-          destination: {
-            country: 'South Korea',
-            city: 'Seoul',
-            address: 'Gangnam, Seoul'
-          },
-          dates: {
-            departure: '2024-04-05',
-            return: '2024-04-08'
-          },
-          estimatedCost: 1200,
-          currency: 'USD',
-          status: 'draft',
-          createdAt: '2024-01-25T09:45:00Z',
-          employee: {
-            firstName: 'Mike',
-            lastName: 'Johnson',
-            email: 'mike.johnson@company.com'
-          }
-        }
-      ];
-      setTravels(mockData);
+          
+          return {
+            ...travel,
+            id: travel._id || travel.id, // 统一使用 id 字段
+            title: travel.title || '', // 确保 title 字段存在
+            // 处理 destination 字段
+            destination: processedDestination,
+            dates: {
+              departure: travel.startDate || travel.outbound?.date || '',
+              return: travel.endDate || travel.inbound?.date || ''
+            }
+          };
+        });
+        setTravels(travels);
+      } else {
+        throw new Error(response.data?.message || '获取差旅申请列表失败');
+      }
     } catch (error) {
-      showNotification('Failed to load travel requests', 'error');
+      console.error('Fetch travels error:', error);
+      showNotification(error.response?.data?.message || 'Failed to load travel requests', 'error');
     } finally {
       setLoading(false);
     }
@@ -185,12 +157,24 @@ const TravelList = () => {
   };
 
   const handleView = () => {
-    navigate(`/travel/${selectedTravel.id}`);
+    // 确保使用正确的 ID（_id 或 id）
+    const travelId = selectedTravel._id || selectedTravel.id;
+    if (travelId) {
+      navigate(`/travel/${travelId}`);
+    } else {
+      showNotification('无效的差旅申请ID', 'error');
+    }
     handleMenuClose();
   };
 
   const handleEdit = () => {
-    navigate(`/travel/${selectedTravel.id}/edit`);
+    // 确保使用正确的 ID（_id 或 id）
+    const travelId = selectedTravel._id || selectedTravel.id;
+    if (travelId) {
+      navigate(`/travel/${travelId}/edit`);
+    } else {
+      showNotification('无效的差旅申请ID', 'error');
+    }
     handleMenuClose();
   };
 
@@ -201,13 +185,21 @@ const TravelList = () => {
 
   const confirmDelete = async () => {
     try {
-      // Mock API call - replace with actual implementation
-      console.log('Deleting travel request:', selectedTravel.id);
+      const travelId = selectedTravel._id || selectedTravel.id;
+      if (!travelId) {
+        showNotification('无效的差旅申请ID', 'error');
+        return;
+      }
       
-      setTravels(prev => prev.filter(travel => travel.id !== selectedTravel.id));
+      await apiClient.delete(`/travel/${travelId}`);
+      setTravels(prev => prev.filter(travel => {
+        const id = travel._id || travel.id;
+        return id !== travelId;
+      }));
       showNotification('Travel request deleted successfully', 'success');
     } catch (error) {
-      showNotification('Failed to delete travel request', 'error');
+      console.error('Delete travel error:', error);
+      showNotification(error.response?.data?.message || 'Failed to delete travel request', 'error');
     } finally {
       setDeleteDialogOpen(false);
       setSelectedTravel(null);
@@ -215,9 +207,15 @@ const TravelList = () => {
   };
 
   const filteredTravels = travels.filter(travel => {
-    const matchesSearch = travel.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         travel.destination.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         travel.destination.country.toLowerCase().includes(searchTerm.toLowerCase());
+    const destination = travel.destination || {};
+    const destinationCity = destination.city || '';
+    const destinationCountry = destination.country || '';
+    const title = travel.title || '';
+    
+    const matchesSearch = !searchTerm || 
+                         title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         destinationCity.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         destinationCountry.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || travel.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -305,6 +303,7 @@ const TravelList = () => {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>{t('travel.travelNumber')}</TableCell>
                 <TableCell>Title</TableCell>
                 <TableCell>Destination</TableCell>
                 <TableCell>Dates</TableCell>
@@ -316,7 +315,12 @@ const TravelList = () => {
             </TableHead>
             <TableBody>
               {filteredTravels.map((travel) => (
-                <TableRow key={travel.id} hover>
+                <TableRow key={travel._id || travel.id} hover>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 'medium', fontFamily: 'monospace' }}>
+                      {travel.travelNumber || '-'}
+                    </Typography>
+                  </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
@@ -324,10 +328,32 @@ const TravelList = () => {
                       </Avatar>
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                          {travel.title}
+                          {(() => {
+                            // 如果 title 有值，显示 title
+                            if (travel.title && travel.title.trim()) {
+                              return travel.title;
+                            }
+                            // 否则，使用目的地或差旅描述作为标题
+                            const destination = travel.destination || {};
+                            const city = destination.city || '';
+                            const country = destination.country || '';
+                            const destinationText = city && country 
+                              ? `${city}, ${country}` 
+                              : (city || country || '');
+                            const tripDesc = travel.tripDescription?.trim() || '';
+                            
+                            if (destinationText) {
+                              return `差旅至 ${destinationText}`;
+                            } else if (tripDesc) {
+                              return tripDesc.length > 30 ? tripDesc.substring(0, 30) + '...' : tripDesc;
+                            } else if (travel.travelNumber) {
+                              return `差旅申请 ${travel.travelNumber}`;
+                            }
+                            return '未命名差旅申请';
+                          })()}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {travel.purpose}
+                          {travel.purpose || travel.tripDescription || '暂无描述'}
                         </Typography>
                       </Box>
                     </Box>
@@ -337,9 +363,20 @@ const TravelList = () => {
                       <LocationIcon color="action" fontSize="small" />
                       <Box>
                         <Typography variant="body2">
-                          {travel.destination.city}, {travel.destination.country}
+                          {(() => {
+                            const city = travel.destination?.city || '';
+                            const country = travel.destination?.country || '';
+                            if (city && country) {
+                              return `${city}, ${country}`;
+                            } else if (city) {
+                              return city;
+                            } else if (country) {
+                              return country;
+                            }
+                            return '-';
+                          })()}
                         </Typography>
-                        {travel.destination.address && (
+                        {travel.destination?.address && (
                           <Typography variant="caption" color="text.secondary">
                             {travel.destination.address}
                           </Typography>

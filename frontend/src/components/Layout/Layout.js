@@ -33,10 +33,8 @@ import {
   Logout as LogoutIcon,
   Language as LanguageIcon,
   LocationOn as LocationOnIcon,
-  Api as ApiIcon,
   QueryBuilder as QueryBuilderIcon,
-  AccountBalanceWallet as ExpenseItemsIcon,
-  Science as ScienceIcon
+  AccountBalanceWallet as ExpenseItemsIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -98,10 +96,8 @@ const Layout = () => {
     { text: t('navigation.reports'), icon: <ReportIcon />, path: '/reports' },
     { text: '差旅标准查询', icon: <QueryBuilderIcon />, path: '/travel-standards/query' },
     { text: '差旅标准管理', icon: <SettingsIcon />, path: '/travel-standards' },
-    { text: '标准匹配测试', icon: <ScienceIcon />, path: '/travel-standards/test' },
     { text: '费用项目维护', icon: <ExpenseItemsIcon />, path: '/expense-items' },
     { text: '地理位置管理', icon: <LocationOnIcon />, path: '/location' },
-    { text: 'API连接测试', icon: <ApiIcon />, path: '/api/test' },
     { text: '国际化监控', icon: <LanguageIcon />, path: '/i18n' },
   ];
 

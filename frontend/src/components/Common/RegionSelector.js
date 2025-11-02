@@ -23,14 +23,15 @@ import {
   CircularProgress,
   Alert
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
+import { styled, keyframes } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import FlightIcon from '@mui/icons-material/Flight';
 import TrainIcon from '@mui/icons-material/Train';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
-import { getAllLocations, searchLocations } from '../../services/locationService';
+import { searchLocations } from '../../services/locationService';
+import apiClient from '../../utils/axiosConfig';
 
 // 拼音映射表（用于中文搜索）
 const pinyinMap = {
@@ -95,6 +96,16 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
   },
 }));
 
+// 高风险提示动画
+const pulse = keyframes`
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+`;
+
 const DropdownPaper = styled(Paper)(({ theme }) => ({
   position: 'absolute',
   zIndex: 1300,
@@ -141,9 +152,38 @@ const RegionSelector = ({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
   
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+
+  // 初始化显示值
+  useEffect(() => {
+    if (value) {
+      // 如果value是字符串，尝试在数据中查找
+      if (typeof value === 'string') {
+        const found = allLocations.find(loc => 
+          loc.name === value || 
+          loc.code === value ||
+          loc._id === value
+        );
+        if (found) {
+          setSelectedLocation(found);
+          setSearchValue(`${found.name}${found.code ? ` (${found.code})` : ''}`);
+        } else {
+          setSearchValue(value);
+        }
+      } 
+      // 如果value是对象
+      else if (typeof value === 'object' && value !== null) {
+        setSelectedLocation(value);
+        setSearchValue(`${value.name}${value.code ? ` (${value.code})` : ''}`);
+      }
+    } else {
+      setSearchValue('');
+      setSelectedLocation(null);
+    }
+  }, [value, allLocations]);
 
   // 根据交通工具类型生成动态placeholder
   const getDynamicPlaceholder = () => {
@@ -164,35 +204,68 @@ const RegionSelector = ({
     }
   };
 
-  // 获取所有地理位置数据
+  // 从地理位置管理API获取所有地理位置数据
   const fetchAllLocations = async () => {
     setLoading(true);
     setErrorMessage('');
     
     try {
-      const locations = await getAllLocations();
-      console.log('获取地理位置数据成功:', locations.length);
-      console.log('数据示例:', locations.slice(0, 2));
+      // 从后端API获取所有启用的地理位置数据
+      const response = await apiClient.get('/locations', {
+        params: { status: 'active' }
+      });
       
-      // 验证数据结构
-      const validLocations = locations.filter(location => 
-        location && 
-        typeof location === 'object' && 
-        location.name && 
-        location.city && 
-        location.code && 
-        location.country
-      );
-      
-      console.log('有效数据数量:', validLocations.length);
-      if (validLocations.length !== locations.length) {
-        console.warn('发现无效数据:', locations.length - validLocations.length, '条');
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data?.message || '获取地理位置数据失败');
       }
       
+      const locations = response.data.data || [];
+      console.log('从API获取地理位置数据成功:', locations.length);
+      
+      // 验证并转换数据结构
+      const validLocations = locations
+        .filter(location => 
+          location && 
+          typeof location === 'object' && 
+          location.name
+        )
+        .map(location => ({
+          // 保留原有字段
+          id: location._id || location.id,
+          _id: location._id || location.id,
+          name: location.name,
+          code: location.code || '',
+          type: location.type || 'city',
+          city: location.city || '',
+          province: location.province || '',
+          district: location.district || '',
+          county: location.county || '',
+          country: location.country || '中国',
+          countryCode: location.countryCode || '',
+          enName: location.enName || '',
+          pinyin: location.pinyin || '',
+          coordinates: location.coordinates || { latitude: 0, longitude: 0 },
+          timezone: location.timezone || 'Asia/Shanghai',
+          status: location.status || 'active',
+          // 处理parentId（可能是ObjectId或对象）
+          parentId: location.parentId?._id || location.parentId?.toString() || location.parentId || null,
+          parentCity: location.parentId?.name || null,
+          // 风险等级和无机场标识（仅城市）
+          riskLevel: location.riskLevel || 'low',
+          noAirport: location.noAirport || false
+        }));
+      
+      console.log('有效数据数量:', validLocations.length);
       setAllLocations(validLocations);
     } catch (error) {
-      setErrorMessage('获取地理位置数据失败: ' + error.message);
+      const errorMessage = error.response?.data?.message || error.message || '获取地理位置数据失败';
+      setErrorMessage(errorMessage);
       console.error('获取地理位置数据失败:', error);
+      console.error('错误详情:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setAllLocations([]);
     } finally {
       setLoading(false);
@@ -238,23 +311,34 @@ const RegionSelector = ({
       return;
     }
 
-    // 防抖处理
+      // 防抖处理
     const timeoutId = setTimeout(() => {
-      // 过滤掉无效的location对象
-      const validLocations = allLocations.filter(location => 
-        location && 
-        typeof location === 'object' && 
-        location.name && 
-        location.city && 
-        location.code && 
-        location.country
-      );
+      if (!allLocations || allLocations.length === 0) {
+        return;
+      }
 
       // 根据交通工具类型过滤
-      const transportationFiltered = filterLocationsByTransportation(validLocations);
+      const transportationFiltered = filterLocationsByTransportation(allLocations);
 
-      const filtered = searchLocations(searchValue, transportationFiltered);
-      setFilteredLocations(filtered.slice(0, 30)); // 进一步限制显示数量
+      // 本地搜索（支持新字段）
+      const lowerKeyword = searchValue.toLowerCase();
+      const filtered = transportationFiltered.filter(location => {
+        return (
+          (location.name && location.name.toLowerCase().includes(lowerKeyword)) ||
+          (location.code && location.code.toLowerCase().includes(lowerKeyword)) ||
+          (location.city && location.city.toLowerCase().includes(lowerKeyword)) ||
+          (location.province && location.province.toLowerCase().includes(lowerKeyword)) ||
+          (location.district && location.district.toLowerCase().includes(lowerKeyword)) ||
+          (location.county && location.county.toLowerCase().includes(lowerKeyword)) ||
+          (location.country && location.country.toLowerCase().includes(lowerKeyword)) ||
+          (location.countryCode && location.countryCode.toLowerCase().includes(lowerKeyword)) ||
+          (location.enName && location.enName.toLowerCase().includes(lowerKeyword)) ||
+          (location.pinyin && location.pinyin.toLowerCase().includes(lowerKeyword)) ||
+          (location.parentCity && location.parentCity.toLowerCase().includes(lowerKeyword))
+        );
+      });
+      
+      setFilteredLocations(filtered.slice(0, 50)); // 限制显示数量
     }, 200); // 200ms防抖
 
     return () => clearTimeout(timeoutId);
@@ -352,6 +436,28 @@ const RegionSelector = ({
     }
   };
 
+  // 获取风险等级标签
+  const getRiskLevelLabel = (level) => {
+    const labels = { 
+      low: '低', 
+      medium: '中', 
+      high: '高', 
+      very_high: '很高' 
+    };
+    return labels[level] || level;
+  };
+
+  // 获取风险等级颜色
+  const getRiskLevelColor = (level) => {
+    const colors = { 
+      low: 'success', 
+      medium: 'warning', 
+      high: 'error', 
+      very_high: 'error' 
+    };
+    return colors[level] || 'default';
+  };
+
   // 渲染下拉框内容
   const renderDropdownContent = () => {
     if (loading) {
@@ -388,55 +494,97 @@ const RegionSelector = ({
 
     return (
       <List sx={{ p: 0 }}>
-        {organizedLocations.map((location, index) => (
-          <React.Fragment key={location.id}>
-            <ListItem
-              button
-              onClick={() => handleSelect(location)}
-              sx={{
-                py: 1.5,
-                px: location.parentId ? 4 : 2, // 子项缩进
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                {getTypeIcon(location.type)}
-              </ListItemIcon>
-              <ListItemText
-                primary={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
-                      {location.name}
+        {organizedLocations.map((location, index) => {
+          // 判断是否是子项（机场或火车站有parentId）
+          const isChild = (location.type === 'airport' || location.type === 'station') && location.parentId;
+          
+          return (
+            <React.Fragment key={location.id || location._id}>
+              <ListItem
+                button
+                onClick={() => handleSelect(location)}
+                sx={{
+                  py: 1.5,
+                  px: isChild ? 4 : 2, // 子项缩进
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  {getTypeIcon(location.type)}
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                        {location.name}
+                      </Typography>
+                      <Chip
+                        label={getTypeLabel(location.type)}
+                        size="small"
+                        color={getTypeColor(location.type)}
+                        sx={{ height: 20, fontSize: '0.75rem' }}
+                      />
+                      {location.code && (
+                        <Chip
+                          label={location.code}
+                          size="small"
+                          variant="outlined"
+                          sx={{ height: 20, fontSize: '0.75rem' }}
+                        />
+                      )}
+                      {/* 城市类型显示风险等级 */}
+                      {location.type === 'city' && location.riskLevel && (
+                        <Chip
+                          label={`风险${getRiskLevelLabel(location.riskLevel)}`}
+                          size="small"
+                          color={getRiskLevelColor(location.riskLevel)}
+                          sx={{ 
+                            height: 20, 
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            ...(location.riskLevel === 'high' || location.riskLevel === 'very_high' ? {
+                              animation: `${pulse} 2s infinite`
+                            } : {})
+                          }}
+                        />
+                      )}
+                      {/* 城市类型显示无机场标识 */}
+                      {location.type === 'city' && location.noAirport && (
+                        <Chip
+                          label="无机场"
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                          sx={{ 
+                            height: 20, 
+                            fontSize: '0.7rem',
+                            fontWeight: 500
+                          }}
+                        />
+                      )}
+                    </Box>
+                  }
+                  secondary={
+                    <Typography variant="body2" color="text.secondary">
+                      {[
+                        location.province && location.province !== location.city ? location.province : null,
+                        location.city,
+                        location.district,
+                        location.country
+                      ].filter(Boolean).join(', ')}
+                      {location.parentCity && (
+                        <span> • 隶属: {location.parentCity}</span>
+                      )}
                     </Typography>
-                    <Chip
-                      label={getTypeLabel(location.type)}
-                      size="small"
-                      color={getTypeColor(location.type)}
-                      sx={{ height: 20, fontSize: '0.75rem' }}
-                    />
-                    <Chip
-                      label={location.code}
-                      size="small"
-                      variant="outlined"
-                      sx={{ height: 20, fontSize: '0.75rem' }}
-                    />
-                  </Box>
-                }
-                secondary={
-                  <Typography variant="body2" color="text.secondary">
-                    {location.city}, {location.country}
-                    {location.coordinates && (
-                      <span> • {location.coordinates.latitude}, {location.coordinates.longitude}</span>
-                    )}
-                  </Typography>
-                }
-              />
-            </ListItem>
-            {index < organizedLocations.length - 1 && <Divider />}
-          </React.Fragment>
-        ))}
+                  }
+                />
+              </ListItem>
+              {index < organizedLocations.length - 1 && <Divider />}
+            </React.Fragment>
+          );
+        })}
       </List>
     );
   };
@@ -503,40 +651,58 @@ const RegionSelector = ({
 
   // 按层级关系组织位置数据
   const organizeLocationsByHierarchy = (locations) => {
-    // 限制显示数量，提高性能
-    const maxDisplayCount = 50;
-    if (locations.length > maxDisplayCount) {
-      locations = locations.slice(0, maxDisplayCount);
+    if (!locations || locations.length === 0) {
+      return [];
     }
 
     const result = [];
-    const parentMap = new Map();
-    const childrenMap = new Map();
+    const parentMap = new Map(); // 城市ID -> 城市对象
+    const childrenMap = new Map(); // 城市ID -> [机场/火车站列表]
     const independentItems = [];
 
-    // 分离父级和子级
+    // 分离城市和其子项（机场/火车站）
     locations.forEach(location => {
-      if (location.isSummary) {
-        parentMap.set(location.id, location);
-      } else if (location.parentId) {
-        if (!childrenMap.has(location.parentId)) {
-          childrenMap.set(location.parentId, []);
+      // 标准化location的ID
+      const locationId = location.id || location._id || location._id?.toString();
+      
+      // 如果是城市类型
+      if (location.type === 'city') {
+        if (locationId) {
+          parentMap.set(locationId.toString(), location);
         }
-        childrenMap.get(location.parentId).push(location);
-      } else {
-        // 没有parentId的独立项目
+      } 
+      // 如果是机场或火车站，且有parentId
+      else if ((location.type === 'airport' || location.type === 'station') && location.parentId) {
+        // 标准化parentId
+        let parentId;
+        if (typeof location.parentId === 'object') {
+          parentId = location.parentId._id || location.parentId.id || location.parentId.toString();
+        } else {
+          parentId = location.parentId.toString();
+        }
+        
+        if (parentId) {
+          const parentIdStr = parentId.toString();
+          if (!childrenMap.has(parentIdStr)) {
+            childrenMap.set(parentIdStr, []);
+          }
+          childrenMap.get(parentIdStr).push(location);
+        }
+      } 
+      // 独立项目（没有parentId的机场/火车站）
+      else {
         independentItems.push(location);
       }
     });
 
-    // 按层级添加：先添加父级，再添加其子级
-    parentMap.forEach((parent, parentId) => {
-      result.push(parent);
-      const children = childrenMap.get(parentId) || [];
+    // 按层级添加：先添加城市，再添加其下的机场/火车站
+    parentMap.forEach((city, cityId) => {
+      result.push(city);
+      const children = childrenMap.get(cityId.toString()) || [];
       children.forEach(child => result.push(child));
     });
 
-    // 最后添加独立项目
+    // 最后添加独立项目（没有关联城市的机场/火车站）
     independentItems.forEach(item => result.push(item));
 
     return result;

@@ -6,6 +6,15 @@ backend/node_modules/
 frontend/node_modules/
 backend/.env
 
+# 构建产物
+frontend/build/
+dist/
+build/
+
 # 部署相关
 deploy.config
 deploy_temp_*
+
+# 扫描和临时文件
+hardcoded-scan-results.json
+*.scan.json

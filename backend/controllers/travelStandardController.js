@@ -517,10 +517,14 @@ function buildExpensesFromStandard(standard) {
     standard.expenseStandards.forEach(es => {
       const itemId = es.expenseItemId?._id?.toString() || es.expenseItemId?.toString();
       const itemName = es.expenseItemId?.itemName || '未知';
+      const category = es.expenseItemId?.category || 'general';
+      const parentItem = es.expenseItemId?.parentItem || null;
       
       if (es.limitType === 'FIXED') {
         expenses[itemId] = {
           itemName,
+          category,
+          parentItem,
           limit: es.limitAmount || 0,
           unit: es.calcUnit === 'PER_DAY' ? '元/天' : es.calcUnit === 'PER_TRIP' ? '元/次' : '元/公里',
           limitType: 'FIXED',
@@ -529,6 +533,8 @@ function buildExpensesFromStandard(standard) {
       } else if (es.limitType === 'RANGE') {
         expenses[itemId] = {
           itemName,
+          category,
+          parentItem,
           type: `范围: ${es.limitMin || 0}~${es.limitMax || 0}元`,
           limitMin: es.limitMin || 0,
           limitMax: es.limitMax || 0,
@@ -538,6 +544,8 @@ function buildExpensesFromStandard(standard) {
       } else if (es.limitType === 'ACTUAL') {
         expenses[itemId] = {
           itemName,
+          category,
+          parentItem,
           type: '实报实销',
           limitType: 'ACTUAL',
           sourceStandard: standard.standardCode
@@ -545,6 +553,8 @@ function buildExpensesFromStandard(standard) {
       } else if (es.limitType === 'PERCENTAGE') {
         expenses[itemId] = {
           itemName,
+          category,
+          parentItem,
           type: `按比例: ${es.percentage || 0}% (基准: ${es.baseAmount || 0}元)`,
           percentage: es.percentage || 0,
           baseAmount: es.baseAmount || 0,
@@ -566,43 +576,53 @@ function mergeExpensesBest(standards) {
       standard.expenseStandards.forEach(es => {
         const itemId = es.expenseItemId?._id?.toString() || es.expenseItemId?.toString();
         const itemName = es.expenseItemId?.itemName || '未知';
+        const category = es.expenseItemId?.category || 'general';
+        const parentItem = es.expenseItemId?.parentItem || null;
         
         if (!mergedExpenses[itemId]) {
           // 首次遇到该费用项，直接添加
-          if (es.limitType === 'FIXED') {
-            mergedExpenses[itemId] = {
-              itemName,
-              limit: es.limitAmount || 0,
-              unit: es.calcUnit === 'PER_DAY' ? '元/天' : es.calcUnit === 'PER_TRIP' ? '元/次' : '元/公里',
-              limitType: 'FIXED',
-              sourceStandards: [standard.standardCode]
-            };
-          } else if (es.limitType === 'RANGE') {
-            mergedExpenses[itemId] = {
-              itemName,
-              type: `范围: ${es.limitMin || 0}~${es.limitMax || 0}元`,
-              limitMin: es.limitMin || 0,
-              limitMax: es.limitMax || 0,
-              limitType: 'RANGE',
-              sourceStandards: [standard.standardCode]
-            };
-          } else if (es.limitType === 'ACTUAL') {
-            mergedExpenses[itemId] = {
-              itemName,
-              type: '实报实销',
-              limitType: 'ACTUAL',
-              sourceStandards: [standard.standardCode]
-            };
-          } else if (es.limitType === 'PERCENTAGE') {
-            mergedExpenses[itemId] = {
-              itemName,
-              type: `按比例: ${es.percentage || 0}% (基准: ${es.baseAmount || 0}元)`,
-              percentage: es.percentage || 0,
-              baseAmount: es.baseAmount || 0,
-              limitType: 'PERCENTAGE',
-              sourceStandards: [standard.standardCode]
-            };
-          }
+        if (es.limitType === 'FIXED') {
+          mergedExpenses[itemId] = {
+            itemName,
+            category,
+            parentItem,
+            limit: es.limitAmount || 0,
+            unit: es.calcUnit === 'PER_DAY' ? '元/天' : es.calcUnit === 'PER_TRIP' ? '元/次' : '元/公里',
+            limitType: 'FIXED',
+            sourceStandards: [standard.standardCode]
+          };
+        } else if (es.limitType === 'RANGE') {
+          mergedExpenses[itemId] = {
+            itemName,
+            category,
+            parentItem,
+            type: `范围: ${es.limitMin || 0}~${es.limitMax || 0}元`,
+            limitMin: es.limitMin || 0,
+            limitMax: es.limitMax || 0,
+            limitType: 'RANGE',
+            sourceStandards: [standard.standardCode]
+          };
+        } else if (es.limitType === 'ACTUAL') {
+          mergedExpenses[itemId] = {
+            itemName,
+            category,
+            parentItem,
+            type: '实报实销',
+            limitType: 'ACTUAL',
+            sourceStandards: [standard.standardCode]
+          };
+        } else if (es.limitType === 'PERCENTAGE') {
+          mergedExpenses[itemId] = {
+            itemName,
+            category,
+            parentItem,
+            type: `按比例: ${es.percentage || 0}% (基准: ${es.baseAmount || 0}元)`,
+            percentage: es.percentage || 0,
+            baseAmount: es.baseAmount || 0,
+            limitType: 'PERCENTAGE',
+            sourceStandards: [standard.standardCode]
+          };
+        }
         } else {
           // 已存在该费用项，合并最优值
           const existing = mergedExpenses[itemId];

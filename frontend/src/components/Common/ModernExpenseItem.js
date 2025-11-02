@@ -32,6 +32,7 @@ const ModernExpenseItem = ({
   error,
   helperText,
   disabled = false,
+  quantityDisabled = false,
   showInfo = false,
   infoText = '',
 }) => {
@@ -53,7 +54,7 @@ const ModernExpenseItem = ({
   return (
     <Card
       sx={{
-        mb: 2,
+        mb: 1,
         border: 'none',
         borderRadius: 2,
         overflow: 'hidden',
@@ -63,47 +64,45 @@ const ModernExpenseItem = ({
         },
       }}
     >
-      <CardContent sx={{ p: 2.5 }}>
+      <CardContent sx={{ p: 1.25 }}>
         {/* 头部 */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box
               sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 2,
+                width: 32,
+                height: 32,
+                borderRadius: 1.5,
                 backgroundColor: alpha(categoryColor, 0.1),
                 color: categoryColor,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.2rem',
+                fontSize: '1rem',
               }}
             >
               {icon}
             </Box>
             <Box>
               <Typography
-                variant="h6"
+                variant="subtitle1"
                 sx={{
                   fontWeight: 600,
                   color: theme.palette.text.primary,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 1,
+                  gap: 0.5,
+                  fontSize: '1rem',
                 }}
               >
                 {label}
                 {showInfo && (
                   <Tooltip title={infoText} arrow>
-                    <IconButton size="small" sx={{ p: 0.5 }}>
-                      <InfoIcon sx={{ fontSize: '1rem', color: theme.palette.text.secondary }} />
+                    <IconButton size="small" sx={{ p: 0.25, ml: 0.25 }}>
+                      <InfoIcon sx={{ fontSize: '0.9rem', color: theme.palette.text.secondary }} />
                     </IconButton>
                   </Tooltip>
                 )}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {tripType === 'outbound' ? '去程' : '返程'} • {category}
               </Typography>
             </Box>
           </Box>
@@ -111,95 +110,122 @@ const ModernExpenseItem = ({
           {/* 小计显示 */}
           <Box sx={{ textAlign: 'right' }}>
             <Typography
-              variant="h5"
+              variant="subtitle1"
               sx={{
                 fontWeight: 700,
                 color: categoryColor,
-                lineHeight: 1,
+                lineHeight: 1.2,
+                fontSize: '1rem',
               }}
             >
               {currency} {subtotal || '0.00'}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
               小计
             </Typography>
           </Box>
         </Box>
 
         {/* 输入区域 */}
-        <Grid container spacing={2} alignItems="center">
+        <Grid container spacing={1} alignItems="stretch">
           <Grid item xs={12} sm={3}>
             <Box
               sx={{
-                p: 1.5,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+                p: 0.75,
                 backgroundColor: alpha(theme.palette.grey[100], 0.5),
-                borderRadius: 1.5,
+                borderRadius: 1,
                 textAlign: 'center',
+                // 匹配TextField的实际高度（small size约56px）
+                height: '56px',
+                boxSizing: 'border-box',
               }}
             >
-              <Typography variant="caption" color="text.secondary" display="block">
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.25, fontSize: '0.65rem', lineHeight: 1.2 }}>
                 货币
               </Typography>
-              <Typography variant="body2" fontWeight={500}>
+              <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
                 {currency}
               </Typography>
             </Box>
           </Grid>
 
           <Grid item xs={12} sm={4}>
-            <ModernInput
-              type="number"
-              label={`${unitLabel} *`}
-              value={unitPrice}
-              onChange={onUnitPriceChange}
-              error={error}
-              helperText={helperText}
-              disabled={disabled}
-              startAdornment={<MoneyIcon sx={{ color: theme.palette.text.secondary }} />}
-              size="small"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: theme.palette.background.paper,
-                },
-              }}
-            />
+            <Box sx={{ height: '56px', display: 'flex', alignItems: 'flex-end' }}>
+              <ModernInput
+                type="number"
+                label={`${unitLabel} *`}
+                value={unitPrice}
+                onChange={onUnitPriceChange}
+                error={error}
+                helperText=""
+                disabled={disabled}
+                startAdornment={<MoneyIcon sx={{ color: theme.palette.text.secondary, fontSize: '1rem' }} />}
+                size="small"
+                sx={{
+                  width: '100%',
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: theme.palette.background.paper,
+                    height: '40px',
+                  },
+                  '& .MuiInputLabel-root': {
+                    fontSize: '0.75rem',
+                  },
+                }}
+              />
+            </Box>
           </Grid>
 
           <Grid item xs={12} sm={2}>
-            <ModernInput
-              type="number"
-              label="数量 *"
-              value={quantity}
-              onChange={onQuantityChange}
-              disabled={disabled}
-              size="small"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: theme.palette.background.paper,
-                },
-              }}
-            />
+            <Box sx={{ height: '56px', display: 'flex', alignItems: 'flex-end' }}>
+              <ModernInput
+                type="number"
+                label="数量 *"
+                value={quantity}
+                onChange={onQuantityChange}
+                disabled={disabled || quantityDisabled}
+                size="small"
+                helperText=""
+                sx={{
+                  width: '100%',
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: quantityDisabled ? alpha(theme.palette.grey[100], 0.5) : theme.palette.background.paper,
+                    height: '40px',
+                  },
+                  '& .MuiInputLabel-root': {
+                    fontSize: '0.75rem',
+                  },
+                }}
+              />
+            </Box>
           </Grid>
 
           <Grid item xs={12} sm={3}>
             <Box
               sx={{
-                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                p: 0.75,
                 backgroundColor: alpha(categoryColor, 0.05),
-                borderRadius: 1.5,
+                borderRadius: 1,
                 border: `1px solid ${alpha(categoryColor, 0.2)}`,
                 textAlign: 'center',
+                // 匹配TextField的实际高度
+                height: '56px',
+                boxSizing: 'border-box',
               }}
             >
-              <Typography variant="caption" color="text.secondary" display="block">
-                自动计算
-              </Typography>
               <Typography
-                variant="h6"
+                variant="body2"
                 sx={{
                   fontWeight: 600,
                   color: categoryColor,
-                  mt: 0.5,
+                  lineHeight: 1.2,
+                  fontSize: '0.9rem',
                 }}
               >
                 {currency} {subtotal || '0.00'}
@@ -207,23 +233,6 @@ const ModernExpenseItem = ({
             </Box>
           </Grid>
         </Grid>
-
-        {/* 底部提示 */}
-        {showInfo && infoText && (
-          <Box
-            sx={{
-              mt: 2,
-              p: 1.5,
-              backgroundColor: alpha(theme.palette.info.main, 0.05),
-              borderRadius: 1,
-              border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-            }}
-          >
-            <Typography variant="caption" color="info.main">
-              💡 {infoText}
-            </Typography>
-          </Box>
-        )}
       </CardContent>
     </Card>
   );

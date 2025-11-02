@@ -30,7 +30,8 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import FlightIcon from '@mui/icons-material/Flight';
 import TrainIcon from '@mui/icons-material/Train';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
-import { getAllLocations, searchLocations } from '../../services/locationService';
+import { searchLocations } from '../../services/locationService';
+import apiClient from '../../utils/axiosConfig';
 
 // 拼音映射表（用于中文搜索）
 const pinyinMap = {
@@ -128,17 +129,25 @@ const RegionSelector = ({
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  // 获取所有地理位置数据
+  // 从地理位置管理API获取所有地理位置数据
   const fetchAllLocations = async () => {
     setLoading(true);
     setErrorMessage('');
     
     try {
-      const locations = await getAllLocations();
-      setAllLocations(locations);
-      console.log('获取地理位置数据成功:', locations.length);
+      const response = await apiClient.get('/locations', {
+        params: { status: 'active' }
+      });
+      
+      if (response.data && response.data.success) {
+        const locations = response.data.data || [];
+        setAllLocations(locations);
+        console.log('获取地理位置数据成功:', locations.length);
+      } else {
+        throw new Error(response.data?.message || '获取地理位置数据失败');
+      }
     } catch (error) {
-      setErrorMessage('获取地理位置数据失败: ' + error.message);
+      setErrorMessage('获取地理位置数据失败: ' + (error.response?.data?.message || error.message));
       console.error('获取地理位置数据失败:', error);
     } finally {
       setLoading(false);

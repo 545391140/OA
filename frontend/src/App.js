@@ -30,14 +30,11 @@ import Profile from './pages/Profile/Profile';
 import Settings from './pages/Settings/Settings';
 import I18nDashboardPage from './pages/I18n/I18nDashboard';
 import LocationManagement from './pages/Location/LocationManagement';
-import LocationTest from './pages/Test/LocationTest';
-import ApiTest from './pages/Test/ApiTest';
 import StandardQuery from './pages/TravelStandard/StandardQuery';
 import StandardList from './pages/TravelStandard/StandardList';
 import StandardForm from './pages/TravelStandard/StandardForm';
 import ExpenseItemsManagement from './pages/TravelStandard/ExpenseItemsManagement';
 import ExpenseItemsMaintenance from './pages/TravelStandard/ExpenseItemsMaintenance';
-import MatchTester from './pages/TravelStandard/MatchTester';
 
 function App() {
   const { i18n } = useTranslation();
@@ -89,16 +86,12 @@ function App() {
               
               {/* Location Management */}
               <Route path="location" element={<LocationManagement />} />
-              <Route path="location/test" element={<LocationTest />} />
-              
-              {/* API Test */}
-              <Route path="api/test" element={<ApiTest />} />
+              <Route path="locations" element={<LocationManagement />} />
               
               {/* Travel Standard Routes */}
               <Route path="travel-standards" element={<StandardList />} />
               <Route path="travel-standards/new" element={<StandardForm />} />
               <Route path="travel-standards/query" element={<StandardQuery />} />
-              <Route path="travel-standards/test" element={<MatchTester />} />
               <Route path="travel-standards/:standardId/expense-items" element={<ExpenseItemsManagement />} />
               <Route path="travel-standards/:id/edit" element={<StandardForm />} />
               <Route path="travel-standards/:id" element={<StandardList />} />

@@ -6,45 +6,114 @@ const TravelSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  // 差旅单号（自动生成）
+  travelNumber: {
+    type: String,
+    unique: true,
+    trim: true,
+    uppercase: true
+  },
+  // 基本信息
   title: {
     type: String,
-    required: [true, 'Please add a travel title'],
     trim: true
   },
   purpose: {
     type: String,
-    required: [true, 'Please add travel purpose'],
+    trim: true
+  },
+  travelType: {
+    type: String,
+    enum: ['domestic', 'international'],
+    default: 'domestic'
+  },
+  tripType: {
+    type: String,
+    enum: ['international', 'mainland_china'],
+    default: 'mainland_china'
+  },
+  costOwingDepartment: {
+    type: String,
     trim: true
   },
   destination: {
-    country: {
+    type: mongoose.Schema.Types.Mixed, // 可以是字符串或Location对象
+    default: null
+  },
+  requestName: {
+    type: String,
+    trim: true
+  },
+  startDate: {
+    type: Date
+  },
+  endDate: {
+    type: Date
+  },
+  tripDescription: {
+    type: String,
+    trim: true
+  },
+  comment: {
+    type: String,
+    trim: true
+  },
+  destinationAddress: {
+    type: String,
+    trim: true
+  },
+  // 去程信息
+  outbound: {
+    date: Date,
+    departure: mongoose.Schema.Types.Mixed, // 可以是字符串或Location对象
+    destination: mongoose.Schema.Types.Mixed,
+    transportation: {
       type: String,
-      required: true,
-      trim: true
-    },
-    city: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    address: {
-      type: String,
-      trim: true
+      enum: ['flight', 'train', 'car', 'bus', '']
     }
   },
+  // 返程信息
+  inbound: {
+    date: Date,
+    departure: mongoose.Schema.Types.Mixed,
+    destination: mongoose.Schema.Types.Mixed,
+    transportation: {
+      type: String,
+      enum: ['flight', 'train', 'car', 'bus', '']
+    }
+  },
+  // 多程行程
+  multiCityRoutes: [{
+    date: Date,
+    departure: mongoose.Schema.Types.Mixed,
+    destination: mongoose.Schema.Types.Mixed,
+    transportation: {
+      type: String,
+      enum: ['flight', 'train', 'car', 'bus']
+    }
+  }],
+  // 费用预算 - 去程（动态结构，key为费用项ID）
+  outboundBudget: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  // 费用预算 - 返程（动态结构，key为费用项ID）
+  inboundBudget: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  // 向后兼容的旧字段
   dates: {
     departure: {
-      type: Date,
-      required: true
+      type: Date
     },
     return: {
-      type: Date,
-      required: true
+      type: Date
     }
   },
   estimatedCost: {
     type: Number,
-    required: true,
+    default: 0,
     min: 0
   },
   currency: {
@@ -139,5 +208,6 @@ const TravelSchema = new mongoose.Schema({
 // Index for better query performance
 TravelSchema.index({ employee: 1, status: 1 });
 TravelSchema.index({ 'approvals.approver': 1, 'approvals.status': 1 });
+TravelSchema.index({ travelNumber: 1 }, { unique: true }); // 差旅单号索引
 
 module.exports = mongoose.model('Travel', TravelSchema);

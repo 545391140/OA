@@ -47,7 +47,7 @@ const StandardList = () => {
 
   const fetchExpenseItems = async () => {
     try {
-      const response = await apiClient.get('/api/expense-items');
+      const response = await apiClient.get('/expense-items');
       if (response.data && response.data.success) {
         const items = response.data.data || [];
         // 创建ID到名称的映射
@@ -67,7 +67,7 @@ const StandardList = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get('/api/travel-standards');
+      const response = await apiClient.get('/travel-standards');
       // 处理不同的响应格式
       if (response.data) {
         if (response.data.success === true || response.data.success === false) {
