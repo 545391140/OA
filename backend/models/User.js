@@ -36,8 +36,9 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['employee', 'manager', 'admin', 'finance'],
-    default: 'employee'
+    required: [true, 'Please add a role'],
+    trim: true,
+    comment: 'References Role.code - stores the role code as a string'
   },
   department: {
     type: String,
@@ -47,7 +48,8 @@ const UserSchema = new mongoose.Schema({
   position: {
     type: String,
     required: [true, 'Please add a position'],
-    trim: true
+    trim: true,
+    comment: 'References Position.code - stores the position code as a string'
   },
   jobLevel: {
     type: String,

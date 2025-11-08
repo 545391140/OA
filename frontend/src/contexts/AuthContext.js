@@ -75,40 +75,22 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
       if (token) {
-        // Mock auth check for development (仅在开发环境且未配置API URL时使用)
-        if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
-          const mockUser = {
-            id: 1,
-            email: 'demo@company.com',
-            firstName: 'John',
-            lastName: 'Doe',
-            department: 'Sales',
-            position: 'Senior Manager',
-            language: 'en',
-            currency: 'USD',
-            timezone: 'UTC',
-            role: 'admin'
-          };
-          
-          dispatch({
-            type: 'LOGIN_SUCCESS',
-            payload: {
-              user: mockUser,
-              token
-            }
-          });
-          return;
-        }
-        
+        // 始终从API获取用户信息，确保使用真实数据库数据
         try {
-          const response = await apiClient.get('/api/auth/me');
-          dispatch({
-            type: 'LOGIN_SUCCESS',
-            payload: {
-              user: response.data.user,
-              token
-            }
-          });
+          const response = await apiClient.get('/auth/me');
+          if (response.data && response.data.success) {
+            dispatch({
+              type: 'LOGIN_SUCCESS',
+              payload: {
+                user: response.data.user,
+                token
+              }
+            });
+          } else {
+            // API返回失败，清除token
+            localStorage.removeItem('token');
+            dispatch({ type: 'LOGOUT' });
+          }
         } catch (error) {
           console.error('Auth check failed:', error);
           localStorage.removeItem('token');
@@ -122,42 +104,13 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Login function
+  // Login function - 始终使用真实API，校验用户是否在数据库中
   const login = async (email, password) => {
     dispatch({ type: 'LOGIN_START' });
     
-    // Mock login for development (仅在开发环境且未配置API URL时使用)
-    if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data
-      const mockUser = {
-        id: 1,
-        email: email,
-        firstName: 'John',
-        lastName: 'Doe',
-        department: 'Sales',
-        position: 'Senior Manager',
-        language: 'en',
-        currency: 'USD',
-        timezone: 'UTC',
-        role: 'admin'
-      };
-      
-      const mockToken = 'mock-jwt-token-' + Date.now();
-      
-      localStorage.setItem('token', mockToken);
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: { user: mockUser, token: mockToken }
-      });
-
-      return { success: true, message: 'Login successful!' };
-    }
-    
     try {
-      const response = await apiClient.post('/api/auth/login', {
+      // 始终调用真实API，确保校验用户是否在数据库中
+      const response = await apiClient.post('/auth/login', {
         email,
         password
       });
@@ -190,41 +143,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function
+  // Register function - 始终使用真实API
   const register = async (userData) => {
     dispatch({ type: 'LOGIN_START' });
     
-    // Mock register for development (仅在开发环境且未配置API URL时使用)
-    if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_API_URL) {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data
-      const mockUser = {
-        id: Date.now(),
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        department: userData.department,
-        position: userData.position,
-        language: 'en',
-        currency: 'USD',
-        timezone: 'UTC'
-      };
-      
-      const mockToken = 'mock-jwt-token-' + Date.now();
-      
-      localStorage.setItem('token', mockToken);
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: { user: mockUser, token: mockToken }
-      });
-
-      return { success: true, message: 'Registration successful!' };
-    }
-    
     try {
-      const response = await apiClient.post('/api/auth/register', userData);
+      // 始终调用真实API，确保用户注册到数据库
+      const response = await apiClient.post('/auth/register', userData);
       
       if (!response.data.success) {
         throw new Error(response.data.message || 'Registration failed');

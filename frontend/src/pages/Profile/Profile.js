@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -40,28 +40,85 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import apiClient from '../../utils/axiosConfig';
 
 const Profile = () => {
   const { t } = useTranslation();
-  const { user, updatePreferences, changePassword } = useAuth();
+  const { user: authUser, updatePreferences, changePassword } = useAuth();
   const { showNotification } = useNotification();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [user, setUser] = useState(authUser);
 
+  // 从API获取最新的用户数据
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setLoadingUser(true);
+        const response = await apiClient.get('/auth/me');
+        if (response.data && response.data.success) {
+          setUser(response.data.user);
+          // 更新 profileData
+          setProfileData({
+            firstName: response.data.user.firstName || '',
+            lastName: response.data.user.lastName || '',
+            email: response.data.user.email || '',
+            phone: response.data.user.phone || '',
+            department: response.data.user.department || '',
+            position: response.data.user.position || '',
+            jobLevel: response.data.user.jobLevel || '',
+            preferences: response.data.user.preferences || {
+              language: 'en',
+              currency: 'USD',
+              timezone: 'UTC'
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Fetch user data error:', error);
+        // 如果API失败，使用auth context中的用户数据
+        if (authUser) {
+          setUser(authUser);
+          setProfileData({
+            firstName: authUser.firstName || '',
+            lastName: authUser.lastName || '',
+            email: authUser.email || '',
+            phone: authUser.phone || '',
+            department: authUser.department || '',
+            position: authUser.position || '',
+            jobLevel: authUser.jobLevel || '',
+            preferences: authUser.preferences || {
+              language: 'en',
+              currency: 'USD',
+              timezone: 'UTC'
+            }
+          });
+        }
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    fetchUserData();
+  }, [authUser]);
+
+  // 初始化 profileData，会在 useEffect 中从API更新
   const [profileData, setProfileData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    department: user?.department || '',
-    position: user?.position || '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    department: '',
+    position: '',
+    jobLevel: '',
     preferences: {
-      language: user?.preferences?.language || 'en',
-      currency: user?.preferences?.currency || 'USD',
-      timezone: user?.preferences?.timezone || 'UTC'
+      language: 'en',
+      currency: 'USD',
+      timezone: 'UTC'
     }
   });
 
@@ -236,15 +293,26 @@ const Profile = () => {
       phone: user?.phone || '',
       department: user?.department || '',
       position: user?.position || '',
-      preferences: {
-        language: user?.preferences?.language || 'en',
-        currency: user?.preferences?.currency || 'USD',
-        timezone: user?.preferences?.timezone || 'UTC'
+      jobLevel: user?.jobLevel || '',
+      preferences: user?.preferences || {
+        language: 'en',
+        currency: 'USD',
+        timezone: 'UTC'
       }
     });
     setErrors({});
     setIsEditing(false);
   };
+
+  if (loadingUser) {
+    return (
+      <Container maxWidth="xl">
+        <Box sx={{ py: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
 
   return (
       <Container maxWidth="xl">
@@ -275,20 +343,34 @@ const Profile = () => {
               </Typography>
               
               <Typography variant="body1" color="text.secondary" gutterBottom>
-                {user?.position}
+                {user?.positionInfo?.name || user?.position || '-'}
               </Typography>
               
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                {user?.department}
+                {user?.department || '-'}
               </Typography>
 
-              <Box sx={{ mt: 2 }}>
+              {user?.jobLevel && (
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  职级: {user.jobLevel}
+                </Typography>
+              )}
+
+              <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Chip
-                  label={user?.role}
+                  label={user?.roleInfo?.name || user?.role || '-'}
                   color="primary"
                   variant="outlined"
                   size="small"
                 />
+                {user?.employeeId && (
+                  <Chip
+                    label={`工号: ${user.employeeId}`}
+                    color="default"
+                    variant="outlined"
+                    size="small"
+                  />
+                )}
               </Box>
 
               <Box sx={{ mt: 3 }}>
@@ -419,8 +501,18 @@ const Profile = () => {
                   <TextField
                     fullWidth
                     label={t('user.position')}
-                    value={profileData.position}
+                    value={user?.positionInfo?.name || profileData.position || '-'}
                     onChange={(e) => handleInputChange('position', e.target.value)}
+                    disabled={true}
+                    helperText={user?.positionInfo?.name ? `岗位代码: ${user.position}` : '岗位信息'}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="职级"
+                    value={profileData.jobLevel || ''}
+                    onChange={(e) => handleInputChange('jobLevel', e.target.value)}
                     disabled={!isEditing}
                   />
                 </Grid>
@@ -555,3 +647,4 @@ const Profile = () => {
 };
 
 export default Profile;
+

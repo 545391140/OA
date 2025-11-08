@@ -35,6 +35,9 @@ import StandardList from './pages/TravelStandard/StandardList';
 import StandardForm from './pages/TravelStandard/StandardForm';
 import ExpenseItemsManagement from './pages/TravelStandard/ExpenseItemsManagement';
 import ExpenseItemsMaintenance from './pages/TravelStandard/ExpenseItemsMaintenance';
+import RoleManagement from './pages/Role/RoleManagement';
+import PositionManagement from './pages/Position/PositionManagement';
+import UserManagement from './pages/User/UserManagement';
 
 function App() {
   const { i18n } = useTranslation();
@@ -98,6 +101,15 @@ function App() {
               
               {/* Expense Items Maintenance */}
               <Route path="expense-items" element={<ExpenseItemsMaintenance />} />
+              
+              {/* Role Management */}
+              <Route path="roles" element={<RoleManagement />} />
+              
+              {/* Position Management */}
+              <Route path="positions" element={<PositionManagement />} />
+              
+              {/* User Management */}
+              <Route path="users" element={<UserManagement />} />
             </Route>
             
             {/* Catch all route */}

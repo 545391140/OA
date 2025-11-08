@@ -420,8 +420,38 @@ exports.deactivateStandard = async (req, res) => {
 // @access  Private
 exports.matchStandard = async (req, res) => {
   try {
-    const { country, city, cityLevel, positionLevel, department, projectCode } = req.body;
+    const { country, city, cityLevel, positionLevel, department, projectCode, role, position } = req.body;
     const now = new Date();
+    
+    // 核心逻辑：从用户信息中获取所有可能用于匹配的条件
+    // 确保所有差旅标准配置时涉及到的条件都被查询
+    const User = require('../models/User');
+    const user = await User.findById(req.user.id).select('role position jobLevel department');
+    
+    // 优先使用请求参数，如果请求参数为空，则使用用户信息
+    // 这样前端可以覆盖用户信息（例如选择不同的部门或项目）
+    const matchParams = {
+      country: country || '',
+      city: city || '',
+      cityLevel: cityLevel || '',
+      positionLevel: positionLevel || (user?.jobLevel || ''),
+      department: department || (user?.department || ''),
+      projectCode: projectCode || '',
+      role: role || (user?.role || ''),
+      position: position || (user?.position || '')
+    };
+    
+    // 记录匹配参数，便于调试
+    console.log(`[STANDARD_MATCH] Matching standards with params:`, {
+      userId: req.user.id,
+      ...matchParams,
+      source: {
+        role: role ? 'request' : (user?.role ? 'user' : 'empty'),
+        position: position ? 'request' : (user?.position ? 'user' : 'empty'),
+        department: department ? 'request' : (user?.department ? 'user' : 'empty'),
+        positionLevel: positionLevel ? 'request' : (user?.jobLevel ? 'user' : 'empty')
+      }
+    });
 
     // Find all active standards
     const standards = await TravelStandard.find({
@@ -436,10 +466,15 @@ exports.matchStandard = async (req, res) => {
       .sort({ priority: -1, effectiveDate: -1 }); // Sort by priority (highest first)
 
     // Test each standard against conditions and collect all matched standards
+    // 核心逻辑：对每个标准，检查其条件组中的所有条件是否匹配
     const matchedStandards = [];
+    
     for (const standard of standards) {
-      if (matchConditions(standard, { country, city, cityLevel, positionLevel, department, projectCode })) {
+      // 匹配条件：检查标准的所有条件组
+      // 条件组之间是OR关系，组内条件是AND关系
+      if (matchConditions(standard, matchParams)) {
         matchedStandards.push(standard);
+        console.log(`[STANDARD_MATCH] Standard matched: ${standard.standardCode} (${standard.standardName})`);
       }
     }
 
@@ -485,6 +520,17 @@ exports.matchStandard = async (req, res) => {
       priority: std.priority
     }));
 
+    // 记录匹配日志
+    console.log(`[STANDARD_MATCH] Matched ${matchedStandards.length} standards for user:`, {
+      userId: req.user.id,
+      matchParams: matchParams,
+      matchedStandards: matchedStandardsInfo.map(s => ({
+        code: s.standardCode,
+        name: s.standardName,
+        priority: s.priority
+      }))
+    });
+
     res.json({
       success: true,
       data: {
@@ -498,6 +544,7 @@ exports.matchStandard = async (req, res) => {
           priority: primaryStandard.priority
         },
         allMatchedStandards: matchedStandardsInfo, // 所有匹配的标准
+        matchParams: matchParams, // 返回匹配参数，便于前端调试
         expenses
       }
     });
@@ -733,15 +780,19 @@ function mergeExpensesAll(standards) {
 }
 
 // Helper function to match conditions
+// 核心逻辑：匹配差旅标准的所有条件组
+// 条件组之间是OR关系：只要有一个组匹配成功，标准就匹配
+// 组内条件是AND关系：组内所有条件都必须匹配
 function matchConditions(standard, testData) {
-  const { country, city, cityLevel, positionLevel, department, projectCode } = testData;
+  const { country, city, cityLevel, positionLevel, department, projectCode, role, position } = testData;
   
-  // If no condition groups, match all (no restrictions)
+  // 如果没有条件组，匹配所有（无限制）
   if (!standard.conditionGroups || standard.conditionGroups.length === 0) {
     return true;
   }
 
-  // Group之间是OR关系：只要有一个组匹配成功，就返回true
+  // 核心逻辑：遍历所有条件组，只要有一个组匹配成功，就返回true
+  // Group之间是OR关系
   for (const group of standard.conditionGroups) {
     if (matchConditionGroup(group, testData)) {
       return true;
@@ -751,15 +802,19 @@ function matchConditions(standard, testData) {
   return false;
 }
 
-// Helper function to match a condition group (组内条件是AND关系)
+// Helper function to match a condition group
+// 核心逻辑：匹配条件组内的所有条件
+// 组内条件是AND关系：所有条件都必须匹配
 function matchConditionGroup(group, testData) {
-  const { country, city, cityLevel, positionLevel, department, projectCode } = testData;
+  const { country, city, cityLevel, positionLevel, department, projectCode, role, position } = testData;
   
+  // 如果条件组为空，匹配所有（无限制）
   if (!group.conditions || group.conditions.length === 0) {
-    return true; // Empty group matches all
+    return true;
   }
 
-  // 组内所有条件都需匹配（AND）
+  // 核心逻辑：组内所有条件都必须匹配（AND关系）
+  // 只要有一个条件不匹配，整个组就不匹配
   for (const condition of group.conditions) {
     if (!matchSingleCondition(condition, testData)) {
       return false;
@@ -770,11 +825,16 @@ function matchConditionGroup(group, testData) {
 }
 
 // Helper function to match a single condition
+// 核心逻辑：匹配差旅标准配置中的单个条件
+// 支持的条件类型：country, city, city_level, position_level, role, position, department, project_code
 function matchSingleCondition(condition, testData) {
-  const { country, city, cityLevel, positionLevel, department, projectCode } = testData;
+  const { country, city, cityLevel, positionLevel, department, projectCode, role, position } = testData;
   const { type, operator, value } = condition;
 
   let testValue = '';
+  
+  // 根据条件类型获取对应的测试值
+  // 核心逻辑：所有差旅标准配置时涉及到的条件都要查询
   switch (type) {
     case 'country':
       testValue = country || '';
@@ -788,6 +848,12 @@ function matchSingleCondition(condition, testData) {
     case 'position_level':
       testValue = String(positionLevel || '');
       break;
+    case 'role':
+      testValue = role || '';
+      break;
+    case 'position':
+      testValue = position || '';
+      break;
     case 'department':
       testValue = department || '';
       break;
@@ -795,23 +861,36 @@ function matchSingleCondition(condition, testData) {
       testValue = projectCode || '';
       break;
     default:
+      console.warn(`[STANDARD_MATCH] Unknown condition type: ${type}`);
       return false;
   }
 
+  // 解析条件值（支持逗号分隔的多个值）
   const values = value.split(',').map(v => v.trim()).filter(v => v);
+  
+  if (values.length === 0) {
+    return false; // 如果条件值为空，不匹配
+  }
 
+  // 根据操作符进行匹配
   switch (operator) {
     case 'IN':
+      // IN: 测试值在条件值列表中
       return values.some(v => testValue.toLowerCase().includes(v.toLowerCase()) || v.toLowerCase() === testValue.toLowerCase());
     case 'NOT_IN':
+      // NOT_IN: 测试值不在条件值列表中
       return !values.some(v => testValue.toLowerCase().includes(v.toLowerCase()) || v.toLowerCase() === testValue.toLowerCase());
     case 'EQUAL':
+      // EQUAL: 测试值等于条件值列表中的任意一个
       return values.some(v => v.toLowerCase() === testValue.toLowerCase());
     case '>=':
+      // >=: 测试值大于等于条件值（用于数字比较，如城市级别、岗位级别）
       return Number(testValue) >= Number(value);
     case '<=':
+      // <=: 测试值小于等于条件值（用于数字比较）
       return Number(testValue) <= Number(value);
     default:
+      console.warn(`[STANDARD_MATCH] Unknown operator: ${operator}`);
       return false;
   }
 }

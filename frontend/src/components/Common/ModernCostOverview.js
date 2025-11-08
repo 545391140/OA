@@ -76,32 +76,32 @@ const ModernCostOverview = ({
     // 如果没有matchedExpenseItems，尝试旧的固定字段方式（向后兼容）
     if (!matchedExpenseItems || Object.keys(matchedExpenseItems).length === 0) {
       // 计算去程费用（旧方式，向后兼容）
-      if (formData.outboundBudget) {
-        costs.flight += parseFloat(formData.outboundBudget.flight?.subtotal || 0);
-        costs.accommodation += parseFloat(formData.outboundBudget.accommodation?.subtotal || 0);
-        costs.localTransport += parseFloat(formData.outboundBudget.localTransport?.subtotal || 0);
-        costs.airportTransfer += parseFloat(formData.outboundBudget.airportTransfer?.subtotal || 0);
-        costs.allowance += parseFloat(formData.outboundBudget.allowance?.subtotal || 0);
-        costs.outboundTotal = costs.flight + costs.accommodation + costs.localTransport + costs.airportTransfer + costs.allowance;
-      }
+    if (formData.outboundBudget) {
+      costs.flight += parseFloat(formData.outboundBudget.flight?.subtotal || 0);
+      costs.accommodation += parseFloat(formData.outboundBudget.accommodation?.subtotal || 0);
+      costs.localTransport += parseFloat(formData.outboundBudget.localTransport?.subtotal || 0);
+      costs.airportTransfer += parseFloat(formData.outboundBudget.airportTransfer?.subtotal || 0);
+      costs.allowance += parseFloat(formData.outboundBudget.allowance?.subtotal || 0);
+      costs.outboundTotal = costs.flight + costs.accommodation + costs.localTransport + costs.airportTransfer + costs.allowance;
+    }
 
       // 计算返程费用（旧方式，向后兼容）
       const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
       if (isRoundTrip && formData.inboundBudget) {
-        const inboundFlight = parseFloat(formData.inboundBudget.flight?.subtotal || 0);
-        const inboundAccommodation = parseFloat(formData.inboundBudget.accommodation?.subtotal || 0);
-        const inboundLocalTransport = parseFloat(formData.inboundBudget.localTransport?.subtotal || 0);
-        const inboundAirportTransfer = parseFloat(formData.inboundBudget.airportTransfer?.subtotal || 0);
-        const inboundAllowance = parseFloat(formData.inboundBudget.allowance?.subtotal || 0);
-        
-        costs.inboundTotal = inboundFlight + inboundAccommodation + inboundLocalTransport + inboundAirportTransfer + inboundAllowance;
-        
-        costs.flight += inboundFlight;
-        costs.accommodation += inboundAccommodation;
-        costs.localTransport += inboundLocalTransport;
-        costs.airportTransfer += inboundAirportTransfer;
-        costs.allowance += inboundAllowance;
-      }
+      const inboundFlight = parseFloat(formData.inboundBudget.flight?.subtotal || 0);
+      const inboundAccommodation = parseFloat(formData.inboundBudget.accommodation?.subtotal || 0);
+      const inboundLocalTransport = parseFloat(formData.inboundBudget.localTransport?.subtotal || 0);
+      const inboundAirportTransfer = parseFloat(formData.inboundBudget.airportTransfer?.subtotal || 0);
+      const inboundAllowance = parseFloat(formData.inboundBudget.allowance?.subtotal || 0);
+      
+      costs.inboundTotal = inboundFlight + inboundAccommodation + inboundLocalTransport + inboundAirportTransfer + inboundAllowance;
+      
+      costs.flight += inboundFlight;
+      costs.accommodation += inboundAccommodation;
+      costs.localTransport += inboundLocalTransport;
+      costs.airportTransfer += inboundAirportTransfer;
+      costs.allowance += inboundAllowance;
+    }
 
       // 计算多程行程费用（旧方式，向后兼容）
       if (formData.multiCityRoutesBudget && Array.isArray(formData.multiCityRoutesBudget)) {

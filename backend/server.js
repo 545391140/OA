@@ -24,6 +24,8 @@ const jobLevelRoutes = require('./routes/jobLevels');
 const standardMatchRoutes = require('./routes/standardMatch');
 const expenseItemRoutes = require('./routes/expenseItems');
 const locationRoutes = require('./routes/locations');
+const roleRoutes = require('./routes/roles');
+const positionRoutes = require('./routes/positions');
 
 // Connect to database
 connectDB();
@@ -111,7 +113,7 @@ const fs = require('fs');
 const frontendBuildPath = path.join(__dirname, '..', 'frontend');
 const frontendExists = fs.existsSync(frontendBuildPath);
 
-// Health check endpoint (must be before static files)
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -119,6 +121,23 @@ app.get('/health', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// API routes (must be before static files to avoid interception)
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/travel', travelRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/approvals', approvalRoutes);
+app.use('/api/budgets', budgetRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/travel-standards', travelStandardRoutes);
+app.use('/api/city-levels', cityLevelRoutes);
+app.use('/api/job-levels', jobLevelRoutes);
+app.use('/api/standard-match', standardMatchRoutes);
+app.use('/api/expense-items', expenseItemRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/positions', positionRoutes);
 
 // Serve frontend static files (if deployed together)
 if (frontendExists) {
@@ -147,21 +166,6 @@ if (frontendExists) {
 } else {
   console.log(`⚠️  前端目录不存在: ${path.resolve(frontendBuildPath)}`);
 }
-
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/travel', travelRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/approvals', approvalRoutes);
-app.use('/api/budgets', budgetRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/travel-standards', travelStandardRoutes);
-app.use('/api/city-levels', cityLevelRoutes);
-app.use('/api/job-levels', jobLevelRoutes);
-app.use('/api/standard-match', standardMatchRoutes);
-app.use('/api/expense-items', expenseItemRoutes);
-app.use('/api/locations', locationRoutes);
 
 // Serve frontend for all non-API routes (SPA fallback)
 // This must be after API routes but before error handler

@@ -25,7 +25,8 @@
     "error": "오류",
     "success": "성공",
     "warning": "경고",
-    "info": "정보"
+    "info": "정보",
+    "actions": "작업"
   },
   "navigation": {
     "dashboard": "대시보드",
@@ -132,6 +133,7 @@
     "isBillable": "청구 가능",
     "client": "고객",
     "tags": "태그",
+    "status": "상태",
     "statuses": {
       "draft": "초안",
       "submitted": "제출됨",
@@ -208,5 +210,19 @@
       "approve": "이 신청을 승인하시겠습니까?",
       "reject": "이 신청을 거부하시겠습니까?"
     }
+  },
+  "placeholders": {
+    "searchExpense": "제목, 공급업체 또는 설명으로 검색...",
+    "searchTravel": "제목, 도시 또는 국가로 검색...",
+    "describeExpense": "비용에 대한 자세한 설명...",
+    "additionalExpenseInfo": "이 비용에 대한 추가 정보...",
+    "additionalTravelInfo": "이 출장 신청에 대한 추가 정보...",
+    "selectProject": "프로젝트 이름 선택 또는 입력",
+    "addTags": "이 비용을 분류하기 위한 태그 추가"
+  },
+  "dialogs": {
+    "confirmDelete": "삭제 확인",
+    "uploadReceipts": "영수증 업로드",
+    "changePassword": "비밀번호 변경"
   }
 }

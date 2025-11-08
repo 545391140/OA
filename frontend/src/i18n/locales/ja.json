@@ -25,7 +25,8 @@
     "error": "エラー",
     "success": "成功",
     "warning": "警告",
-    "info": "情報"
+    "info": "情報",
+    "actions": "操作"
   },
   "navigation": {
     "dashboard": "ダッシュボード",
@@ -132,6 +133,7 @@
     "isBillable": "請求可能",
     "client": "クライアント",
     "tags": "タグ",
+    "status": "ステータス",
     "statuses": {
       "draft": "下書き",
       "submitted": "提出済み",
@@ -208,5 +210,19 @@
       "approve": "この申請を承認してもよろしいですか？",
       "reject": "この申請を却下してもよろしいですか？"
     }
+  },
+  "placeholders": {
+    "searchExpense": "タイトル、ベンダー、または説明で検索...",
+    "searchTravel": "タイトル、都市、または国で検索...",
+    "describeExpense": "経費の詳細を説明...",
+    "additionalExpenseInfo": "この経費に関する追加情報...",
+    "additionalTravelInfo": "この出張申請に関する追加情報...",
+    "selectProject": "プロジェクト名を選択または入力",
+    "addTags": "この経費を分類するためのタグを追加"
+  },
+  "dialogs": {
+    "confirmDelete": "削除の確認",
+    "uploadReceipts": "領収書のアップロード",
+    "changePassword": "パスワードの変更"
   }
 }

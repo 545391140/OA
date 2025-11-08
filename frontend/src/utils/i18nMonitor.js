@@ -33,7 +33,10 @@ class I18nMonitor {
     // 监听翻译缺失
     this.setupMissingKeyListener();
     
-    console.log('I18n monitoring started');
+    // 仅在调试模式下输出启动日志
+    if (process.env.REACT_APP_DEBUG_I18N === 'true') {
+      console.log('I18n monitoring started');
+    }
   }
 
   /**
@@ -61,7 +64,10 @@ class I18nMonitor {
       timestamp: Date.now()
     });
     
-    console.warn(`Missing translation key: ${missingKey}`);
+    // 仅在调试模式下输出警告
+    if (process.env.REACT_APP_DEBUG_I18N === 'true') {
+      console.warn(`Missing translation key: ${missingKey}`);
+    }
   }
 
   /**
@@ -192,8 +198,8 @@ class I18nMonitor {
    * 发送指标到监控服务
    */
   sendMetric(type, data) {
-    // 这里可以集成Prometheus、Grafana或其他监控服务
-    if (process.env.NODE_ENV === 'development') {
+    // 仅在调试模式下输出日志（通过环境变量控制）
+    if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG_I18N === 'true') {
       console.log(`Metric [${type}]:`, data);
     }
     

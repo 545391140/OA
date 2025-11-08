@@ -2,6 +2,8 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Role = require('../models/Role');
+const Position = require('../models/Position');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -112,18 +114,24 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
+    console.log(`[LOGIN] Attempting login for email: ${email}`);
+
     // Check for user
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
+      console.log(`[LOGIN] User not found: ${email}`);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
+    console.log(`[LOGIN] User found: ${email}, isActive: ${user.isActive}`);
+
     // Check if user is active
     if (!user.isActive) {
+      console.log(`[LOGIN] User account is deactivated: ${email}`);
       return res.status(401).json({
         success: false,
         message: 'Account is deactivated'
@@ -134,11 +142,14 @@ router.post('/login', [
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
+      console.log(`[LOGIN] Password mismatch for user: ${email}`);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
+
+    console.log(`[LOGIN] Login successful for user: ${email}`);
 
     // Update last login
     user.lastLogin = new Date();
@@ -177,31 +188,114 @@ router.post('/login', [
 // @access  Private
 router.get('/me', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).populate('manager', 'firstName lastName email');
+    let user = null;
+    const mongoose = require('mongoose');
+    
+    // 优先尝试通过 ID 查找用户（真实用户或有效的 ObjectId）
+    if (req.user._id && mongoose.Types.ObjectId.isValid(req.user._id)) {
+      user = await User.findById(req.user._id)
+        .select('-password')
+        .populate('manager', 'firstName lastName email');
+    }
+    
+    // 如果通过 ID 没找到，尝试通过 email 查找（开发模式下可能使用 mock user）
+    if (!user && req.user.email) {
+      user = await User.findOne({ email: req.user.email })
+        .select('-password')
+        .populate('manager', 'firstName lastName email');
+    }
+    
+    // 如果数据库中找到了用户，返回真实数据
+    if (user) {
+      // 获取角色和岗位的详细信息
+      let roleInfo = null;
+      let positionInfo = null;
+      
+      if (user.role) {
+        const role = await Role.findOne({ code: user.role, isActive: true });
+        if (role) {
+          roleInfo = {
+            code: role.code,
+            name: role.name,
+            nameEn: role.nameEn
+          };
+        }
+      }
+      
+      if (user.position) {
+        const position = await Position.findOne({ code: user.position, isActive: true });
+        if (position) {
+          positionInfo = {
+            code: position.code,
+            name: position.name,
+            nameEn: position.nameEn,
+            department: position.department
+          };
+        }
+      }
 
-    res.json({
+      return res.json({
+        success: true,
+        user: {
+          id: user._id,
+          employeeId: user.employeeId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          roleInfo: roleInfo,
+          department: user.department,
+          position: user.position,
+          positionInfo: positionInfo,
+          jobLevel: user.jobLevel,
+          manager: user.manager,
+          phone: user.phone,
+          avatar: user.avatar,
+          preferences: user.preferences || {},
+          lastLogin: user.lastLogin,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
+        }
+      });
+    }
+    
+    // 如果数据库中没有找到用户，返回 mock 数据（仅作为后备方案）
+    // 这种情况应该很少见，因为开发模式应该使用真实数据库
+    console.warn('⚠️  User not found in database, returning mock data. User email:', req.user.email);
+    return res.json({
       success: true,
       user: {
-        id: user._id,
-        employeeId: user.employeeId,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        position: user.position,
-        manager: user.manager,
-        phone: user.phone,
-        avatar: user.avatar,
-        preferences: user.preferences,
-        lastLogin: user.lastLogin
+        id: req.user.id || req.user._id,
+        employeeId: req.user.employeeId || 'DEMO001',
+        firstName: req.user.firstName || 'John',
+        lastName: req.user.lastName || 'Doe',
+        email: req.user.email || 'demo@company.com',
+        role: req.user.role || 'admin',
+        roleInfo: null,
+        department: req.user.department || 'Sales',
+        position: req.user.position || 'Senior Manager',
+        positionInfo: null,
+        jobLevel: req.user.jobLevel || '',
+        manager: null,
+        phone: req.user.phone || '',
+        avatar: req.user.avatar || '',
+        preferences: req.user.preferences || {
+          language: req.user.language || 'en',
+          currency: req.user.currency || 'USD',
+          timezone: req.user.timezone || 'UTC'
+        },
+        lastLogin: req.user.lastLogin || null,
+        isActive: true,
+        createdAt: req.user.createdAt || new Date(),
+        updatedAt: req.user.updatedAt || new Date()
       }
     });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 });

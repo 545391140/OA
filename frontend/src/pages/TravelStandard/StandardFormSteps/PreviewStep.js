@@ -57,6 +57,8 @@ const PreviewStep = ({ formData, options }) => {
       'city': '城市',
       'city_level': '城市级别',
       'position_level': '岗位级别',
+      'role': '角色',
+      'position': '岗位',
       'department': '部门',
       'project_code': '项目编码'
     };
@@ -68,6 +70,32 @@ const PreviewStep = ({ formData, options }) => {
       i => i._id === expenseItemId || i._id?.toString() === expenseItemId?.toString()
     );
     return item ? item.itemName : expenseItemId;
+  };
+
+  // 获取条件值的显示文本（从角色管理和岗位管理获取名称）
+  const getConditionValueLabel = (type, value) => {
+    if (!value) return '';
+    
+    const values = value.split(',').map(v => v.trim()).filter(v => v);
+    
+    switch (type) {
+      case 'role':
+        // 从角色管理数据中查找角色名称
+        return values.map(code => {
+          const role = options.roles?.find(r => r.code === code);
+          return role ? `${role.name} (${code})` : code;
+        }).join(', ');
+      case 'position':
+        // 从岗位管理数据中查找岗位名称
+        return values.map(code => {
+          const position = options.positions?.find(p => p.code === code);
+          return position 
+            ? `${position.name} (${code})${position.department ? ` - ${position.department}` : ''}`
+            : code;
+        }).join(', ');
+      default:
+        return value;
+    }
   };
 
   return (
@@ -141,7 +169,7 @@ const PreviewStep = ({ formData, options }) => {
                         <Chip label="且" size="small" color="primary" />
                       )}
                       <Chip
-                        label={`${getConditionTypeLabel(cond.type)} ${getOperatorLabel(cond.operator)} ${cond.value}`}
+                        label={`${getConditionTypeLabel(cond.type)} ${getOperatorLabel(cond.operator)} ${getConditionValueLabel(cond.type, cond.value) || cond.value}`}
                         size="small"
                         variant="outlined"
                       />

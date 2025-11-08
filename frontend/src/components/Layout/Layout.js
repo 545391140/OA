@@ -34,7 +34,10 @@ import {
   Language as LanguageIcon,
   LocationOn as LocationOnIcon,
   QueryBuilder as QueryBuilderIcon,
-  AccountBalanceWallet as ExpenseItemsIcon
+  AccountBalanceWallet as ExpenseItemsIcon,
+  Security as SecurityIcon,
+  Work as WorkIcon,
+  People as PeopleIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -101,6 +104,19 @@ const Layout = () => {
     { text: '国际化监控', icon: <LanguageIcon />, path: '/i18n' },
   ];
 
+  // Admin only menu items
+  const adminMenuItems = [
+    { text: '角色管理', icon: <SecurityIcon />, path: '/roles' },
+    { text: '岗位管理', icon: <WorkIcon />, path: '/positions' },
+    { text: '用户管理', icon: <PeopleIcon />, path: '/users' },
+  ];
+
+  // Filter menu items based on user role
+  const filteredMenuItems = [
+    ...menuItems,
+    ...(user?.role === 'admin' ? adminMenuItems : [])
+  ];
+
   const drawer = (
     <div>
       <Toolbar>
@@ -110,7 +126,7 @@ const Layout = () => {
       </Toolbar>
       <Divider />
       <List>
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const isSelected = location.pathname === item.path || 
             (item.path !== '/' && location.pathname.startsWith(item.path));
           return (

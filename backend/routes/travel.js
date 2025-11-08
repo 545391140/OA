@@ -38,10 +38,21 @@ const generateTravelNumber = async () => {
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const travels = await Travel.find({ employee: req.user.id })
+    // 核心逻辑：管理员可以看到所有差旅申请，普通用户只能看到自己的
+    let query = {};
+    
+    // 如果不是管理员，只查询当前用户的申请
+    if (req.user.role !== 'admin') {
+      query.employee = req.user.id;
+    }
+    // 如果是管理员，不添加 employee 过滤条件，查询所有申请
+    
+    const travels = await Travel.find(query)
       .populate('employee', 'firstName lastName email')
       .populate('approvals.approver', 'firstName lastName email')
       .sort({ createdAt: -1 });
+
+    console.log(`[TRAVEL_LIST] User ${req.user.id} (role: ${req.user.role}) fetched ${travels.length} travels`);
 
     res.json({
       success: true,

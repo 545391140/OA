@@ -165,6 +165,7 @@
     "isBillable": "Billable",
     "client": "Client",
     "tags": "Tags",
+    "status": "Status",
     "statuses": {
       "draft": "Draft",
       "submitted": "Submitted",

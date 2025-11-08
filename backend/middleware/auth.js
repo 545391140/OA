@@ -15,21 +15,61 @@ const protect = async (req, res, next) => {
       const isMockToken = token.startsWith('mock-jwt-token-');
       
       if (isDevMode && isMockToken) {
-        // Create mock user for development
-        req.user = {
-          _id: '507f1f77bcf86cd799439011',
-          id: '507f1f77bcf86cd799439011',
-          email: 'demo@company.com',
-          firstName: 'John',
-          lastName: 'Doe',
-          department: 'Sales',
-          position: 'Senior Manager',
-          role: 'admin',
-          language: 'en',
-          currency: 'USD',
-          timezone: 'UTC'
-        };
-        console.log('✅ [AUTH] Development mode: Using mock user with admin role');
+        // 开发模式下，尝试从数据库查找真实用户
+        // 优先查找 admin 角色的用户，如果没有则使用第一个用户
+        try {
+          let realUser = await User.findOne({ role: 'admin', isActive: true })
+            .select('-password')
+            .sort({ createdAt: -1 })
+            .limit(1);
+          
+          // 如果没有 admin 用户，查找任意激活的用户
+          if (!realUser) {
+            realUser = await User.findOne({ isActive: true })
+              .select('-password')
+              .sort({ createdAt: -1 })
+              .limit(1);
+          }
+          
+          if (realUser) {
+            // 使用真实用户数据
+            req.user = realUser;
+            console.log(`✅ [AUTH] Development mode: Using real user from database - ${realUser.email}`);
+          } else {
+            // 如果数据库中没有用户，使用 mock user
+            req.user = {
+              _id: '507f1f77bcf86cd799439011',
+              id: '507f1f77bcf86cd799439011',
+              email: 'demo@company.com',
+              firstName: 'John',
+              lastName: 'Doe',
+              department: 'Sales',
+              position: 'Senior Manager',
+              role: 'admin',
+              language: 'en',
+              currency: 'USD',
+              timezone: 'UTC'
+            };
+            console.log('⚠️  [AUTH] Development mode: No users in database, using mock user');
+          }
+        } catch (error) {
+          console.error('Error fetching user in dev mode:', error);
+          // 出错时使用 mock user
+          req.user = {
+            _id: '507f1f77bcf86cd799439011',
+            id: '507f1f77bcf86cd799439011',
+            email: 'demo@company.com',
+            firstName: 'John',
+            lastName: 'Doe',
+            department: 'Sales',
+            position: 'Senior Manager',
+            role: 'admin',
+            language: 'en',
+            currency: 'USD',
+            timezone: 'UTC'
+          };
+          console.log('⚠️  [AUTH] Development mode: Error fetching user, using mock user');
+        }
         return next();
       }
       

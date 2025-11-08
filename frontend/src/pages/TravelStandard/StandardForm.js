@@ -73,7 +73,9 @@ const StandardForm = () => {
   const [options, setOptions] = useState({
     jobLevels: [],
     cityLevels: [],
-    expenseItems: []
+    expenseItems: [],
+    roles: [],
+    positions: []
   });
   const [loadingOptions, setLoadingOptions] = useState(false);
 
@@ -87,10 +89,12 @@ const StandardForm = () => {
   const fetchOptions = async () => {
     try {
       setLoadingOptions(true);
-      const [jobLevelsRes, cityLevelsRes, expenseItemsRes] = await Promise.all([
+      const [jobLevelsRes, cityLevelsRes, expenseItemsRes, rolesRes, positionsRes] = await Promise.all([
         apiClient.get('/job-levels'),
         apiClient.get('/city-levels'),
-        apiClient.get('/expense-items')
+        apiClient.get('/expense-items'),
+        apiClient.get('/roles', { params: { isActive: true } }),
+        apiClient.get('/positions', { params: { isActive: true } })
       ]);
       
       setOptions({
@@ -98,7 +102,9 @@ const StandardForm = () => {
         cityLevels: cityLevelsRes.data.success ? (cityLevelsRes.data.data || []) : [],
         expenseItems: expenseItemsRes.data.success 
           ? (expenseItemsRes.data.data || []).filter(item => item.status === 'enabled')
-          : []
+          : [],
+        roles: rolesRes.data.success ? (rolesRes.data.data || []) : [],
+        positions: positionsRes.data.success ? (positionsRes.data.data || []) : []
       });
     } catch (err) {
       console.error('Fetch options error:', err);

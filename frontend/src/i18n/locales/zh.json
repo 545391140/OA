@@ -190,6 +190,7 @@
     "selectProject": "选择或输入项目名称",
     "addTags": "添加标签以分类此费用",
     "billable": "可计费",
+    "status": "状态",
     "statuses": {
       "draft": "草稿",
       "submitted": "已提交",

@@ -54,7 +54,7 @@ const TravelStandardSchema = new mongoose.Schema({
     conditions: [{
       type: {
         type: String,
-        enum: ['country', 'city', 'city_level', 'position_level', 'department', 'project_code'],
+        enum: ['country', 'city', 'city_level', 'position_level', 'role', 'position', 'department', 'project_code'],
         required: true
       },
       operator: {

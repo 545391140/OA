@@ -93,6 +93,8 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
     { value: 'city', label: '城市' },
     { value: 'city_level', label: '城市级别' },
     { value: 'position_level', label: '岗位级别' },
+    { value: 'role', label: '角色' },
+    { value: 'position', label: '岗位' },
     { value: 'department', label: '部门' },
     { value: 'project_code', label: '项目编码' }
   ];
@@ -188,6 +190,38 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
           { id: '3', name: '3', label: '3级 - 三线城市', isSelectAll: false },
           { id: '4', name: '4', label: '4级 - 其他城市', isSelectAll: false }
         ];
+        break;
+      case 'role':
+        // 从角色管理获取数据
+        baseOptions = (options.roles || []).map(role => ({
+          id: role.code || role._id,
+          name: role.code, // 保存时使用code
+          label: role.name ? `${role.name} (${role.code})` : role.code,
+          isSelectAll: false
+        }));
+        // 按名称排序
+        baseOptions.sort((a, b) => {
+          const nameA = options.roles?.find(r => r.code === a.name)?.name || a.name;
+          const nameB = options.roles?.find(r => r.code === b.name)?.name || b.name;
+          return nameA.localeCompare(nameB, 'zh-CN');
+        });
+        break;
+      case 'position':
+        // 从岗位管理获取数据
+        baseOptions = (options.positions || []).map(position => ({
+          id: position.code || position._id,
+          name: position.code, // 保存时使用code
+          label: position.name 
+            ? `${position.name} (${position.code})${position.department ? ` - ${position.department}` : ''}`
+            : position.code,
+          isSelectAll: false
+        }));
+        // 按名称排序
+        baseOptions.sort((a, b) => {
+          const nameA = options.positions?.find(p => p.code === a.name)?.name || a.name;
+          const nameB = options.positions?.find(p => p.code === b.name)?.name || b.name;
+          return nameA.localeCompare(nameB, 'zh-CN');
+        });
         break;
       default:
         return [];
@@ -397,7 +431,7 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
                       </Select>
                     </FormControl>
                     {/* 根据条件类型显示不同的输入组件 */}
-                    {['country', 'city', 'city_level'].includes(condition.type) ? (
+                    {['country', 'city', 'city_level', 'role', 'position'].includes(condition.type) ? (
                       <FormControl size="small" fullWidth>
                         {locationsData.loading ? (
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
