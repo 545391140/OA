@@ -102,6 +102,11 @@ const TravelSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
+  // 费用预算 - 多程行程（数组，每个元素对应一个多程行程的费用预算）
+  multiCityRoutesBudget: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
+  },
   // 向后兼容的旧字段
   dates: {
     departure: {
@@ -119,7 +124,7 @@ const TravelSchema = new mongoose.Schema({
   currency: {
     type: String,
     default: 'USD',
-    enum: ['USD', 'RMB', 'CNY', 'JPY', 'KRW', 'EUR']
+    enum: ['USD', 'CNY', 'JPY', 'KRW', 'EUR']
   },
   status: {
     type: String,

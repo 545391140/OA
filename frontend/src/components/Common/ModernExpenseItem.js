@@ -66,7 +66,7 @@ const ModernExpenseItem = ({
     >
       <CardContent sx={{ p: 1.25 }}>
         {/* 头部 */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box
               sx={{
@@ -105,24 +105,6 @@ const ModernExpenseItem = ({
                 )}
               </Typography>
             </Box>
-          </Box>
-
-          {/* 小计显示 */}
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 700,
-                color: categoryColor,
-                lineHeight: 1.2,
-                fontSize: '1rem',
-              }}
-            >
-              {currency} {subtotal || '0.00'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-              小计
-            </Typography>
           </Box>
         </Box>
 

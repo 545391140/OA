@@ -180,6 +180,48 @@ router.post('/', protect, async (req, res) => {
       }));
     }
 
+    // 确保 multiCityRoutesBudget 数组长度与 multiCityRoutes 一致
+    const routesLength = travelData.multiCityRoutes ? travelData.multiCityRoutes.length : 0;
+    
+    if (routesLength > 0) {
+      // 如果有多程行程，确保 multiCityRoutesBudget 存在且长度匹配
+      if (travelData.multiCityRoutesBudget !== undefined && Array.isArray(travelData.multiCityRoutesBudget)) {
+        // 如果提供了 multiCityRoutesBudget，确保长度匹配
+        while (travelData.multiCityRoutesBudget.length < routesLength) {
+          travelData.multiCityRoutesBudget.push({});
+        }
+        if (travelData.multiCityRoutesBudget.length > routesLength) {
+          travelData.multiCityRoutesBudget = travelData.multiCityRoutesBudget.slice(0, routesLength);
+        }
+      } else {
+        // 如果没有提供 multiCityRoutesBudget 或格式不正确，初始化数组
+        travelData.multiCityRoutesBudget = Array(routesLength).fill(null).map(() => ({}));
+      }
+    } else {
+      // 如果没有 multiCityRoutes，设置为空数组
+      travelData.multiCityRoutesBudget = travelData.multiCityRoutesBudget || [];
+      if (!Array.isArray(travelData.multiCityRoutesBudget)) {
+        travelData.multiCityRoutesBudget = [];
+      }
+    }
+    
+    // 强制确保 multiCityRoutesBudget 字段被包含
+    if (!travelData.hasOwnProperty('multiCityRoutesBudget')) {
+      travelData.multiCityRoutesBudget = [];
+    }
+    if (!Array.isArray(travelData.multiCityRoutesBudget)) {
+      travelData.multiCityRoutesBudget = [];
+    }
+    
+    console.log('Create travel - multiCityRoutesBudget:', {
+      routesLength,
+      budgetLength: travelData.multiCityRoutesBudget.length,
+      hasMultiCityRoutes: !!travelData.multiCityRoutes,
+      multiCityRoutesLength: travelData.multiCityRoutes?.length || 0,
+      budget: travelData.multiCityRoutesBudget,
+      travelDataKeys: Object.keys(travelData).filter(k => k.includes('Budget') || k.includes('Routes'))
+    });
+
     // 计算总费用
     if (!travelData.estimatedCost) {
       const outboundTotal = Object.values(travelData.outboundBudget || {}).reduce((sum, item) => {
@@ -188,7 +230,13 @@ router.post('/', protect, async (req, res) => {
       const inboundTotal = Object.values(travelData.inboundBudget || {}).reduce((sum, item) => {
         return sum + (parseFloat(item.subtotal) || 0);
       }, 0);
-      travelData.estimatedCost = outboundTotal + inboundTotal;
+      // 计算多程行程费用
+      const multiCityTotal = (travelData.multiCityRoutesBudget || []).reduce((sum, budget) => {
+        return sum + Object.values(budget || {}).reduce((budgetSum, item) => {
+          return budgetSum + (parseFloat(item.subtotal) || 0);
+        }, 0);
+      }, 0);
+      travelData.estimatedCost = outboundTotal + inboundTotal + multiCityTotal;
     }
 
     // 向后兼容：设置dates字段
@@ -205,6 +253,16 @@ router.post('/', protect, async (req, res) => {
     }
 
     const travel = await Travel.create(travelData);
+    
+    console.log('Created travel:', {
+      id: travel._id,
+      hasOutboundBudget: !!travel.outboundBudget,
+      hasInboundBudget: !!travel.inboundBudget,
+      hasMultiCityRoutesBudget: !!travel.multiCityRoutesBudget,
+      multiCityRoutesBudgetLength: travel.multiCityRoutesBudget?.length || 0,
+      multiCityRoutesBudget: travel.multiCityRoutesBudget,
+      multiCityRoutesLength: travel.multiCityRoutes?.length || 0
+    });
 
     res.status(201).json({
       success: true,
@@ -285,6 +343,21 @@ router.put('/:id', protect, async (req, res) => {
     // 处理日期字段转换
     const updateData = { ...req.body };
     
+    // 记录接收到的原始数据
+    console.log('=== 后端接收到的原始数据 ===');
+    console.log('req.body.multiCityRoutesBudget:', {
+      exists: req.body.hasOwnProperty('multiCityRoutesBudget'),
+      isArray: Array.isArray(req.body.multiCityRoutesBudget),
+      length: req.body.multiCityRoutesBudget?.length || 0,
+      data: JSON.stringify(req.body.multiCityRoutesBudget, null, 2),
+      type: typeof req.body.multiCityRoutesBudget
+    });
+    console.log('req.body.multiCityRoutes:', {
+      exists: req.body.hasOwnProperty('multiCityRoutes'),
+      isArray: Array.isArray(req.body.multiCityRoutes),
+      length: req.body.multiCityRoutes?.length || 0
+    });
+    
     if (updateData.startDate && typeof updateData.startDate === 'string') {
       updateData.startDate = new Date(updateData.startDate);
     }
@@ -304,15 +377,104 @@ router.put('/:id', protect, async (req, res) => {
       }));
     }
 
+    // 确保 multiCityRoutesBudget 数组长度与 multiCityRoutes 一致
+    // 重要：优先使用前端发送的数据，不要覆盖用户输入
+    const finalMultiCityRoutes = updateData.multiCityRoutes !== undefined 
+      ? updateData.multiCityRoutes 
+      : (travel.multiCityRoutes || []);
+    const routesLength = finalMultiCityRoutes.length || 0;
+    
+    // 如果前端发送了 multiCityRoutesBudget，使用前端的数据（即使它是空数组）
+    // 只有在前端没有发送该字段时，才从现有数据中初始化
+    console.log('=== 处理 multiCityRoutesBudget ===');
+    console.log('前端是否发送:', updateData.hasOwnProperty('multiCityRoutesBudget'));
+    console.log('前端原始数据:', {
+      isArray: Array.isArray(updateData.multiCityRoutesBudget),
+      length: updateData.multiCityRoutesBudget?.length || 0,
+      type: typeof updateData.multiCityRoutesBudget,
+      data: JSON.stringify(updateData.multiCityRoutesBudget, null, 2)
+    });
+    console.log('routesLength:', routesLength);
+    
+    if (updateData.hasOwnProperty('multiCityRoutesBudget')) {
+      // 前端发送了该字段，使用前端的数据
+      if (!Array.isArray(updateData.multiCityRoutesBudget)) {
+        console.warn('Warning: multiCityRoutesBudget is not an array, converting');
+        updateData.multiCityRoutesBudget = [];
+      }
+      
+      // 确保数组长度与 multiCityRoutes 一致（但保留前端的数据）
+      if (routesLength > 0) {
+        const originalLength = updateData.multiCityRoutesBudget.length;
+        // 如果长度不匹配，调整长度（保留现有数据，不足的用空对象填充）
+        while (updateData.multiCityRoutesBudget.length < routesLength) {
+          updateData.multiCityRoutesBudget.push({});
+        }
+        if (updateData.multiCityRoutesBudget.length > routesLength) {
+          updateData.multiCityRoutesBudget = updateData.multiCityRoutesBudget.slice(0, routesLength);
+        }
+        console.log(`调整数组长度: ${originalLength} -> ${updateData.multiCityRoutesBudget.length}`);
+        
+        // 检查每个预算对象是否有数据
+        updateData.multiCityRoutesBudget.forEach((budget, index) => {
+          const keys = Object.keys(budget || {});
+          const items = keys.map(key => ({
+            itemId: key,
+            itemName: budget[key]?.itemName || 'N/A',
+            unitPrice: budget[key]?.unitPrice || 'N/A',
+            quantity: budget[key]?.quantity || 'N/A',
+            subtotal: budget[key]?.subtotal || 'N/A'
+          }));
+          console.log(`预算[${index}]:`, {
+            keysCount: keys.length,
+            keys: keys,
+            hasData: keys.length > 0,
+            items: items
+          });
+        });
+      } else {
+        // 如果没有多程行程，设置为空数组
+        updateData.multiCityRoutesBudget = [];
+      }
+    } else {
+      // 前端没有发送该字段，从现有数据中初始化
+      console.log('前端未发送 multiCityRoutesBudget，从现有数据初始化');
+      if (routesLength > 0) {
+        const existingBudget = travel.multiCityRoutesBudget || [];
+        if (Array.isArray(existingBudget) && existingBudget.length === routesLength) {
+          updateData.multiCityRoutesBudget = existingBudget;
+        } else {
+          updateData.multiCityRoutesBudget = Array(routesLength).fill(null).map((_, index) => 
+            existingBudget[index] || {}
+          );
+        }
+      } else {
+        updateData.multiCityRoutesBudget = [];
+      }
+    }
+    
+    console.log('处理后的 multiCityRoutesBudget:', {
+      length: updateData.multiCityRoutesBudget?.length || 0,
+      isArray: Array.isArray(updateData.multiCityRoutesBudget),
+      data: JSON.stringify(updateData.multiCityRoutesBudget, null, 2)
+    });
+
     // 计算总费用
-    if (updateData.outboundBudget || updateData.inboundBudget) {
+    if (updateData.outboundBudget || updateData.inboundBudget || updateData.multiCityRoutesBudget) {
       const outboundTotal = Object.values(updateData.outboundBudget || travel.outboundBudget || {}).reduce((sum, item) => {
         return sum + (parseFloat(item.subtotal) || 0);
       }, 0);
       const inboundTotal = Object.values(updateData.inboundBudget || travel.inboundBudget || {}).reduce((sum, item) => {
         return sum + (parseFloat(item.subtotal) || 0);
       }, 0);
-      updateData.estimatedCost = outboundTotal + inboundTotal;
+      // 计算多程行程费用
+      const multiCityRoutesBudget = updateData.multiCityRoutesBudget || travel.multiCityRoutesBudget || [];
+      const multiCityTotal = multiCityRoutesBudget.reduce((sum, budget) => {
+        return sum + Object.values(budget || {}).reduce((budgetSum, item) => {
+          return budgetSum + (parseFloat(item.subtotal) || 0);
+        }, 0);
+      }, 0);
+      updateData.estimatedCost = outboundTotal + inboundTotal + multiCityTotal;
     }
 
     // 向后兼容：设置dates字段
@@ -333,10 +495,117 @@ router.put('/:id', protect, async (req, res) => {
       delete updateData.employee;
     }
 
-    travel = await Travel.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-      runValidators: true
-    }).populate('employee', 'firstName lastName email');
+    // updateData.multiCityRoutesBudget 已经在上面（365-406行）处理过了
+    // 这里只需要记录日志即可
+    console.log('Update travel data (processed):', {
+      id: req.params.id,
+      hasOutboundBudget: !!updateData.outboundBudget,
+      hasInboundBudget: !!updateData.inboundBudget,
+      hasMultiCityRoutesBudget: !!updateData.multiCityRoutesBudget,
+      multiCityRoutesBudgetLength: updateData.multiCityRoutesBudget?.length || 0,
+      multiCityRoutesLength: routesLength,
+      multiCityRoutesBudget: updateData.multiCityRoutesBudget,
+      existingMultiCityRoutesBudget: travel.multiCityRoutesBudget ? travel.multiCityRoutesBudget.length : 0,
+      isArray: Array.isArray(updateData.multiCityRoutesBudget),
+      sampleBudgetItem: updateData.multiCityRoutesBudget?.[0] || 'N/A'
+    });
+
+    // 使用 findById 获取文档，然后直接设置字段并保存
+    // 这样可以确保新字段（multiCityRoutesBudget）被正确保存到数据库
+    travel = await Travel.findById(req.params.id);
+    
+    if (!travel) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel request not found'
+      });
+    }
+    
+    // 直接设置所有更新字段
+    // 注意：updateData.multiCityRoutesBudget 已经在上面处理过了
+    console.log('=== 设置文档字段 ===');
+    Object.keys(updateData).forEach(key => {
+      if (key !== 'employee' && key !== 'travelNumber') {
+        travel[key] = updateData[key];
+        if (key === 'multiCityRoutesBudget') {
+          console.log(`设置 travel.${key}:`, {
+            isArray: Array.isArray(updateData[key]),
+            length: updateData[key]?.length || 0,
+            data: JSON.stringify(updateData[key], null, 2)
+          });
+        }
+      }
+    });
+    
+    // 强制设置 multiCityRoutesBudget（使用已经处理过的值）
+    // 这确保即使用户输入了数据，也会被正确保存
+    travel.multiCityRoutesBudget = updateData.multiCityRoutesBudget || [];
+    
+    // 确保是数组类型
+    if (!Array.isArray(travel.multiCityRoutesBudget)) {
+      console.warn('Warning: multiCityRoutesBudget is not an array, converting to array');
+      travel.multiCityRoutesBudget = [];
+    }
+    
+    console.log('=== Before save - travel.multiCityRoutesBudget ===');
+    console.log('准备保存的数据:', {
+      length: travel.multiCityRoutesBudget?.length || 0,
+      isArray: Array.isArray(travel.multiCityRoutesBudget),
+      data: JSON.stringify(travel.multiCityRoutesBudget, null, 2),
+      routesLength: routesLength,
+      updateDataHasProperty: updateData.hasOwnProperty('multiCityRoutesBudget')
+    });
+    
+    // 检查每个预算对象
+    travel.multiCityRoutesBudget.forEach((budget, index) => {
+      const keys = Object.keys(budget || {});
+      console.log(`准备保存的预算[${index}]:`, {
+        keysCount: keys.length,
+        keys: keys,
+        hasData: keys.length > 0,
+        sampleItem: keys.length > 0 ? budget[keys[0]] : null
+      });
+    });
+    
+    // 保存文档，这会确保所有字段（包括新字段）都被保存到数据库
+    console.log('=== 开始保存到数据库 ===');
+    await travel.save();
+    console.log('保存完成');
+    
+    // 重新加载以获取最新数据
+    travel = await Travel.findById(req.params.id).populate('employee', 'firstName lastName email');
+
+    console.log('=== 保存后的数据（从数据库重新加载） ===');
+    console.log('Updated travel:', {
+      id: travel._id,
+      hasOutboundBudget: !!travel.outboundBudget,
+      hasInboundBudget: !!travel.inboundBudget,
+      hasMultiCityRoutesBudget: !!travel.multiCityRoutesBudget,
+      multiCityRoutesBudgetLength: travel.multiCityRoutesBudget?.length || 0,
+      multiCityRoutesBudget: JSON.stringify(travel.multiCityRoutesBudget, null, 2)
+    });
+    
+    // 详细检查保存后的 multiCityRoutesBudget
+    if (travel.multiCityRoutesBudget && Array.isArray(travel.multiCityRoutesBudget)) {
+      travel.multiCityRoutesBudget.forEach((budget, index) => {
+        const keys = Object.keys(budget || {});
+        const items = keys.map(key => ({
+          itemId: key,
+          itemName: budget[key]?.itemName || 'N/A',
+          unitPrice: budget[key]?.unitPrice || 'N/A',
+          quantity: budget[key]?.quantity || 'N/A',
+          subtotal: budget[key]?.subtotal || 'N/A'
+        }));
+        console.log(`保存后的预算[${index}]:`, {
+          keysCount: keys.length,
+          keys: keys,
+          hasData: keys.length > 0,
+          items: items
+        });
+      });
+    } else {
+      console.warn('保存后的 multiCityRoutesBudget 不是数组或为空');
+    }
 
     res.json({
       success: true,

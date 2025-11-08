@@ -22,6 +22,7 @@ import {
 const ModernCostOverview = ({
   formData,
   matchedExpenseItems = null,
+  routeMatchedExpenseItems = null, // 每个行程的匹配费用项列表 { outbound, inbound, multiCity: { [index]: {...} } }
   currency = 'USD',
   sx = {},
 }) => {
@@ -101,12 +102,40 @@ const ModernCostOverview = ({
         costs.airportTransfer += inboundAirportTransfer;
         costs.allowance += inboundAllowance;
       }
+
+      // 计算多程行程费用（旧方式，向后兼容）
+      if (formData.multiCityRoutesBudget && Array.isArray(formData.multiCityRoutesBudget)) {
+        formData.multiCityRoutesBudget.forEach((budget) => {
+          if (budget && typeof budget === 'object') {
+            const multiCityFlight = parseFloat(budget.flight?.subtotal || 0);
+            const multiCityAccommodation = parseFloat(budget.accommodation?.subtotal || 0);
+            const multiCityLocalTransport = parseFloat(budget.localTransport?.subtotal || 0);
+            const multiCityAirportTransfer = parseFloat(budget.airportTransfer?.subtotal || 0);
+            const multiCityAllowance = parseFloat(budget.allowance?.subtotal || 0);
+            
+            const routeTotal = multiCityFlight + multiCityAccommodation + multiCityLocalTransport + multiCityAirportTransfer + multiCityAllowance;
+            
+            if (!costs.multiCityTotal) {
+              costs.multiCityTotal = 0;
+            }
+            costs.multiCityTotal += routeTotal;
+            
+            costs.flight += multiCityFlight;
+            costs.accommodation += multiCityAccommodation;
+            costs.localTransport += multiCityLocalTransport;
+            costs.airportTransfer += multiCityAirportTransfer;
+            costs.allowance += multiCityAllowance;
+          }
+        });
+      }
     } else {
       // 新方式：根据matchedExpenseItems动态计算
       // 计算去程费用
       if (formData.outboundBudget) {
+        // 如果有 routeMatchedExpenseItems，使用它来获取去程的匹配费用项
+        const outboundMatchedItems = routeMatchedExpenseItems?.outbound || matchedExpenseItems;
         Object.entries(formData.outboundBudget).forEach(([itemId, budgetItem]) => {
-          const expense = matchedExpenseItems[itemId];
+          const expense = outboundMatchedItems?.[itemId] || matchedExpenseItems?.[itemId];
           const subtotal = parseFloat(budgetItem.subtotal || 0);
           const category = categorizeExpense(expense);
           costs[category] += subtotal;
@@ -117,17 +146,45 @@ const ModernCostOverview = ({
       // 计算返程费用（如果是往返行程）
       const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
       if (isRoundTrip && formData.inboundBudget) {
+        // 如果有 routeMatchedExpenseItems，使用它来获取返程的匹配费用项
+        const inboundMatchedItems = routeMatchedExpenseItems?.inbound || matchedExpenseItems;
         Object.entries(formData.inboundBudget).forEach(([itemId, budgetItem]) => {
-          const expense = matchedExpenseItems[itemId];
+          const expense = inboundMatchedItems?.[itemId] || matchedExpenseItems?.[itemId];
           const subtotal = parseFloat(budgetItem.subtotal || 0);
           const category = categorizeExpense(expense);
           costs[category] += subtotal;
           costs.inboundTotal += subtotal;
         });
       }
+
+      // 计算多程行程费用
+      if (formData.multiCityRoutesBudget && Array.isArray(formData.multiCityRoutesBudget)) {
+        formData.multiCityRoutesBudget.forEach((budget, index) => {
+          if (budget && typeof budget === 'object') {
+            // 获取该多程行程的匹配费用项
+            const multiCityMatchedItems = routeMatchedExpenseItems?.multiCity?.[index] || matchedExpenseItems;
+            let routeTotal = 0;
+            
+            Object.entries(budget).forEach(([itemId, budgetItem]) => {
+              const expense = multiCityMatchedItems?.[itemId] || matchedExpenseItems?.[itemId];
+              const subtotal = parseFloat(budgetItem.subtotal || 0);
+              const category = categorizeExpense(expense);
+              costs[category] += subtotal;
+              routeTotal += subtotal;
+            });
+            
+            // 累加到多程行程总费用
+            if (!costs.multiCityTotal) {
+              costs.multiCityTotal = 0;
+            }
+            costs.multiCityTotal += routeTotal;
+          }
+        });
+      }
     }
 
-    costs.grandTotal = costs.outboundTotal + costs.inboundTotal;
+    // 计算总费用：去程 + 返程 + 多程行程
+    costs.grandTotal = costs.outboundTotal + costs.inboundTotal + (costs.multiCityTotal || 0);
     return costs;
   };
 
@@ -209,37 +266,60 @@ const ModernCostOverview = ({
     // 判断是否为往返行程
     const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
     
-    // 如果有matchedExpenseItems，基于实际费用项数量计算
-    if (matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0) {
+    // 如果有matchedExpenseItems或routeMatchedExpenseItems，基于实际费用项数量计算
+    const expenseItemsToCheck = routeMatchedExpenseItems?.outbound || matchedExpenseItems;
+    if (expenseItemsToCheck && Object.keys(expenseItemsToCheck).length > 0) {
       let totalRequiredFields = 0; // 总需要填写的字段数
       let completedFields = 0; // 已完成的字段数
       
-      Object.entries(matchedExpenseItems).forEach(([itemId, expense]) => {
+      // 检查去程
+      Object.entries(expenseItemsToCheck).forEach(([itemId, expense]) => {
         const outboundItem = formData.outboundBudget?.[itemId];
-        const inboundItem = formData.inboundBudget?.[itemId];
         
         // 检查去程
         const outboundUnitPrice = parseFloat(outboundItem?.unitPrice || 0);
         const outboundSubtotal = parseFloat(outboundItem?.subtotal || 0);
         const outboundCompleted = outboundUnitPrice > 0 || (expense.limitType === 'ACTUAL' && outboundSubtotal > 0);
         
-        // 单程：只需去程；往返：需要去程和返程
-        if (isRoundTrip) {
-          // 往返行程：需要填写去程和返程
-          totalRequiredFields += 2;
-          
-          const inboundUnitPrice = parseFloat(inboundItem?.unitPrice || 0);
-          const inboundSubtotal = parseFloat(inboundItem?.subtotal || 0);
-          const inboundCompleted = inboundUnitPrice > 0 || (expense.limitType === 'ACTUAL' && inboundSubtotal > 0);
-          
-          if (outboundCompleted) completedFields += 1;
-          if (inboundCompleted) completedFields += 1;
-        } else {
-          // 单程行程：只需填写去程
-          totalRequiredFields += 1;
-          if (outboundCompleted) completedFields += 1;
-        }
+        totalRequiredFields += 1;
+        if (outboundCompleted) completedFields += 1;
       });
+      
+      // 检查返程（如果是往返行程）
+      if (isRoundTrip) {
+        const inboundExpenseItems = routeMatchedExpenseItems?.inbound || matchedExpenseItems;
+        if (inboundExpenseItems) {
+          Object.entries(inboundExpenseItems).forEach(([itemId, expense]) => {
+            const inboundItem = formData.inboundBudget?.[itemId];
+            
+            const inboundUnitPrice = parseFloat(inboundItem?.unitPrice || 0);
+            const inboundSubtotal = parseFloat(inboundItem?.subtotal || 0);
+            const inboundCompleted = inboundUnitPrice > 0 || (expense.limitType === 'ACTUAL' && inboundSubtotal > 0);
+            
+            totalRequiredFields += 1;
+            if (inboundCompleted) completedFields += 1;
+          });
+        }
+      }
+      
+      // 检查多程行程
+      if (formData.multiCityRoutesBudget && Array.isArray(formData.multiCityRoutesBudget)) {
+        formData.multiCityRoutesBudget.forEach((budget, index) => {
+          const multiCityExpenseItems = routeMatchedExpenseItems?.multiCity?.[index] || matchedExpenseItems;
+          if (multiCityExpenseItems) {
+            Object.entries(multiCityExpenseItems).forEach(([itemId, expense]) => {
+              const multiCityItem = budget?.[itemId];
+              
+              const multiCityUnitPrice = parseFloat(multiCityItem?.unitPrice || 0);
+              const multiCitySubtotal = parseFloat(multiCityItem?.subtotal || 0);
+              const multiCityCompleted = multiCityUnitPrice > 0 || (expense.limitType === 'ACTUAL' && multiCitySubtotal > 0);
+              
+              totalRequiredFields += 1;
+              if (multiCityCompleted) completedFields += 1;
+            });
+          }
+        });
+      }
       
       const completionPercentage = totalRequiredFields > 0 
         ? (completedFields / totalRequiredFields) * 100 
@@ -291,10 +371,13 @@ const ModernCostOverview = ({
     <Card
       sx={{
         position: 'sticky',
-        top: 20,
+        top: 80, // 导航栏高度(64px) + 间距(16px) = 80px，确保在固定导航栏下方
         borderRadius: 3,
         border: 'none',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+        zIndex: 10, // 确保在其他内容之上，但低于导航栏(AppBar 的 zIndex 通常是 1100)
+        maxHeight: 'calc(100vh - 96px)', // 限制最大高度，避免超出视口
+        overflowY: 'auto', // 如果内容过多，允许滚动
         ...sx,
       }}
     >
@@ -406,6 +489,27 @@ const ModernCostOverview = ({
                   </Typography>
                   <Typography variant="h6" fontWeight={600} color="secondary">
                     {currency} {formatAmount(costs.inboundTotal)}
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+            
+            {/* 多程行程费用 */}
+            {costs.multiCityTotal > 0 && (
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 2,
+                    backgroundColor: alpha(theme.palette.info.main, 0.05),
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    多程行程 ({formData.multiCityRoutesBudget?.length || 0} 程)
+                  </Typography>
+                  <Typography variant="h6" fontWeight={600} color="info.main">
+                    {currency} {formatAmount(costs.multiCityTotal)}
                   </Typography>
                 </Box>
               </Grid>
