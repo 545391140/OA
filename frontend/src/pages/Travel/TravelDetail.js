@@ -157,7 +157,7 @@ const TravelDetail = () => {
       };
       setTravel(mockData);
     } catch (error) {
-      showNotification('Failed to load travel details', 'error');
+      showNotification(t('travel.detail.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -169,7 +169,7 @@ const TravelDetail = () => {
 
   const handleDelete = () => {
     // Implement delete functionality
-    showNotification('Delete functionality not implemented yet', 'info');
+    showNotification(t('travel.detail.deleteNotImplemented'), 'info');
   };
 
   if (loading) {
@@ -187,7 +187,7 @@ const TravelDetail = () => {
       <Container maxWidth="xl">
         <Box sx={{ py: 3 }}>
           <Alert severity="error">
-            Travel request not found
+            {t('travel.detail.notFound')}
           </Alert>
         </Box>
       </Container>
@@ -208,12 +208,12 @@ const TravelDetail = () => {
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Chip
-                label={travel.status}
+                label={t(`travel.statuses.${travel.status}`) || travel.status}
                 color={getStatusColor(travel.status)}
                 size="small"
               />
               <Typography variant="body2" color="text.secondary">
-                Created on {dayjs(travel.createdAt).format('MMM DD, YYYY')}
+                {t('travel.detail.createdOn')} {dayjs(travel.createdAt).format('MMM DD, YYYY')}
               </Typography>
             </Box>
           </Box>
@@ -223,7 +223,7 @@ const TravelDetail = () => {
               startIcon={<EditIcon />}
               onClick={handleEdit}
             >
-              Edit
+              {t('travel.detail.edit')}
             </Button>
             <Button
               variant="outlined"
@@ -231,7 +231,7 @@ const TravelDetail = () => {
               startIcon={<DeleteIcon />}
               onClick={handleDelete}
             >
-              Delete
+              {t('travel.detail.delete')}
             </Button>
           </Box>
         </Box>
@@ -241,14 +241,14 @@ const TravelDetail = () => {
           <Grid item xs={12} md={8}>
             <Paper sx={{ p: 3, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Basic Information
+                {t('travel.detail.basicInformation')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Purpose
+                    {t('travel.detail.purpose')}
                   </Typography>
                   <Typography variant="body1" sx={{ mb: 2 }}>
                     {travel.purpose}
@@ -259,7 +259,7 @@ const TravelDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <LocationIcon color="action" />
                     <Typography variant="subtitle2" color="text.secondary">
-                      Destination
+                      {t('travel.detail.destination')}
                     </Typography>
                   </Box>
                   <Typography variant="body1">
@@ -276,14 +276,14 @@ const TravelDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <CalendarIcon color="action" />
                     <Typography variant="subtitle2" color="text.secondary">
-                      Travel Dates
+                      {t('travel.detail.travelDates')}
                     </Typography>
                   </Box>
                   <Typography variant="body1">
                     {dayjs(travel.dates.departure).format('MMM DD, YYYY')} - {dayjs(travel.dates.return).format('MMM DD, YYYY')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {dayjs(travel.dates.return).diff(dayjs(travel.dates.departure), 'days')} days
+                    {dayjs(travel.dates.return).diff(dayjs(travel.dates.departure), 'days')} {t('travel.detail.days')}
                   </Typography>
                 </Grid>
 
@@ -291,7 +291,7 @@ const TravelDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <MoneyIcon color="action" />
                     <Typography variant="subtitle2" color="text.secondary">
-                      Estimated Cost
+                      {t('travel.detail.estimatedCost')}
                     </Typography>
                   </Box>
                   <Typography variant="h6" color="primary">
@@ -303,11 +303,11 @@ const TravelDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <MoneyIcon color="action" />
                     <Typography variant="subtitle2" color="text.secondary">
-                      Actual Cost
+                      {t('travel.detail.actualCost')}
                     </Typography>
                   </Box>
                   <Typography variant="h6" color={travel.actualCost <= travel.estimatedCost ? 'success.main' : 'error.main'}>
-                    {travel.currency} {travel.actualCost?.toLocaleString() || 'N/A'}
+                    {travel.currency} {travel.actualCost?.toLocaleString() || t('travel.detail.nA')}
                   </Typography>
                 </Grid>
               </Grid>
@@ -318,7 +318,7 @@ const TravelDetail = () => {
             {travel.notes && (
               <Paper sx={{ p: 3, mb: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  Additional Notes
+                  {t('travel.detail.additionalNotes')}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <Typography variant="body1">
@@ -333,7 +333,7 @@ const TravelDetail = () => {
             {/* Employee Information */}
             <Paper sx={{ p: 3, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Employee Information
+                {t('travel.detail.employeeInformation')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               
@@ -358,7 +358,7 @@ const TravelDetail = () => {
             {/* Approval Status */}
             <Paper sx={{ p: 3, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Approval Status
+                {t('travel.detail.approvalStatus')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               
@@ -380,14 +380,14 @@ const TravelDetail = () => {
                     <StepContent>
                       <Box sx={{ mb: 2 }}>
                         <Chip
-                          label={approval.status}
+                          label={t(`travel.detail.${approval.status}`) || approval.status}
                           color={getStatusColor(approval.status)}
                           size="small"
                           sx={{ mb: 1 }}
                         />
                         {approval.comments && (
                           <Typography variant="body2" sx={{ mb: 1 }}>
-                            {approval.comments}
+                            <strong>{t('travel.detail.comments')}:</strong> {approval.comments}
                           </Typography>
                         )}
                         {approval.approvedAt && (
@@ -406,7 +406,7 @@ const TravelDetail = () => {
             {travel.attachments && travel.attachments.length > 0 && (
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  Attachments
+                  {t('travel.detail.attachments')}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 

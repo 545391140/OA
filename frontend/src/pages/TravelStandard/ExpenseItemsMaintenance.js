@@ -38,8 +38,10 @@ import {
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const ExpenseItemsMaintenance = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const { user } = useAuth();
@@ -82,13 +84,13 @@ const ExpenseItemsMaintenance = () => {
       // 检查费用项响应
       if (!expenseItemsRes.data) {
         console.error('费用项响应为空:', expenseItemsRes);
-        showNotification('费用项响应为空，请检查服务器', 'error');
+        showNotification(t('expenseItem.maintenance.responseEmpty'), 'error');
         return;
       }
 
       if (expenseItemsRes.data.success === false) {
         console.error('费用项加载失败:', expenseItemsRes.data.message || expenseItemsRes.data.error);
-        showNotification(expenseItemsRes.data.message || '加载费用项失败', 'error');
+        showNotification(expenseItemsRes.data.message || t('expenseItem.maintenance.loadError'), 'error');
         return;
       }
 
@@ -130,7 +132,7 @@ const ExpenseItemsMaintenance = () => {
                   name: parentItemObj.itemName
                 };
               } else {
-                parentInfo = { id: item.parentItem, name: '其他费用' };
+                parentInfo = { id: item.parentItem, name: t('expenseItem.maintenance.otherExpense') };
               }
             }
           }
@@ -186,8 +188,8 @@ const ExpenseItemsMaintenance = () => {
       console.error('Fetch data error:', err);
       const errorMessage = err.response?.data?.message 
         || err.message 
-        || '加载数据失败';
-      showNotification(`加载数据失败: ${errorMessage}`, 'error');
+        || t('expenseItem.maintenance.fetchError');
+      showNotification(`${t('expenseItem.maintenance.fetchError')}: ${errorMessage}`, 'error');
       console.error('错误详情:', {
         message: err.message,
         response: err.response?.data,
@@ -253,7 +255,7 @@ const ExpenseItemsMaintenance = () => {
   const handleSave = async () => {
     try {
       if (!formData.itemName || !formData.itemName.trim()) {
-        showNotification('请输入费用项目名称', 'warning');
+        showNotification(t('expenseItem.maintenance.nameRequired'), 'warning');
         return;
       }
 
@@ -274,7 +276,7 @@ const ExpenseItemsMaintenance = () => {
         if (amountValue >= 0) {
           payload.amount = amountValue;
         } else {
-          showNotification('金额必须大于等于0', 'warning');
+          showNotification(t('expenseItem.maintenance.amountInvalid'), 'warning');
           return;
         }
       }
@@ -286,7 +288,7 @@ const ExpenseItemsMaintenance = () => {
 
       if (formDialog.mode === 'create') {
         await apiClient.post('/expense-items', payload);
-        showNotification('费用项创建成功', 'success');
+        showNotification(t('expenseItem.maintenance.createSuccess'), 'success');
       } else {
         // 编辑时也包含standardId（如果修改了标准）
         if (formData.standardId !== undefined && formData.standardId !== null && formData.standardId !== '') {
@@ -305,14 +307,14 @@ const ExpenseItemsMaintenance = () => {
           payload.parentItem = null; // 空字符串或null表示解除关联
         }
         await apiClient.put(`/expense-items/item/${formDialog.item._id}`, payload);
-        showNotification('费用项更新成功', 'success');
+        showNotification(t('expenseItem.maintenance.updateSuccess'), 'success');
       }
 
       setFormDialog({ open: false, item: null, mode: 'create' });
       fetchAllData();
     } catch (err) {
       console.error('Save expense item error:', err);
-      showNotification('保存失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+      showNotification(t('expenseItem.maintenance.saveError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
     }
   };
 
@@ -320,12 +322,12 @@ const ExpenseItemsMaintenance = () => {
     try {
       const { item } = deleteDialog;
       await apiClient.delete(`/expense-items/item/${item._id}`);
-      showNotification('删除成功', 'success');
+      showNotification(t('expenseItem.maintenance.deleteSuccess'), 'success');
       setDeleteDialog({ open: false, item: null });
       fetchAllData();
     } catch (err) {
       console.error('Delete error:', err);
-      showNotification('删除失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+      showNotification(t('expenseItem.maintenance.deleteError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
     }
   };
 
@@ -343,14 +345,14 @@ const ExpenseItemsMaintenance = () => {
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4">费用项目维护</Typography>
+          <Typography variant="h4">{t('expenseItem.maintenance.title')}</Typography>
           {canEdit && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={handleOpenAddDialog}
             >
-              新增费用项
+              {t('expenseItem.maintenance.addExpenseItem')}
             </Button>
           )}
         </Box>
@@ -361,13 +363,13 @@ const ExpenseItemsMaintenance = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>标准编码</TableCell>
-                <TableCell>标准名称</TableCell>
-                <TableCell>费用项目名称</TableCell>
-                <TableCell>费用项目金额</TableCell>
-                <TableCell>费用项目说明</TableCell>
-                <TableCell>状态</TableCell>
-                <TableCell align="right">操作</TableCell>
+                <TableCell>{t('expenseItem.maintenance.tableHeaders.standardCode')}</TableCell>
+                <TableCell>{t('expenseItem.maintenance.tableHeaders.standardName')}</TableCell>
+                <TableCell>{t('expenseItem.maintenance.tableHeaders.itemName')}</TableCell>
+                <TableCell>{t('expenseItem.maintenance.tableHeaders.amount')}</TableCell>
+                <TableCell>{t('expenseItem.maintenance.tableHeaders.description')}</TableCell>
+                <TableCell>{t('expenseItem.maintenance.tableHeaders.status')}</TableCell>
+                <TableCell align="right">{t('expenseItem.maintenance.tableHeaders.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -377,7 +379,7 @@ const ExpenseItemsMaintenance = () => {
                     {canEdit ? (
                       <Box sx={{ py: 4 }}>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                          暂无费用项
+                          {t('expenseItem.maintenance.noItems')}
                         </Typography>
                         <Button
                           variant="outlined"
@@ -385,12 +387,12 @@ const ExpenseItemsMaintenance = () => {
                           onClick={handleOpenAddDialog}
                           sx={{ mt: 2 }}
                         >
-                          创建第一个费用项
+                          {t('expenseItem.maintenance.createFirstItem')}
                         </Button>
                       </Box>
                     ) : (
                       <Typography variant="body2" color="text.secondary">
-                        暂无数据
+                        {t('expenseItem.maintenance.noData')}
                       </Typography>
                     )}
                   </TableCell>
@@ -434,7 +436,7 @@ const ExpenseItemsMaintenance = () => {
                               └─
                             </Typography>
                             <Chip 
-                              label={item.parentItem?.name || '其他费用'}
+                              label={item.parentItem?.name || t('expenseItem.maintenance.otherExpense')}
                               size="small" 
                               color="primary" 
                               variant="outlined"
@@ -455,7 +457,7 @@ const ExpenseItemsMaintenance = () => {
                           {item.itemName}
                         </Typography>
                         {item.isSystemDefault && (
-                          <Chip label="系统默认" size="small" color="info" variant="outlined" sx={{ ml: 1 }} />
+                          <Chip label={t('expenseItem.maintenance.systemDefault')} size="small" color="info" variant="outlined" sx={{ ml: 1 }} />
                         )}
                       </Box>
                     </TableCell>
@@ -467,7 +469,7 @@ const ExpenseItemsMaintenance = () => {
                     <TableCell>{item.description || '-'}</TableCell>
                     <TableCell>
                       <Chip
-                        label={item.status === 'enabled' ? '启用' : '禁用'}
+                        label={item.status === 'enabled' ? t('expenseItem.maintenance.form.enabled') : t('expenseItem.maintenance.form.disabled')}
                         color={item.status === 'enabled' ? 'success' : 'default'}
                         size="small"
                       />
@@ -482,13 +484,13 @@ const ExpenseItemsMaintenance = () => {
                               onClick={async () => {
                                 try {
                                   await apiClient.put(`/expense-items/item/${item._id}/disable`);
-                                  showNotification('费用项已禁用', 'success');
+                                  showNotification(t('expenseItem.maintenance.disableSuccess'), 'success');
                                   fetchAllData();
                                 } catch (err) {
-                                  showNotification('操作失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+                                  showNotification(t('expenseItem.maintenance.operationError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
                                 }
                               }}
-                              title="禁用"
+                              title={t('expenseItem.maintenance.actions.disable')}
                             >
                               <CancelIcon />
                             </IconButton>
@@ -499,13 +501,13 @@ const ExpenseItemsMaintenance = () => {
                               onClick={async () => {
                                 try {
                                   await apiClient.put(`/expense-items/item/${item._id}/enable`);
-                                  showNotification('费用项已启用', 'success');
+                                  showNotification(t('expenseItem.maintenance.enableSuccess'), 'success');
                                   fetchAllData();
                                 } catch (err) {
-                                  showNotification('操作失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+                                  showNotification(t('expenseItem.maintenance.operationError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
                                 }
                               }}
-                              title="启用"
+                              title={t('expenseItem.maintenance.actions.enable')}
                             >
                               <CheckCircleIcon />
                             </IconButton>
@@ -513,7 +515,7 @@ const ExpenseItemsMaintenance = () => {
                           <IconButton
                             size="small"
                             onClick={() => handleOpenEditDialog(item)}
-                            title="编辑"
+                            title={t('expenseItem.maintenance.actions.edit')}
                           >
                             <EditIcon />
                           </IconButton>
@@ -522,17 +524,18 @@ const ExpenseItemsMaintenance = () => {
                               size="small"
                               color="error"
                               onClick={() => setDeleteDialog({ open: true, item })}
-                              title="删除"
+                              title={t('expenseItem.maintenance.actions.delete')}
                             >
                               <DeleteIcon />
                             </IconButton>
                           )}
-                          {item.itemName === '其他费用' && (
+                          {/* 检查是否为"其他费用"（数据库中存储的是中文值）或是否有子项功能 */}
+                          {(item.itemName === '其他费用' || item.itemName === t('expenseItem.maintenance.otherExpense')) && (
                             <IconButton
                               size="small"
                               color="primary"
                               onClick={() => handleOpenAddDialog(item)}
-                              title="添加子费用项"
+                              title={t('expenseItem.maintenance.addSubItem')}
                             >
                               <AddIcon />
                             </IconButton>
@@ -555,28 +558,28 @@ const ExpenseItemsMaintenance = () => {
           fullWidth
         >
           <DialogTitle>
-            {formDialog.mode === 'create' ? '新增费用项' : '编辑费用项'}
+            {formDialog.mode === 'create' ? t('expenseItem.maintenance.addExpenseItem') : t('expenseItem.maintenance.editExpenseItem')}
           </DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               {parentItemId && (
                 <Grid item xs={12}>
                   <Alert severity="info">
-                    正在为"其他费用"添加子费用项
+                    {t('expenseItem.maintenance.addingSubItem')}
                   </Alert>
                 </Grid>
               )}
               <Grid item xs={12}>
                 <FormControl fullWidth>
-                  <InputLabel>差旅标准</InputLabel>
+                  <InputLabel>{t('expenseItem.maintenance.form.travelStandard')}</InputLabel>
                   <Select
                     value={formData.standardId || ''} // 确保null转换为空字符串
                     onChange={(e) => setFormData({ ...formData, standardId: e.target.value || '' })}
-                    label="差旅标准"
+                    label={t('expenseItem.maintenance.form.travelStandard')}
                     disabled={formDialog.mode === 'edit' || !!parentItemId} // 编辑模式下或添加子项时不允许修改标准
                   >
                     <MenuItem value="">
-                      <em>不关联标准（可选）</em>
+                      <em>{t('expenseItem.maintenance.form.noStandard')}</em>
                     </MenuItem>
                     {standards.map((standard) => (
                       <MenuItem key={standard._id} value={standard._id}>
@@ -590,34 +593,34 @@ const ExpenseItemsMaintenance = () => {
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    label="父费用项"
-                    value="其他费用"
+                    label={t('expenseItem.maintenance.form.parentItem')}
+                    value={t('expenseItem.maintenance.otherExpense')}
                     disabled
-                    helperText='此费用项将作为"其他费用"的子项'
+                    helperText={t('expenseItem.maintenance.form.parentItemHint')}
                   />
                 </Grid>
               )}
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="费用项目名称"
+                  label={t('expenseItem.maintenance.form.itemName')}
                   value={formData.itemName}
                   onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
                   required
-                  placeholder="如：交通费、住宿费、餐饮费等"
+                  placeholder={t('expenseItem.maintenance.form.itemNamePlaceholder')}
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
                   type="number"
-                  label="费用项目金额"
+                  label={t('expenseItem.maintenance.form.amount')}
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   inputProps={{ min: 0, step: 0.01 }}
                   InputProps={{ startAdornment: '¥' }}
-                  placeholder="请输入金额（可选）"
-                  helperText="可选字段，如果不填写则表示无金额限制"
+                  placeholder={t('expenseItem.maintenance.form.amountPlaceholder')}
+                  helperText={t('expenseItem.maintenance.form.amountHint')}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -625,22 +628,22 @@ const ExpenseItemsMaintenance = () => {
                   fullWidth
                   multiline
                   rows={4}
-                  label="费用项目说明"
+                  label={t('expenseItem.maintenance.form.description')}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="请输入费用项目的详细说明..."
+                  placeholder={t('expenseItem.maintenance.form.descriptionPlaceholder')}
                 />
               </Grid>
               <Grid item xs={12}>
                 <FormControl fullWidth>
-                  <InputLabel>状态</InputLabel>
+                  <InputLabel>{t('expenseItem.maintenance.form.status')}</InputLabel>
                   <Select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    label="状态"
+                    label={t('expenseItem.maintenance.form.status')}
                   >
-                    <MenuItem value="enabled">启用</MenuItem>
-                    <MenuItem value="disabled">禁用</MenuItem>
+                    <MenuItem value="enabled">{t('expenseItem.maintenance.form.enabled')}</MenuItem>
+                    <MenuItem value="disabled">{t('expenseItem.maintenance.form.disabled')}</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -648,24 +651,24 @@ const ExpenseItemsMaintenance = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setFormDialog({ open: false, item: null, mode: 'create' })}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSave} variant="contained">
-              保存
+              {t('common.save')}
             </Button>
           </DialogActions>
         </Dialog>
 
         {/* 删除确认对话框 */}
         <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, item: null })}>
-          <DialogTitle>确认删除</DialogTitle>
+          <DialogTitle>{t('expenseItem.maintenance.confirmDelete')}</DialogTitle>
           <DialogContent>
-            <Typography>确定要删除费用项 "{deleteDialog.item?.itemName}" 吗？此操作无法撤销。</Typography>
+            <Typography>{t('expenseItem.maintenance.deleteConfirmMessage')} "{deleteDialog.item?.itemName}"? {t('expenseItem.maintenance.deleteWarning')}</Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteDialog({ open: false, item: null })}>取消</Button>
+            <Button onClick={() => setDeleteDialog({ open: false, item: null })}>{t('common.cancel')}</Button>
             <Button onClick={handleDelete} color="error" variant="contained">
-              删除
+              {t('common.delete')}
             </Button>
           </DialogActions>
         </Dialog>

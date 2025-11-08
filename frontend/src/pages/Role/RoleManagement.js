@@ -49,9 +49,11 @@ import {
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
 const RoleManagement = () => {
+  const { t, i18n } = useTranslation();
   const { showNotification } = useNotification();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin';
@@ -97,12 +99,12 @@ const RoleManagement = () => {
       if (response.data && response.data.success) {
         setRoles(response.data.data || []);
       } else {
-        throw new Error(response.data?.message || '获取角色数据失败');
+        throw new Error(response.data?.message || t('role.management.fetchError'));
       }
     } catch (err) {
       console.error('Fetch roles error:', err);
-      setError(err.response?.data?.message || err.message || '获取角色数据失败');
-      showNotification('获取角色数据失败', 'error');
+      setError(err.response?.data?.message || err.message || t('role.management.fetchError'));
+      showNotification(t('role.management.fetchError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -125,11 +127,11 @@ const RoleManagement = () => {
   const confirmDelete = async () => {
     try {
       await apiClient.delete(`/roles/${deleteDialog.role._id}`);
-      showNotification('删除成功', 'success');
+      showNotification(t('role.management.deleteSuccess'), 'success');
       fetchRoles();
     } catch (err) {
       console.error('Delete role error:', err);
-      const errorMsg = err.response?.data?.message || '删除失败';
+      const errorMsg = err.response?.data?.message || t('role.management.deleteError');
       showNotification(errorMsg, 'error');
     } finally {
       setDeleteDialog({ open: false, role: null });
@@ -166,17 +168,17 @@ const RoleManagement = () => {
       
       if (formDialog.mode === 'create') {
         await apiClient.post('/roles', formData);
-        showNotification('创建成功', 'success');
+        showNotification(t('role.management.createSuccess'), 'success');
       } else {
         await apiClient.put(`/roles/${formDialog.role._id}`, formData);
-        showNotification('更新成功', 'success');
+        showNotification(t('role.management.updateSuccess'), 'success');
       }
       
       fetchRoles();
       setFormDialog({ open: false, role: null, mode: 'create' });
     } catch (err) {
       console.error('Save role error:', err);
-      const errorMsg = err.response?.data?.message || '保存失败';
+      const errorMsg = err.response?.data?.message || t('role.management.saveError');
       showNotification(errorMsg, 'error');
     } finally {
       setSaving(false);
@@ -186,11 +188,11 @@ const RoleManagement = () => {
   const handleToggleActive = async (role) => {
     try {
       await apiClient.patch(`/roles/${role._id}/toggle-active`);
-      showNotification(role.isActive ? '已禁用' : '已启用', 'success');
+      showNotification(role.isActive ? t('role.management.toggleDisabledSuccess') : t('role.management.toggleSuccess'), 'success');
       fetchRoles();
     } catch (err) {
       console.error('Toggle active error:', err);
-      const errorMsg = err.response?.data?.message || '操作失败';
+      const errorMsg = err.response?.data?.message || t('role.management.toggleError');
       showNotification(errorMsg, 'error');
     }
   };
@@ -216,7 +218,7 @@ const RoleManagement = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <SecurityIcon sx={{ fontSize: 32, color: 'primary.main' }} />
             <Typography variant="h4" fontWeight={600}>
-              角色管理
+              {t('role.management.title')}
             </Typography>
           </Box>
           {canEdit && (
@@ -226,7 +228,7 @@ const RoleManagement = () => {
               onClick={handleAdd}
               sx={{ borderRadius: 2 }}
             >
-              新增角色
+              {t('role.management.addRole')}
             </Button>
           )}
         </Box>
@@ -237,7 +239,7 @@ const RoleManagement = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                placeholder="搜索角色代码、名称..."
+                placeholder={t('role.management.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -252,15 +254,15 @@ const RoleManagement = () => {
             </Grid>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>状态</InputLabel>
+                <InputLabel>{t('role.management.status')}</InputLabel>
                 <Select
                   value={statusFilter}
-                  label="状态"
+                  label={t('role.management.status')}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <MenuItem value="all">全部</MenuItem>
-                  <MenuItem value="active">启用</MenuItem>
-                  <MenuItem value="inactive">禁用</MenuItem>
+                  <MenuItem value="all">{t('role.management.all')}</MenuItem>
+                  <MenuItem value="active">{t('role.management.active')}</MenuItem>
+                  <MenuItem value="inactive">{t('role.management.inactive')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -271,14 +273,14 @@ const RoleManagement = () => {
                   startIcon={<SearchIcon />}
                   onClick={handleSearch}
                 >
-                  搜索
+                  {t('common.search')}
                 </Button>
                 <Button
                   variant="outlined"
                   startIcon={<RefreshIcon />}
                   onClick={handleReset}
                 >
-                  重置
+                  {t('common.refresh')}
                 </Button>
               </Box>
             </Grid>
@@ -298,23 +300,23 @@ const RoleManagement = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>角色代码</TableCell>
-                <TableCell>角色名称</TableCell>
-                <TableCell>英文名称</TableCell>
-                <TableCell>描述</TableCell>
-                <TableCell>权限数量</TableCell>
-                <TableCell>级别</TableCell>
-                <TableCell>系统角色</TableCell>
-                <TableCell>状态</TableCell>
-                <TableCell>创建时间</TableCell>
-                <TableCell align="right">操作</TableCell>
+                <TableCell>{t('role.management.tableHeaders.code')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.name')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.nameEn')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.description')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.permissionsCount')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.level')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.isSystem')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.status')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.createdAt')}</TableCell>
+                <TableCell align="right">{t('role.management.tableHeaders.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredRoles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                    {loading ? <CircularProgress /> : '暂无数据'}
+                    {loading ? <CircularProgress /> : t('role.management.noData')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -338,14 +340,14 @@ const RoleManagement = () => {
                     <TableCell>{role.level || 0}</TableCell>
                     <TableCell>
                       {role.isSystem ? (
-                        <Chip label="是" color="primary" size="small" />
+                        <Chip label={t('role.management.yes')} color="primary" size="small" />
                       ) : (
-                        <Chip label="否" size="small" variant="outlined" />
+                        <Chip label={t('role.management.no')} size="small" variant="outlined" />
                       )}
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={role.isActive ? '启用' : '禁用'}
+                        label={role.isActive ? t('role.management.active') : t('role.management.inactive')}
                         color={role.isActive ? 'success' : 'default'}
                         size="small"
                       />
@@ -357,7 +359,7 @@ const RoleManagement = () => {
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                         {canEdit && (
                           <>
-                            <Tooltip title={role.isActive ? '禁用' : '启用'}>
+                            <Tooltip title={role.isActive ? t('role.management.disable') : t('role.management.enable')}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleToggleActive(role)}
@@ -367,7 +369,7 @@ const RoleManagement = () => {
                                 {role.isActive ? <BlockIcon /> : <CheckCircleIcon />}
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="编辑">
+                            <Tooltip title={t('common.edit')}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleEdit(role)}
@@ -376,7 +378,7 @@ const RoleManagement = () => {
                                 <EditIcon />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="删除">
+                            <Tooltip title={t('common.delete')}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleDelete(role)}
@@ -399,26 +401,26 @@ const RoleManagement = () => {
 
         {/* Delete Dialog */}
         <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, role: null })}>
-          <DialogTitle>确认删除</DialogTitle>
+          <DialogTitle>{t('role.management.confirmDelete')}</DialogTitle>
           <DialogContent>
             <Typography>
-              确定要删除角色 <strong>{deleteDialog.role?.name}</strong> ({deleteDialog.role?.code}) 吗？
+              {t('role.management.deleteConfirmMessage')} <strong>{deleteDialog.role?.name}</strong> ({deleteDialog.role?.code}){i18n.language === 'zh' ? '吗？' : '?'}
             </Typography>
             {deleteDialog.role?.isSystem && (
               <Alert severity="warning" sx={{ mt: 2 }}>
-                系统角色无法删除
+                {t('role.management.deleteWarning')}
               </Alert>
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteDialog({ open: false, role: null })}>取消</Button>
+            <Button onClick={() => setDeleteDialog({ open: false, role: null })}>{t('common.cancel')}</Button>
             <Button
               onClick={confirmDelete}
               color="error"
               variant="contained"
               disabled={deleteDialog.role?.isSystem}
             >
-              删除
+              {t('common.delete')}
             </Button>
           </DialogActions>
         </Dialog>
@@ -431,25 +433,25 @@ const RoleManagement = () => {
           fullWidth
         >
           <DialogTitle>
-            {formDialog.mode === 'create' ? '新增角色' : '编辑角色'}
+            {formDialog.mode === 'create' ? t('role.management.addRole') : t('role.management.editRole')}
           </DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="角色代码"
+                  label={t('role.code')}
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                   required
                   disabled={formDialog.mode === 'edit'}
-                  helperText="只能包含大写字母、数字和下划线"
+                  helperText={t('role.management.codeHint')}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="角色名称"
+                  label={t('role.name')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -458,7 +460,7 @@ const RoleManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="英文名称"
+                  label={t('role.nameEn')}
                   value={formData.nameEn}
                   onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
                 />
@@ -466,18 +468,18 @@ const RoleManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="级别"
+                  label={t('role.level')}
                   type="number"
                   value={formData.level}
                   onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || 0 })}
                   inputProps={{ min: 0, max: 100 }}
-                  helperText="数值越大，权限级别越高"
+                  helperText={t('role.levelHint')}
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="描述"
+                  label={t('role.description')}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   multiline
@@ -487,7 +489,7 @@ const RoleManagement = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="权限列表（用逗号分隔）"
+                  label={t('role.permissions')}
                   value={formData.permissions.join(', ')}
                   onChange={(e) => {
                     const permissions = e.target.value
@@ -496,7 +498,7 @@ const RoleManagement = () => {
                       .filter(p => p);
                     setFormData({ ...formData, permissions });
                   }}
-                  helperText="输入权限，多个权限用逗号分隔"
+                  helperText={t('role.permissionsHint')}
                 />
               </Grid>
             </Grid>
@@ -506,14 +508,14 @@ const RoleManagement = () => {
               onClick={() => setFormDialog({ open: false, role: null, mode: 'create' })}
               disabled={saving}
             >
-              取消
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleSave}
               variant="contained"
               disabled={saving || !formData.code || !formData.name}
             >
-              {saving ? <CircularProgress size={20} /> : '保存'}
+              {saving ? <CircularProgress size={20} /> : t('common.save')}
             </Button>
           </DialogActions>
         </Dialog>

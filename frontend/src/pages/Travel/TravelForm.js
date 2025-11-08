@@ -58,10 +58,10 @@ const TravelForm = () => {
 
   // 交通工具选项
   const transportationOptions = [
-    { value: 'flight', label: '飞机', icon: <FlightIcon /> },
-    { value: 'train', label: '火车', icon: <TrainIcon /> },
-    { value: 'car', label: '汽车', icon: <CarIcon /> },
-    { value: 'bus', label: '大巴', icon: <BusIcon /> },
+    { value: 'flight', label: t('travel.form.transportation.flight'), icon: <FlightIcon /> },
+    { value: 'train', label: t('travel.form.transportation.train'), icon: <TrainIcon /> },
+    { value: 'car', label: t('travel.form.transportation.car'), icon: <CarIcon /> },
+    { value: 'bus', label: t('travel.form.transportation.bus'), icon: <BusIcon /> },
   ];
 
   const [formData, setFormData] = useState({
@@ -123,18 +123,18 @@ const TravelForm = () => {
   // 步骤定义
   const steps = [
     {
-      label: '基本信息',
-      description: '填写差旅基本信息、类型和行程',
+      label: t('travel.form.basicInfo'),
+      description: t('travel.form.basicInfoDescription'),
       icon: '1'
     },
     {
-      label: '出行安排',
-      description: '设置出行日期、出发地和目的地',
+      label: t('travel.form.travelArrangement'),
+      description: t('travel.form.travelArrangementDescription'),
       icon: '2'
     },
     {
-      label: '费用预算',
-      description: '设置详细的费用预算项目',
+      label: t('travel.form.expenseBudget'),
+      description: t('travel.form.expenseBudgetDescription'),
       icon: '3'
     }
   ];

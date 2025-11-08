@@ -48,8 +48,10 @@ import {
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const LocationManagement = () => {
+  const { t } = useTranslation();
   const { showNotification } = useNotification();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || user?.role === 'finance';
@@ -72,7 +74,7 @@ const LocationManagement = () => {
     province: '',
     district: '',
     county: '',
-    country: '中国',
+    country: '',
     countryCode: '',
     enName: '',
     pinyin: '',
@@ -129,12 +131,12 @@ const LocationManagement = () => {
       if (response.data && response.data.success) {
         setLocations(response.data.data || []);
       } else {
-        throw new Error(response.data?.message || '获取地理位置数据失败');
+        throw new Error(response.data?.message || t('location.management.fetchError'));
       }
     } catch (err) {
       console.error('Fetch locations error:', err);
-      setError(err.response?.data?.message || err.message || '获取地理位置数据失败');
-      showNotification('获取地理位置数据失败', 'error');
+      setError(err.response?.data?.message || err.message || t('location.management.fetchError'));
+      showNotification(t('location.management.fetchError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -158,11 +160,11 @@ const LocationManagement = () => {
   const confirmDelete = async () => {
     try {
       await apiClient.delete(`/locations/${deleteDialog.location._id}`);
-      showNotification('删除成功', 'success');
+      showNotification(t('location.management.deleteSuccess'), 'success');
       fetchLocations();
     } catch (err) {
       console.error('Delete location error:', err);
-      showNotification('删除失败', 'error');
+      showNotification(t('location.management.deleteError'), 'error');
     } finally {
       setDeleteDialog({ open: false, location: null });
     }
@@ -177,7 +179,7 @@ const LocationManagement = () => {
       province: location.province || '',
       district: location.district || '',
       county: location.county || '',
-      country: location.country || '中国',
+      country: location.country || '',
       countryCode: location.countryCode || '',
       enName: location.enName || '',
       pinyin: location.pinyin || '',
@@ -205,7 +207,7 @@ const LocationManagement = () => {
       province: '',
       district: '',
       county: '',
-      country: '中国',
+      country: '',
       countryCode: '',
       enName: '',
       pinyin: '',
@@ -248,16 +250,16 @@ const LocationManagement = () => {
       
       if (formDialog.mode === 'create') {
         await apiClient.post('/locations', submitData);
-        showNotification('创建成功', 'success');
+        showNotification(t('location.management.createSuccess'), 'success');
       } else {
         await apiClient.put(`/locations/${formDialog.location._id}`, submitData);
-        showNotification('更新成功', 'success');
+        showNotification(t('location.management.updateSuccess'), 'success');
       }
       setFormDialog({ open: false, location: null, mode: 'create' });
       fetchLocations();
     } catch (err) {
       console.error('Save location error:', err);
-      showNotification(err.response?.data?.message || '保存失败', 'error');
+      showNotification(err.response?.data?.message || t('location.management.saveError'), 'error');
     }
   };
 
@@ -277,15 +279,7 @@ const LocationManagement = () => {
   };
 
   const getTypeLabel = (type) => {
-    const labels = {
-      airport: '机场',
-      station: '火车站',
-      city: '城市',
-      province: '省份',
-      country: '国家',
-      bus: '汽车站'
-    };
-    return labels[type] || type;
+    return t(`location.management.types.${type}`) || type;
   };
 
   const getTypeColor = (type) => {
@@ -301,13 +295,7 @@ const LocationManagement = () => {
   };
 
   const getCityLevelLabel = (level) => {
-    const labels = {
-      1: '一线城市',
-      2: '二线城市',
-      3: '三线城市',
-      4: '其他城市'
-    };
-    return labels[level] || '其他城市';
+    return t(`location.management.cityLevels.${level}`) || t('location.management.cityLevels.4');
   };
 
   const getCityLevelColor = (level) => {
@@ -358,7 +346,7 @@ const LocationManagement = () => {
           fontWeight: 700,
           mb: 3
         }}>
-          🌍 地理位置管理
+          {t('location.management.title')}
         </Typography>
 
         {error && (
@@ -373,7 +361,7 @@ const LocationManagement = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                placeholder="搜索名称、代码、城市、省、区、县、国家或国家码..."
+                placeholder={t('location.management.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -388,33 +376,33 @@ const LocationManagement = () => {
             </Grid>
             <Grid item xs={12} md={2}>
               <FormControl fullWidth>
-                <InputLabel>类型</InputLabel>
+                <InputLabel>{t('location.management.type')}</InputLabel>
                 <Select
                   value={typeFilter}
-                  label="类型"
+                  label={t('location.management.type')}
                   onChange={(e) => setTypeFilter(e.target.value)}
                 >
-                  <MenuItem value="all">全部</MenuItem>
-                  <MenuItem value="airport">机场</MenuItem>
-                  <MenuItem value="station">火车站</MenuItem>
-                  <MenuItem value="city">城市</MenuItem>
-                  <MenuItem value="province">省份</MenuItem>
-                  <MenuItem value="country">国家</MenuItem>
-                  <MenuItem value="bus">汽车站</MenuItem>
+                  <MenuItem value="all">{t('location.management.all')}</MenuItem>
+                  <MenuItem value="airport">{t('location.management.types.airport')}</MenuItem>
+                  <MenuItem value="station">{t('location.management.types.station')}</MenuItem>
+                  <MenuItem value="city">{t('location.management.types.city')}</MenuItem>
+                  <MenuItem value="province">{t('location.management.types.province')}</MenuItem>
+                  <MenuItem value="country">{t('location.management.types.country')}</MenuItem>
+                  <MenuItem value="bus">{t('location.management.types.bus')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={2}>
               <FormControl fullWidth>
-                <InputLabel>状态</InputLabel>
+                <InputLabel>{t('location.management.status')}</InputLabel>
                 <Select
                   value={statusFilter}
-                  label="状态"
+                  label={t('location.management.status')}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <MenuItem value="all">全部</MenuItem>
-                  <MenuItem value="active">启用</MenuItem>
-                  <MenuItem value="inactive">禁用</MenuItem>
+                  <MenuItem value="all">{t('location.management.all')}</MenuItem>
+                  <MenuItem value="active">{t('location.management.active')}</MenuItem>
+                  <MenuItem value="inactive">{t('location.management.inactive')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -425,14 +413,14 @@ const LocationManagement = () => {
                   startIcon={<SearchIcon />}
                   onClick={handleSearch}
                 >
-                  搜索
+                  {t('location.management.search')}
                 </Button>
                 <Button
                   variant="outlined"
                   startIcon={<RefreshIcon />}
                   onClick={handleReset}
                 >
-                  重置
+                  {t('location.management.reset')}
                 </Button>
                 {canEdit && (
                   <Button
@@ -442,7 +430,7 @@ const LocationManagement = () => {
                     onClick={handleAdd}
                     sx={{ ml: 'auto' }}
                   >
-                    新增
+                    {t('location.management.add')}
                   </Button>
                 )}
               </Box>
@@ -456,22 +444,22 @@ const LocationManagement = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>类型</TableCell>
-                  <TableCell>名称</TableCell>
-                  <TableCell>代码</TableCell>
-                  <TableCell>省</TableCell>
-                  <TableCell>市</TableCell>
-                  <TableCell>区</TableCell>
-                  <TableCell>县</TableCell>
-                  <TableCell>国家</TableCell>
-                  <TableCell>国家码</TableCell>
-                  <TableCell>隶属城市</TableCell>
-                  <TableCell>风险等级</TableCell>
-                  <TableCell>无机场</TableCell>
-                  <TableCell>城市等级</TableCell>
-                  <TableCell>坐标</TableCell>
-                  <TableCell>状态</TableCell>
-                  {canEdit && <TableCell align="right">操作</TableCell>}
+                  <TableCell>{t('location.management.tableHeaders.type')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.name')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.code')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.province')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.city')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.district')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.county')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.country')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.countryCode')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.parentCity')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.riskLevel')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.noAirport')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.cityLevel')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.coordinates')}</TableCell>
+                  <TableCell>{t('location.management.tableHeaders.status')}</TableCell>
+                  {canEdit && <TableCell align="right">{t('location.management.tableHeaders.actions')}</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -485,15 +473,14 @@ const LocationManagement = () => {
                   <TableRow>
                     <TableCell colSpan={canEdit ? 15 : 14} align="center">
                       <Typography variant="body2" color="text.secondary">
-                        暂无数据
+                        {t('location.management.noData')}
                       </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredLocations.map((location) => {
                     const getRiskLevelLabel = (level) => {
-                      const labels = { low: '低', medium: '中', high: '高', very_high: '很高' };
-                      return labels[level] || level;
+                      return t(`location.management.riskLevels.${level}`) || level;
                     };
                     const getRiskLevelColor = (level) => {
                       const colors = { low: 'success', medium: 'warning', high: 'error', very_high: 'error' };
@@ -532,13 +519,13 @@ const LocationManagement = () => {
                         </TableCell>
                         <TableCell>
                           {location.type === 'city' ? (
-                            location.noAirport ? '是' : '否'
+                            location.noAirport ? t('location.management.form.yes') : t('location.management.form.no')
                           ) : '-'}
                         </TableCell>
                         <TableCell>
                           {location.type === 'city' ? (
                             <Chip
-                              label={`${location.cityLevel || 4}级 - ${getCityLevelLabel(location.cityLevel || 4)}`}
+                              label={`${location.cityLevel || 4}${t('location.management.form.cityLevel')} - ${getCityLevelLabel(location.cityLevel || 4)}`}
                               size="small"
                               color={getCityLevelColor(location.cityLevel || 4)}
                             />
@@ -551,7 +538,7 @@ const LocationManagement = () => {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={location.status === 'active' ? '启用' : '禁用'}
+                            label={location.status === 'active' ? t('location.management.active') : t('location.management.inactive')}
                             color={location.status === 'active' ? 'success' : 'default'}
                             size="small"
                           />
@@ -585,18 +572,18 @@ const LocationManagement = () => {
 
         {/* 删除确认对话框 */}
         <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, location: null })}>
-          <DialogTitle>确认删除</DialogTitle>
+          <DialogTitle>{t('location.management.confirmDelete')}</DialogTitle>
           <DialogContent>
             <Typography>
-              确定要删除地理位置 "{deleteDialog.location?.name}" 吗？此操作不可撤销。
+              {t('location.management.deleteConfirmMessage')} "{deleteDialog.location?.name}"? {t('location.management.deleteWarning')}
             </Typography>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDeleteDialog({ open: false, location: null })}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={confirmDelete} color="error" variant="contained">
-              删除
+              {t('common.delete')}
             </Button>
           </DialogActions>
         </Dialog>
@@ -609,7 +596,7 @@ const LocationManagement = () => {
           fullWidth
         >
           <DialogTitle>
-            {formDialog.mode === 'create' ? '新增地理位置' : '编辑地理位置'}
+            {formDialog.mode === 'create' ? t('location.management.addLocation') : t('location.management.editLocation')}
           </DialogTitle>
           <DialogContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
@@ -617,7 +604,7 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="名称 *"
+                    label={`${t('location.management.form.name')} *`}
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
@@ -625,32 +612,32 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="代码"
+                    label={t('location.management.form.code')}
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
-                    <InputLabel>类型 *</InputLabel>
+                    <InputLabel>{t('location.management.form.type')} *</InputLabel>
                     <Select
                       value={formData.type}
-                      label="类型 *"
+                      label={`${t('location.management.form.type')} *`}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     >
-                      <MenuItem value="airport">机场</MenuItem>
-                      <MenuItem value="station">火车站</MenuItem>
-                      <MenuItem value="city">城市</MenuItem>
-                      <MenuItem value="province">省份</MenuItem>
-                      <MenuItem value="country">国家</MenuItem>
-                      <MenuItem value="bus">汽车站</MenuItem>
+                      <MenuItem value="airport">{t('location.management.types.airport')}</MenuItem>
+                      <MenuItem value="station">{t('location.management.types.station')}</MenuItem>
+                      <MenuItem value="city">{t('location.management.types.city')}</MenuItem>
+                      <MenuItem value="province">{t('location.management.types.province')}</MenuItem>
+                      <MenuItem value="country">{t('location.management.types.country')}</MenuItem>
+                      <MenuItem value="bus">{t('location.management.types.bus')}</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="省"
+                    label={t('location.management.form.province')}
                     value={formData.province}
                     onChange={(e) => setFormData({ ...formData, province: e.target.value })}
                   />
@@ -658,7 +645,7 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="市"
+                    label={t('location.management.form.city')}
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   />
@@ -666,7 +653,7 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="区"
+                    label={t('location.management.form.district')}
                     value={formData.district}
                     onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                   />
@@ -674,7 +661,7 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="县"
+                    label={t('location.management.form.county')}
                     value={formData.county}
                     onChange={(e) => setFormData({ ...formData, county: e.target.value })}
                   />
@@ -682,7 +669,7 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="国家"
+                    label={t('location.management.form.country')}
                     value={formData.country}
                     onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                   />
@@ -690,16 +677,16 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="国家码"
+                    label={t('location.management.form.countryCode')}
                     value={formData.countryCode}
                     onChange={(e) => setFormData({ ...formData, countryCode: e.target.value.toUpperCase() })}
-                    placeholder="如：CN, US, JP"
+                    placeholder={t('location.management.form.countryCodePlaceholder')}
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="英文名称"
+                    label={t('location.management.form.enName')}
                     value={formData.enName}
                     onChange={(e) => setFormData({ ...formData, enName: e.target.value })}
                   />
@@ -707,7 +694,7 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="拼音"
+                    label={t('location.management.form.pinyin')}
                     value={formData.pinyin}
                     onChange={(e) => setFormData({ ...formData, pinyin: e.target.value })}
                   />
@@ -716,7 +703,7 @@ const LocationManagement = () => {
                   <TextField
                     fullWidth
                     type="number"
-                    label="纬度"
+                    label={t('location.management.form.latitude')}
                     value={formData.coordinates.latitude}
                     onChange={(e) => setFormData({
                       ...formData,
@@ -731,7 +718,7 @@ const LocationManagement = () => {
                   <TextField
                     fullWidth
                     type="number"
-                    label="经度"
+                    label={t('location.management.form.longitude')}
                     value={formData.coordinates.longitude}
                     onChange={(e) => setFormData({
                       ...formData,
@@ -745,7 +732,7 @@ const LocationManagement = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="时区"
+                    label={t('location.management.form.timezone')}
                     value={formData.timezone}
                     onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
                   />
@@ -753,13 +740,13 @@ const LocationManagement = () => {
                 {(formData.type === 'airport' || formData.type === 'station') && (
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth>
-                      <InputLabel>隶属城市</InputLabel>
+                      <InputLabel>{t('location.management.form.parentCity')}</InputLabel>
                       <Select
                         value={formData.parentId}
-                        label="隶属城市"
+                        label={t('location.management.form.parentCity')}
                         onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                       >
-                        <MenuItem value="">无</MenuItem>
+                        <MenuItem value="">{t('location.management.form.noParent')}</MenuItem>
                         {cityOptions.map((city) => (
                           <MenuItem key={city._id} value={city._id}>
                             {city.name} ({city.code || ''})
@@ -773,44 +760,44 @@ const LocationManagement = () => {
                   <>
                     <Grid item xs={12} md={6}>
                       <FormControl fullWidth>
-                        <InputLabel>风险等级</InputLabel>
+                        <InputLabel>{t('location.management.form.riskLevel')}</InputLabel>
                         <Select
                           value={formData.riskLevel}
-                          label="风险等级"
+                          label={t('location.management.form.riskLevel')}
                           onChange={(e) => setFormData({ ...formData, riskLevel: e.target.value })}
                         >
-                          <MenuItem value="low">低</MenuItem>
-                          <MenuItem value="medium">中</MenuItem>
-                          <MenuItem value="high">高</MenuItem>
-                          <MenuItem value="very_high">很高</MenuItem>
+                          <MenuItem value="low">{t('location.management.riskLevels.low')}</MenuItem>
+                          <MenuItem value="medium">{t('location.management.riskLevels.medium')}</MenuItem>
+                          <MenuItem value="high">{t('location.management.riskLevels.high')}</MenuItem>
+                          <MenuItem value="very_high">{t('location.management.riskLevels.very_high')}</MenuItem>
                         </Select>
                       </FormControl>
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <FormControl fullWidth>
-                        <InputLabel>无机场</InputLabel>
+                        <InputLabel>{t('location.management.form.noAirport')}</InputLabel>
                         <Select
                           value={formData.noAirport ? 'true' : 'false'}
-                          label="无机场"
+                          label={t('location.management.form.noAirport')}
                           onChange={(e) => setFormData({ ...formData, noAirport: e.target.value === 'true' })}
                         >
-                          <MenuItem value="false">否</MenuItem>
-                          <MenuItem value="true">是</MenuItem>
+                          <MenuItem value="false">{t('location.management.form.no')}</MenuItem>
+                          <MenuItem value="true">{t('location.management.form.yes')}</MenuItem>
                         </Select>
                       </FormControl>
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <FormControl fullWidth>
-                        <InputLabel>城市等级</InputLabel>
+                        <InputLabel>{t('location.management.form.cityLevel')}</InputLabel>
                         <Select
                           value={formData.cityLevel}
-                          label="城市等级"
+                          label={t('location.management.form.cityLevel')}
                           onChange={(e) => setFormData({ ...formData, cityLevel: Number(e.target.value) })}
                         >
-                          <MenuItem value={1}>1级 - 一线城市</MenuItem>
-                          <MenuItem value={2}>2级 - 二线城市</MenuItem>
-                          <MenuItem value={3}>3级 - 三线城市</MenuItem>
-                          <MenuItem value={4}>4级 - 其他城市</MenuItem>
+                            <MenuItem value={1}>1{t('location.management.form.cityLevel')} - {t('location.management.cityLevels.1')}</MenuItem>
+                          <MenuItem value={2}>2{t('location.management.form.cityLevel')} - {t('location.management.cityLevels.2')}</MenuItem>
+                          <MenuItem value={3}>3{t('location.management.form.cityLevel')} - {t('location.management.cityLevels.3')}</MenuItem>
+                          <MenuItem value={4}>4{t('location.management.form.cityLevel')} - {t('location.management.cityLevels.4')}</MenuItem>
                         </Select>
                       </FormControl>
                     </Grid>
@@ -818,14 +805,14 @@ const LocationManagement = () => {
                 )}
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
-                    <InputLabel>状态</InputLabel>
+                    <InputLabel>{t('location.management.form.status')}</InputLabel>
                     <Select
                       value={formData.status}
-                      label="状态"
+                      label={t('location.management.form.status')}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     >
-                      <MenuItem value="active">启用</MenuItem>
-                      <MenuItem value="inactive">禁用</MenuItem>
+                      <MenuItem value="active">{t('location.management.active')}</MenuItem>
+                      <MenuItem value="inactive">{t('location.management.inactive')}</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -834,7 +821,7 @@ const LocationManagement = () => {
                     fullWidth
                     multiline
                     rows={3}
-                    label="备注"
+                    label={t('location.management.form.remark')}
                     value={formData.remark}
                     onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
                   />
@@ -844,10 +831,10 @@ const LocationManagement = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setFormDialog({ open: false, location: null, mode: 'create' })}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSave} variant="contained" disabled={!formData.name}>
-              保存
+              {t('common.save')}
             </Button>
           </DialogActions>
         </Dialog>

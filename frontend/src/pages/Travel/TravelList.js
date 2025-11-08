@@ -66,14 +66,14 @@ const TravelList = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'draft', label: 'Draft' },
-    { value: 'submitted', label: 'Submitted' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' },
-    { value: 'in-progress', label: 'In Progress' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' }
+    { value: 'all', label: t('travel.list.allStatus') },
+    { value: 'draft', label: t('travel.statuses.draft') },
+    { value: 'submitted', label: t('travel.statuses.submitted') },
+    { value: 'approved', label: t('travel.statuses.approved') },
+    { value: 'rejected', label: t('travel.statuses.rejected') },
+    { value: 'in-progress', label: t('travel.statuses.in-progress') },
+    { value: 'completed', label: t('travel.statuses.completed') },
+    { value: 'cancelled', label: t('travel.statuses.cancelled') }
   ];
 
   const getStatusColor = (status) => {
@@ -136,11 +136,11 @@ const TravelList = () => {
         });
         setTravels(travels);
       } else {
-        throw new Error(response.data?.message || '获取差旅申请列表失败');
+        throw new Error(response.data?.message || t('travel.list.fetchError'));
       }
     } catch (error) {
       console.error('Fetch travels error:', error);
-      showNotification(error.response?.data?.message || 'Failed to load travel requests', 'error');
+      showNotification(error.response?.data?.message || t('travel.list.fetchError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -162,7 +162,7 @@ const TravelList = () => {
     if (travelId) {
       navigate(`/travel/${travelId}`);
     } else {
-      showNotification('无效的差旅申请ID', 'error');
+      showNotification(t('travel.list.invalidTravelId'), 'error');
     }
     handleMenuClose();
   };
@@ -173,7 +173,7 @@ const TravelList = () => {
     if (travelId) {
       navigate(`/travel/${travelId}/edit`);
     } else {
-      showNotification('无效的差旅申请ID', 'error');
+      showNotification(t('travel.list.invalidTravelId'), 'error');
     }
     handleMenuClose();
   };
@@ -187,7 +187,7 @@ const TravelList = () => {
     try {
       const travelId = selectedTravel._id || selectedTravel.id;
       if (!travelId) {
-        showNotification('无效的差旅申请ID', 'error');
+        showNotification(t('travel.list.invalidTravelId'), 'error');
         return;
       }
       
@@ -199,36 +199,36 @@ const TravelList = () => {
           const id = travel._id || travel.id;
           return id !== travelId;
         }));
-        showNotification(response.data.message || '差旅申请已成功删除', 'success');
+        showNotification(response.data.message || t('travel.list.deleteSuccess'), 'success');
       } else {
-        showNotification(response.data?.message || '删除失败', 'error');
+        showNotification(response.data?.message || t('travel.list.deleteError'), 'error');
       }
     } catch (error) {
       console.error('Delete travel error:', error);
       console.error('Error response:', error.response);
       
       // 处理不同类型的错误
-      let errorMessage = '删除差旅申请失败';
+      let errorMessage = t('travel.list.deleteFailed');
       
       if (error.response) {
         // 服务器返回了错误响应
         if (error.response.data && error.response.data.message) {
           errorMessage = error.response.data.message;
         } else if (error.response.status === 404) {
-          errorMessage = '差旅申请不存在';
+          errorMessage = t('travel.list.notFound');
         } else if (error.response.status === 403) {
-          errorMessage = '您没有权限删除此差旅申请';
+          errorMessage = t('travel.list.noPermission');
         } else if (error.response.status === 400) {
-          errorMessage = error.response.data?.message || '只能删除草稿状态的差旅申请';
+          errorMessage = error.response.data?.message || t('travel.list.onlyDraftCanDelete');
         } else if (error.response.status === 401) {
-          errorMessage = '未授权，请重新登录';
+          errorMessage = t('travel.list.unauthorized');
         }
       } else if (error.request) {
         // 请求已发出但没有收到响应
-        errorMessage = '无法连接到服务器，请检查网络连接';
+        errorMessage = t('travel.list.networkError');
       } else {
         // 其他错误
-        errorMessage = error.message || '删除失败';
+        errorMessage = error.message || t('travel.list.deleteError');
       }
       
       showNotification(errorMessage, 'error');
@@ -268,14 +268,14 @@ const TravelList = () => {
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" gutterBottom>
-            {t('travel.travelList')}
+            {t('travel.list.title')}
           </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate('/travel/new')}
           >
-            New Travel Request
+            {t('travel.list.newTravelRequest')}
           </Button>
         </Box>
 
@@ -323,7 +323,7 @@ const TravelList = () => {
                     setStatusFilter('all');
                   }}
                 >
-                  Clear Filters
+                  {t('travel.list.clearFilters')}
                 </Button>
               </Box>
             </Grid>
@@ -336,12 +336,12 @@ const TravelList = () => {
             <TableHead>
               <TableRow>
                 <TableCell>{t('travel.travelNumber')}</TableCell>
-                <TableCell>Title</TableCell>
-                <TableCell>Destination</TableCell>
-                <TableCell>Dates</TableCell>
-                <TableCell>Estimated Cost</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Created</TableCell>
+                <TableCell>{t('travel.list.titleColumn')}</TableCell>
+                <TableCell>{t('travel.list.destinationColumn')}</TableCell>
+                <TableCell>{t('travel.list.datesColumn')}</TableCell>
+                <TableCell>{t('travel.list.estimatedCostColumn')}</TableCell>
+                <TableCell>{t('travel.list.statusColumn')}</TableCell>
+                <TableCell>{t('travel.list.createdColumn')}</TableCell>
                 <TableCell>{t('common.actions')}</TableCell>
               </TableRow>
             </TableHead>
@@ -375,17 +375,17 @@ const TravelList = () => {
                             const tripDesc = travel.tripDescription?.trim() || '';
                             
                             if (destinationText) {
-                              return `差旅至 ${destinationText}`;
+                              return `${t('travel.list.travelTo')} ${destinationText}`;
                             } else if (tripDesc) {
                               return tripDesc.length > 30 ? tripDesc.substring(0, 30) + '...' : tripDesc;
                             } else if (travel.travelNumber) {
-                              return `差旅申请 ${travel.travelNumber}`;
+                              return `${t('travel.list.travelRequest')} ${travel.travelNumber}`;
                             }
-                            return '未命名差旅申请';
+                            return t('travel.list.unnamedTravelRequest');
                           })()}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {travel.purpose || travel.tripDescription || '暂无描述'}
+                          {travel.purpose || travel.tripDescription || t('travel.list.noDescription')}
                         </Typography>
                       </Box>
                     </Box>
@@ -439,7 +439,7 @@ const TravelList = () => {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={travel.status}
+                      label={t(`travel.statuses.${travel.status}`) || travel.status}
                       color={getStatusColor(travel.status)}
                       size="small"
                     />
@@ -469,12 +469,12 @@ const TravelList = () => {
         {filteredTravels.length === 0 && (
           <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
             <Typography variant="h6" color="text.secondary">
-              No travel requests found
+              {t('travel.list.noResultsFound')}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {searchTerm || statusFilter !== 'all' 
-                ? 'Try adjusting your search criteria'
-                : 'Create your first travel request to get started'
+                ? t('travel.list.tryAdjustingSearch')
+                : t('travel.list.createFirstRequest')
               }
             </Typography>
             {!searchTerm && statusFilter === 'all' && (
@@ -484,7 +484,7 @@ const TravelList = () => {
                 onClick={() => navigate('/travel/new')}
                 sx={{ mt: 2 }}
               >
-                Create Travel Request
+                {t('travel.list.createTravelRequest')}
               </Button>
             )}
           </Paper>
@@ -498,15 +498,15 @@ const TravelList = () => {
         >
           <MenuItem onClick={handleView}>
             <ViewIcon sx={{ mr: 1 }} />
-            View Details
+            {t('travel.list.viewDetails')}
           </MenuItem>
           <MenuItem onClick={handleEdit}>
             <EditIcon sx={{ mr: 1 }} />
-            Edit
+            {t('travel.list.edit')}
           </MenuItem>
           <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
             <DeleteIcon sx={{ mr: 1 }} />
-            Delete
+            {t('travel.list.delete')}
           </MenuItem>
         </Menu>
 
@@ -518,16 +518,16 @@ const TravelList = () => {
           <DialogTitle>{t('dialogs.confirmDelete')}</DialogTitle>
           <DialogContent>
             <Typography>
-              Are you sure you want to delete the travel request "{selectedTravel?.title}"? 
-              This action cannot be undone.
+              {t('travel.list.confirmDeleteMessage')} "{selectedTravel?.title}"? 
+              {t('travel.list.actionCannotUndone')}
             </Typography>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button onClick={confirmDelete} color="error" variant="contained">
-              Delete
+              {t('travel.list.delete')}
             </Button>
           </DialogActions>
         </Dialog>

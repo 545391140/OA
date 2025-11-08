@@ -97,18 +97,18 @@ const Layout = () => {
     { text: t('navigation.expenses'), icon: <ExpenseIcon />, path: '/expenses' },
     { text: t('navigation.approvals'), icon: <ApprovalIcon />, path: '/approvals' },
     { text: t('navigation.reports'), icon: <ReportIcon />, path: '/reports' },
-    { text: '差旅标准查询', icon: <QueryBuilderIcon />, path: '/travel-standards/query' },
-    { text: '差旅标准管理', icon: <SettingsIcon />, path: '/travel-standards' },
-    { text: '费用项目维护', icon: <ExpenseItemsIcon />, path: '/expense-items' },
-    { text: '地理位置管理', icon: <LocationOnIcon />, path: '/location' },
-    { text: '国际化监控', icon: <LanguageIcon />, path: '/i18n' },
+    { text: t('navigation.travelStandardQuery'), icon: <QueryBuilderIcon />, path: '/travel-standards/query' },
+    { text: t('navigation.travelStandardManagement'), icon: <SettingsIcon />, path: '/travel-standards' },
+    { text: t('navigation.expenseItemsManagement'), icon: <ExpenseItemsIcon />, path: '/expense-items' },
+    { text: t('navigation.locationManagement'), icon: <LocationOnIcon />, path: '/location' },
+    { text: t('navigation.i18nMonitor'), icon: <LanguageIcon />, path: '/i18n' },
   ];
 
   // Admin only menu items
   const adminMenuItems = [
-    { text: '角色管理', icon: <SecurityIcon />, path: '/roles' },
-    { text: '岗位管理', icon: <WorkIcon />, path: '/positions' },
-    { text: '用户管理', icon: <PeopleIcon />, path: '/users' },
+    { text: t('navigation.roleManagement'), icon: <SecurityIcon />, path: '/roles' },
+    { text: t('navigation.positionManagement'), icon: <WorkIcon />, path: '/positions' },
+    { text: t('navigation.userManagement'), icon: <PeopleIcon />, path: '/users' },
   ];
 
   // Filter menu items based on user role
@@ -121,7 +121,7 @@ const Layout = () => {
     <div>
       <Toolbar>
         <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
-          Travel & Expense
+          {t('navigation.appTitle')}
         </Typography>
       </Toolbar>
       <Divider />
@@ -314,16 +314,16 @@ const Layout = () => {
         onClose={handleLanguageMenuClose}
       >
         <MenuItem onClick={() => handleLanguageChange('en')}>
-          English
+          {t('navigation.languages.en')}
         </MenuItem>
         <MenuItem onClick={() => handleLanguageChange('zh')}>
-          中文
+          {t('navigation.languages.zh')}
         </MenuItem>
         <MenuItem onClick={() => handleLanguageChange('ja')}>
-          日本語
+          {t('navigation.languages.ja')}
         </MenuItem>
         <MenuItem onClick={() => handleLanguageChange('ko')}>
-          한국어
+          {t('navigation.languages.ko')}
         </MenuItem>
       </Menu>
     </Box>

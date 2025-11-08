@@ -47,9 +47,11 @@ import {
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
 const PositionManagement = () => {
+  const { t, i18n } = useTranslation();
   const { showNotification } = useNotification();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin';
@@ -107,12 +109,12 @@ const PositionManagement = () => {
       if (response.data && response.data.success) {
         setPositions(response.data.data || []);
       } else {
-        throw new Error(response.data?.message || '获取岗位数据失败');
+        throw new Error(response.data?.message || t('position.management.fetchError'));
       }
     } catch (err) {
       console.error('Fetch positions error:', err);
-      setError(err.response?.data?.message || err.message || '获取岗位数据失败');
-      showNotification('获取岗位数据失败', 'error');
+      setError(err.response?.data?.message || err.message || t('position.management.fetchError'));
+      showNotification(t('position.management.fetchError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -136,11 +138,11 @@ const PositionManagement = () => {
   const confirmDelete = async () => {
     try {
       await apiClient.delete(`/positions/${deleteDialog.position._id}`);
-      showNotification('删除成功', 'success');
+      showNotification(t('position.management.deleteSuccess'), 'success');
       fetchPositions();
     } catch (err) {
       console.error('Delete position error:', err);
-      const errorMsg = err.response?.data?.message || '删除失败';
+      const errorMsg = err.response?.data?.message || t('position.management.deleteError');
       showNotification(errorMsg, 'error');
     } finally {
       setDeleteDialog({ open: false, position: null });
@@ -208,17 +210,17 @@ const PositionManagement = () => {
       
       if (formDialog.mode === 'create') {
         await apiClient.post('/positions', saveData);
-        showNotification('创建成功', 'success');
+        showNotification(t('position.management.createSuccess'), 'success');
       } else {
         await apiClient.put(`/positions/${formDialog.position._id}`, saveData);
-        showNotification('更新成功', 'success');
+        showNotification(t('position.management.updateSuccess'), 'success');
       }
       
       fetchPositions();
       setFormDialog({ open: false, position: null, mode: 'create' });
     } catch (err) {
       console.error('Save position error:', err);
-      const errorMsg = err.response?.data?.message || '保存失败';
+      const errorMsg = err.response?.data?.message || t('position.management.saveError');
       showNotification(errorMsg, 'error');
     } finally {
       setSaving(false);
@@ -228,11 +230,11 @@ const PositionManagement = () => {
   const handleToggleActive = async (position) => {
     try {
       await apiClient.patch(`/positions/${position._id}/toggle-active`);
-      showNotification(position.isActive ? '已禁用' : '已启用', 'success');
+      showNotification(position.isActive ? t('position.management.toggleDisabledSuccess') : t('position.management.toggleSuccess'), 'success');
       fetchPositions();
     } catch (err) {
       console.error('Toggle active error:', err);
-      const errorMsg = err.response?.data?.message || '操作失败';
+      const errorMsg = err.response?.data?.message || t('position.management.toggleError');
       showNotification(errorMsg, 'error');
     }
   };
@@ -261,7 +263,7 @@ const PositionManagement = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <WorkIcon sx={{ fontSize: 32, color: 'primary.main' }} />
             <Typography variant="h4" fontWeight={600}>
-              岗位管理
+              {t('position.management.title')}
             </Typography>
           </Box>
           {canEdit && (
@@ -271,7 +273,7 @@ const PositionManagement = () => {
               onClick={handleAdd}
               sx={{ borderRadius: 2 }}
             >
-              新增岗位
+              {t('position.management.addPosition')}
             </Button>
           )}
         </Box>
@@ -282,7 +284,7 @@ const PositionManagement = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                placeholder="搜索岗位代码、名称..."
+                placeholder={t('position.management.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -297,27 +299,27 @@ const PositionManagement = () => {
             </Grid>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>状态</InputLabel>
+                <InputLabel>{t('position.management.status')}</InputLabel>
                 <Select
                   value={statusFilter}
-                  label="状态"
+                  label={t('position.management.status')}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <MenuItem value="all">全部</MenuItem>
-                  <MenuItem value="active">启用</MenuItem>
-                  <MenuItem value="inactive">禁用</MenuItem>
+                  <MenuItem value="all">{t('position.management.all')}</MenuItem>
+                  <MenuItem value="active">{t('position.management.active')}</MenuItem>
+                  <MenuItem value="inactive">{t('position.management.inactive')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>部门</InputLabel>
+                <InputLabel>{t('position.management.department')}</InputLabel>
                 <Select
                   value={departmentFilter}
-                  label="部门"
+                  label={t('position.management.department')}
                   onChange={(e) => setDepartmentFilter(e.target.value)}
                 >
-                  <MenuItem value="all">全部</MenuItem>
+                  <MenuItem value="all">{t('position.management.all')}</MenuItem>
                   {departments.map(dept => (
                     <MenuItem key={dept} value={dept}>{dept}</MenuItem>
                   ))}
@@ -332,7 +334,7 @@ const PositionManagement = () => {
                   onClick={handleSearch}
                   fullWidth
                 >
-                  搜索
+                  {t('common.search')}
                 </Button>
                 <Button
                   variant="outlined"
@@ -340,7 +342,7 @@ const PositionManagement = () => {
                   onClick={handleReset}
                   fullWidth
                 >
-                  重置
+                  {t('common.refresh')}
                 </Button>
               </Box>
             </Grid>
@@ -360,23 +362,23 @@ const PositionManagement = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>岗位代码</TableCell>
-                <TableCell>岗位名称</TableCell>
-                <TableCell>英文名称</TableCell>
-                <TableCell>部门</TableCell>
-                <TableCell>职级</TableCell>
-                <TableCell>薪资范围</TableCell>
-                <TableCell>系统岗位</TableCell>
-                <TableCell>状态</TableCell>
-                <TableCell>创建时间</TableCell>
-                <TableCell align="right">操作</TableCell>
+                <TableCell>{t('position.management.tableHeaders.code')}</TableCell>
+                <TableCell>{t('position.management.tableHeaders.name')}</TableCell>
+                <TableCell>{t('position.management.tableHeaders.nameEn')}</TableCell>
+                <TableCell>{t('position.management.tableHeaders.department')}</TableCell>
+                <TableCell>{t('position.management.tableHeaders.jobLevel')}</TableCell>
+                <TableCell>{t('position.management.tableHeaders.salaryRange')}</TableCell>
+                <TableCell>{t('position.management.tableHeaders.isSystem')}</TableCell>
+                <TableCell>{t('position.management.tableHeaders.status')}</TableCell>
+                <TableCell>{t('position.management.tableHeaders.createdAt')}</TableCell>
+                <TableCell align="right">{t('position.management.tableHeaders.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredPositions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                    {loading ? <CircularProgress /> : '暂无数据'}
+                    {loading ? <CircularProgress /> : t('position.management.noData')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -398,14 +400,14 @@ const PositionManagement = () => {
                     </TableCell>
                     <TableCell>
                       {position.isSystem ? (
-                        <Chip label="是" color="primary" size="small" />
+                        <Chip label={t('position.management.yes')} color="primary" size="small" />
                       ) : (
-                        <Chip label="否" size="small" variant="outlined" />
+                        <Chip label={t('position.management.no')} size="small" variant="outlined" />
                       )}
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={position.isActive ? '启用' : '禁用'}
+                        label={position.isActive ? t('position.management.active') : t('position.management.inactive')}
                         color={position.isActive ? 'success' : 'default'}
                         size="small"
                       />
@@ -417,7 +419,7 @@ const PositionManagement = () => {
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                         {canEdit && (
                           <>
-                            <Tooltip title={position.isActive ? '禁用' : '启用'}>
+                            <Tooltip title={position.isActive ? t('position.management.disable') : t('position.management.enable')}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleToggleActive(position)}
@@ -427,7 +429,7 @@ const PositionManagement = () => {
                                 {position.isActive ? <BlockIcon /> : <CheckCircleIcon />}
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="编辑">
+                            <Tooltip title={t('common.edit')}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleEdit(position)}
@@ -436,7 +438,7 @@ const PositionManagement = () => {
                                 <EditIcon />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="删除">
+                            <Tooltip title={t('common.delete')}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleDelete(position)}
@@ -459,26 +461,26 @@ const PositionManagement = () => {
 
         {/* Delete Dialog */}
         <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, position: null })}>
-          <DialogTitle>确认删除</DialogTitle>
+          <DialogTitle>{t('position.management.confirmDelete')}</DialogTitle>
           <DialogContent>
             <Typography>
-              确定要删除岗位 <strong>{deleteDialog.position?.name}</strong> ({deleteDialog.position?.code}) 吗？
+              {t('position.management.deleteConfirmMessage')} <strong>{deleteDialog.position?.name}</strong> ({deleteDialog.position?.code}){i18n.language === 'zh' ? '吗？' : '?'}
             </Typography>
             {deleteDialog.position?.isSystem && (
               <Alert severity="warning" sx={{ mt: 2 }}>
-                系统岗位无法删除
+                {t('position.management.deleteWarning')}
               </Alert>
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteDialog({ open: false, position: null })}>取消</Button>
+            <Button onClick={() => setDeleteDialog({ open: false, position: null })}>{t('common.cancel')}</Button>
             <Button
               onClick={confirmDelete}
               color="error"
               variant="contained"
               disabled={deleteDialog.position?.isSystem}
             >
-              删除
+              {t('common.delete')}
             </Button>
           </DialogActions>
         </Dialog>
@@ -491,25 +493,25 @@ const PositionManagement = () => {
           fullWidth
         >
           <DialogTitle>
-            {formDialog.mode === 'create' ? '新增岗位' : '编辑岗位'}
+            {formDialog.mode === 'create' ? t('position.management.addPosition') : t('position.management.editPosition')}
           </DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="岗位代码"
+                  label={t('position.code')}
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                   required
                   disabled={formDialog.mode === 'edit'}
-                  helperText="只能包含大写字母、数字和下划线"
+                  helperText={t('position.management.codeHint')}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="岗位名称"
+                  label={t('position.name')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -518,7 +520,7 @@ const PositionManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="英文名称"
+                  label={t('position.nameEn')}
                   value={formData.nameEn}
                   onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
                 />
@@ -526,7 +528,7 @@ const PositionManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="部门"
+                  label={t('position.department')}
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                 />
@@ -534,7 +536,7 @@ const PositionManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="职级"
+                  label={t('position.jobLevel')}
                   value={formData.jobLevel}
                   onChange={(e) => setFormData({ ...formData, jobLevel: e.target.value })}
                 />
@@ -542,7 +544,7 @@ const PositionManagement = () => {
               <Grid item xs={12} md={3}>
                 <TextField
                   fullWidth
-                  label="最低薪资"
+                  label={t('position.minSalary')}
                   type="number"
                   value={formData.minSalary}
                   onChange={(e) => setFormData({ ...formData, minSalary: e.target.value })}
@@ -552,7 +554,7 @@ const PositionManagement = () => {
               <Grid item xs={12} md={3}>
                 <TextField
                   fullWidth
-                  label="最高薪资"
+                  label={t('position.maxSalary')}
                   type="number"
                   value={formData.maxSalary}
                   onChange={(e) => setFormData({ ...formData, maxSalary: e.target.value })}
@@ -562,7 +564,7 @@ const PositionManagement = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="描述"
+                  label={t('position.description')}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   multiline
@@ -572,7 +574,7 @@ const PositionManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="学历要求"
+                  label={t('position.education')}
                   value={formData.requirements.education}
                   onChange={(e) => setFormData({
                     ...formData,
@@ -583,7 +585,7 @@ const PositionManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="工作经验"
+                  label={t('position.experience')}
                   value={formData.requirements.experience}
                   onChange={(e) => setFormData({
                     ...formData,
@@ -594,7 +596,7 @@ const PositionManagement = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="技能要求（用逗号分隔）"
+                  label={t('position.skills')}
                   value={typeof formData.requirements.skills === 'string' 
                     ? formData.requirements.skills 
                     : formData.requirements.skills.join(', ')}
@@ -602,20 +604,20 @@ const PositionManagement = () => {
                     ...formData,
                     requirements: { ...formData.requirements, skills: e.target.value }
                   })}
-                  helperText="输入技能，多个技能用逗号分隔"
+                  helperText={t('position.skillsHint')}
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="岗位职责（每行一条）"
+                  label={t('position.responsibilities')}
                   value={typeof formData.responsibilities === 'string'
                     ? formData.responsibilities
                     : formData.responsibilities.join('\n')}
                   onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
                   multiline
                   rows={4}
-                  helperText="每行输入一条职责"
+                  helperText={t('position.responsibilitiesHint')}
                 />
               </Grid>
             </Grid>
@@ -625,14 +627,14 @@ const PositionManagement = () => {
               onClick={() => setFormDialog({ open: false, position: null, mode: 'create' })}
               disabled={saving}
             >
-              取消
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleSave}
               variant="contained"
               disabled={saving || !formData.code || !formData.name}
             >
-              {saving ? <CircularProgress size={20} /> : '保存'}
+              {saving ? <CircularProgress size={20} /> : t('common.save')}
             </Button>
           </DialogActions>
         </Dialog>

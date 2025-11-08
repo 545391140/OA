@@ -41,7 +41,7 @@ const StandardQuery = () => {
 
   const handleQuery = async () => {
     if (!queryParams.destination) {
-      setError('请选择目的地');
+      setError(t('travelStandard.query.selectDestination'));
       return;
     }
 
@@ -60,11 +60,11 @@ const StandardQuery = () => {
       if (response.data.success) {
         setStandardData(response.data.data);
       } else {
-        setError(response.data.message || '查询失败');
+        setError(response.data.message || t('travelStandard.query.queryFailed'));
       }
     } catch (err) {
       console.error('Query standard error:', err);
-      setError(err.response?.data?.message || '查询标准时出错');
+      setError(err.response?.data?.message || t('travelStandard.query.queryError'));
     } finally {
       setLoading(false);
     }
@@ -76,12 +76,12 @@ const StandardQuery = () => {
 
   const getCityLevelName = (level) => {
     const levelMap = {
-      1: '一线城市',
-      2: '二线城市',
-      3: '三线城市',
-      4: '其他城市'
+      1: t('travelStandard.query.cityLevels.1'),
+      2: t('travelStandard.query.cityLevels.2'),
+      3: t('travelStandard.query.cityLevels.3'),
+      4: t('travelStandard.query.cityLevels.4')
     };
-    return levelMap[level] || '其他城市';
+    return levelMap[level] || t('travelStandard.query.cityLevels.other');
   };
 
   return (
@@ -90,19 +90,19 @@ const StandardQuery = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <QueryIcon sx={{ fontSize: 32, mr: 2, color: 'primary.main' }} />
           <Typography variant="h4" component="h1">
-            我的差旅标准查询
+            {t('travelStandard.query.title')}
           </Typography>
         </Box>
 
         {/* 查询表单 */}
         <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            出差信息
+            {t('travelStandard.query.tripInfo')}
           </Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <RegionSelector
-                label="目的地"
+                label={t('travelStandard.query.destination')}
                 value={queryParams.destination}
                 onChange={(value) => {
                   const cityName = typeof value === 'object' && value.city
@@ -116,7 +116,7 @@ const StandardQuery = () => {
             <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
-                label="出发日期"
+                label={t('travelStandard.query.departureDate')}
                 type="date"
                 value={queryParams.startDate}
                 onChange={(e) => setQueryParams({ ...queryParams, startDate: e.target.value })}
@@ -126,7 +126,7 @@ const StandardQuery = () => {
             <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
-                label="出差天数"
+                label={t('travelStandard.query.tripDays')}
                 type="number"
                 value={queryParams.days}
                 onChange={(e) => setQueryParams({ ...queryParams, days: e.target.value })}
@@ -141,7 +141,7 @@ const StandardQuery = () => {
               disabled={loading}
               startIcon={loading ? <CircularProgress size={20} /> : <QueryIcon />}
             >
-              查询标准
+              {t('travelStandard.query.queryStandard')}
             </Button>
           </Box>
         </Paper>
@@ -157,26 +157,26 @@ const StandardQuery = () => {
         {standardData && (
           <Box>
             <Alert severity="success" sx={{ mb: 3 }}>
-              已找到适用标准: {standardData.standard.name} (版本 {standardData.standard.version})
+              {t('travelStandard.query.standardFound')}: {standardData.standard.name} ({t('travelStandard.query.version')} {standardData.standard.version})
             </Alert>
 
             {/* 用户信息 */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  您的信息
+                  {t('travelStandard.query.yourInfo')}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <Chip label={`职级: ${standardData.userInfo.jobLevel || '未设置'}`} color="primary" />
+                  <Chip label={`${t('travelStandard.query.jobLevel')}: ${standardData.userInfo.jobLevel || t('travelStandard.query.notSet')}`} color="primary" />
                   {standardData.userInfo.cityInfo && (
                     <Chip
-                      label={`目的地级别: ${standardData.userInfo.cityInfo.levelName}`}
+                      label={`${t('travelStandard.query.destinationLevel')}: ${standardData.userInfo.cityInfo.levelName}`}
                       color="secondary"
                     />
                   )}
                   {standardData.userInfo.cityInfo && (
                     <Chip
-                      label={`城市: ${standardData.userInfo.cityInfo.name}`}
+                      label={`${t('travelStandard.query.city')}: ${standardData.userInfo.cityInfo.name}`}
                       variant="outlined"
                     />
                   )}
@@ -192,19 +192,17 @@ const StandardQuery = () => {
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <FlightIcon sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="h6">交通标准</Typography>
+                        <Typography variant="h6">{t('travelStandard.query.transportStandard')}</Typography>
                       </Box>
                       <Box sx={{ pl: 4 }}>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                          交通工具: {standardData.transport.type === 'flight' ? '飞机' : 
-                                   standardData.transport.type === 'train' ? '火车' : 
-                                   standardData.transport.type}
+                          {t('travelStandard.query.transportType')}: {t(`travelStandard.query.transportTypes.${standardData.transport.type}`) || standardData.transport.type}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                          座位等级: {standardData.transport.seatClass}
+                          {t('travelStandard.query.seatClass')}: {standardData.transport.seatClass}
                         </Typography>
                         <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
-                          最高限额: {formatCurrency(standardData.transport.maxAmount)}/次
+                          {t('travelStandard.query.maxAmount')}: {formatCurrency(standardData.transport.maxAmount)}{t('travelStandard.query.perTrip')}
                         </Typography>
                       </Box>
                     </CardContent>
@@ -219,19 +217,19 @@ const StandardQuery = () => {
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <HotelIcon sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="h6">住宿标准</Typography>
+                        <Typography variant="h6">{t('travelStandard.query.accommodationStandard')}</Typography>
                       </Box>
                       <Box sx={{ pl: 4 }}>
                         <Typography variant="h6" color="primary">
-                          最高 {formatCurrency(standardData.accommodation.maxAmountPerNight)}/晚
+                          {t('travelStandard.query.max')} {formatCurrency(standardData.accommodation.maxAmountPerNight)}{t('travelStandard.query.perNight')}
                         </Typography>
                         {standardData.accommodation.starLevel && (
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            建议星级: {standardData.accommodation.starLevel}
+                            {t('travelStandard.query.suggestedStarLevel')}: {standardData.accommodation.starLevel}
                           </Typography>
                         )}
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          {standardData.accommodation.nights}晚合计: {formatCurrency(standardData.accommodation.totalAmount)}
+                          {standardData.accommodation.nights}{t('travelStandard.query.nightsTotal')}: {formatCurrency(standardData.accommodation.totalAmount)}
                         </Typography>
                       </Box>
                     </CardContent>
@@ -246,25 +244,25 @@ const StandardQuery = () => {
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <RestaurantIcon sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="h6">餐饮标准</Typography>
+                        <Typography variant="h6">{t('travelStandard.query.mealStandard')}</Typography>
                       </Box>
                       <Box sx={{ pl: 4 }}>
                         <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
                           <Typography variant="body2">
-                            早餐: {formatCurrency(standardData.meal.breakfast)}
+                            {t('travelStandard.query.breakfast')}: {formatCurrency(standardData.meal.breakfast)}
                           </Typography>
                           <Typography variant="body2">
-                            午餐: {formatCurrency(standardData.meal.lunch)}
+                            {t('travelStandard.query.lunch')}: {formatCurrency(standardData.meal.lunch)}
                           </Typography>
                           <Typography variant="body2">
-                            晚餐: {formatCurrency(standardData.meal.dinner)}
+                            {t('travelStandard.query.dinner')}: {formatCurrency(standardData.meal.dinner)}
                           </Typography>
                         </Box>
                         <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
-                          每日合计: {formatCurrency(standardData.meal.dailyTotal)}
+                          {t('travelStandard.query.dailyTotal')}: {formatCurrency(standardData.meal.dailyTotal)}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          {standardData.meal.days}天合计: {formatCurrency(standardData.meal.totalAmount)}
+                          {standardData.meal.days}{t('travelStandard.query.daysTotal')}: {formatCurrency(standardData.meal.totalAmount)}
                         </Typography>
                       </Box>
                     </CardContent>
@@ -279,19 +277,19 @@ const StandardQuery = () => {
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <TaxiIcon sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="h6">其他补贴</Typography>
+                        <Typography variant="h6">{t('travelStandard.query.otherAllowances')}</Typography>
                       </Box>
                       <Box sx={{ pl: 4 }}>
                         {standardData.allowances.map((allowance, index) => (
                           <Box key={index} sx={{ mb: 1 }}>
                             <Typography variant="body2">
                               {allowance.type}: {formatCurrency(allowance.amount)}
-                              {allowance.amountType === 'daily' && '/天'}
-                              {allowance.amountType === 'per_trip' && '/次'}
+                              {allowance.amountType === 'daily' && t('travelStandard.query.perDay')}
+                              {allowance.amountType === 'per_trip' && t('travelStandard.query.perTrip')}
                             </Typography>
                             {allowance.amountType === 'daily' && (
                               <Typography variant="body2" color="text.secondary">
-                                小计: {formatCurrency(allowance.total)}
+                                {t('travelStandard.query.subtotal')}: {formatCurrency(allowance.total)}
                               </Typography>
                             )}
                           </Box>
@@ -308,30 +306,30 @@ const StandardQuery = () => {
               <Card sx={{ mt: 3, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
                 <CardContent>
                   <Typography variant="h5" gutterBottom>
-                    预估费用
+                    {t('travelStandard.query.estimatedCost')}
                   </Typography>
                   <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.3)' }} />
                   <Grid container spacing={2}>
                     <Grid item xs={6} md={3}>
-                      <Typography variant="body2">交通</Typography>
+                      <Typography variant="body2">{t('travelStandard.query.transport')}</Typography>
                       <Typography variant="h6">{formatCurrency(standardData.estimatedCost.transport)}</Typography>
                     </Grid>
                     <Grid item xs={6} md={3}>
-                      <Typography variant="body2">住宿</Typography>
+                      <Typography variant="body2">{t('travelStandard.query.accommodation')}</Typography>
                       <Typography variant="h6">{formatCurrency(standardData.estimatedCost.accommodation)}</Typography>
                     </Grid>
                     <Grid item xs={6} md={3}>
-                      <Typography variant="body2">餐饮</Typography>
+                      <Typography variant="body2">{t('travelStandard.query.meal')}</Typography>
                       <Typography variant="h6">{formatCurrency(standardData.estimatedCost.meal)}</Typography>
                     </Grid>
                     <Grid item xs={6} md={3}>
-                      <Typography variant="body2">其他</Typography>
+                      <Typography variant="body2">{t('travelStandard.query.other')}</Typography>
                       <Typography variant="h6">{formatCurrency(standardData.estimatedCost.allowance)}</Typography>
                     </Grid>
                     <Grid item xs={12}>
                       <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.3)' }} />
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="h6">总计</Typography>
+                        <Typography variant="h6">{t('travelStandard.query.total')}</Typography>
                         <Typography variant="h4">{formatCurrency(standardData.estimatedCost.total)}</Typography>
                       </Box>
                     </Grid>
