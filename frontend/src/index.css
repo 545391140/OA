@@ -39,9 +39,9 @@ html, body, #root {
   background: #a8a8a8;
 }
 
-/* Smooth transitions */
-* {
-  transition: all 0.2s ease-in-out;
+/* Smooth transitions - Only apply to specific elements for better performance */
+button, a, .MuiButton-root, .MuiIconButton-root, .MuiCard-root, .MuiPaper-root {
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
 /* Focus styles */

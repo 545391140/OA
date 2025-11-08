@@ -47,16 +47,52 @@ router.get('/', protect, async (req, res) => {
     }
     // 如果是管理员，不添加 employee 过滤条件，查询所有申请
     
+    // 分页参数
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    
+    // 状态过滤（如果提供）
+    if (req.query.status && req.query.status !== 'all') {
+      query.status = req.query.status;
+    }
+    
+    // 搜索关键词（如果提供）
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      query.$or = [
+        { title: searchRegex },
+        { travelNumber: searchRegex },
+        { purpose: searchRegex }
+      ];
+    }
+    
+    // 查询总数（用于分页）
+    const total = await Travel.countDocuments(query);
+    
+    // 查询数据：只选择列表需要的字段，使用 lean() 提高性能
     const travels = await Travel.find(query)
+      .select('title travelNumber status estimatedCost currency startDate endDate destination destinationAddress outbound inbound createdAt employee')
       .populate('employee', 'firstName lastName email')
-      .populate('approvals.approver', 'firstName lastName email')
-      .sort({ createdAt: -1 });
+      .populate({
+        path: 'approvals.approver',
+        select: 'firstName lastName email',
+        options: { limit: 1 } // 只populate第一个审批人（用于显示审批状态）
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
 
-    console.log(`[TRAVEL_LIST] User ${req.user.id} (role: ${req.user.role}) fetched ${travels.length} travels`);
+    console.log(`[TRAVEL_LIST] User ${req.user.id} (role: ${req.user.role}) fetched ${travels.length} travels (page: ${page}, limit: ${limit}, total: ${total})`);
 
     res.json({
       success: true,
       count: travels.length,
+      total: total,
+      page: page,
+      limit: limit,
+      pages: Math.ceil(total / limit),
       data: travels
     });
   } catch (error) {

@@ -213,6 +213,8 @@ const TravelSchema = new mongoose.Schema({
 // Index for better query performance
 TravelSchema.index({ employee: 1, status: 1 });
 TravelSchema.index({ 'approvals.approver': 1, 'approvals.status': 1 });
-TravelSchema.index({ travelNumber: 1 }, { unique: true }); // 差旅单号索引
+TravelSchema.index({ travelNumber: 1 }, { unique: true }); // 差旅单号唯一索引
+TravelSchema.index({ createdAt: -1 }); // 用于排序
+TravelSchema.index({ title: 1 }); // 标题索引，用于搜索
 
 module.exports = mongoose.model('Travel', TravelSchema);

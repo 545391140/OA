@@ -26,7 +26,10 @@
     "success": "成功",
     "warning": "警告",
     "info": "信息",
-    "actions": "操作"
+    "actions": "操作",
+    "rowsPerPage": "每页显示",
+    "of": "共",
+    "moreThan": "超过"
   },
   "navigation": {
     "dashboard": "仪表板",

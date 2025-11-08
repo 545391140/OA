@@ -26,7 +26,10 @@
     "success": "成功",
     "warning": "警告",
     "info": "情報",
-    "actions": "操作"
+    "actions": "操作",
+    "rowsPerPage": "ページあたりの行数",
+    "of": "の",
+    "moreThan": "以上"
   },
   "navigation": {
     "dashboard": "ダッシュボード",

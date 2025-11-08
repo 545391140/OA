@@ -26,7 +26,10 @@
     "success": "성공",
     "warning": "경고",
     "info": "정보",
-    "actions": "작업"
+    "actions": "작업",
+    "rowsPerPage": "페이지당 행 수",
+    "of": "의",
+    "moreThan": "이상"
   },
   "navigation": {
     "dashboard": "대시보드",
