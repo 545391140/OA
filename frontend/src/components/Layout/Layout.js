@@ -16,7 +16,6 @@ import {
   Avatar,
   Menu,
   MenuItem,
-  Badge,
   useTheme,
   useMediaQuery
 } from '@mui/material';
@@ -29,7 +28,6 @@ import {
   Assessment as ReportIcon,
   Person as ProfileIcon,
   Settings as SettingsIcon,
-  Notifications as NotificationIcon,
   Logout as LogoutIcon,
   Language as LanguageIcon,
   LocationOn as LocationOnIcon,
@@ -42,7 +40,6 @@ import {
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNotification } from '../../contexts/NotificationContext';
 import { updateHtmlLang } from '../../utils/htmlLangUpdater';
 import GlobalSearch from '../Common/GlobalSearch';
 import NotificationBell from '../Common/NotificationBell';
@@ -61,7 +58,6 @@ const Layout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
-  const { notifications } = useNotification();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -257,12 +253,6 @@ const Layout = () => {
             sx={{ mr: 1 }}
           >
             <LanguageIcon />
-          </IconButton>
-
-          <IconButton color="inherit" sx={{ mr: 1 }}>
-            <Badge badgeContent={notifications.length} color="error">
-              <NotificationIcon />
-            </Badge>
           </IconButton>
 
           <IconButton
