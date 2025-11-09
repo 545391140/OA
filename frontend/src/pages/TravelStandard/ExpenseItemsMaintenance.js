@@ -397,18 +397,18 @@ const ExpenseItemsMaintenance = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* 标题区域 */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">{t('expenseItem.maintenance.title')}</Typography>
-        {canEdit && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAddDialog}
-          >
-            {t('expenseItem.maintenance.addExpenseItem')}
-          </Button>
-        )}
-      </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h4">{t('expenseItem.maintenance.title')}</Typography>
+          {canEdit && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleOpenAddDialog}
+            >
+              {t('expenseItem.maintenance.addExpenseItem')}
+            </Button>
+          )}
+        </Box>
 
       {/* 搜索和过滤器 */}
       <Paper sx={{ p: 2, mb: 3 }}>

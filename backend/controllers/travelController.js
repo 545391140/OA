@@ -234,12 +234,12 @@ exports.createTravel = async (req, res) => {
     }
 
     // 计算总费用（包含多程预算）
-    const outboundTotal = Object.values(travelData.outboundBudget || {}).reduce((sum, item) => {
-      return sum + (parseFloat(item.subtotal) || 0);
-    }, 0);
-    const inboundTotal = Object.values(travelData.inboundBudget || {}).reduce((sum, item) => {
-      return sum + (parseFloat(item.subtotal) || 0);
-    }, 0);
+      const outboundTotal = Object.values(travelData.outboundBudget || {}).reduce((sum, item) => {
+        return sum + (parseFloat(item.subtotal) || 0);
+      }, 0);
+      const inboundTotal = Object.values(travelData.inboundBudget || {}).reduce((sum, item) => {
+        return sum + (parseFloat(item.subtotal) || 0);
+      }, 0);
     const multiCityTotal = (travelData.multiCityRoutesBudget || []).reduce((total, budget) => {
       return total + Object.values(budget || {}).reduce((sum, item) => {
         return sum + (parseFloat(item.subtotal) || 0);

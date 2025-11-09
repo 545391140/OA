@@ -1667,12 +1667,12 @@ const TravelForm = () => {
             return;
           }
         } else {
-          showNotification(
-            status === 'draft' 
-              ? (isEdit ? t('travel.form.updateDraftSuccess') : t('travel.form.saveDraftSuccess'))
-              : (isEdit ? t('travel.form.updateSubmitSuccess') : t('travel.form.submitSuccess')),
-            'success'
-          );
+        showNotification(
+          status === 'draft' 
+            ? (isEdit ? t('travel.form.updateDraftSuccess') : t('travel.form.saveDraftSuccess'))
+            : (isEdit ? t('travel.form.updateSubmitSuccess') : t('travel.form.submitSuccess')),
+          'success'
+        );
         }
         
         navigate('/travel');

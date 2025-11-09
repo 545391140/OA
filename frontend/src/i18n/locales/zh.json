@@ -977,8 +977,8 @@
     "expenseReport": "费用申请",
     "noPendingApprovals": "暂无待审批项目",
     "noApprovalHistory": "暂无审批历史",
-    "earliestDeparture": "最早出发日期",
-    "latestReturn": "最晚返回日期",
+    "departureDate": "出发日期",
+    "returnDate": "返回日期",
     "totalDays": "共",
     "days": "天",
     "workflow": {

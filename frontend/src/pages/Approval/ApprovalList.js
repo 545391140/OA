@@ -83,12 +83,28 @@ const ApprovalList = () => {
         const travelItems = travels.map(travel => {
           // 计算最早出发日期和最晚返回日期
           const dates = [];
-          if (travel.outbound?.date) dates.push(new Date(travel.outbound.date));
-          if (travel.inbound?.date) dates.push(new Date(travel.inbound.date));
+          
+          // 收集所有日期：去程、返程、多程
+          if (travel.outbound?.date) {
+            dates.push(new Date(travel.outbound.date));
+          }
+          if (travel.inbound?.date) {
+            dates.push(new Date(travel.inbound.date));
+          }
           if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
             travel.multiCityRoutes.forEach(route => {
-              if (route.date) dates.push(new Date(route.date));
+              if (route.date) {
+                dates.push(new Date(route.date));
+              }
             });
+          }
+          
+          // 如果没有找到任何日期，尝试其他字段
+          if (dates.length === 0) {
+            if (travel.startDate) dates.push(new Date(travel.startDate));
+            if (travel.endDate) dates.push(new Date(travel.endDate));
+            if (travel.departureDate) dates.push(new Date(travel.departureDate));
+            if (travel.returnDate) dates.push(new Date(travel.returnDate));
           }
           
           let earliestDate = null;
@@ -96,10 +112,14 @@ const ApprovalList = () => {
           let days = 0;
           
           if (dates.length > 0) {
-            earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
-            latestDate = new Date(Math.max(...dates.map(d => d.getTime())));
-            // 计算天数差（包含首尾两天）
-            days = Math.ceil((latestDate - earliestDate) / (1000 * 60 * 60 * 24)) + 1;
+            // 过滤掉无效日期
+            const validDates = dates.filter(d => !isNaN(d.getTime()));
+            if (validDates.length > 0) {
+              earliestDate = new Date(Math.min(...validDates.map(d => d.getTime())));
+              latestDate = new Date(Math.max(...validDates.map(d => d.getTime())));
+              // 计算天数差（包含首尾两天）
+              days = Math.ceil((latestDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+            }
           }
           
           return {
@@ -136,7 +156,7 @@ const ApprovalList = () => {
           level: expense.approvals?.find(a => a.status === 'pending')?.level || 1,
           _raw: expense // 保存原始数据用于后续操作
         }));
-        
+
         setPendingApprovals([...travelItems, ...expenseItems]);
         
         // TODO: 获取审批历史（可以从已审批的申请中获取）
@@ -186,20 +206,20 @@ const ApprovalList = () => {
         const itemIdToCheck = item.id || item._id;
         return itemIdToCheck !== itemId;
       }));
-      
-      const historyItem = {
-        ...selectedItem,
-        status: approvalAction === 'approve' ? 'approved' : 'rejected',
-        approvedAt: new Date().toISOString(),
-        approver: {
-          firstName: user.firstName,
-          lastName: user.lastName,
-          position: user.position
-        },
-        comments: approvalComments
-      };
-      
-      setApprovalHistory(prev => [historyItem, ...prev]);
+        
+        const historyItem = {
+          ...selectedItem,
+          status: approvalAction === 'approve' ? 'approved' : 'rejected',
+          approvedAt: new Date().toISOString(),
+          approver: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            position: user.position
+          },
+          comments: approvalComments
+        };
+        
+        setApprovalHistory(prev => [historyItem, ...prev]);
 
       showNotification(
         approvalAction === 'approve' ? t('approval.approved') : t('approval.rejected'),
@@ -261,6 +281,11 @@ const ApprovalList = () => {
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Chip
+              label={item.priority}
+              color={getPriorityColor(item.priority)}
+              size="small"
+            />
+            <Chip
               label={item.status}
               color={getStatusColor(item.status)}
               size="small"
@@ -302,7 +327,7 @@ const ApprovalList = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <DepartureIcon color="action" fontSize="small" />
                 <Typography variant="body2">
-                  <strong>{t('approval.earliestDeparture')}:</strong> {dayjs(item.earliestDate).format('MMM DD, YYYY')}
+                  <strong>{t('approval.departureDate')}:</strong> {dayjs(item.earliestDate).format('MMM DD, YYYY')}
                 </Typography>
               </Box>
             </Grid>
@@ -310,7 +335,7 @@ const ApprovalList = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ReturnIcon color="action" fontSize="small" />
                 <Typography variant="body2">
-                  <strong>{t('approval.latestReturn')}:</strong> {dayjs(item.latestDate).format('MMM DD, YYYY')}
+                  <strong>{t('approval.returnDate')}:</strong> {dayjs(item.latestDate).format('MMM DD, YYYY')}
                 </Typography>
               </Box>
             </Grid>

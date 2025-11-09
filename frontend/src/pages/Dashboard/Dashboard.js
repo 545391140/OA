@@ -143,34 +143,34 @@ const Dashboard = () => {
             <Skeleton variant="text" width="30%" height={20} sx={{ mt: 1 }} />
           </Box>
         ) : (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography color="text.secondary" gutterBottom variant="h6">
-                {title}
-              </Typography>
-              <Typography variant="h4" component="div">
-                {value}
-              </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography color="text.secondary" gutterBottom variant="h6">
+              {title}
+            </Typography>
+            <Typography variant="h4" component="div">
+              {value}
+            </Typography>
               {trend !== undefined && trendValue !== undefined && (
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                   {parseFloat(trendValue) >= 0 ? (
-                    <TrendingUpIcon color="success" sx={{ fontSize: 16, mr: 0.5 }} />
-                  ) : (
-                    <TrendingDownIcon color="error" sx={{ fontSize: 16, mr: 0.5 }} />
-                  )}
+                  <TrendingUpIcon color="success" sx={{ fontSize: 16, mr: 0.5 }} />
+                ) : (
+                  <TrendingDownIcon color="error" sx={{ fontSize: 16, mr: 0.5 }} />
+                )}
                   <Typography 
                     variant="body2" 
                     color={parseFloat(trendValue) >= 0 ? 'success.main' : 'error.main'}
                   >
                     {Math.abs(parseFloat(trendValue))}% {t('dashboard.vsLastMonth')}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-            <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
-              {icon}
-            </Avatar>
+                </Typography>
+              </Box>
+            )}
           </Box>
+          <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
+            {icon}
+          </Avatar>
+        </Box>
         )}
       </CardContent>
     </Card>
@@ -199,7 +199,7 @@ const Dashboard = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" fontWeight={600}>
           {t('dashboard.title')}
-        </Typography>
+      </Typography>
         <Tooltip title={t('common.refresh')}>
           <IconButton onClick={handleRefresh} disabled={refreshing}>
             <RefreshIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
@@ -266,15 +266,15 @@ const Dashboard = () => {
                 </Typography>
               </Box>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={dashboardData.monthlySpending}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={dashboardData.monthlySpending}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
                   <ChartTooltip formatter={(value) => [formatCurrency(value), t('dashboard.amount')]} />
-                  <Line type="monotone" dataKey="amount" stroke="#1976d2" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
+                <Line type="monotone" dataKey="amount" stroke="#1976d2" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
             )}
           </Paper>
         </Grid>
@@ -297,26 +297,26 @@ const Dashboard = () => {
                 </Typography>
               </Box>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={dashboardData.categoryBreakdown}
-                    cx="50%"
-                    cy="50%"
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={dashboardData.categoryBreakdown}
+                  cx="50%"
+                  cy="50%"
                     labelLine={false}
                     label={({ name, value }) => `${name} ${value}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {dashboardData.categoryBreakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {dashboardData.categoryBreakdown.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
                   <ChartTooltip formatter={(value) => [`${value}%`, t('dashboard.percentage')]} />
                   <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              </PieChart>
+            </ResponsiveContainer>
             )}
           </Paper>
         </Grid>
@@ -348,7 +348,7 @@ const Dashboard = () => {
                 </Typography>
               </Box>
             ) : (
-              <List>
+            <List>
                 {dashboardData.recentTravels.map((travel) => (
                   <ListItem 
                     key={travel._id} 
@@ -356,10 +356,10 @@ const Dashboard = () => {
                     sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
                     onClick={() => navigate(`/travel/${travel._id}`)}
                   >
-                    <ListItemIcon>
-                      <TravelIcon color="primary" />
-                    </ListItemIcon>
-                    <ListItemText
+                  <ListItemIcon>
+                    <TravelIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText
                       primary={
                         <Box>
                           <Typography variant="body1" component="span" fontWeight={500}>
@@ -380,15 +380,15 @@ const Dashboard = () => {
                           </Typography>
                         </Box>
                       }
-                    />
-                    <Chip
+                  />
+                  <Chip
                       label={t(`travel.statuses.${travel.status}`)}
-                      color={getStatusColor(travel.status)}
-                      size="small"
-                    />
-                  </ListItem>
-                ))}
-              </List>
+                    color={getStatusColor(travel.status)}
+                    size="small"
+                  />
+                </ListItem>
+              ))}
+            </List>
             )}
           </Paper>
         </Grid>
@@ -420,27 +420,27 @@ const Dashboard = () => {
                 </Typography>
               </Box>
             ) : (
-              <List>
-                {dashboardData.recentExpenses.map((expense) => (
+            <List>
+              {dashboardData.recentExpenses.map((expense) => (
                   <ListItem 
                     key={expense._id} 
                     divider
                     sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
                     onClick={() => navigate(`/expenses/${expense._id}`)}
                   >
-                    <ListItemIcon>
-                      <ExpenseIcon color="primary" />
-                    </ListItemIcon>
-                    <ListItemText
+                  <ListItemIcon>
+                    <ExpenseIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText
                       primary={expense.title || expense.description}
                       secondary={`${formatDate(expense.date)} • ${expense.category || '-'}`}
-                    />
-                    <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
+                  />
+                  <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
                       {formatCurrency(expense.amount)}
-                    </Typography>
-                  </ListItem>
-                ))}
-              </List>
+                  </Typography>
+                </ListItem>
+              ))}
+            </List>
             )}
           </Paper>
         </Grid>
