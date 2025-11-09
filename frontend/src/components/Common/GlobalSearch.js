@@ -241,7 +241,14 @@ const GlobalSearch = ({ open, onClose }) => {
       { results: searchResults.locations, type: 'location', title: t('search.locations') }
     ];
 
-    const currentTab = tabData[selectedTab];
+    // selectedTab 0 是"全部"，1-5 对应 tabData[0-4]
+    const currentTab = tabData[selectedTab - 1];
+    
+    // 如果没有找到对应的标签数据，返回空
+    if (!currentTab) {
+      return null;
+    }
+    
     return renderResults(currentTab.results, currentTab.type, currentTab.title);
   };
 
