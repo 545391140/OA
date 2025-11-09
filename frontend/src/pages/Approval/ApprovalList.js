@@ -694,34 +694,51 @@ const ApprovalList = () => {
         )}
 
         {/* 操作按钮 */}
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end', pt: 1, alignItems: 'center' }}>
           <Button
-            variant="outlined"
+            variant="text"
             size="small"
             onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
-            sx={{ minWidth: 90 }}
+            sx={{ 
+              minWidth: 'auto',
+              px: 1,
+              py: 0.5,
+              fontSize: '0.8125rem',
+              textTransform: 'none'
+            }}
           >
             {t('approval.viewDetail') || 'View Detail'}
           </Button>
           {showActions && item.status === 'submitted' && (
             <>
               <Button
-                variant="outlined"
+                variant="text"
                 color="error"
-                startIcon={<RejectIcon />}
                 onClick={() => handleApproval(item, 'reject')}
                 size="small"
-                sx={{ minWidth: 90 }}
+                sx={{ 
+                  minWidth: 'auto',
+                  px: 1,
+                  py: 0.5,
+                  fontSize: '0.8125rem',
+                  textTransform: 'none'
+                }}
               >
                 {t('approval.reject')}
               </Button>
               <Button
-                variant="contained"
+                variant="text"
                 color="success"
-                startIcon={<ApproveIcon />}
                 onClick={() => handleApproval(item, 'approve')}
                 size="small"
-                sx={{ minWidth: 90 }}
+                sx={{ 
+                  minWidth: 'auto',
+                  px: 1,
+                  py: 0.5,
+                  fontSize: '0.8125rem',
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
               >
                 {t('approval.approve')}
               </Button>
