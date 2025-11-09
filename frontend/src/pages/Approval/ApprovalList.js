@@ -40,7 +40,9 @@ import {
   CalendarToday as CalendarIcon,
   AttachMoney as MoneyIcon,
   Business as BusinessIcon,
-  LocationOn as LocationIcon
+  LocationOn as LocationIcon,
+  FlightTakeoff as DepartureIcon,
+  FlightLand as ReturnIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -78,21 +80,47 @@ const ApprovalList = () => {
         const { travels = [], expenses = [] } = response.data.data;
         
         // 转换差旅申请数据格式
-        const travelItems = travels.map(travel => ({
-          id: travel._id,
-          type: 'travel',
-          title: travel.title || travel.travelNumber || t('approval.travelRequest'),
-          employee: travel.employee || {},
-          amount: travel.estimatedBudget || travel.estimatedCost || 0,
-          currency: travel.currency || 'CNY',
-          date: travel.startDate || travel.outbound?.date || travel.createdAt,
-          status: travel.status,
-          submittedAt: travel.createdAt,
-          level: travel.approvals?.find(a => a.status === 'pending')?.level || 1,
-          travelNumber: travel.travelNumber,
-          destination: travel.destination,
-          _raw: travel // 保存原始数据用于后续操作
-        }));
+        const travelItems = travels.map(travel => {
+          // 计算最早出发日期和最晚返回日期
+          const dates = [];
+          if (travel.outbound?.date) dates.push(new Date(travel.outbound.date));
+          if (travel.inbound?.date) dates.push(new Date(travel.inbound.date));
+          if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
+            travel.multiCityRoutes.forEach(route => {
+              if (route.date) dates.push(new Date(route.date));
+            });
+          }
+          
+          let earliestDate = null;
+          let latestDate = null;
+          let days = 0;
+          
+          if (dates.length > 0) {
+            earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+            latestDate = new Date(Math.max(...dates.map(d => d.getTime())));
+            // 计算天数差（包含首尾两天）
+            days = Math.ceil((latestDate - earliestDate) / (1000 * 60 * 60 * 24)) + 1;
+          }
+          
+          return {
+            id: travel._id,
+            type: 'travel',
+            title: travel.title || travel.travelNumber || t('approval.travelRequest'),
+            employee: travel.employee || {},
+            amount: travel.estimatedBudget || travel.estimatedCost || 0,
+            currency: travel.currency || 'CNY',
+            date: travel.startDate || travel.outbound?.date || travel.createdAt,
+            status: travel.status,
+            submittedAt: travel.createdAt,
+            level: travel.approvals?.find(a => a.status === 'pending')?.level || 1,
+            travelNumber: travel.travelNumber,
+            destination: travel.destination,
+            earliestDate,
+            latestDate,
+            days,
+            _raw: travel // 保存原始数据用于后续操作
+          };
+        });
         
         // 转换费用申请数据格式
         const expenseItems = expenses.map(expense => ({
@@ -272,6 +300,35 @@ const ApprovalList = () => {
             </Box>
           </Grid>
         </Grid>
+
+        {item.type === 'travel' && item.earliestDate && item.latestDate && (
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <DepartureIcon color="action" fontSize="small" />
+                <Typography variant="body2">
+                  <strong>{t('approval.earliestDeparture')}:</strong> {dayjs(item.earliestDate).format('MMM DD, YYYY')}
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ReturnIcon color="action" fontSize="small" />
+                <Typography variant="body2">
+                  <strong>{t('approval.latestReturn')}:</strong> {dayjs(item.latestDate).format('MMM DD, YYYY')}
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CalendarIcon color="action" fontSize="small" />
+                <Typography variant="body2">
+                  <strong>{t('approval.totalDays')}:</strong> {item.days} {t('approval.days')}
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+        )}
 
         {item.approver && (
           <Box sx={{ mb: 2 }}>

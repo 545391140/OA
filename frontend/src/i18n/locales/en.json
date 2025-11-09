@@ -923,6 +923,10 @@
     "expenseReport": "Expense Report",
     "noPendingApprovals": "No pending approvals",
     "noApprovalHistory": "No approval history",
+    "earliestDeparture": "Earliest Departure",
+    "latestReturn": "Latest Return",
+    "totalDays": "Total",
+    "days": "days",
     "workflow": {
       "title": "Approval Workflow Management",
       "create": "New Workflow",
