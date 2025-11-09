@@ -509,7 +509,11 @@
       "actualCost": "実際の費用",
       "additionalNotes": "追加メモ",
       "employeeInformation": "従業員情報",
-      "approvalStatus": "承認状況",
+      "approvalStatus": {
+        "pending": "承認待ち",
+        "approved": "承認済み",
+        "rejected": "却下"
+      },
       "attachments": "添付ファイル",
       "createdOn": "作成日",
       "days": "日",
