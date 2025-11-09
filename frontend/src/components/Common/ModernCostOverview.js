@@ -18,6 +18,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material';
+import { useTranslation } from 'react-i18next';
 
 const ModernCostOverview = ({
   formData,
@@ -27,6 +28,7 @@ const ModernCostOverview = ({
   sx = {},
 }) => {
   const theme = useTheme();
+  const { t } = useTranslation();
 
   // 根据费用项信息将其分类到对应的费用类别
   const categorizeExpense = (expense) => {
@@ -194,56 +196,49 @@ const ModernCostOverview = ({
   const costItemsConfig = [
     {
       key: 'flight',
-      label: '机票',
-      enLabel: 'Flight',
+      label: t('travel.costOverview.flight'),
       amount: costs.flight,
       color: theme.palette.primary.main,
       icon: '✈️',
     },
     {
       key: 'accommodation',
-      label: '住宿',
-      enLabel: 'Accommodations',
+      label: t('travel.costOverview.accommodation'),
       amount: costs.accommodation,
       color: theme.palette.secondary.main,
       icon: '🏨',
     },
     {
       key: 'meal',
-      label: '餐饮',
-      enLabel: 'Meals',
+      label: t('travel.costOverview.meal'),
       amount: costs.meal,
       color: theme.palette.info.main,
       icon: '🍽️',
     },
     {
       key: 'localTransport',
-      label: '市内交通',
-      enLabel: 'Intra-city Transportation',
+      label: t('travel.costOverview.localTransport'),
       amount: costs.localTransport,
       color: theme.palette.info.main,
       icon: '🚗',
     },
     {
       key: 'airportTransfer',
-      label: '机场接送',
-      enLabel: 'Airport Transfer',
+      label: t('travel.costOverview.airportTransfer'),
       amount: costs.airportTransfer,
       color: theme.palette.warning.main,
       icon: '🚌',
     },
     {
       key: 'allowance',
-      label: '津贴补助',
-      enLabel: 'Travel Allowances',
+      label: t('travel.costOverview.allowance'),
       amount: costs.allowance,
       color: theme.palette.success.main,
       icon: '💰',
     },
     {
       key: 'other',
-      label: '其他费用',
-      enLabel: 'Other Expenses',
+      label: t('travel.costOverview.other'),
       amount: costs.other,
       color: theme.palette.grey[600],
       icon: '💵',
@@ -333,9 +328,9 @@ const ModernCostOverview = ({
         color: completionPercentage === 100 ? theme.palette.success.main
           : completionPercentage >= 50 ? theme.palette.warning.main
           : theme.palette.grey[500],
-        text: completionPercentage === 100 ? '预算完整'
-          : completionPercentage >= 50 ? '预算进行中'
-          : '预算待完善',
+        text: completionPercentage === 100 ? t('travel.costOverview.budgetComplete')
+          : completionPercentage >= 50 ? t('travel.costOverview.budgetInProgress')
+          : t('travel.costOverview.budgetPending'),
         completedFields,
         totalRequiredFields,
         percentage: completionPercentage
@@ -355,9 +350,9 @@ const ModernCostOverview = ({
         color: completionPercentage === 100 ? theme.palette.success.main
           : completionPercentage >= 50 ? theme.palette.warning.main
           : theme.palette.grey[500],
-        text: completionPercentage === 100 ? '预算完整'
-          : completionPercentage >= 50 ? '预算进行中'
-          : '预算待完善',
+        text: completionPercentage === 100 ? t('travel.costOverview.budgetComplete')
+          : completionPercentage >= 50 ? t('travel.costOverview.budgetInProgress')
+          : t('travel.costOverview.budgetPending'),
         completedFields: completedItems,
         totalRequiredFields: totalItems,
         percentage: completionPercentage
@@ -401,10 +396,10 @@ const ModernCostOverview = ({
           </Box>
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6" fontWeight={600}>
-              费用总览
+              {t('travel.costOverview.title')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              实时预算统计
+              {t('travel.costOverview.realTimeBudget')}
             </Typography>
           </Box>
           <Chip
@@ -423,7 +418,7 @@ const ModernCostOverview = ({
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              预算完成度
+              {t('travel.costOverview.budgetCompletion')}
             </Typography>
             <Typography variant="body2" fontWeight={500}>
               {completionStatus.completedFields !== undefined && completionStatus.totalRequiredFields !== undefined
@@ -449,7 +444,7 @@ const ModernCostOverview = ({
         {/* 费用总览 */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-            费用总览
+            {t('travel.costOverview.costSummary')}
           </Typography>
           
           <Grid container spacing={2}>
@@ -463,7 +458,7 @@ const ModernCostOverview = ({
                 }}
               >
                 <Typography variant="caption" color="text.secondary" display="block">
-                  去程
+                  {t('travel.form.outboundTitle')}
                 </Typography>
                 <Typography variant="h6" fontWeight={600} color="primary">
                   {currency} {formatAmount(costs.outboundTotal)}
@@ -485,7 +480,7 @@ const ModernCostOverview = ({
                   }}
                 >
                   <Typography variant="caption" color="text.secondary" display="block">
-                    返程
+                    {t('travel.form.inboundTitle')}
                   </Typography>
                   <Typography variant="h6" fontWeight={600} color="secondary">
                     {currency} {formatAmount(costs.inboundTotal)}
@@ -506,7 +501,7 @@ const ModernCostOverview = ({
                   }}
                 >
                   <Typography variant="caption" color="text.secondary" display="block">
-                    多程行程 ({formData.multiCityRoutesBudget?.length || 0} 程)
+                    {t('travel.costOverview.multiCityRoutes', { count: formData.multiCityRoutesBudget?.length || 0 })}
                   </Typography>
                   <Typography variant="h6" fontWeight={600} color="info.main">
                     {currency} {formatAmount(costs.multiCityTotal)}
@@ -522,7 +517,7 @@ const ModernCostOverview = ({
         {/* 按小项汇总 */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-            按小项汇总
+            {t('travel.costOverview.byItem')}
           </Typography>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -582,7 +577,7 @@ const ModernCostOverview = ({
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h6" fontWeight={600}>
-              总计
+              {t('travel.costOverview.total')}
             </Typography>
             <Typography
               variant="h4"
@@ -610,10 +605,10 @@ const ModernCostOverview = ({
             )}
             <Typography variant="caption" color="text.secondary">
               {completionStatus.status === 'completed' 
-                ? '预算设置完整' 
+                ? t('travel.costOverview.budgetSetupComplete') 
                 : completionStatus.status === 'partial'
-                  ? '部分预算已设置'
-                  : '请完善预算信息'
+                  ? t('travel.costOverview.partialBudgetSetup')
+                  : t('travel.costOverview.pleaseCompleteBudget')
               }
             </Typography>
           </Box>
