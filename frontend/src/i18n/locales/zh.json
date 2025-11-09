@@ -325,6 +325,11 @@
     "estimatedCost": "预估费用",
     "actualCost": "实际费用",
     "status": "状态",
+    "approvalStatus": {
+      "pending": "待审批",
+      "approved": "已批准",
+      "rejected": "已拒绝"
+    },
     "bookings": "预订信息",
     "booking": "预订",
     "addBooking": "添加预订",
@@ -573,11 +578,6 @@
       "actualCost": "实际费用",
       "additionalNotes": "附加备注",
       "employeeInformation": "员工信息",
-      "approvalStatus": {
-        "pending": "待审批",
-        "approved": "已批准",
-        "rejected": "已拒绝"
-      },
       "attachments": "附件",
       "createdOn": "创建于",
       "days": "天",

@@ -311,6 +311,11 @@
     "estimatedCost": "予算",
     "actualCost": "実際の費用",
     "status": "ステータス",
+    "approvalStatus": {
+      "pending": "承認待ち",
+      "approved": "承認済み",
+      "rejected": "却下"
+    },
     "bookings": "予約情報",
     "attachments": "添付ファイル",
     "notes": "備考",
@@ -509,11 +514,6 @@
       "actualCost": "実際の費用",
       "additionalNotes": "追加メモ",
       "employeeInformation": "従業員情報",
-      "approvalStatus": {
-        "pending": "承認待ち",
-        "approved": "承認済み",
-        "rejected": "却下"
-      },
       "attachments": "添付ファイル",
       "createdOn": "作成日",
       "days": "日",

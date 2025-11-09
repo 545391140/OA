@@ -320,6 +320,11 @@
     "estimatedCost": "Estimated Cost",
     "actualCost": "Actual Cost",
     "status": "Status",
+    "approvalStatus": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
     "bookings": "Bookings",
     "attachments": "Attachments",
     "notes": "Notes",
@@ -551,11 +556,6 @@
       "actualCost": "Actual Cost",
       "additionalNotes": "Additional Notes",
       "employeeInformation": "Employee Information",
-      "approvalStatus": {
-        "pending": "Pending",
-        "approved": "Approved",
-        "rejected": "Rejected"
-      },
       "attachments": "Attachments",
       "createdOn": "Created on",
       "days": "days",
