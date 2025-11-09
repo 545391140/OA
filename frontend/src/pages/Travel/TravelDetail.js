@@ -306,8 +306,9 @@ const TravelDetail = () => {
 
     try {
       setSubmitting(true);
-      const endpoint = approvalAction === 'approve' ? 'approve' : 'reject';
-      await apiClient.post(`/travel/${id}/${endpoint}`, {
+      // 使用正确的API路径：PUT /api/approvals/travel/:id
+      await apiClient.put(`/approvals/travel/${id}`, {
+        status: approvalAction === 'approve' ? 'approved' : 'rejected',
         comments: approvalComment
       });
       
@@ -334,9 +335,19 @@ const TravelDetail = () => {
   // 检查当前用户是否可以审批
   const canApprove = () => {
     if (!user || !travel) return false;
-    if (user.role !== 'admin' && user.role !== 'manager') return false;
+    
+    // 只有已提交状态的申请才能审批
     if (travel.status !== 'submitted') return false;
-    return true;
+    
+    // 检查当前用户是否在审批列表中且状态为pending
+    if (!travel.approvals || !Array.isArray(travel.approvals)) return false;
+    
+    const pendingApproval = travel.approvals.find(approval => {
+      const approverId = approval.approver?._id || approval.approver;
+      return approverId && approverId.toString() === user.id && approval.status === 'pending';
+    });
+    
+    return !!pendingApproval;
   };
 
   if (loading) {

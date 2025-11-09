@@ -756,4 +756,119 @@ router.delete('/:id', protect, async (req, res) => {
   }
 });
 
+// @desc    Submit travel request for approval
+// @route   POST /api/travel/:id/submit
+// @access  Private
+router.post('/:id/submit', protect, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid travel ID format'
+      });
+    }
+
+    const travel = await Travel.findById(req.params.id);
+
+    if (!travel) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel request not found'
+      });
+    }
+
+    // 检查权限：只能提交自己的申请
+    let employeeId;
+    if (travel.employee) {
+      if (travel.employee._id) {
+        employeeId = travel.employee._id.toString();
+      } else if (travel.employee.toString) {
+        employeeId = travel.employee.toString();
+      } else {
+        employeeId = String(travel.employee);
+      }
+      
+      const userId = req.user.id.toString();
+      if (employeeId !== userId && req.user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to submit this travel request'
+        });
+      }
+    }
+
+    // 只能提交草稿状态的申请
+    if (travel.status !== 'draft') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only submit draft travel requests'
+      });
+    }
+
+    // 创建审批流程
+    // 根据预算金额确定审批级别
+    const budgetAmount = travel.estimatedBudget || travel.estimatedCost || 0;
+    const approvals = [];
+
+    // 简单的审批流程：根据金额设置审批级别
+    // 可以根据实际需求调整审批流程
+    if (budgetAmount > 10000) {
+      // 超过10000需要两级审批：经理 -> 财务
+      approvals.push({
+        approver: req.user.manager || req.user.id, // 如果没有经理，使用当前用户
+        level: 1,
+        status: 'pending'
+      });
+      approvals.push({
+        approver: req.user.id, // 财务审批人（可以从用户角色中获取）
+        level: 2,
+        status: 'pending'
+      });
+    } else if (budgetAmount > 5000) {
+      // 超过5000需要一级审批：经理
+      approvals.push({
+        approver: req.user.manager || req.user.id,
+        level: 1,
+        status: 'pending'
+      });
+    } else {
+      // 小于5000需要一级审批：直接上级
+      approvals.push({
+        approver: req.user.manager || req.user.id,
+        level: 1,
+        status: 'pending'
+      });
+    }
+
+    // 如果没有指定审批人，使用管理员作为默认审批人
+    const User = require('../models/User');
+    const adminUser = await User.findOne({ role: 'admin' });
+    if (adminUser) {
+      approvals.forEach(approval => {
+        if (!approval.approver || approval.approver.toString() === req.user.id.toString()) {
+          approval.approver = adminUser._id;
+        }
+      });
+    }
+
+    // 更新状态和审批流程
+    travel.status = 'submitted';
+    travel.approvals = approvals;
+
+    await travel.save();
+
+    res.json({
+      success: true,
+      data: travel
+    });
+  } catch (error) {
+    console.error('Submit travel error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+});
+
 module.exports = router;

@@ -69,117 +69,56 @@ const ApprovalList = () => {
   const fetchApprovals = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockPendingData = [
-        {
-          id: 1,
+      
+      // 获取待审批列表
+      const response = await apiClient.get('/approvals');
+      
+      if (response.data && response.data.success) {
+        const { travels = [], expenses = [] } = response.data.data;
+        
+        // 转换差旅申请数据格式
+        const travelItems = travels.map(travel => ({
+          id: travel._id,
           type: 'travel',
-          title: 'Business Trip to Tokyo',
-          employee: {
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@company.com',
-            department: 'Sales'
-          },
-          amount: 2500,
-          currency: 'USD',
-          date: '2024-02-15',
-          status: 'submitted',
-          submittedAt: '2024-01-15T10:30:00Z',
-          level: 1,
-          priority: 'high'
-        },
-        {
-          id: 2,
+          title: travel.title || travel.travelNumber || '差旅申请',
+          employee: travel.employee || {},
+          amount: travel.estimatedBudget || travel.estimatedCost || 0,
+          currency: travel.currency || 'CNY',
+          date: travel.startDate || travel.outbound?.date || travel.createdAt,
+          status: travel.status,
+          submittedAt: travel.createdAt,
+          level: travel.approvals?.find(a => a.status === 'pending')?.level || 1,
+          travelNumber: travel.travelNumber,
+          destination: travel.destination,
+          _raw: travel // 保存原始数据用于后续操作
+        }));
+        
+        // 转换费用申请数据格式
+        const expenseItems = expenses.map(expense => ({
+          id: expense._id,
           type: 'expense',
-          title: 'Business Lunch with Client',
-          employee: {
-            firstName: 'Jane',
-            lastName: 'Smith',
-            email: 'jane.smith@company.com',
-            department: 'Marketing'
-          },
-          amount: 85.50,
-          currency: 'USD',
-          date: '2024-01-15',
-          status: 'submitted',
-          submittedAt: '2024-01-15T14:30:00Z',
-          level: 1,
-          priority: 'medium'
-        },
-        {
-          id: 3,
-          type: 'travel',
-          title: 'Conference in Singapore',
-          employee: {
-            firstName: 'Mike',
-            lastName: 'Johnson',
-            email: 'mike.johnson@company.com',
-            department: 'Engineering'
-          },
-          amount: 1800,
-          currency: 'USD',
-          date: '2024-03-10',
-          status: 'submitted',
-          submittedAt: '2024-01-20T14:15:00Z',
-          level: 2,
-          priority: 'low'
-        }
-      ];
-
-      const mockHistoryData = [
-        {
-          id: 4,
-          type: 'expense',
-          title: 'Office Supplies',
-          employee: {
-            firstName: 'Sarah',
-            lastName: 'Wilson',
-            email: 'sarah.wilson@company.com',
-            department: 'HR'
-          },
-          amount: 45.75,
-          currency: 'USD',
-          date: '2024-01-10',
-          status: 'approved',
-          submittedAt: '2024-01-10T09:00:00Z',
-          approvedAt: '2024-01-11T10:30:00Z',
-          approver: {
-            firstName: 'David',
-            lastName: 'Brown',
-            position: 'HR Manager'
-          },
-          comments: 'Approved. Standard office supplies.'
-        },
-        {
-          id: 5,
-          type: 'travel',
-          title: 'Client Meeting in Seoul',
-          employee: {
-            firstName: 'Lisa',
-            lastName: 'Garcia',
-            email: 'lisa.garcia@company.com',
-            department: 'Sales'
-          },
-          amount: 1200,
-          currency: 'USD',
-          date: '2024-01-08',
-          status: 'rejected',
-          submittedAt: '2024-01-08T11:00:00Z',
-          approvedAt: '2024-01-09T14:20:00Z',
-          approver: {
-            firstName: 'Robert',
-            lastName: 'Davis',
-            position: 'Sales Director'
-          },
-          comments: 'Rejected. Budget exceeded for this quarter.'
-        }
-      ];
-
-      setPendingApprovals(mockPendingData);
-      setApprovalHistory(mockHistoryData);
+          title: expense.title || expense.expenseNumber || '费用申请',
+          employee: expense.employee || {},
+          amount: expense.totalAmount || expense.amount || 0,
+          currency: expense.currency || 'CNY',
+          date: expense.expenseDate || expense.createdAt,
+          status: expense.status,
+          submittedAt: expense.createdAt,
+          level: expense.approvals?.find(a => a.status === 'pending')?.level || 1,
+          _raw: expense // 保存原始数据用于后续操作
+        }));
+        
+        setPendingApprovals([...travelItems, ...expenseItems]);
+        
+        // TODO: 获取审批历史（可以从已审批的申请中获取）
+        setApprovalHistory([]);
+      }
     } catch (error) {
-      showNotification(t('messages.error.failedToLoadApprovals'), 'error');
+      console.error('Failed to fetch approvals:', error);
+      showNotification(
+        error.response?.data?.message || t('messages.error.failedToLoadApprovals') || '加载审批列表失败',
+        'error'
+      );
     } finally {
       setLoading(false);
     }
@@ -197,35 +136,44 @@ const ApprovalList = () => {
   };
 
   const handleApprovalSubmit = async () => {
+    if (!approvalComments.trim()) {
+      showNotification('请输入审批意见', 'warning');
+      return;
+    }
+
     try {
-      // Mock API call - replace with actual implementation
-      console.log('Approval action:', {
-        item: selectedItem,
-        action: approvalAction,
+      const itemId = selectedItem.id || selectedItem._id;
+      const endpoint = selectedItem.type === 'travel' 
+        ? `/approvals/travel/${itemId}`
+        : `/approvals/expense/${itemId}`;
+      
+      await apiClient.put(endpoint, {
+        status: approvalAction === 'approve' ? 'approved' : 'rejected',
         comments: approvalComments
       });
 
-      // Update local state
-      if (approvalAction === 'approve' || approvalAction === 'reject') {
-        setPendingApprovals(prev => prev.filter(item => item.id !== selectedItem.id));
-        
-        const historyItem = {
-          ...selectedItem,
-          status: approvalAction === 'approve' ? 'approved' : 'rejected',
-          approvedAt: new Date().toISOString(),
-          approver: {
-            firstName: user.firstName,
-            lastName: user.lastName,
-            position: user.position
-          },
-          comments: approvalComments
-        };
-        
-        setApprovalHistory(prev => [historyItem, ...prev]);
-      }
+      // 更新本地状态
+      setPendingApprovals(prev => prev.filter(item => {
+        const itemIdToCheck = item.id || item._id;
+        return itemIdToCheck !== itemId;
+      }));
+      
+      const historyItem = {
+        ...selectedItem,
+        status: approvalAction === 'approve' ? 'approved' : 'rejected',
+        approvedAt: new Date().toISOString(),
+        approver: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          position: user.position
+        },
+        comments: approvalComments
+      };
+      
+      setApprovalHistory(prev => [historyItem, ...prev]);
 
       showNotification(
-        `Request ${approvalAction === 'approve' ? 'approved' : 'rejected'} successfully`,
+        approvalAction === 'approve' ? '审批通过' : '已拒绝',
         'success'
       );
 
@@ -234,7 +182,11 @@ const ApprovalList = () => {
       setApprovalAction('');
       setApprovalComments('');
     } catch (error) {
-      showNotification('Failed to process approval', 'error');
+      console.error('Approval error:', error);
+      showNotification(
+        error.response?.data?.message || '审批失败',
+        'error'
+      );
     }
   };
 

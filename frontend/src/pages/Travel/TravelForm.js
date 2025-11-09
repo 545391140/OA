@@ -1637,12 +1637,32 @@ const TravelForm = () => {
       }
 
       if (response.data && response.data.success) {
-        showNotification(
-          status === 'draft' 
-            ? (isEdit ? t('travel.form.updateDraftSuccess') : t('travel.form.saveDraftSuccess'))
-            : (isEdit ? t('travel.form.updateSubmitSuccess') : t('travel.form.submitSuccess')),
-          'success'
-        );
+        const travelId = response.data.data._id || id;
+        
+        // 如果状态是submitted，调用提交审批API创建审批流程
+        if (status === 'submitted' && travelId) {
+          try {
+            await apiClient.post(`/travel/${travelId}/submit`);
+            showNotification(
+              isEdit ? t('travel.form.updateSubmitSuccess') : t('travel.form.submitSuccess'),
+              'success'
+            );
+          } catch (submitError) {
+            console.error('Submit approval error:', submitError);
+            // 即使提交审批失败，也显示保存成功
+            showNotification(
+              t('travel.form.saveSuccess') || '保存成功，但提交审批失败',
+              'warning'
+            );
+          }
+        } else {
+          showNotification(
+            status === 'draft' 
+              ? (isEdit ? t('travel.form.updateDraftSuccess') : t('travel.form.saveDraftSuccess'))
+              : (isEdit ? t('travel.form.updateSubmitSuccess') : t('travel.form.submitSuccess')),
+            'success'
+          );
+        }
         
         navigate('/travel');
       }
