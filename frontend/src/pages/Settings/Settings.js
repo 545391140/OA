@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Box,
@@ -15,18 +15,20 @@ import {
   Switch,
   FormControlLabel,
   Divider,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   Save as SaveIcon,
   Security as SecurityIcon,
   Notifications as NotificationsIcon,
-  Business as BusinessIcon,
   Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import apiClient from '../../utils/axiosConfig';
+import pushNotificationService from '../../services/pushNotificationService';
 
 const Settings = () => {
   const { t } = useTranslation();
@@ -34,21 +36,29 @@ const Settings = () => {
   const { showNotification } = useNotification();
 
   const [loading, setLoading] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [error, setError] = useState(null);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
   const [settings, setSettings] = useState({
     general: {
-      companyName: t('settings.yourCompany'),
+      companyName: '',
       timezone: 'UTC',
       currency: 'USD'
-    },
-    approval: {
-      autoApprovalLimit: 100,
-      requireReceipts: true,
-      approvalLevels: 2
     },
     notifications: {
       emailNotifications: true,
       pushNotifications: true,
-      approvalReminders: true
+      approvalReminders: true,
+      preferences: {
+        approvalRequest: { email: true, push: true, inApp: true },
+        approvalApproved: { email: true, push: true, inApp: true },
+        approvalRejected: { email: true, push: true, inApp: true },
+        travelSubmitted: { email: false, push: true, inApp: true },
+        expenseSubmitted: { email: false, push: true, inApp: true },
+        system: { email: true, push: true, inApp: true },
+        reminder: { email: true, push: true, inApp: true }
+      }
     },
     security: {
       passwordPolicy: 'strong',
@@ -57,19 +67,114 @@ const Settings = () => {
     }
   });
 
-  const currencies = [
+  // Load settings on component mount
+  useEffect(() => {
+    loadSettings();
+    checkPushSubscription();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const checkPushSubscription = async () => {
+    try {
+      const isSubscribed = await pushNotificationService.isSubscribed();
+      setPushSubscribed(isSubscribed);
+    } catch (error) {
+      console.error('Failed to check push subscription:', error);
+    }
+  };
+
+  const handlePushSubscribe = async () => {
+    try {
+      setPushLoading(true);
+      await pushNotificationService.subscribe();
+      setPushSubscribed(true);
+      showNotification(t('settings.pushNotificationSubscribed') || 'Push notifications enabled', 'success');
+    } catch (error) {
+      console.error('Failed to subscribe to push notifications:', error);
+      showNotification(t('settings.pushNotificationSubscribeFailed') || 'Failed to enable push notifications', 'error');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const handlePushUnsubscribe = async () => {
+    try {
+      setPushLoading(true);
+      await pushNotificationService.unsubscribe();
+      setPushSubscribed(false);
+      showNotification(t('settings.pushNotificationUnsubscribed') || 'Push notifications disabled', 'success');
+    } catch (error) {
+      console.error('Failed to unsubscribe from push notifications:', error);
+      showNotification(t('settings.pushNotificationUnsubscribeFailed') || 'Failed to disable push notifications', 'error');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      setLoadingSettings(true);
+      setError(null);
+      const response = await apiClient.get('/settings');
+      if (response.data.success) {
+        setSettings(response.data.data);
+      }
+    } catch (error) {
+      console.error('Load settings error:', error);
+      setError(error.response?.data?.message || t('settings.loadFailed') || 'Failed to load settings');
+      // Set default values if loading fails
+      setSettings({
+        general: {
+          companyName: t('settings.yourCompany'),
+          timezone: 'UTC',
+          currency: 'USD'
+        },
+        notifications: {
+          emailNotifications: true,
+          pushNotifications: true,
+          approvalReminders: true,
+          preferences: {
+            approvalRequest: { email: true, push: true, inApp: true },
+            approvalApproved: { email: true, push: true, inApp: true },
+            approvalRejected: { email: true, push: true, inApp: true },
+            travelSubmitted: { email: false, push: true, inApp: true },
+            expenseSubmitted: { email: false, push: true, inApp: true },
+            system: { email: true, push: true, inApp: true },
+            reminder: { email: true, push: true, inApp: true }
+          }
+        },
+        security: {
+          passwordPolicy: 'strong',
+          sessionTimeout: 30,
+          twoFactorAuth: false
+        }
+      });
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const currencies = useMemo(() => [
     { value: 'USD', label: 'USD - US Dollar' },
     { value: 'CNY', label: 'CNY - Chinese Yuan' },
     { value: 'JPY', label: 'JPY - Japanese Yen' },
     { value: 'EUR', label: 'EUR - Euro' }
-  ];
+  ], []);
 
-  const timezones = [
-    { value: 'UTC', label: 'UTC' },
-    { value: 'America/New_York', label: 'Eastern Time (ET)' },
-    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-    { value: 'Asia/Shanghai', label: 'Shanghai (CST)' }
-  ];
+  const timezones = useMemo(() => {
+    const timezoneLabels = {
+      'UTC': 'UTC',
+      'America/New_York': t('settings.timezoneEastern') || 'Eastern Time (ET)',
+      'Asia/Tokyo': t('settings.timezoneTokyo') || 'Tokyo (JST)',
+      'Asia/Shanghai': t('settings.timezoneShanghai') || 'Shanghai (CST)'
+    };
+    return [
+      { value: 'UTC', label: timezoneLabels['UTC'] },
+      { value: 'America/New_York', label: timezoneLabels['America/New_York'] },
+      { value: 'Asia/Tokyo', label: timezoneLabels['Asia/Tokyo'] },
+      { value: 'Asia/Shanghai', label: timezoneLabels['Asia/Shanghai'] }
+    ];
+  }, [t]);
 
   const handleSettingChange = (section, field, value) => {
     setSettings(prev => ({
@@ -84,11 +189,25 @@ const Settings = () => {
   const handleSaveSettings = async () => {
     try {
       setLoading(true);
-      console.log('Saving settings:', settings);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      showNotification('Settings saved successfully', 'success');
+      setError(null);
+      
+      // 准备保存的数据：如果不是管理员，不包含companyName（公司名称只能由管理员修改）
+      const saveData = { ...settings };
+      if (user?.role !== 'admin') {
+        // 普通用户不能修改公司名称，删除该字段
+        delete saveData.general.companyName;
+      }
+      
+      const response = await apiClient.put('/settings', saveData);
+      if (response.data.success) {
+        setSettings(response.data.data);
+        showNotification(t('settings.savedSuccessfully') || 'Settings saved successfully', 'success');
+      }
     } catch (error) {
-      showNotification('Failed to save settings', 'error');
+      console.error('Save settings error:', error);
+      const errorMessage = error.response?.data?.message || t('settings.saveFailed') || 'Failed to save settings';
+      setError(errorMessage);
+      showNotification(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -107,12 +226,28 @@ const Settings = () => {
     </Card>
   );
 
+  if (loadingSettings) {
+    return (
+      <Container maxWidth="xl">
+        <Box sx={{ py: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
+
   return (
       <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
         <Typography variant="h4" gutterBottom>
           {t('navigation.settings')}
         </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
 
         {/* General Settings */}
         <SettingCard
@@ -124,13 +259,15 @@ const Settings = () => {
               <TextField
                 fullWidth
                 label={t('settings.companyName')}
-                value={settings.general.companyName}
+                value={settings.general.companyName || ''}
                 onChange={(e) => handleSettingChange('general', 'companyName', e.target.value)}
+                disabled={user?.role !== 'admin'}
+                helperText={user?.role !== 'admin' ? t('settings.companyNameReadOnly') || 'Only administrators can modify company name' : ''}
               />
             </Grid>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Default Currency</InputLabel>
+                <InputLabel>{t('settings.defaultCurrency')}</InputLabel>
                 <Select
                   value={settings.general.currency}
                   label={t('settings.defaultCurrency')}
@@ -163,51 +300,19 @@ const Settings = () => {
           </Grid>
         </SettingCard>
 
-        {/* Approval Settings */}
-        <SettingCard
-          title={t('settings.approvalSettings')}
-          icon={<BusinessIcon color="primary" />}
-        >
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Auto-approval Limit"
-                type="number"
-                value={settings.approval.autoApprovalLimit}
-                onChange={(e) => handleSettingChange('approval', 'autoApprovalLimit', parseFloat(e.target.value))}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label={t('settings.approvalLevels')}
-                type="number"
-                value={settings.approval.approvalLevels}
-                onChange={(e) => handleSettingChange('approval', 'approvalLevels', parseInt(e.target.value))}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.approval.requireReceipts}
-                    onChange={(e) => handleSettingChange('approval', 'requireReceipts', e.target.checked)}
-                  />
-                }
-                label={t('settings.requireReceipts')}
-              />
-            </Grid>
-          </Grid>
-        </SettingCard>
-
         {/* Notification Settings */}
         <SettingCard
           title={t('settings.notificationSettings')}
           icon={<NotificationsIcon color="primary" />}
         >
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            {/* 全局通知开关 */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                {t('settings.globalNotificationSettings') || 'Global Notification Settings'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={4}>
               <FormControlLabel
                 control={
                   <Switch
@@ -218,18 +323,31 @@ const Settings = () => {
                 label={t('settings.emailNotifications')}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.notifications.pushNotifications}
-                    onChange={(e) => handleSettingChange('notifications', 'pushNotifications', e.target.checked)}
-                  />
-                }
-                label={t('settings.pushNotifications')}
-              />
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={settings.notifications.pushNotifications}
+                      onChange={(e) => handleSettingChange('notifications', 'pushNotifications', e.target.checked)}
+                    />
+                  }
+                  label={t('settings.pushNotifications')}
+                />
+                {settings.notifications.pushNotifications && (
+                  <Button
+                    size="small"
+                    variant={pushSubscribed ? "outlined" : "contained"}
+                    onClick={pushSubscribed ? handlePushUnsubscribe : handlePushSubscribe}
+                    disabled={pushLoading}
+                    sx={{ ml: 1 }}
+                  >
+                    {pushLoading ? <CircularProgress size={16} /> : (pushSubscribed ? (t('settings.disablePush') || 'Disable') : (t('settings.enablePush') || 'Enable'))}
+                  </Button>
+                )}
+              </Box>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <FormControlLabel
                 control={
                   <Switch
@@ -239,6 +357,236 @@ const Settings = () => {
                 }
                 label={t('settings.approvalReminders')}
               />
+            </Grid>
+
+            {/* 详细通知偏好 */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                {t('settings.detailedNotificationPreferences') || 'Detailed Notification Preferences'}
+              </Typography>
+            </Grid>
+
+            {/* 审批请求通知 */}
+            <Grid item xs={12}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                {t('settings.approvalRequestNotifications') || 'Approval Request Notifications'}
+              </Typography>
+              <Box sx={{ pl: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalRequest?.email !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalRequest: {
+                                ...prefs.approvalRequest,
+                                email: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.email') || 'Email'}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalRequest?.push !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalRequest: {
+                                ...prefs.approvalRequest,
+                                push: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.push') || 'Push'}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalRequest?.inApp !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalRequest: {
+                                ...prefs.approvalRequest,
+                                inApp: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.inApp') || 'In-App'}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            </Grid>
+
+            {/* 审批通过通知 */}
+            <Grid item xs={12}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                {t('settings.approvalApprovedNotifications') || 'Approval Approved Notifications'}
+              </Typography>
+              <Box sx={{ pl: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalApproved?.email !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalApproved: {
+                                ...prefs.approvalApproved,
+                                email: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.email') || 'Email'}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalApproved?.push !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalApproved: {
+                                ...prefs.approvalApproved,
+                                push: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.push') || 'Push'}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalApproved?.inApp !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalApproved: {
+                                ...prefs.approvalApproved,
+                                inApp: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.inApp') || 'In-App'}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            </Grid>
+
+            {/* 审批拒绝通知 */}
+            <Grid item xs={12}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium' }}>
+                {t('settings.approvalRejectedNotifications') || 'Approval Rejected Notifications'}
+              </Typography>
+              <Box sx={{ pl: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalRejected?.email !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalRejected: {
+                                ...prefs.approvalRejected,
+                                email: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.email') || 'Email'}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalRejected?.push !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalRejected: {
+                                ...prefs.approvalRejected,
+                                push: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.push') || 'Push'}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          size="small"
+                          checked={settings.notifications.preferences?.approvalRejected?.inApp !== false}
+                          onChange={(e) => {
+                            const prefs = settings.notifications.preferences || {};
+                            handleSettingChange('notifications', 'preferences', {
+                              ...prefs,
+                              approvalRejected: {
+                                ...prefs.approvalRejected,
+                                inApp: e.target.checked
+                              }
+                            });
+                          }}
+                        />
+                      }
+                      label={t('settings.inApp') || 'In-App'}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
             </Grid>
           </Grid>
         </SettingCard>
@@ -252,7 +600,7 @@ const Settings = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Session Timeout (minutes)"
+                label={t('settings.sessionTimeout')}
                 type="number"
                 value={settings.security.sessionTimeout}
                 onChange={(e) => handleSettingChange('security', 'sessionTimeout', parseInt(e.target.value))}
@@ -266,7 +614,7 @@ const Settings = () => {
                     onChange={(e) => handleSettingChange('security', 'twoFactorAuth', e.target.checked)}
                   />
                 }
-                label="Two-Factor Authentication"
+                label={t('settings.twoFactorAuth')}
               />
             </Grid>
           </Grid>
@@ -281,7 +629,7 @@ const Settings = () => {
             disabled={loading}
             size="large"
           >
-            {loading ? <CircularProgress size={20} /> : 'Save Settings'}
+            {loading ? <CircularProgress size={20} /> : t('settings.saveSettings')}
           </Button>
         </Box>
       </Box>

@@ -135,11 +135,17 @@ const Layout = () => {
     { text: t('navigation.approvalStatistics'), icon: <ReportIcon />, path: '/approval-statistics', key: 'approvalStatistics' },
   ], [t, i18n.language]);
 
-  // Filter menu items based on user role
+  // Settings menu item (always at the bottom)
+  const settingsMenuItem = useMemo(() => [
+    { text: t('navigation.settings'), icon: <SettingsIcon />, path: '/settings', key: 'settings' },
+  ], [t, i18n.language]);
+
+  // Filter menu items based on user role, with settings at the bottom
   const filteredMenuItems = useMemo(() => [
     ...menuItems,
-    ...(user?.role === 'admin' ? adminMenuItems : [])
-  ], [menuItems, adminMenuItems, user?.role]);
+    ...(user?.role === 'admin' ? adminMenuItems : []),
+    ...settingsMenuItem
+  ], [menuItems, adminMenuItems, settingsMenuItem, user?.role]);
 
   // 根据当前路由获取对应的标题
   const getPageTitle = () => {
@@ -181,32 +187,53 @@ const Layout = () => {
       </Toolbar>
       <Divider />
       <List>
-        {filteredMenuItems.map((item) => {
-          const isSelected = location.pathname === item.path || 
-            (item.path !== '/' && location.pathname.startsWith(item.path));
-          return (
-            <ListItem key={item.key || item.path} disablePadding>
-              <ListItemButton
-                onClick={() => navigate(item.path)}
-                selected={isSelected}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: theme.palette.primary.light,
-                    color: theme.palette.primary.contrastText,
-                    '& .MuiListItemIcon-root': {
+        {(() => {
+          // 先找到最匹配的菜单项（优先匹配更长的路径）
+          const sortedItems = [...filteredMenuItems].sort((a, b) => b.path.length - a.path.length);
+          const matchedItem = sortedItems.find(item => {
+            if (item.path === '/') {
+              return location.pathname === '/';
+            }
+            // 精确匹配或路径以菜单项路径开头且下一个字符是 '/' 或路径结束
+            if (location.pathname === item.path) {
+              return true;
+            }
+            if (item.path !== '/' && location.pathname.startsWith(item.path)) {
+              // 确保是完整的路径段（避免 /travel 匹配到 /travel-standards）
+              const nextChar = location.pathname[item.path.length];
+              return !nextChar || nextChar === '/';
+            }
+            return false;
+          });
+          const selectedPath = matchedItem?.path;
+
+          return filteredMenuItems.map((item) => {
+            const isSelected = item.path === selectedPath;
+            
+            return (
+              <ListItem key={item.key || item.path} disablePadding>
+                <ListItemButton
+                  onClick={() => navigate(item.path)}
+                  selected={isSelected}
+                  sx={{
+                    '&.Mui-selected': {
+                      backgroundColor: theme.palette.primary.light,
                       color: theme.palette.primary.contrastText,
+                      '& .MuiListItemIcon-root': {
+                        color: theme.palette.primary.contrastText,
+                      },
                     },
-                  },
-                }}
-              >
-                <ListItemIcon>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
+                  }}
+                >
+                  <ListItemIcon>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItemButton>
+              </ListItem>
+            );
+          });
+        })()}
       </List>
     </div>
   );

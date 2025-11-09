@@ -89,6 +89,10 @@ const UserSchema = new mongoose.Schema({
       type: String,
       default: 'UTC'
     }
+  },
+  // Web Push订阅信息
+  pushSubscription: {
+    type: mongoose.Schema.Types.Mixed
   }
 }, {
   timestamps: true

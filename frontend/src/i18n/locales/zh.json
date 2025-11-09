@@ -36,7 +36,8 @@
     "viewAll": "查看全部",
     "retry": "重试",
     "nA": "暂无",
-    "dateFormat": "YYYY-MM-DD"
+    "dateFormat": "YYYY-MM-DD",
+    "untitled": "未命名"
   },
   "notifications": {
     "title": "通知",
@@ -85,6 +86,9 @@
     "noResults": "未找到相关结果",
     "noHistory": "暂无搜索历史",
     "recentSearches": "最近搜索",
+    "suggestions": "搜索建议",
+    "fromHistory": "来自历史",
+    "results": "结果",
     "advanced": {
       "title": "高级搜索",
       "keyword": "关键词",
@@ -130,6 +134,7 @@
   "user": {
     "firstName": "名字",
     "lastName": "姓氏",
+    "unknown": "未知用户",
     "employeeId": "员工编号",
     "department": "部门",
     "position": "职位",
@@ -362,12 +367,14 @@
     "departureCity": "出发城市",
     "arrivalCity": "到达城市",
     "stopoverCities": "中转城市",
+    "untitled": "未命名差旅",
     "statuses": {
       "draft": "草稿",
       "submitted": "已提交",
       "approved": "已批准",
       "rejected": "已拒绝",
       "in-progress": "进行中",
+      "active": "激活",
       "completed": "已完成",
       "cancelled": "已取消"
     },
@@ -643,6 +650,7 @@
     }
   },
   "travelStandard": {
+    "untitled": "未命名标准",
     "query": {
       "title": "我的差旅标准查询",
       "tripInfo": "出差信息",
@@ -916,6 +924,7 @@
   },
   "expense": {
     "title": "费用报销",
+    "untitled": "未命名费用",
     "newExpense": "新建费用",
     "editExpense": "编辑费用",
     "expenseList": "费用列表",
@@ -1187,8 +1196,12 @@
     "integration": "集成设置",
     "generalSettings": "常规设置",
     "companyName": "公司名称",
+    "companyNameReadOnly": "仅管理员可以修改公司名称",
     "defaultCurrency": "默认货币",
     "timezone": "时区",
+    "timezoneEastern": "东部时间 (ET)",
+    "timezoneTokyo": "东京 (JST)",
+    "timezoneShanghai": "上海 (CST)",
     "approvalSettings": "审批设置",
     "approvalLevels": "审批级别",
     "requireReceipts": "所有费用都需要发票",
@@ -1196,8 +1209,30 @@
     "emailNotifications": "邮件通知",
     "pushNotifications": "推送通知",
     "approvalReminders": "审批提醒",
+    "globalNotificationSettings": "全局通知设置",
+    "detailedNotificationPreferences": "详细通知偏好",
+    "approvalRequestNotifications": "审批请求通知",
+    "approvalApprovedNotifications": "审批通过通知",
+    "approvalRejectedNotifications": "审批拒绝通知",
+    "email": "邮件",
+    "push": "推送",
+    "inApp": "站内",
+    "enablePush": "启用推送",
+    "disablePush": "禁用推送",
+    "pushNotificationSubscribed": "推送通知已启用",
+    "pushNotificationUnsubscribed": "推送通知已禁用",
+    "pushNotificationSubscribeFailed": "启用推送通知失败",
+    "pushNotificationUnsubscribeFailed": "禁用推送通知失败",
     "securitySettings": "安全设置",
-    "yourCompany": "您的公司"
+    "autoApprovalLimit": "自动审批限额",
+    "sessionTimeout": "会话超时（分钟）",
+    "twoFactorAuth": "双因素认证",
+    "passwordPolicy": "密码策略",
+    "yourCompany": "您的公司",
+    "savedSuccessfully": "设置保存成功",
+    "saveFailed": "保存设置失败",
+    "loadFailed": "加载设置失败",
+    "saveSettings": "保存设置"
   },
   "placeholders": {
     "searchExpense": "按标题、供应商或描述搜索...",
@@ -1250,6 +1285,7 @@
     "employeeIdRequired": "员工编号是必填项"
   },
   "location": {
+    "untitled": "未命名地点",
     "management": {
       "title": "地理位置管理",
       "addLocation": "新增地理位置",

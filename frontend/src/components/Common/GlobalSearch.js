@@ -33,6 +33,10 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../utils/axiosConfig';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
 
 const GlobalSearch = ({ open, onClose }) => {
   const { t } = useTranslation();
@@ -48,13 +52,30 @@ const GlobalSearch = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
   const [searchHistory, setSearchHistory] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef(null);
 
-  // 从localStorage加载搜索历史
+  // 从API加载搜索历史
   useEffect(() => {
-    const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-    setSearchHistory(history.slice(0, 5)); // 只显示最近5条
-  }, []);
+    loadSearchHistory();
+  }, [open]);
+
+  const loadSearchHistory = async () => {
+    try {
+      const response = await apiClient.get('/search/history', {
+        params: { limit: 10 }
+      });
+      if (response.data && response.data.success) {
+        setSearchHistory(response.data.data.slice(0, 5));
+      }
+    } catch (error) {
+      console.error('Load search history error:', error);
+      // 回退到localStorage
+      const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+      setSearchHistory(history.slice(0, 5));
+    }
+  };
 
   // 自动聚焦搜索框
   useEffect(() => {
@@ -65,9 +86,11 @@ const GlobalSearch = ({ open, onClose }) => {
     }
   }, [open]);
 
-  // 搜索防抖
+  // 搜索建议防抖
   useEffect(() => {
     if (!searchTerm.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
       setSearchResults({
         travels: [],
         expenses: [],
@@ -79,11 +102,39 @@ const GlobalSearch = ({ open, onClose }) => {
     }
 
     const debounceTimer = setTimeout(() => {
-      performSearch(searchTerm);
-    }, 300);
+      loadSuggestions(searchTerm);
+    }, 200);
 
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
+
+  // 执行搜索防抖
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      performSearch(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+
+  const loadSuggestions = async (query) => {
+    try {
+      const response = await apiClient.get('/search/suggestions', {
+        params: { q: query, limit: 5 }
+      });
+      if (response.data && response.data.success) {
+        setSuggestions(response.data.data);
+        setShowSuggestions(true);
+      }
+    } catch (error) {
+      console.error('Load suggestions error:', error);
+      setSuggestions([]);
+    }
+  };
 
   const performSearch = async (query) => {
     if (!query.trim()) return;
@@ -106,8 +157,8 @@ const GlobalSearch = ({ open, onClose }) => {
         });
       }
 
-      // 保存搜索历史
-      saveSearchHistory(query);
+      // 搜索历史由后端自动保存
+      setShowSuggestions(false);
     } catch (error) {
       console.error('Search error:', error);
       // 如果API失败，尝试使用原来的方式
@@ -135,11 +186,30 @@ const GlobalSearch = ({ open, onClose }) => {
     }
   };
 
-  const saveSearchHistory = (query) => {
-    const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-    const newHistory = [query, ...history.filter(h => h !== query)].slice(0, 10);
-    localStorage.setItem('searchHistory', JSON.stringify(newHistory));
-    setSearchHistory(newHistory.slice(0, 5));
+  const handleSuggestionClick = (suggestion) => {
+    setSearchTerm(suggestion.query);
+    setShowSuggestions(false);
+    performSearch(suggestion.query);
+  };
+
+  const clearHistory = async () => {
+    try {
+      await apiClient.delete('/search/history');
+      setSearchHistory([]);
+    } catch (error) {
+      console.error('Clear history error:', error);
+      localStorage.removeItem('searchHistory');
+      setSearchHistory([]);
+    }
+  };
+
+  const deleteHistoryItem = async (id) => {
+    try {
+      await apiClient.delete(`/search/history/${id}`);
+      loadSearchHistory();
+    } catch (error) {
+      console.error('Delete history item error:', error);
+    }
   };
 
   const handleResultClick = (type, id) => {
@@ -154,18 +224,12 @@ const GlobalSearch = ({ open, onClose }) => {
     handleClose();
   };
 
-  const handleHistoryClick = (query) => {
-    setSearchTerm(query);
-  };
-
-  const clearHistory = () => {
-    localStorage.removeItem('searchHistory');
-    setSearchHistory([]);
-  };
 
   const handleClose = () => {
     setSearchTerm('');
     setSelectedTab(0);
+    setSuggestions([]);
+    setShowSuggestions(false);
     onClose();
   };
 
@@ -184,6 +248,108 @@ const GlobalSearch = ({ open, onClose }) => {
     return Object.values(searchResults).reduce((sum, arr) => sum + arr.length, 0);
   };
 
+  const getPrimaryText = (item, type) => {
+    switch (type) {
+      case 'travel':
+        // 差旅：优先显示title，如果没有则显示purpose或travelNumber或destination
+        if (item.title) return item.title;
+        if (item.purpose) return item.purpose;
+        if (item.travelNumber) return item.travelNumber;
+        if (item.destination) {
+          if (typeof item.destination === 'string') return item.destination;
+          if (item.destination.name) return item.destination.name;
+          if (item.destination.city) return item.destination.city;
+        }
+        return t('travel.untitled') || '未命名差旅';
+      
+      case 'expense':
+        // 费用：优先显示title，如果没有则显示description或category
+        if (item.title) return item.title;
+        if (item.description) return item.description;
+        if (item.category) return item.category;
+        return t('expense.untitled') || '未命名费用';
+      
+      case 'user':
+        // 用户：显示姓名，需要处理undefined情况
+        const firstName = item.firstName || '';
+        const lastName = item.lastName || '';
+        if (firstName || lastName) {
+          return `${firstName} ${lastName}`.trim();
+        }
+        if (item.email) return item.email;
+        if (item.employeeId) return item.employeeId;
+        return t('user.unknown') || '未知用户';
+      
+      case 'standard':
+        // 标准：显示standardName或standardCode
+        if (item.standardName) return item.standardName;
+        if (item.standardCode) return item.standardCode;
+        return t('travelStandard.untitled') || '未命名标准';
+      
+      case 'location':
+        // 地点：显示name或city或country
+        if (item.name) return item.name;
+        if (item.city) return item.city;
+        if (item.country) return item.country;
+        if (item.code) return item.code;
+        return t('location.untitled') || '未命名地点';
+      
+      default:
+        // 通用：尝试多个字段
+        return item.title || item.name || item.itemName || t('common.untitled') || '未命名';
+    }
+  };
+
+  const getSecondaryText = (item, type) => {
+    switch (type) {
+      case 'travel':
+        // 差旅：显示destination、purpose或日期范围
+        if (item.destination) {
+          if (typeof item.destination === 'string') return item.destination;
+          if (item.destination.city && item.destination.country) {
+            return `${item.destination.city},${item.destination.country}`;
+          }
+          if (item.destination.name) return item.destination.name;
+        }
+        if (item.purpose) return item.purpose;
+        if (item.startDate && item.endDate) {
+          return `${new Date(item.startDate).toLocaleDateString()} - ${new Date(item.endDate).toLocaleDateString()}`;
+        }
+        return item.status || '';
+      
+      case 'expense':
+        // 费用：显示description、amount或category
+        if (item.description) return item.description;
+        if (item.amount) return `${item.amount} ${item.currency || ''}`;
+        if (item.category) return item.category;
+        return item.status || '';
+      
+      case 'user':
+        // 用户：显示email、department或role
+        if (item.email) return item.email;
+        if (item.department) return item.department;
+        if (item.role) return item.role;
+        return '';
+      
+      case 'standard':
+        // 标准：显示description或status
+        if (item.description) return item.description;
+        return item.status || '';
+      
+      case 'location':
+        // 地点：显示city、country或type
+        const parts = [];
+        if (item.city) parts.push(item.city);
+        if (item.country) parts.push(item.country);
+        if (parts.length > 0) return parts.join(', ');
+        if (item.type) return item.type;
+        return '';
+      
+      default:
+        return item.description || item.email || item.country || item.status || '';
+    }
+  };
+
   const renderResults = (results, type, title) => {
     if (results.length === 0) return null;
 
@@ -200,10 +366,8 @@ const GlobalSearch = ({ open, onClose }) => {
                   {getResultIcon(type)}
                 </ListItemIcon>
                 <ListItemText
-                  primary={item.title || item.name || item.itemName || item.city || item.firstName + ' ' + item.lastName}
-                  secondary={
-                    item.destination || item.description || item.email || item.country || item.status
-                  }
+                  primary={getPrimaryText(item, type)}
+                  secondary={getSecondaryText(item, type)}
                 />
                 {item.status && (
                   <Chip
@@ -268,13 +432,18 @@ const GlobalSearch = ({ open, onClose }) => {
         }
       }}
     >
-      <Box sx={{ p: 2, pb: 0 }}>
+      <Box sx={{ p: 2, pb: 0, position: 'relative' }}>
         <TextField
           inputRef={searchInputRef}
           fullWidth
           placeholder={t('search.placeholder')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          onFocus={() => {
+            if (suggestions.length > 0 || searchHistory.length > 0) {
+              setShowSuggestions(true);
+            }
+          }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -293,12 +462,97 @@ const GlobalSearch = ({ open, onClose }) => {
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
               handleClose();
+            } else if (e.key === 'Enter') {
+              setShowSuggestions(false);
             }
           }}
         />
+        {/* 搜索建议下拉框 */}
+        {showSuggestions && (suggestions.length > 0 || searchHistory.length > 0) && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '100%',
+              left: 16,
+              right: 16,
+              bgcolor: 'background.paper',
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 1,
+              mt: 1,
+              maxHeight: 300,
+              overflow: 'auto',
+              zIndex: 1300,
+              boxShadow: 3
+            }}
+          >
+            {suggestions.length > 0 && (
+              <>
+                <Typography variant="caption" sx={{ px: 2, py: 1, color: 'text.secondary', fontWeight: 'bold' }}>
+                  {t('search.suggestions') || '搜索建议'}
+                </Typography>
+                <List dense>
+                  {suggestions.map((suggestion, index) => (
+                    <ListItem key={index} disablePadding>
+                      <ListItemButton onClick={() => handleSuggestionClick(suggestion)}>
+                        <ListItemIcon sx={{ minWidth: 40 }}>
+                          <SearchIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary={suggestion.query}
+                          secondary={suggestion.source === 'history' ? t('search.fromHistory') : suggestion.type}
+                        />
+                        {suggestion.count && (
+                          <Chip label={suggestion.count} size="small" />
+                        )}
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+                {searchHistory.length > 0 && <Divider />}
+              </>
+            )}
+            {searchHistory.length > 0 && (
+              <>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2, py: 1 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                    {t('search.recentSearches')}
+                  </Typography>
+                  <IconButton size="small" onClick={clearHistory}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+                <List dense>
+                  {searchHistory.map((item) => (
+                    <ListItem key={item._id} disablePadding>
+                      <ListItemButton onClick={() => handleSuggestionClick({ query: item.query })}>
+                        <ListItemIcon sx={{ minWidth: 40 }}>
+                          <HistoryIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary={item.query}
+                          secondary={item.resultCount ? `${item.resultCount} ${t('search.results') || '结果'}` : dayjs(item.createdAt).fromNow()}
+                        />
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteHistoryItem(item._id);
+                          }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </>
+            )}
+          </Box>
+        )}
       </Box>
 
-      <DialogContent sx={{ p: 0, pt: 2 }}>
+      <DialogContent sx={{ p: 0, pt: 2 }} onClick={() => setShowSuggestions(false)}>
         {!searchTerm.trim() ? (
           // 显示搜索历史
           <Box sx={{ px: 2 }}>
@@ -313,13 +567,25 @@ const GlobalSearch = ({ open, onClose }) => {
                   </IconButton>
                 </Box>
                 <List dense>
-                  {searchHistory.map((query, index) => (
-                    <ListItem key={index} disablePadding>
-                      <ListItemButton onClick={() => handleHistoryClick(query)}>
+                  {searchHistory.map((item) => (
+                    <ListItem key={item._id} disablePadding>
+                      <ListItemButton onClick={() => handleSuggestionClick({ query: item.query })}>
                         <ListItemIcon sx={{ minWidth: 40 }}>
                           <HistoryIcon />
                         </ListItemIcon>
-                        <ListItemText primary={query} />
+                        <ListItemText 
+                          primary={item.query}
+                          secondary={item.resultCount ? `${item.resultCount} ${t('search.results') || '结果'}` : dayjs(item.createdAt).fromNow()}
+                        />
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteHistoryItem(item._id);
+                          }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
                       </ListItemButton>
                     </ListItem>
                   ))}

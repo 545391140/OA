@@ -1,20 +1,89 @@
 const Notification = require('../models/Notification');
+const NotificationTemplate = require('../models/NotificationTemplate');
+const Settings = require('../models/Settings');
+const pushNotificationService = require('./pushNotificationService');
 
 class NotificationService {
   /**
-   * 创建通知
+   * 创建通知（支持模板和多种通知渠道）
    */
-  async createNotification({ recipient, sender, type, title, content, relatedData, priority = 'normal' }) {
+  async createNotification({ recipient, sender, type, title, content, relatedData, priority = 'normal', templateCode, variables }) {
     try {
+      let finalTitle = title;
+      let finalContent = content;
+      let emailContent = content;
+      let pushContent = content;
+
+      // 如果提供了模板代码，使用模板
+      if (templateCode) {
+        try {
+          const template = await NotificationTemplate.getTemplateByCode(templateCode);
+          const rendered = template.render(variables || {});
+          finalTitle = rendered.title;
+          finalContent = rendered.content;
+          emailContent = rendered.email;
+          pushContent = rendered.push;
+        } catch (error) {
+          console.warn(`Template ${templateCode} not found, using provided content`);
+        }
+      } else if (type) {
+        // 尝试根据类型查找模板
+        try {
+          const template = await NotificationTemplate.getTemplateByType(type);
+          const rendered = template.render(variables || {});
+          finalTitle = rendered.title || title;
+          finalContent = rendered.content || content;
+          emailContent = rendered.email || content;
+          pushContent = rendered.push || content;
+        } catch (error) {
+          // 模板不存在，使用提供的标题和内容
+        }
+      }
+
+      // 创建站内通知
       const notification = await Notification.create({
         recipient,
         sender,
         type,
-        title,
-        content,
+        title: finalTitle,
+        content: finalContent,
         relatedData,
         priority
       });
+
+      // 获取用户设置，检查通知偏好
+      const userSettings = await Settings.getUserSettings(recipient);
+      const systemSettings = await Settings.getSystemSettings();
+      
+      // 合并设置：用户设置优先
+      const emailEnabled = userSettings.notifications.emailNotifications !== false && 
+                          systemSettings.notifications.emailNotifications !== false;
+      const pushEnabled = userSettings.notifications.pushNotifications !== false && 
+                         systemSettings.notifications.pushNotifications !== false;
+
+      // 检查详细通知偏好
+      const notificationPrefs = userSettings.notifications?.preferences || systemSettings.notifications?.preferences || {};
+      const typePrefs = notificationPrefs[type] || {};
+      
+      const shouldSendEmail = emailEnabled && (typePrefs.email !== false);
+      const shouldSendPush = pushEnabled && (typePrefs.push !== false);
+
+      // 发送邮件通知（如果启用）
+      if (shouldSendEmail && emailContent) {
+        // TODO: 集成邮件服务
+        // await emailService.sendEmail({...});
+      }
+
+      // 发送推送通知（如果启用）
+      if (shouldSendPush && pushContent) {
+        await pushNotificationService.sendPushNotification(recipient, {
+          title: finalTitle,
+          body: pushContent,
+          url: relatedData?.url || '/',
+          data: relatedData || {}
+        });
+      }
+
       return notification;
     } catch (error) {
       console.error('Create notification error:', error);
@@ -36,36 +105,57 @@ class NotificationService {
   }
 
   /**
-   * 发送审批请求通知
+   * 发送审批请求通知（使用模板）
    */
   async notifyApprovalRequest({ approvers, requestType, requestId, requestTitle, requester }) {
-    const notifications = approvers.map(approverId => ({
-      recipient: approverId,
-      sender: requester,
-      type: 'approval_request',
-      title: `新的${requestType === 'travel' ? '差旅' : '费用'}审批请求`,
-      content: `${requester.firstName} ${requester.lastName} 提交了一个${requestType === 'travel' ? '差旅' : '费用'}申请"${requestTitle}"，请您审批。`,
-      relatedData: {
-        type: requestType,
-        id: requestId,
-        url: `/${requestType}/${requestId}`
-      },
-      priority: 'high'
-    }));
+    const requesterId = requester._id || requester;
+    const requesterName = requester.firstName ? `${requester.firstName} ${requester.lastName}` : '用户';
+    
+    const notifications = await Promise.all(
+      approvers.map(approverId => 
+        this.createNotification({
+          recipient: approverId._id || approverId,
+          sender: requesterId,
+          type: 'approval_request',
+          templateCode: 'APPROVAL_REQUEST',
+          variables: {
+            requesterName: requesterName,
+            requestType: requestType === 'travel' ? '差旅' : '费用',
+            requestTitle: requestTitle,
+            url: `/${requestType}/${requestId}`
+          },
+          relatedData: {
+            type: requestType,
+            id: requestId,
+            url: `/${requestType}/${requestId}`
+          },
+          priority: 'high'
+        })
+      )
+    );
 
-    return await this.createBatchNotifications(notifications);
+    return notifications;
   }
 
   /**
-   * 发送审批通过通知
+   * 发送审批通过通知（使用模板）
    */
   async notifyApprovalApproved({ requester, requestType, requestId, requestTitle, approver }) {
+    const requesterId = requester._id || requester;
+    const approverId = approver._id || approver;
+    const approverName = approver.firstName ? `${approver.firstName} ${approver.lastName}` : '审批人';
+    
     return await this.createNotification({
-      recipient: requester,
-      sender: approver,
+      recipient: requesterId,
+      sender: approverId,
       type: 'approval_approved',
-      title: `${requestType === 'travel' ? '差旅' : '费用'}申请已通过`,
-      content: `您的${requestType === 'travel' ? '差旅' : '费用'}申请"${requestTitle}"已通过审批。`,
+      templateCode: 'APPROVAL_APPROVED',
+      variables: {
+        requestType: requestType === 'travel' ? '差旅' : '费用',
+        requestTitle: requestTitle,
+        approverName: approverName,
+        url: `/${requestType}/${requestId}`
+      },
       relatedData: {
         type: requestType,
         id: requestId,
@@ -76,15 +166,25 @@ class NotificationService {
   }
 
   /**
-   * 发送审批拒绝通知
+   * 发送审批拒绝通知（使用模板）
    */
   async notifyApprovalRejected({ requester, requestType, requestId, requestTitle, approver, comments }) {
+    const requesterId = requester._id || requester;
+    const approverId = approver._id || approver;
+    const approverName = approver.firstName ? `${approver.firstName} ${approver.lastName}` : '审批人';
+    
     return await this.createNotification({
-      recipient: requester,
-      sender: approver,
+      recipient: requesterId,
+      sender: approverId,
       type: 'approval_rejected',
-      title: `${requestType === 'travel' ? '差旅' : '费用'}申请已拒绝`,
-      content: `您的${requestType === 'travel' ? '差旅' : '费用'}申请"${requestTitle}"已被拒绝。原因：${comments || '无'}`,
+      templateCode: 'APPROVAL_REJECTED',
+      variables: {
+        requestType: requestType === 'travel' ? '差旅' : '费用',
+        requestTitle: requestTitle,
+        approverName: approverName,
+        comments: comments || '无',
+        url: `/${requestType}/${requestId}`
+      },
       relatedData: {
         type: requestType,
         id: requestId,

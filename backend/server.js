@@ -29,7 +29,10 @@ const positionRoutes = require('./routes/positions');
 const searchRoutes = require('./routes/search');
 const dashboardRoutes = require('./routes/dashboard');
 const notificationRoutes = require('./routes/notifications');
+const notificationTemplateRoutes = require('./routes/notificationTemplates');
+const pushNotificationRoutes = require('./routes/pushNotifications');
 const approvalWorkflowRoutes = require('./routes/approvalWorkflows');
+const settingsRoutes = require('./routes/settings');
 
 // Connect to database
 connectDB();
@@ -145,7 +148,10 @@ app.use('/api/positions', positionRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/notification-templates', notificationTemplateRoutes);
+app.use('/api/push', pushNotificationRoutes);
 app.use('/api/approval-workflows', approvalWorkflowRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Serve frontend static files (if deployed together)
 if (frontendExists) {

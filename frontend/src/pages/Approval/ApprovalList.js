@@ -516,19 +516,19 @@ const ApprovalList = () => {
                   color={item.type === 'travel' ? 'primary' : 'secondary'}
                   size="small"
                   sx={{ 
-                    height: 18, 
-                    fontSize: '0.65rem',
+                    height: 20, 
+                    fontSize: '0.75rem',
                     fontWeight: 600,
-                    px: 0.5,
+                    px: 0.75,
                     '& .MuiChip-label': {
-                      px: 0.5,
-                      lineHeight: 1.1
+                      px: 0.75,
+                      lineHeight: 1.2
                     }
                   }}
                 />
                 {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
                 {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem', lineHeight: 1.3 }}>
                     {item.departureCity || '?'}-{item.destination || '?'}
                     {(item.earliestDate && item.latestDate) && (
                       <> • {dayjs(item.earliestDate).format('MMM DD')}-{dayjs(item.latestDate).format('MMM DD')}
@@ -546,13 +546,13 @@ const ApprovalList = () => {
               color={getStatusColor(item.status)}
               size="small"
               sx={{ 
-                height: 18, 
-                fontSize: '0.65rem',
+                height: 20, 
+                fontSize: '0.75rem',
                 fontWeight: 600,
-                px: 0.5,
+                px: 0.75,
                 '& .MuiChip-label': {
-                  px: 0.5,
-                  lineHeight: 1.1
+                  px: 0.75,
+                  lineHeight: 1.2
                 }
               }}
             />
@@ -562,31 +562,31 @@ const ApprovalList = () => {
         {/* 主要信息：员工、金额、日期 */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: item.type === 'travel' && stats ? 1 : 0.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <PersonIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-            <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+            <PersonIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+            <Typography variant="caption" sx={{ fontSize: '0.85rem', lineHeight: 1.3 }}>
               {item.employee.firstName} {item.employee.lastName}
               {item.employee.department && (
-                <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5, fontSize: '0.85rem' }}>
                   ({item.employee.department})
                 </Typography>
               )}
             </Typography>
           </Box>
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
             •
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <CalendarIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+            <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.85rem', lineHeight: 1.3 }}>
               {dayjs(item.date).format('MMM DD, YYYY')}
             </Typography>
           </Box>
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
             •
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <MoneyIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-            <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.2, fontWeight: 500 }}>
+            <MoneyIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+            <Typography variant="caption" sx={{ fontSize: '0.85rem', lineHeight: 1.3, fontWeight: 500 }}>
               {item.currency} {item.amount.toLocaleString()}
             </Typography>
           </Box>
@@ -602,46 +602,46 @@ const ApprovalList = () => {
             border: '1px solid', 
             borderColor: 'grey.300'
           }}>
-            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.primary', mb: 0.75, display: 'block' }}>
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', mb: 0.75, display: 'block' }}>
               {t('approval.employeeTravelStats')} ({stats.year})
             </Typography>
             <Grid container spacing={1}>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalTrips')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
+                <Typography variant="caption" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
                   {stats.totalTrips}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalAmount')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
+                <Typography variant="caption" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
                   {item.currency} {stats.totalAmount.toLocaleString()}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalDays')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
+                <Typography variant="caption" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
                   {stats.totalDays} {t('approval.days')}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.25 }}>
                   {t('approval.efficiency')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
+                <Typography variant="caption" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
                   {item.currency} {stats.efficiency}/{t('approval.day')}
                 </Typography>
               </Grid>
               {stats.budgetUsage !== null && (
                 <Grid item xs={12}>
                   <Box sx={{ mt: 0.75 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.5 }}>
                       {t('approval.budgetUsage')}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -655,7 +655,7 @@ const ApprovalList = () => {
                           }} 
                         />
                       </Box>
-                      <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, minWidth: 40, color: 'text.primary' }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.8rem', fontWeight: 600, minWidth: 40, color: 'text.primary' }}>
                         {stats.budgetUsage}%
                       </Typography>
                     </Box>
@@ -670,11 +670,11 @@ const ApprovalList = () => {
         {/* 审批信息（紧凑显示） */}
         {item.approver && (
           <Box sx={{ mt: 0.5, mb: 0.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2, display: 'block' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem', lineHeight: 1.3, display: 'block' }}>
               {t('approval.approvedBy')}: {item.approver.firstName} {item.approver.lastName} ({item.approver.position}) • {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
             </Typography>
             {item.comments && (
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', lineHeight: 1.2, color: 'text.secondary' }}>
+              <Typography variant="caption" sx={{ fontSize: '0.8rem', lineHeight: 1.3, color: 'text.secondary' }}>
                 {t('approval.comments')}: {item.comments}
               </Typography>
             )}
@@ -692,11 +692,11 @@ const ApprovalList = () => {
                 size="small"
                 sx={{ 
                   minWidth: 'auto',
-                  px: 0.75,
-                  py: 0.25,
-                  fontSize: '0.75rem',
+                  px: 1,
+                  py: 0.5,
+                  fontSize: '0.85rem',
                   textTransform: 'none',
-                  lineHeight: 1.2
+                  lineHeight: 1.3
                 }}
               >
                 {t('approval.reject')}
@@ -708,12 +708,12 @@ const ApprovalList = () => {
                 size="small"
                 sx={{ 
                   minWidth: 'auto',
-                  px: 0.75,
-                  py: 0.25,
-                  fontSize: '0.75rem',
+                  px: 1,
+                  py: 0.5,
+                  fontSize: '0.85rem',
                   textTransform: 'none',
                   fontWeight: 600,
-                  lineHeight: 1.2
+                  lineHeight: 1.3
                 }}
               >
                 {t('approval.approve')}
@@ -726,11 +726,11 @@ const ApprovalList = () => {
             onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
             sx={{ 
               minWidth: 'auto',
-              px: 0.75,
-              py: 0.25,
-              fontSize: '0.75rem',
+              px: 1,
+              py: 0.5,
+              fontSize: '0.85rem',
               textTransform: 'none',
-              lineHeight: 1.2
+              lineHeight: 1.3
             }}
           >
             {t('approval.viewDetail') || 'Detail'}
