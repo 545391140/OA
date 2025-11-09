@@ -25,7 +25,6 @@ import {
   Alert,
   CircularProgress,
   LinearProgress,
-  Divider,
   Grid,
   Chip,
   InputAdornment
@@ -410,8 +409,6 @@ const ExpenseItemsMaintenance = () => {
           </Button>
         )}
       </Box>
-
-      <Divider sx={{ mb: 3 }} />
 
       {/* 搜索和过滤器 */}
       <Paper sx={{ p: 2, mb: 3 }}>
