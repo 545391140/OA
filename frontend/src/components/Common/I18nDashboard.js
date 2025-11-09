@@ -323,6 +323,49 @@ const I18nDashboard = () => {
           </Card>
         </Grid>
 
+        {/* 翻译覆盖率详情 */}
+        {report.translationCoverage && Object.keys(report.translationCoverage).length > 0 && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  翻译覆盖率详情
+                </Typography>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>语言/命名空间</TableCell>
+                        <TableCell align="right">总键数</TableCell>
+                        <TableCell align="right">已翻译</TableCell>
+                        <TableCell align="right">覆盖率</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {Object.entries(report.translationCoverage).map(([key, data]) => (
+                        <TableRow key={key}>
+                          <TableCell>
+                            <Chip label={key} size="small" variant="outlined" />
+                          </TableCell>
+                          <TableCell align="right">{data.totalKeys}</TableCell>
+                          <TableCell align="right">{data.translatedKeys}</TableCell>
+                          <TableCell align="right">
+                            <Chip
+                              label={`${data.coverage.toFixed(1)}%`}
+                              size="small"
+                              color={data.coverage >= 98 ? 'success' : 'warning'}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
         {/* 缺失键列表 */}
         {report.missingKeys.length > 0 && (
           <Grid item xs={12}>

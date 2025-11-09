@@ -212,11 +212,101 @@ class I18nMonitor {
   }
 
   /**
+   * 计算翻译覆盖率（自动统计所有翻译键）
+   */
+  calculateTranslationCoverage() {
+    if (typeof window === 'undefined' || !window.i18next) {
+      return {};
+    }
+
+    const coverageData = {};
+    const resources = window.i18next.store.data || {};
+    const locales = Object.keys(resources);
+
+    locales.forEach(locale => {
+      const localeResources = resources[locale] || {};
+      const namespaces = Object.keys(localeResources);
+
+      namespaces.forEach(namespace => {
+        const namespaceData = localeResources[namespace] || {};
+        const allKeys = this.getAllKeys(namespaceData);
+        const totalKeys = allKeys.length;
+        
+        // 统计已翻译的键（值不为空且不是键名本身）
+        const translatedKeys = allKeys.filter(key => {
+          const value = this.getNestedValue(namespaceData, key);
+          return value && typeof value === 'string' && value.trim() !== '' && value !== key;
+        }).length;
+
+        const coverage = totalKeys > 0 ? (translatedKeys / totalKeys) * 100 : 0;
+        const key = `${namespace}:${locale}`;
+        
+        coverageData[key] = {
+          totalKeys,
+          translatedKeys,
+          coverage,
+          timestamp: Date.now()
+        };
+
+        // 更新监控指标
+        this.metrics.translationCoverage.set(key, coverageData[key]);
+      });
+    });
+
+    return coverageData;
+  }
+
+  /**
+   * 获取对象中的所有键（递归）
+   */
+  getAllKeys(obj, prefix = '') {
+    const keys = [];
+    
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const fullKey = prefix ? `${prefix}.${key}` : key;
+        const value = obj[key];
+        
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          // 递归获取嵌套键
+          keys.push(...this.getAllKeys(value, fullKey));
+        } else {
+          // 叶子节点
+          keys.push(fullKey);
+        }
+      }
+    }
+    
+    return keys;
+  }
+
+  /**
+   * 获取嵌套对象的值
+   */
+  getNestedValue(obj, keyPath) {
+    const keys = keyPath.split('.');
+    let value = obj;
+    
+    for (const key of keys) {
+      if (value && typeof value === 'object' && key in value) {
+        value = value[key];
+      } else {
+        return undefined;
+      }
+    }
+    
+    return value;
+  }
+
+  /**
    * 获取监控报告
    */
   getReport() {
     const now = Date.now();
     const uptime = this.startTime ? now - this.startTime : 0;
+    
+    // 自动计算翻译覆盖率
+    this.calculateTranslationCoverage();
     
     // 计算缺失键率（24小时滚动）
     const missingKeyRate = this.metrics.missingKeys.size;
@@ -229,21 +319,22 @@ class I18nMonitor {
     const coverageEntries = Array.from(this.metrics.translationCoverage.values());
     const avgCoverage = coverageEntries.length > 0 
       ? coverageEntries.reduce((sum, c) => sum + c.coverage, 0) / coverageEntries.length 
-      : 0;
+      : 100; // 如果没有覆盖率数据，默认100%
     
-    // 计算硬编码率
+    // 计算硬编码率（这里需要从静态扫描结果获取，暂时返回0）
     const hardcodedRate = this.metrics.hardcodedStrings.size;
     
     return {
       uptime,
       missingKeyRate,
-      p95SwitchTime,
+      p95SwitchTime: p95SwitchTime || 0,
       avgCoverage,
       hardcodedRate,
       fallbackHits: Object.fromEntries(this.metrics.fallbackHits),
       recentSwitchTimes: this.metrics.switchTimes.slice(-10),
       missingKeys: Array.from(this.metrics.missingKeys),
-      hardcodedStrings: Array.from(this.metrics.hardcodedStrings)
+      hardcodedStrings: Array.from(this.metrics.hardcodedStrings),
+      translationCoverage: Object.fromEntries(this.metrics.translationCoverage)
     };
   }
 

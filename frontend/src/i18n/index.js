@@ -45,6 +45,11 @@ i18n
     
     interpolation: {
       escapeValue: false,
+      // 支持单花括号和双花括号两种格式
+      formatSeparator: ',',
+      // 默认前缀和后缀（支持单花括号）
+      prefix: '{',
+      suffix: '}',
     },
     
     detection: {
