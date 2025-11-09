@@ -516,10 +516,14 @@ router.get('/statistics', protect, async (req, res) => {
     });
   } catch (error) {
     console.error('Get approval statistics error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request user:', req.user);
+    console.error('Query params:', { startDate, endDate, type });
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: error.message
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
