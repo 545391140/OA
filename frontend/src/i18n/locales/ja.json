@@ -909,7 +909,27 @@
     "department": "部署",
     "category": "カテゴリ",
     "exportToExcel": "Excelにエクスポート",
-    "exportToPDF": "PDFにエクスポート"
+    "exportToPDF": "PDFにエクスポート",
+    "totalExpenses": "総経費",
+    "travelCosts": "出張費用",
+    "pendingApprovals": "承認待ち",
+    "approvalRate": "承認率",
+    "overview": "概要",
+    "expenses": "経費",
+    "travel": "出張",
+    "departments": "部署",
+    "approved": "承認済み",
+    "pending": "承認待ち",
+    "totalCost": "総コスト",
+    "customRange": "カスタム範囲",
+    "operations": "運用",
+    "allDepartments": "すべての部署",
+    "startDate": "開始日",
+    "endDate": "終了日",
+    "exportPDF": "PDFエクスポート",
+    "exportExcel": "Excelエクスポート",
+    "exportError": "エクスポート失敗",
+    "loadError": "レポートデータの読み込みに失敗しました"
   },
   "messages": {
     "success": {

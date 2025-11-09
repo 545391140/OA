@@ -1064,7 +1064,27 @@
     "department": "Department",
     "category": "Category",
     "exportToExcel": "Export to Excel",
-    "exportToPDF": "Export to PDF"
+    "exportToPDF": "Export to PDF",
+    "totalExpenses": "Total Expenses",
+    "travelCosts": "Travel Costs",
+    "pendingApprovals": "Pending Approvals",
+    "approvalRate": "Approval Rate",
+    "overview": "Overview",
+    "expenses": "Expenses",
+    "travel": "Travel",
+    "departments": "Departments",
+    "approved": "Approved",
+    "pending": "Pending",
+    "totalCost": "Total Cost",
+    "customRange": "Custom Range",
+    "operations": "Operations",
+    "allDepartments": "All Departments",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "exportPDF": "Export PDF",
+    "exportExcel": "Export Excel",
+    "exportError": "Export failed",
+    "loadError": "Failed to load report data"
   },
   "messages": {
     "success": {

@@ -16,7 +16,8 @@ import {
   Tab,
   Chip,
   LinearProgress,
-  Alert
+  Alert,
+  TextField
 } from '@mui/material';
 import {
   Assessment as AssessmentIcon,
@@ -48,6 +49,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
 const Reports = () => {
@@ -59,6 +61,9 @@ const Reports = () => {
   const [tabValue, setTabValue] = useState(0);
   const [dateRange, setDateRange] = useState('last30days');
   const [department, setDepartment] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [departments, setDepartments] = useState([]);
 
   const [reportData, setReportData] = useState({
     summary: {
@@ -82,74 +87,128 @@ const Reports = () => {
     { value: 'custom', label: t('reports.customRange') }
   ];
 
-  const departmentOptions = [
-    { value: 'all', label: 'All Departments' },
-    { value: 'sales', label: 'Sales' },
-    { value: 'marketing', label: 'Marketing' },
-    { value: 'engineering', label: 'Engineering' },
-    { value: 'operations', label: t('reports.operations') },
-    { value: 'hr', label: 'HR' },
-    { value: 'finance', label: 'Finance' }
+  // 获取部门列表
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await apiClient.get('/reports/departments');
+        if (response.data && response.data.success) {
+          const deptList = response.data.data || [];
+          setDepartments([
+            { value: 'all', label: t('reports.allDepartments') || 'All Departments' },
+            ...deptList.map(dept => ({ value: dept, label: dept }))
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch departments:', error);
+        // 使用默认部门列表
+        setDepartments([
+          { value: 'all', label: t('reports.allDepartments') || 'All Departments' }
+        ]);
+      }
+    };
+    fetchDepartments();
+  }, [t]);
+
+  const departmentOptions = departments.length > 0 ? departments : [
+    { value: 'all', label: t('reports.allDepartments') || 'All Departments' }
   ];
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
   useEffect(() => {
     fetchReportData();
-  }, [dateRange, department]);
+  }, [dateRange, department, customStartDate, customEndDate]);
+
+  // 计算日期范围
+  const getDateRange = () => {
+    const now = dayjs();
+    let startDate, endDate;
+
+    switch (dateRange) {
+      case 'last7days':
+        startDate = now.subtract(7, 'day').format('YYYY-MM-DD');
+        endDate = now.format('YYYY-MM-DD');
+        break;
+      case 'last30days':
+        startDate = now.subtract(30, 'day').format('YYYY-MM-DD');
+        endDate = now.format('YYYY-MM-DD');
+        break;
+      case 'last90days':
+        startDate = now.subtract(90, 'day').format('YYYY-MM-DD');
+        endDate = now.format('YYYY-MM-DD');
+        break;
+      case 'thisYear':
+        startDate = now.startOf('year').format('YYYY-MM-DD');
+        endDate = now.format('YYYY-MM-DD');
+        break;
+      case 'custom':
+        startDate = customStartDate || now.subtract(30, 'day').format('YYYY-MM-DD');
+        endDate = customEndDate || now.format('YYYY-MM-DD');
+        break;
+      default:
+        startDate = now.subtract(30, 'day').format('YYYY-MM-DD');
+        endDate = now.format('YYYY-MM-DD');
+    }
+
+    return { startDate, endDate };
+  };
 
   const fetchReportData = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockData = {
-        summary: {
-          totalExpenses: 45680.50,
-          totalTravel: 23450.00,
-          pendingApprovals: 12,
-          monthlyTrend: 8.5
-        },
-        monthlyData: [
-          { month: 'Jan', expenses: 4200, travel: 2100, approved: 15, pending: 3 },
-          { month: 'Feb', expenses: 4800, travel: 2400, approved: 18, pending: 2 },
-          { month: 'Mar', expenses: 5200, travel: 2600, approved: 22, pending: 4 },
-          { month: 'Apr', expenses: 4500, travel: 2250, approved: 19, pending: 3 },
-          { month: 'May', expenses: 5100, travel: 2550, approved: 21, pending: 2 },
-          { month: 'Jun', expenses: 5800, travel: 2900, approved: 25, pending: 5 }
-        ],
-        categoryData: [
-          { name: 'Transportation', value: 12000, count: 45 },
-          { name: 'Accommodation', value: 8500, count: 28 },
-          { name: 'Meals', value: 6800, count: 67 },
-          { name: 'Entertainment', value: 3200, count: 15 },
-          { name: 'Office Supplies', value: 2100, count: 23 },
-          { name: 'Other', value: 1500, count: 12 }
-        ],
-        departmentData: [
-          { department: 'Sales', expenses: 18500, travel: 12000, count: 45 },
-          { department: 'Marketing', expenses: 12500, travel: 8000, count: 32 },
-          { department: 'Engineering', expenses: 9800, travel: 6000, count: 28 },
-          { department: 'Operations', expenses: 4200, travel: 2000, count: 15 },
-          { department: 'HR', expenses: 1800, travel: 1000, count: 8 }
-        ],
-        travelData: [
-          { destination: 'Tokyo', trips: 8, cost: 12000, avgCost: 1500 },
-          { destination: 'Singapore', trips: 6, cost: 9000, avgCost: 1500 },
-          { destination: 'Seoul', trips: 4, cost: 6000, avgCost: 1500 },
-          { destination: 'New York', trips: 3, cost: 4500, avgCost: 1500 },
-          { destination: 'London', trips: 2, cost: 3000, avgCost: 1500 }
-        ],
-        expenseData: [
-          { vendor: 'Restaurant ABC', amount: 2500, count: 15, category: 'Meals' },
-          { vendor: 'Hotel XYZ', amount: 4200, count: 8, category: 'Accommodation' },
-          { vendor: 'Airline Co', amount: 8500, count: 12, category: 'Transportation' },
-          { vendor: 'Office Depot', amount: 1200, count: 6, category: 'Office Supplies' },
-          { vendor: 'Taxi Service', amount: 800, count: 20, category: 'Transportation' }
-        ]
-      };
-      setReportData(mockData);
+      const { startDate, endDate } = getDateRange();
+
+      // 调用真实API
+      const response = await apiClient.get('/reports/comprehensive', {
+        params: {
+          startDate,
+          endDate,
+          department: department !== 'all' ? department : undefined
+        }
+      });
+
+      if (response.data && response.data.success) {
+        const data = response.data.data;
+        
+        // 确保数据格式正确
+        setReportData({
+          summary: {
+            totalExpenses: data.summary?.totalExpenses || 0,
+            totalTravel: data.summary?.totalTravel || 0,
+            pendingApprovals: data.summary?.pendingApprovals || 0,
+            monthlyTrend: data.summary?.monthlyTrend || 0
+          },
+          monthlyData: data.monthlyData || [],
+          categoryData: data.categoryData || [],
+          departmentData: data.departmentData || [],
+          travelData: data.travelData || [],
+          expenseData: data.expenseData || []
+        });
+      } else {
+        throw new Error('Failed to fetch report data');
+      }
     } catch (error) {
-      showNotification('Failed to load report data', 'error');
+      console.error('Failed to load report data:', error);
+      showNotification(
+        error.response?.data?.message || t('reports.loadError') || 'Failed to load report data',
+        'error'
+      );
+      
+      // 设置空数据以避免UI错误
+      setReportData({
+        summary: {
+          totalExpenses: 0,
+          totalTravel: 0,
+          pendingApprovals: 0,
+          monthlyTrend: 0
+        },
+        monthlyData: [],
+        categoryData: [],
+        departmentData: [],
+        travelData: [],
+        expenseData: []
+      });
     } finally {
       setLoading(false);
     }
@@ -159,8 +218,122 @@ const Reports = () => {
     setTabValue(newValue);
   };
 
-  const handleExport = (format) => {
-    showNotification(`Exporting report as ${format}...`, 'info');
+  const handleExport = async (format) => {
+    try {
+      const { startDate, endDate } = getDateRange();
+      
+      // 构建导出数据
+      const exportData = {
+        summary: reportData.summary,
+        monthlyData: reportData.monthlyData,
+        categoryData: reportData.categoryData,
+        departmentData: reportData.departmentData,
+        travelData: reportData.travelData,
+        expenseData: reportData.expenseData,
+        filters: {
+          dateRange,
+          startDate,
+          endDate,
+          department
+        },
+        generatedAt: new Date().toISOString()
+      };
+
+      if (format === 'PDF') {
+        // PDF导出 - 使用浏览器打印功能
+        const printWindow = window.open('', '_blank');
+        const htmlContent = generatePDFContent(exportData);
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.print();
+        showNotification(t('reports.exportPDF') || 'PDF export initiated', 'success');
+      } else if (format === 'Excel') {
+        // Excel导出 - 生成CSV格式
+        const csvContent = generateCSVContent(exportData);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `report_${startDate}_${endDate}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showNotification(t('reports.exportExcel') || 'Excel export completed', 'success');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      showNotification(t('reports.exportError') || 'Export failed', 'error');
+    }
+  };
+
+  const generatePDFContent = (data) => {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Expense Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #333; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <h1>Expense & Travel Report</h1>
+          <p><strong>Period:</strong> ${data.filters.startDate} to ${data.filters.endDate}</p>
+          <p><strong>Generated:</strong> ${new Date(data.generatedAt).toLocaleString()}</p>
+          
+          <h2>Summary</h2>
+          <table>
+            <tr><th>Total Expenses</th><td>$${data.summary.totalExpenses.toLocaleString()}</td></tr>
+            <tr><th>Total Travel</th><td>$${data.summary.totalTravel.toLocaleString()}</td></tr>
+            <tr><th>Pending Approvals</th><td>${data.summary.pendingApprovals}</td></tr>
+          </table>
+          
+          <h2>Monthly Data</h2>
+          <table>
+            <tr><th>Month</th><th>Expenses</th><th>Travel</th><th>Approved</th><th>Pending</th></tr>
+            ${data.monthlyData.map(m => `
+              <tr>
+                <td>${m.month}</td>
+                <td>$${m.expenses.toLocaleString()}</td>
+                <td>$${m.travel.toLocaleString()}</td>
+                <td>${m.approved}</td>
+                <td>${m.pending}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </body>
+      </html>
+    `;
+  };
+
+  const generateCSVContent = (data) => {
+    let csv = 'Expense & Travel Report\n';
+    csv += `Period: ${data.filters.startDate} to ${data.filters.endDate}\n`;
+    csv += `Generated: ${new Date(data.generatedAt).toLocaleString()}\n\n`;
+    
+    csv += 'Summary\n';
+    csv += 'Total Expenses,' + data.summary.totalExpenses + '\n';
+    csv += 'Total Travel,' + data.summary.totalTravel + '\n';
+    csv += 'Pending Approvals,' + data.summary.pendingApprovals + '\n\n';
+    
+    csv += 'Monthly Data\n';
+    csv += 'Month,Expenses,Travel,Approved,Pending\n';
+    data.monthlyData.forEach(m => {
+      csv += `${m.month},${m.expenses},${m.travel},${m.approved},${m.pending}\n`;
+    });
+    
+    csv += '\nCategory Data\n';
+    csv += 'Category,Amount,Count\n';
+    data.categoryData.forEach(c => {
+      csv += `${c.name},${c.value},${c.count}\n`;
+    });
+    
+    return csv;
   };
 
   const SummaryCard = ({ title, value, icon, trend, color = 'primary' }) => (
@@ -211,9 +384,9 @@ const Reports = () => {
         {/* Filters */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>Date Range</InputLabel>
+                <InputLabel>{t('reports.dateRange')}</InputLabel>
                 <Select
                   value={dateRange}
                   label={t('reports.dateRange')}
@@ -227,9 +400,33 @@ const Reports = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}>
+            {dateRange === 'custom' && (
+              <>
+                <Grid item xs={12} md={2}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label={t('reports.startDate') || 'Start Date'}
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={2}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label={t('reports.endDate') || 'End Date'}
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+              </>
+            )}
+            <Grid item xs={12} md={dateRange === 'custom' ? 2 : 3}>
               <FormControl fullWidth>
-                <InputLabel>Department</InputLabel>
+                <InputLabel>{t('reports.department')}</InputLabel>
                 <Select
                   value={department}
                   label={t('reports.department')}
@@ -243,21 +440,23 @@ const Reports = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={dateRange === 'custom' ? 3 : 3}>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
                   variant="outlined"
                   startIcon={<DownloadIcon />}
                   onClick={() => handleExport('PDF')}
+                  disabled={loading}
                 >
-                  Export PDF
+                  {t('reports.exportPDF') || 'Export PDF'}
                 </Button>
                 <Button
                   variant="outlined"
                   startIcon={<DownloadIcon />}
                   onClick={() => handleExport('Excel')}
+                  disabled={loading}
                 >
-                  Export Excel
+                  {t('reports.exportExcel') || 'Export Excel'}
                 </Button>
               </Box>
             </Grid>

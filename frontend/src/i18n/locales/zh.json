@@ -1123,7 +1123,14 @@
     "pending": "待处理",
     "totalCost": "总成本",
     "customRange": "自定义范围",
-    "operations": "运营"
+    "operations": "运营",
+    "allDepartments": "所有部门",
+    "startDate": "开始日期",
+    "endDate": "结束日期",
+    "exportPDF": "导出PDF",
+    "exportExcel": "导出Excel",
+    "exportError": "导出失败",
+    "loadError": "加载报告数据失败"
   },
   "settings": {
     "title": "设置",

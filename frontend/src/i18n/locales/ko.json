@@ -944,7 +944,27 @@
     "department": "부서",
     "category": "카테고리",
     "exportToExcel": "Excel로 내보내기",
-    "exportToPDF": "PDF로 내보내기"
+    "exportToPDF": "PDF로 내보내기",
+    "totalExpenses": "총 비용",
+    "travelCosts": "출장 비용",
+    "pendingApprovals": "승인 대기",
+    "approvalRate": "승인률",
+    "overview": "개요",
+    "expenses": "비용",
+    "travel": "출장",
+    "departments": "부서",
+    "approved": "승인됨",
+    "pending": "대기 중",
+    "totalCost": "총 비용",
+    "customRange": "사용자 정의 범위",
+    "operations": "운영",
+    "allDepartments": "모든 부서",
+    "startDate": "시작일",
+    "endDate": "종료일",
+    "exportPDF": "PDF 내보내기",
+    "exportExcel": "Excel 내보내기",
+    "exportError": "내보내기 실패",
+    "loadError": "보고서 데이터를 불러오는데 실패했습니다"
   },
   "messages": {
     "success": {
