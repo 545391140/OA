@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -91,31 +91,63 @@ const Layout = () => {
     handleProfileMenuClose();
   };
 
-  const menuItems = [
-    { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
-    { text: t('navigation.travel'), icon: <TravelIcon />, path: '/travel' },
-    { text: t('navigation.expenses'), icon: <ExpenseIcon />, path: '/expenses' },
-    { text: t('navigation.approvals'), icon: <ApprovalIcon />, path: '/approvals' },
-    { text: t('navigation.reports'), icon: <ReportIcon />, path: '/reports' },
-    { text: t('navigation.travelStandardQuery'), icon: <QueryBuilderIcon />, path: '/travel-standards/query' },
-    { text: t('navigation.travelStandardManagement'), icon: <SettingsIcon />, path: '/travel-standards' },
-    { text: t('navigation.expenseItemsManagement'), icon: <ExpenseItemsIcon />, path: '/expense-items' },
-    { text: t('navigation.locationManagement'), icon: <LocationOnIcon />, path: '/location' },
-    { text: t('navigation.i18nMonitor'), icon: <LanguageIcon />, path: '/i18n' },
-  ];
+  // 使用 useMemo 确保菜单项在语言变化时重新计算
+  const menuItems = useMemo(() => [
+    { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard', key: 'dashboard' },
+    { text: t('navigation.travel'), icon: <TravelIcon />, path: '/travel', key: 'travel' },
+    { text: t('navigation.expenses'), icon: <ExpenseIcon />, path: '/expenses', key: 'expenses' },
+    { text: t('navigation.approvals'), icon: <ApprovalIcon />, path: '/approvals', key: 'approvals' },
+    { text: t('navigation.reports'), icon: <ReportIcon />, path: '/reports', key: 'reports' },
+    { text: t('navigation.travelStandardQuery'), icon: <QueryBuilderIcon />, path: '/travel-standards/query', key: 'travelStandardQuery' },
+    { text: t('navigation.travelStandardManagement'), icon: <SettingsIcon />, path: '/travel-standards', key: 'travelStandardManagement' },
+    { text: t('navigation.expenseItemsManagement'), icon: <ExpenseItemsIcon />, path: '/expense-items', key: 'expenseItemsManagement' },
+    { text: t('navigation.locationManagement'), icon: <LocationOnIcon />, path: '/location', key: 'locationManagement' },
+    { text: t('navigation.i18nMonitor'), icon: <LanguageIcon />, path: '/i18n', key: 'i18nMonitor' },
+  ], [t, i18n.language]);
 
   // Admin only menu items
-  const adminMenuItems = [
-    { text: t('navigation.roleManagement'), icon: <SecurityIcon />, path: '/roles' },
-    { text: t('navigation.positionManagement'), icon: <WorkIcon />, path: '/positions' },
-    { text: t('navigation.userManagement'), icon: <PeopleIcon />, path: '/users' },
-  ];
+  const adminMenuItems = useMemo(() => [
+    { text: t('navigation.roleManagement'), icon: <SecurityIcon />, path: '/roles', key: 'roleManagement' },
+    { text: t('navigation.positionManagement'), icon: <WorkIcon />, path: '/positions', key: 'positionManagement' },
+    { text: t('navigation.userManagement'), icon: <PeopleIcon />, path: '/users', key: 'userManagement' },
+  ], [t, i18n.language]);
 
   // Filter menu items based on user role
-  const filteredMenuItems = [
+  const filteredMenuItems = useMemo(() => [
     ...menuItems,
     ...(user?.role === 'admin' ? adminMenuItems : [])
-  ];
+  ], [menuItems, adminMenuItems, user?.role]);
+
+  // 根据当前路由获取对应的标题
+  const getPageTitle = () => {
+    // 先按路径长度排序，优先匹配更长的路径（更具体的路径）
+    const sortedItems = [...filteredMenuItems].sort((a, b) => b.path.length - a.path.length);
+    
+    // 检查当前路径是否匹配某个菜单项
+    const currentItem = sortedItems.find(item => {
+      if (item.path === '/') {
+        return location.pathname === '/';
+      }
+      // 精确匹配或路径以菜单项路径开头（需要确保是完整路径段）
+      const pathMatch = location.pathname === item.path || 
+        (item.path !== '/' && location.pathname.startsWith(item.path));
+      
+      if (pathMatch) {
+        // 确保是完整的路径段（避免 /travel 匹配到 /travel-standards）
+        const nextChar = location.pathname[item.path.length];
+        return !nextChar || nextChar === '/';
+      }
+      
+      return false;
+    });
+
+    if (currentItem) {
+      return currentItem.text;
+    }
+
+    // 如果没有匹配的菜单项，返回默认标题
+    return t('navigation.dashboard');
+  };
 
   const drawer = (
     <div>
@@ -130,7 +162,7 @@ const Layout = () => {
           const isSelected = location.pathname === item.path || 
             (item.path !== '/' && location.pathname.startsWith(item.path));
           return (
-            <ListItem key={item.text} disablePadding>
+            <ListItem key={item.key || item.path} disablePadding>
               <ListItemButton
                 onClick={() => navigate(item.path)}
                 selected={isSelected}
@@ -177,7 +209,7 @@ const Layout = () => {
           </IconButton>
           
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {t('navigation.dashboard')}
+            {getPageTitle()}
           </Typography>
 
           <IconButton
