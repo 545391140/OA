@@ -498,166 +498,206 @@ const ApprovalList = () => {
     }
     
     return (
-    <Card sx={{ mb: 1.5 }} elevation={2}>
-      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-        {/* 标题行：图标、标题、类型、状态标签 */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-            <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+    <Card sx={{ mb: 1 }} elevation={1}>
+      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+        {/* 标题行：图标、标题、类型、状态标签、操作按钮 */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+            <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, flexShrink: 0 }}>
               {getTypeIcon(item.type)}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.25, lineHeight: 1.3 }}>
-                {item.title}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25, flexWrap: 'wrap' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: '0.875rem' }}>
+                  {item.title}
+                </Typography>
                 <Chip
                   label={item.type === 'travel' ? t('approval.travelRequest') : t('approval.expenseReport')}
                   color={item.type === 'travel' ? 'primary' : 'secondary'}
                   size="small"
                   sx={{ 
-                    height: 20, 
-                    fontSize: '0.6875rem',
+                    height: 18, 
+                    fontSize: '0.65rem',
                     fontWeight: 600,
-                    px: 0.75,
+                    px: 0.5,
                     '& .MuiChip-label': {
                       px: 0.5,
-                      lineHeight: 1.2
+                      lineHeight: 1.1
                     }
                   }}
                 />
-                {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
-                {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
-                  <>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                      {item.departureCity || '?'}-{item.destination || '?'}
-                      {(item.earliestDate && item.latestDate) && (
-                        <>
-                          <Typography component="span" variant="caption" color="text.secondary" sx={{ mx: 0.5 }}>  </Typography>
-                          {dayjs(item.earliestDate).format('MMM DD')}-{dayjs(item.latestDate).format('MMM DD')}
-                          {item.days > 0 && (
-                            <>
-                              <Typography component="span" variant="caption" color="text.secondary" sx={{ mx: 0.5 }}>
-                                {t('approval.totalDays')}{item.days}{t('approval.days')}
-                              </Typography>
-                            </>
-                          )}
-                        </>
-                      )}
-                    </Typography>
-                  </>
-                )}
+                <Chip
+                  label={item.status}
+                  color={getStatusColor(item.status)}
+                  size="small"
+                  sx={{ 
+                    height: 18, 
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    px: 0.5,
+                    '& .MuiChip-label': {
+                      px: 0.5,
+                      lineHeight: 1.1
+                    }
+                  }}
+                />
               </Box>
+              {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
+              {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                  {item.departureCity || '?'}-{item.destination || '?'}
+                  {(item.earliestDate && item.latestDate) && (
+                    <> • {dayjs(item.earliestDate).format('MMM DD')}-{dayjs(item.latestDate).format('MMM DD')}
+                    {item.days > 0 && <> • {t('approval.totalDays')}{item.days}{t('approval.days')}</>}
+                    </>
+                  )}
+                </Typography>
+              )}
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-            <Chip
-              label={item.status}
-              color={getStatusColor(item.status)}
+          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0, alignItems: 'center', ml: 1 }}>
+            {showActions && item.status === 'submitted' && (
+              <>
+                <Button
+                  variant="text"
+                  color="error"
+                  onClick={() => handleApproval(item, 'reject')}
+                  size="small"
+                  sx={{ 
+                    minWidth: 'auto',
+                    px: 0.75,
+                    py: 0.25,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    lineHeight: 1.2
+                  }}
+                >
+                  {t('approval.reject')}
+                </Button>
+                <Button
+                  variant="text"
+                  color="success"
+                  onClick={() => handleApproval(item, 'approve')}
+                  size="small"
+                  sx={{ 
+                    minWidth: 'auto',
+                    px: 0.75,
+                    py: 0.25,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    lineHeight: 1.2
+                  }}
+                >
+                  {t('approval.approve')}
+                </Button>
+              </>
+            )}
+            <Button
+              variant="text"
               size="small"
+              onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
               sx={{ 
-                height: 20, 
-                fontSize: '0.6875rem',
-                fontWeight: 600,
+                minWidth: 'auto',
                 px: 0.75,
-                '& .MuiChip-label': {
-                  px: 0.5,
-                  lineHeight: 1.2
-                }
+                py: 0.25,
+                fontSize: '0.75rem',
+                textTransform: 'none',
+                lineHeight: 1.2
               }}
-            />
+            >
+              {t('approval.viewDetail') || 'Detail'}
+            </Button>
           </Box>
         </Box>
 
         {/* 主要信息：员工、金额、日期 */}
-        <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-          <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-              <PersonIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="body2" sx={{ fontSize: '0.8125rem', lineHeight: 1.5 }}>
-                <strong>{t('approval.employee')}:</strong> {item.employee.firstName} {item.employee.lastName}
-                {item.employee.department && (
-                  <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                    ({item.employee.department})
-                  </Typography>
-                )}
-              </Typography>
-              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                •
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <CalendarIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                  <strong>{t('approval.submittedDate')}:</strong> {dayjs(item.date).format('MMM DD, YYYY')}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: item.type === 'travel' && stats ? 1 : 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <PersonIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+              {item.employee.firstName} {item.employee.lastName}
+              {item.employee.department && (
+                <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                  ({item.employee.department})
                 </Typography>
-              </Box>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <MoneyIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="body2" sx={{ fontSize: '0.8125rem', lineHeight: 1.5 }}>
-                <strong>{t('approval.amount')}:</strong> {item.currency} {item.amount.toLocaleString()}
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
+              )}
+            </Typography>
+          </Box>
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+            •
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <CalendarIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+              {dayjs(item.date).format('MMM DD, YYYY')}
+            </Typography>
+          </Box>
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+            •
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <MoneyIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.2, fontWeight: 500 }}>
+              {item.currency} {item.amount.toLocaleString()}
+            </Typography>
+          </Box>
+        </Box>
 
         {/* 差旅统计信息（仅差旅申请显示） */}
         {item.type === 'travel' && stats && (
           <Box sx={{ 
-            mb: 1.5, 
-            p: 1.5, 
+            mb: 0.5, 
+            p: 1, 
             bgcolor: 'grey.50', 
-            borderRadius: 1, 
+            borderRadius: 0.75, 
             border: '1px solid', 
-            borderColor: 'grey.300',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            borderColor: 'grey.300'
           }}>
-            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.primary', mb: 1, display: 'block' }}>
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.primary', mb: 0.75, display: 'block' }}>
               {t('approval.employeeTravelStats')} ({stats.year})
             </Typography>
-            <Grid container spacing={1.5}>
+            <Grid container spacing={1}>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalTrips')}
                 </Typography>
-                <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
                   {stats.totalTrips}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalAmount')}
                 </Typography>
-                <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
                   {item.currency} {stats.totalAmount.toLocaleString()}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalDays')}
                 </Typography>
-                <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
                   {stats.totalDays} {t('approval.days')}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.25 }}>
                   {t('approval.efficiency')}
                 </Typography>
-                <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.2 }}>
                   {item.currency} {stats.efficiency}/{t('approval.day')}
                 </Typography>
               </Grid>
               {stats.budgetUsage !== null && (
                 <Grid item xs={12}>
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
+                  <Box sx={{ mt: 0.75 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block', mb: 0.5 }}>
                       {t('approval.budgetUsage')}
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box sx={{ flex: 1, height: 8, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <Box sx={{ flex: 1, height: 6, bgcolor: 'grey.200', borderRadius: 0.5, overflow: 'hidden' }}>
                         <Box 
                           sx={{ 
                             height: '100%', 
@@ -667,7 +707,7 @@ const ApprovalList = () => {
                           }} 
                         />
                       </Box>
-                      <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, minWidth: 45, color: 'text.primary' }}>
+                      <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, minWidth: 40, color: 'text.primary' }}>
                         {stats.budgetUsage}%
                       </Typography>
                     </Box>
@@ -681,70 +721,17 @@ const ApprovalList = () => {
 
         {/* 审批信息（紧凑显示） */}
         {item.approver && (
-          <Box sx={{ mb: 1.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', lineHeight: 1.5, display: 'block', mb: 0.5 }}>
-              <strong>{t('approval.approvedBy')}:</strong> {item.approver.firstName} {item.approver.lastName} ({item.approver.position}) • {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
+          <Box sx={{ mt: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2, display: 'block' }}>
+              {t('approval.approvedBy')}: {item.approver.firstName} {item.approver.lastName} ({item.approver.position}) • {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
             </Typography>
             {item.comments && (
-              <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.5 }}>
-                <strong>{t('approval.comments')}:</strong> {item.comments}
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', lineHeight: 1.2, color: 'text.secondary' }}>
+                {t('approval.comments')}: {item.comments}
               </Typography>
             )}
           </Box>
         )}
-
-        {/* 操作按钮 */}
-        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'flex-end', pt: 1, alignItems: 'center' }}>
-          <Button
-            variant="text"
-            size="small"
-            onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
-            sx={{ 
-              minWidth: 'auto',
-              px: 1,
-              py: 0.5,
-              fontSize: '0.8125rem',
-              textTransform: 'none'
-            }}
-          >
-            {t('approval.viewDetail') || 'View Detail'}
-          </Button>
-          {showActions && item.status === 'submitted' && (
-            <>
-              <Button
-                variant="text"
-                color="error"
-                onClick={() => handleApproval(item, 'reject')}
-                size="small"
-                sx={{ 
-                  minWidth: 'auto',
-                  px: 1,
-                  py: 0.5,
-                  fontSize: '0.8125rem',
-                  textTransform: 'none'
-                }}
-              >
-                {t('approval.reject')}
-              </Button>
-              <Button
-                variant="text"
-                color="success"
-                onClick={() => handleApproval(item, 'approve')}
-                size="small"
-                sx={{ 
-                  minWidth: 'auto',
-                  px: 1,
-                  py: 0.5,
-                  fontSize: '0.8125rem',
-                  textTransform: 'none',
-                  fontWeight: 600
-                }}
-              >
-                {t('approval.approve')}
-              </Button>
-            </>
-          )}
-        </Box>
       </CardContent>
     </Card>
     );
