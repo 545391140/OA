@@ -47,7 +47,8 @@ import {
   Comment as CommentIcon,
   Label as LabelIcon,
   Schedule as ScheduleIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  AttachFile as AttachFileIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -324,10 +325,21 @@ const ApprovalDetail = () => {
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                      {t('travel.detail.purpose') || 'Purpose'}
+                      {t('travel.detail.department') || 'Department'}
                     </Typography>
                     <Typography variant="body1">
-                      {item.purpose || '-'}
+                      {item.costOwingDepartment || item.employee?.department || '-'}
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                      {t('travel.detail.travelType') || 'Travel Type'}
+                    </Typography>
+                    <Typography variant="body1">
+                      {item.tripType === 'international' ? t('travel.international') : t('travel.domestic')}
                     </Typography>
                   </Box>
                 </Grid>
@@ -338,7 +350,9 @@ const ApprovalDetail = () => {
                       {t('travel.detail.destination') || 'Destination'}
                     </Typography>
                     <Typography variant="body1">
-                      {item.destination?.city || item.destination?.name || item.destination || '-'}
+                      {typeof item.destination === 'string' 
+                        ? item.destination 
+                        : (item.destination?.city || item.destination?.name || '-')}
                     </Typography>
                   </Box>
                 </Grid>
@@ -349,8 +363,24 @@ const ApprovalDetail = () => {
                       {t('travel.detail.travelDates') || 'Travel Dates'}
                     </Typography>
                     <Typography variant="body1">
-                      {item.outbound?.date ? formatDate(item.outbound.date) : '-'}
-                      {item.inbound?.date && ` - ${formatDate(item.inbound.date)}`}
+                      {item.startDate ? formatDate(item.startDate) : (item.outbound?.date ? formatDate(item.outbound.date) : '-')}
+                      {item.endDate ? ` - ${formatDate(item.endDate)}` : (item.inbound?.date ? ` - ${formatDate(item.inbound.date)}` : '')}
+                    </Typography>
+                    {(item.startDate && item.endDate) && (
+                      <Typography variant="caption" color="text.secondary">
+                        {dayjs(item.endDate).diff(dayjs(item.startDate), 'days')} {t('travel.detail.days') || 'days'}
+                      </Typography>
+                    )}
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                      {t('travel.detail.purpose') || 'Purpose'}
+                    </Typography>
+                    <Typography variant="body1">
+                      {item.purpose || item.tripDescription || '-'}
                     </Typography>
                   </Box>
                 </Grid>
@@ -365,6 +395,19 @@ const ApprovalDetail = () => {
                     </Typography>
                   </Box>
                 </Grid>
+
+                {item.comment && (
+                  <Grid item xs={12}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        {t('travel.detail.comment') || 'Comment'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {item.comment}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
               </Grid>
             ) : (
               // 费用申请详情
@@ -397,6 +440,11 @@ const ApprovalDetail = () => {
                     </Typography>
                     <Typography variant="body1">
                       {t(`expense.categories.${item.category}`) || item.category}
+                      {item.subcategory && (
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                          ({item.subcategory})
+                        </Typography>
+                      )}
                     </Typography>
                   </Box>
                 </Grid>
@@ -423,6 +471,34 @@ const ApprovalDetail = () => {
                   </Box>
                 </Grid>
 
+                {(item.project || item.costCenter) && (
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        {t('expense.project') || 'Project'} / {t('expense.costCenter') || 'Cost Center'}
+                      </Typography>
+                      <Typography variant="body1">
+                        {item.project || '-'} {item.costCenter && ` / ${item.costCenter}`}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+
+                {item.isBillable !== undefined && (
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        {t('expense.billable') || 'Billable'}
+                      </Typography>
+                      <Chip 
+                        label={item.isBillable ? t('common.yes') : t('common.no')} 
+                        color={item.isBillable ? 'success' : 'default'} 
+                        size="small" 
+                      />
+                    </Box>
+                  </Grid>
+                )}
+
                 {item.description && (
                   <Grid item xs={12}>
                     <Box sx={{ mb: 2 }}>
@@ -435,9 +511,232 @@ const ApprovalDetail = () => {
                     </Box>
                   </Grid>
                 )}
+
+                {item.notes && (
+                  <Grid item xs={12}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        {t('expense.notes') || 'Notes'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {item.notes}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
               </Grid>
             )}
           </Paper>
+
+          {/* 行程信息（仅差旅申请） */}
+          {type === 'travel' && (item.outbound || item.inbound || (item.multiCityRoutes && item.multiCityRoutes.length > 0)) && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TravelIcon color="primary" fontSize="small" />
+                {t('travel.detail.itinerary') || 'Itinerary'}
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+
+              {/* 去程 */}
+              {item.outbound && (item.outbound.departure || item.outbound.destination) && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    {t('travel.detail.outbound') || 'Outbound'}
+                  </Typography>
+                  <Card variant="outlined" sx={{ p: 2 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('travel.detail.date') || 'Date'}
+                        </Typography>
+                        <Typography variant="body2">
+                          {formatDate(item.outbound.date)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('travel.detail.from') || 'From'}
+                        </Typography>
+                        <Typography variant="body2">
+                          {typeof item.outbound.departure === 'string' 
+                            ? item.outbound.departure 
+                            : (item.outbound.departure?.city || item.outbound.departure?.name || '-')}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('travel.detail.to') || 'To'}
+                        </Typography>
+                        <Typography variant="body2">
+                          {typeof item.outbound.destination === 'string' 
+                            ? item.outbound.destination 
+                            : (item.outbound.destination?.city || item.outbound.destination?.name || '-')}
+                        </Typography>
+                      </Grid>
+                      {item.outbound.transportation && (
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('travel.detail.transportation') || 'Transportation'}
+                          </Typography>
+                          <Typography variant="body2">
+                            {t(`travel.form.transportation.${item.outbound.transportation}`) || item.outbound.transportation}
+                          </Typography>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Card>
+                </Box>
+              )}
+
+              {/* 返程 */}
+              {item.inbound && (item.inbound.departure || item.inbound.destination) && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    {t('travel.detail.inbound') || 'Inbound'}
+                  </Typography>
+                  <Card variant="outlined" sx={{ p: 2 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('travel.detail.date') || 'Date'}
+                        </Typography>
+                        <Typography variant="body2">
+                          {formatDate(item.inbound.date)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('travel.detail.from') || 'From'}
+                        </Typography>
+                        <Typography variant="body2">
+                          {typeof item.inbound.departure === 'string' 
+                            ? item.inbound.departure 
+                            : (item.inbound.departure?.city || item.inbound.departure?.name || '-')}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {t('travel.detail.to') || 'To'}
+                        </Typography>
+                        <Typography variant="body2">
+                          {typeof item.inbound.destination === 'string' 
+                            ? item.inbound.destination 
+                            : (item.inbound.destination?.city || item.inbound.destination?.name || '-')}
+                        </Typography>
+                      </Grid>
+                      {item.inbound.transportation && (
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('travel.detail.transportation') || 'Transportation'}
+                          </Typography>
+                          <Typography variant="body2">
+                            {t(`travel.form.transportation.${item.inbound.transportation}`) || item.inbound.transportation}
+                          </Typography>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Card>
+                </Box>
+              )}
+
+              {/* 多程行程 */}
+              {item.multiCityRoutes && item.multiCityRoutes.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    {t('travel.detail.multiCityRoutes') || 'Multi-City Routes'} ({item.multiCityRoutes.length})
+                  </Typography>
+                  {item.multiCityRoutes.map((route, index) => (
+                    <Card key={index} variant="outlined" sx={{ p: 2, mb: 1.5 }}>
+                      <Typography variant="caption" color="primary" display="block" gutterBottom fontWeight={600}>
+                        {t('travel.detail.route') || 'Route'} {index + 1}
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('travel.detail.date') || 'Date'}
+                          </Typography>
+                          <Typography variant="body2">
+                            {formatDate(route.date)}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('travel.detail.from') || 'From'}
+                          </Typography>
+                          <Typography variant="body2">
+                            {typeof route.departure === 'string' 
+                              ? route.departure 
+                              : (route.departure?.city || route.departure?.name || '-')}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {t('travel.detail.to') || 'To'}
+                          </Typography>
+                          <Typography variant="body2">
+                            {typeof route.destination === 'string' 
+                              ? route.destination 
+                              : (route.destination?.city || route.destination?.name || '-')}
+                          </Typography>
+                        </Grid>
+                        {route.transportation && (
+                          <Grid item xs={6} md={3}>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {t('travel.detail.transportation') || 'Transportation'}
+                            </Typography>
+                            <Typography variant="body2">
+                              {t(`travel.form.transportation.${route.transportation}`) || route.transportation}
+                            </Typography>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+            </Paper>
+          )}
+
+          {/* 供应商信息（仅费用申请） */}
+          {type === 'expense' && item.vendor && item.vendor.name && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <BusinessIcon color="primary" fontSize="small" />
+                {t('expense.vendor') || 'Vendor Information'}
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {t('expense.vendorName') || 'Vendor Name'}
+                  </Typography>
+                  <Typography variant="body1" fontWeight={500}>
+                    {item.vendor.name}
+                  </Typography>
+                </Grid>
+                {item.vendor.taxId && (
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {t('expense.taxId') || 'Tax ID'}
+                    </Typography>
+                    <Typography variant="body1">
+                      {item.vendor.taxId}
+                    </Typography>
+                  </Grid>
+                )}
+                {item.vendor.address && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {t('expense.address') || 'Address'}
+                    </Typography>
+                    <Typography variant="body1">
+                      {item.vendor.address}
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
+          )}
 
           {/* 审批历史 */}
           <Paper sx={{ p: 3 }}>
@@ -646,6 +945,53 @@ const ApprovalDetail = () => {
               </Box>
             )}
           </Paper>
+
+          {/* 附件（如果有） */}
+          {((type === 'travel' && item.attachments && item.attachments.length > 0) || 
+            (type === 'expense' && item.receipts && item.receipts.length > 0)) && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AttachFileIcon color="primary" fontSize="small" />
+                {type === 'travel' 
+                  ? (t('travel.detail.attachments') || 'Attachments')
+                  : (t('expense.receipts') || 'Receipts & Attachments')}
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <List dense>
+                {(type === 'travel' ? item.attachments : item.receipts).map((file, index) => (
+                  <ListItem key={index}>
+                    <ListItemIcon>
+                      <AttachFileIcon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={file.originalName || file.filename}
+                      secondary={file.size ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : ''}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          )}
+
+          {/* 标签（仅费用申请） */}
+          {type === 'expense' && item.tags && item.tags.length > 0 && (
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                {t('expense.tags') || 'Tags'}
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {item.tags.map((tag, index) => (
+                  <Chip
+                    key={index}
+                    label={tag}
+                    variant="outlined"
+                    size="small"
+                  />
+                ))}
+              </Box>
+            </Paper>
+          )}
         </Grid>
 
         {/* 右侧信息栏 */}
