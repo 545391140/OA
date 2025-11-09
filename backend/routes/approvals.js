@@ -303,6 +303,15 @@ router.get('/statistics', protect, async (req, res) => {
 
     // 查询差旅统计数据
     const getTravelStats = async () => {
+      console.log('=== Travel Stats Query ===');
+      console.log('Approver ID:', approverId);
+      console.log('Base match condition:', JSON.stringify(baseMatchCondition, null, 2));
+      
+      // 先检查是否有匹配的文档
+      const matchedDocs = await Travel.find(baseMatchCondition).limit(5).select('_id approvals').lean();
+      console.log('Matched documents count:', matchedDocs.length);
+      console.log('Sample matched documents:', JSON.stringify(matchedDocs, null, 2));
+      
       const stats = await Travel.aggregate([
         {
           $match: baseMatchCondition
@@ -401,6 +410,15 @@ router.get('/statistics', protect, async (req, res) => {
 
     // 查询费用统计数据
     const getExpenseStats = async () => {
+      console.log('=== Expense Stats Query ===');
+      console.log('Approver ID:', approverId);
+      console.log('Base match condition:', JSON.stringify(baseMatchCondition, null, 2));
+      
+      // 先检查是否有匹配的文档
+      const matchedDocs = await Expense.find(baseMatchCondition).limit(5).select('_id approvals').lean();
+      console.log('Matched expense documents count:', matchedDocs.length);
+      console.log('Sample matched expense documents:', JSON.stringify(matchedDocs, null, 2));
+      
       const stats = await Expense.aggregate([
         {
           $match: baseMatchCondition
