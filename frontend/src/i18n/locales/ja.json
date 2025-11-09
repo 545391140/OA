@@ -29,7 +29,8 @@
     "actions": "操作",
     "rowsPerPage": "ページあたりの行数",
     "of": "の",
-    "moreThan": "以上"
+    "moreThan": "以上",
+    "subtotal": "小計"
   },
   "navigation": {
     "dashboard": "ダッシュボード",

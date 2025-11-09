@@ -28,7 +28,8 @@
     "info": "Information",
     "rowsPerPage": "Rows per page",
     "of": "of",
-    "moreThan": "more than"
+    "moreThan": "more than",
+    "subtotal": "Subtotal"
   },
   "navigation": {
     "dashboard": "Dashboard",

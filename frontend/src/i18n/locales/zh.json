@@ -29,7 +29,8 @@
     "actions": "操作",
     "rowsPerPage": "每页显示",
     "of": "共",
-    "moreThan": "超过"
+    "moreThan": "超过",
+    "subtotal": "小计"
   },
   "navigation": {
     "dashboard": "仪表板",
