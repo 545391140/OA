@@ -266,8 +266,13 @@ router.get('/history', protect, async (req, res) => {
 // @route   GET /api/approvals/statistics
 // @access  Private
 router.get('/statistics', protect, async (req, res) => {
+  console.log('=== Approval Statistics API Called ===');
+  console.log('Request user:', req.user);
+  console.log('Query params:', req.query);
+  
   try {
     const { startDate, endDate, type } = req.query;
+    console.log('Parsed params:', { startDate, endDate, type });
 
     // 构建日期查询
     const dateQuery = {};
