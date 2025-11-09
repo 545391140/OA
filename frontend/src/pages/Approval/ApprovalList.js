@@ -472,51 +472,59 @@ const ApprovalList = () => {
 
         {/* 差旅统计信息（仅差旅申请显示） */}
         {item.type === 'travel' && stats && (
-          <Box sx={{ mb: 1.5, p: 1, bgcolor: 'info.light', borderRadius: 1, border: '1px solid', borderColor: 'info.main' }}>
-            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'info.dark', mb: 0.75, display: 'block' }}>
+          <Box sx={{ 
+            mb: 1.5, 
+            p: 1.5, 
+            bgcolor: 'grey.50', 
+            borderRadius: 1, 
+            border: '1px solid', 
+            borderColor: 'grey.300',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          }}>
+            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.primary', mb: 1, display: 'block' }}>
               {t('approval.employeeTravelStats')} ({stats.year})
             </Typography>
-            <Grid container spacing={1}>
+            <Grid container spacing={1.5}>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalTrips')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
                   {stats.totalTrips}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalAmount')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
                   {item.currency} {stats.totalAmount.toLocaleString()}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
                   {t('approval.totalDays')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
                   {stats.totalDays} {t('approval.days')}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
                   {t('approval.efficiency')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: 'text.primary' }}>
                   {item.currency} {stats.efficiency}/{t('approval.day')}
                 </Typography>
               </Grid>
               {stats.budgetUsage !== null && (
                 <Grid item xs={12}>
-                  <Box sx={{ mt: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
+                  <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid', borderColor: 'grey.300' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
                       {t('approval.budgetUsage')}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box sx={{ flex: 1, height: 6, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+                      <Box sx={{ flex: 1, height: 8, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
                         <Box 
                           sx={{ 
                             height: '100%', 
@@ -526,7 +534,7 @@ const ApprovalList = () => {
                           }} 
                         />
                       </Box>
-                      <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, minWidth: 40 }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, minWidth: 45, color: 'text.primary' }}>
                         {stats.budgetUsage}%
                       </Typography>
                     </Box>
