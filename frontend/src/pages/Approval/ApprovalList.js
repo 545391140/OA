@@ -456,7 +456,7 @@ const ApprovalList = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <CalendarIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                  {dayjs(item.date).format('MMM DD, YYYY')}
+                  <strong>{t('approval.submittedDate')}:</strong> {dayjs(item.date).format('MMM DD, YYYY')}
                 </Typography>
               </Box>
             </Box>
