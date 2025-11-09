@@ -556,43 +556,6 @@ const ApprovalList = () => {
                 }
               }}
             />
-            {showActions && item.status === 'submitted' && (
-              <>
-                <Button
-                  variant="text"
-                  color="error"
-                  onClick={() => handleApproval(item, 'reject')}
-                  size="small"
-                  sx={{ 
-                    minWidth: 'auto',
-                    px: 0.75,
-                    py: 0.25,
-                    fontSize: '0.75rem',
-                    textTransform: 'none',
-                    lineHeight: 1.2
-                  }}
-                >
-                  {t('approval.reject')}
-                </Button>
-                <Button
-                  variant="text"
-                  color="success"
-                  onClick={() => handleApproval(item, 'approve')}
-                  size="small"
-                  sx={{ 
-                    minWidth: 'auto',
-                    px: 0.75,
-                    py: 0.25,
-                    fontSize: '0.75rem',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    lineHeight: 1.2
-                  }}
-                >
-                  {t('approval.approve')}
-                </Button>
-              </>
-            )}
           </Box>
         </Box>
 
@@ -718,8 +681,45 @@ const ApprovalList = () => {
           </Box>
         )}
 
-        {/* 查看详情按钮 */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 0.5 }}>
+        {/* 操作按钮：拒绝、通过、查看详情 */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 0.5, alignItems: 'center' }}>
+          {showActions && item.status === 'submitted' && (
+            <>
+              <Button
+                variant="text"
+                color="error"
+                onClick={() => handleApproval(item, 'reject')}
+                size="small"
+                sx={{ 
+                  minWidth: 'auto',
+                  px: 0.75,
+                  py: 0.25,
+                  fontSize: '0.75rem',
+                  textTransform: 'none',
+                  lineHeight: 1.2
+                }}
+              >
+                {t('approval.reject')}
+              </Button>
+              <Button
+                variant="text"
+                color="success"
+                onClick={() => handleApproval(item, 'approve')}
+                size="small"
+                sx={{ 
+                  minWidth: 'auto',
+                  px: 0.75,
+                  py: 0.25,
+                  fontSize: '0.75rem',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  lineHeight: 1.2
+                }}
+              >
+                {t('approval.approve')}
+              </Button>
+            </>
+          )}
           <Button
             variant="text"
             size="small"
