@@ -40,6 +40,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
 const TravelDetail = () => {
@@ -86,78 +87,17 @@ const TravelDetail = () => {
   const fetchTravelDetail = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockData = {
-        id: parseInt(id),
-        title: 'Business Trip to Tokyo',
-        purpose: 'Client meeting and product demonstration for our new software solution. This trip is crucial for maintaining our relationship with key clients in the Japanese market.',
-        destination: {
-          country: 'Japan',
-          city: 'Tokyo',
-          address: 'Shibuya, Tokyo, Japan'
-        },
-        dates: {
-          departure: '2024-02-15',
-          return: '2024-02-20'
-        },
-        estimatedCost: 2500,
-        actualCost: 2350,
-        currency: 'USD',
-        status: 'approved',
-        createdAt: '2024-01-15T10:30:00Z',
-        updatedAt: '2024-01-20T14:15:00Z',
-        employee: {
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john.doe@company.com',
-          department: 'Sales',
-          position: 'Senior Sales Manager'
-        },
-        approvals: [
-          {
-            approver: {
-              firstName: 'Sarah',
-              lastName: 'Wilson',
-              email: 'sarah.wilson@company.com',
-              position: 'Sales Director'
-            },
-            level: 1,
-            status: 'approved',
-            comments: 'Approved. This is an important client meeting.',
-            approvedAt: '2024-01-16T09:30:00Z'
-          },
-          {
-            approver: {
-              firstName: 'Michael',
-              lastName: 'Brown',
-              email: 'michael.brown@company.com',
-              position: 'VP of Sales'
-            },
-            level: 2,
-            status: 'approved',
-            comments: 'Approved. Budget is within limits.',
-            approvedAt: '2024-01-17T11:15:00Z'
-          }
-        ],
-        notes: 'Important client meeting with our key Japanese partner. Need to prepare presentation materials and product demos.',
-        attachments: [
-          {
-            filename: 'presentation.pdf',
-            originalName: 'Client Presentation.pdf',
-            size: 2048576,
-            uploadedAt: '2024-01-15T10:45:00Z'
-          },
-          {
-            filename: 'agenda.docx',
-            originalName: 'Meeting Agenda.docx',
-            size: 512000,
-            uploadedAt: '2024-01-15T11:00:00Z'
-          }
-        ]
-      };
-      setTravel(mockData);
+      const response = await apiClient.get(`/travel/${id}`);
+      
+      if (response.data && response.data.success) {
+        setTravel(response.data.data);
+      } else {
+        throw new Error('Failed to load travel details');
+      }
     } catch (error) {
+      console.error('Failed to load travel detail:', error);
       showNotification(t('travel.detail.loadError'), 'error');
+      setTravel(null);
     } finally {
       setLoading(false);
     }
@@ -263,9 +203,9 @@ const TravelDetail = () => {
                     </Typography>
                   </Box>
                   <Typography variant="body1">
-                    {travel.destination.city}, {travel.destination.country}
+                    {typeof travel.destination === 'string' ? travel.destination : (travel.destination?.city || travel.destination?.name || t('travel.detail.nA'))}
                   </Typography>
-                  {travel.destination.address && (
+                  {travel.destination?.address && (
                     <Typography variant="body2" color="text.secondary">
                       {travel.destination.address}
                     </Typography>
@@ -280,10 +220,10 @@ const TravelDetail = () => {
                     </Typography>
                   </Box>
                   <Typography variant="body1">
-                    {dayjs(travel.dates.departure).format('MMM DD, YYYY')} - {dayjs(travel.dates.return).format('MMM DD, YYYY')}
+                    {dayjs(travel.startDate || travel.dates?.departure).format('MMM DD, YYYY')} - {dayjs(travel.endDate || travel.dates?.return).format('MMM DD, YYYY')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {dayjs(travel.dates.return).diff(dayjs(travel.dates.departure), 'days')} {t('travel.detail.days')}
+                    {dayjs(travel.endDate || travel.dates?.return).diff(dayjs(travel.startDate || travel.dates?.departure), 'days')} {t('travel.detail.days')}
                   </Typography>
                 </Grid>
 
@@ -295,7 +235,7 @@ const TravelDetail = () => {
                     </Typography>
                   </Box>
                   <Typography variant="h6" color="primary">
-                    {travel.currency} {travel.estimatedCost.toLocaleString()}
+                    ¥{(travel.estimatedBudget || travel.estimatedCost || 0).toLocaleString()}
                   </Typography>
                 </Grid>
 
@@ -306,8 +246,8 @@ const TravelDetail = () => {
                       {t('travel.detail.actualCost')}
                     </Typography>
                   </Box>
-                  <Typography variant="h6" color={travel.actualCost <= travel.estimatedCost ? 'success.main' : 'error.main'}>
-                    {travel.currency} {travel.actualCost?.toLocaleString() || t('travel.detail.nA')}
+                  <Typography variant="h6" color={(travel.actualCost || travel.actualBudget || 0) <= (travel.estimatedBudget || travel.estimatedCost || 0) ? 'success.main' : 'error.main'}>
+                    ¥{(travel.actualCost || travel.actualBudget || 0).toLocaleString() || t('travel.detail.nA')}
                   </Typography>
                 </Grid>
               </Grid>
@@ -343,13 +283,13 @@ const TravelDetail = () => {
                 </Avatar>
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                    {travel.employee.firstName} {travel.employee.lastName}
+                    {travel.employee?.firstName} {travel.employee?.lastName}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {travel.employee.position}
+                    {travel.employee?.position || t('travel.detail.nA')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {travel.employee.department}
+                    {travel.employee?.department || t('travel.detail.nA')}
                   </Typography>
                 </Box>
               </Box>
