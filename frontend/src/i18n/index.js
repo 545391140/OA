@@ -17,6 +17,13 @@ const resources = {
   zh: {
     translation: zh
   },
+  // 将 zh.json 同时映射到 zh-Hans 和 zh-Hans-CN，避免回退
+  'zh-Hans': {
+    translation: zh
+  },
+  'zh-Hans-CN': {
+    translation: zh
+  },
   ja: {
     translation: ja
   },
