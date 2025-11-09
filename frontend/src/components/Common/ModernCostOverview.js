@@ -192,8 +192,88 @@ const ModernCostOverview = ({
 
   const costs = calculateCosts();
 
-  // 费用项目配置
-  const costItemsConfig = [
+  // 动态生成费用项汇总：根据实际的费用项来显示
+  const generateDynamicCostItems = () => {
+    const expenseItemMap = new Map(); // key: itemId, value: { itemName, totalAmount, itemId }
+    
+    // 收集所有行程中的费用项
+    const collectExpenseItems = (budget, matchedItems) => {
+      if (!budget || typeof budget !== 'object') return;
+      
+      Object.entries(budget).forEach(([itemId, budgetItem]) => {
+        if (!budgetItem || typeof budgetItem !== 'object') return;
+        
+        const subtotal = parseFloat(budgetItem.subtotal || 0);
+        if (subtotal <= 0) return; // 只收集有金额的项
+        
+        const expense = matchedItems?.[itemId];
+        const itemName = budgetItem.itemName || expense?.itemName || itemId;
+        
+        if (expenseItemMap.has(itemId)) {
+          // 累加金额
+          const existing = expenseItemMap.get(itemId);
+          existing.totalAmount += subtotal;
+        } else {
+          // 新增项
+          expenseItemMap.set(itemId, {
+            itemId,
+            itemName,
+            totalAmount: subtotal,
+            category: categorizeExpense(expense)
+          });
+        }
+      });
+    };
+    
+    // 收集去程费用项
+    if (formData.outboundBudget) {
+      const outboundMatchedItems = routeMatchedExpenseItems?.outbound || matchedExpenseItems;
+      collectExpenseItems(formData.outboundBudget, outboundMatchedItems);
+    }
+    
+    // 收集返程费用项
+    const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
+    if (isRoundTrip && formData.inboundBudget) {
+      const inboundMatchedItems = routeMatchedExpenseItems?.inbound || matchedExpenseItems;
+      collectExpenseItems(formData.inboundBudget, inboundMatchedItems);
+    }
+    
+    // 收集多程行程费用项
+    if (formData.multiCityRoutesBudget && Array.isArray(formData.multiCityRoutesBudget)) {
+      formData.multiCityRoutesBudget.forEach((budget, index) => {
+        const multiCityMatchedItems = routeMatchedExpenseItems?.multiCity?.[index] || matchedExpenseItems;
+        collectExpenseItems(budget, multiCityMatchedItems);
+      });
+    }
+    
+    // 转换为数组并按金额排序（从大到小）
+    const items = Array.from(expenseItemMap.values())
+      .sort((a, b) => b.totalAmount - a.totalAmount);
+    
+    // 为每个费用项分配颜色和图标
+    const colors = [
+      theme.palette.primary.main,
+      theme.palette.secondary.main,
+      theme.palette.info.main,
+      theme.palette.warning.main,
+      theme.palette.success.main,
+      theme.palette.error.main,
+    ];
+    const icons = ['💰', '✈️', '🏨', '🍽️', '🚗', '🚌', '💵'];
+    
+    return items.map((item, index) => ({
+      key: item.itemId,
+      label: item.itemName,
+      amount: item.totalAmount,
+      color: colors[index % colors.length],
+      icon: icons[index % icons.length],
+      category: item.category
+    }));
+  };
+
+  // 费用项目配置：优先使用动态生成的费用项，否则使用固定类别
+  const dynamicCostItems = generateDynamicCostItems();
+  const costItemsConfig = dynamicCostItems.length > 0 ? dynamicCostItems : [
     {
       key: 'flight',
       label: t('travel.costOverview.flight'),
@@ -245,10 +325,8 @@ const ModernCostOverview = ({
     },
   ];
 
-  // 只显示有金额或所有预算项的类别（如果matchedExpenseItems存在则显示所有匹配的类别）
-  const costItems = matchedExpenseItems && Object.keys(matchedExpenseItems).length > 0
-    ? costItemsConfig.filter(item => item.amount > 0)
-    : costItemsConfig.filter(item => item.key !== 'other' || item.amount > 0);
+  // 只显示有金额的费用项
+  const costItems = costItemsConfig.filter(item => item.amount > 0);
 
   // 格式化金额
   const formatAmount = (amount) => {
@@ -256,7 +334,7 @@ const ModernCostOverview = ({
     return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // 计算完成度
+  // 计算完成度（需要在dynamicCostItems和costItemsConfig定义之后）
   const getCompletionStatus = () => {
     // 判断是否为往返行程
     const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
@@ -337,8 +415,10 @@ const ModernCostOverview = ({
       };
     } else {
       // 基于固定类别计算（向后兼容）
-      const totalItems = costItemsConfig.length;
-      const completedItems = costItemsConfig.filter(item => item.amount > 0).length;
+      // 使用动态生成的费用项或固定类别来计算完成度
+      const itemsToCheck = dynamicCostItems.length > 0 ? dynamicCostItems : costItemsConfig;
+      const totalItems = itemsToCheck.length;
+      const completedItems = itemsToCheck.filter(item => item.amount > 0).length;
       const completionPercentage = totalItems > 0 
         ? (completedItems / totalItems) * 100 
         : 0;
