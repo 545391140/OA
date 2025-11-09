@@ -240,40 +240,71 @@ router.get('/statistics', protect, async (req, res) => {
   try {
     const { startDate, endDate, type } = req.query;
 
+    console.log('=== Approval Statistics API ===');
+    console.log('Query params:', { startDate, endDate, type });
+    const currentDate = new Date();
+    console.log('Current date:', currentDate.toISOString());
+
     // 构建日期查询条件（UTC时间）
     const dateMatch = {};
+    let hasDateFilter = false;
     if (startDate) {
-      dateMatch.$gte = new Date(startDate + 'T00:00:00.000Z');
+      const startDateObj = new Date(startDate + 'T00:00:00.000Z');
+      dateMatch.$gte = startDateObj;
+      console.log('Start date match:', startDateObj.toISOString());
+      hasDateFilter = true;
+      
+      // 检查日期范围是否合理（未来日期可能是系统时间错误）
+      if (startDateObj > currentDate) {
+        console.warn('WARNING: Start date is in the future! This may indicate a system time issue.');
+      }
     }
     if (endDate) {
-      dateMatch.$lte = new Date(endDate + 'T23:59:59.999Z');
+      const endDateObj = new Date(endDate + 'T23:59:59.999Z');
+      dateMatch.$lte = endDateObj;
+      console.log('End date match:', endDateObj.toISOString());
+      hasDateFilter = true;
+      
+      // 检查日期范围是否合理
+      if (endDateObj > currentDate) {
+        console.warn('WARNING: End date is in the future! This may indicate a system time issue.');
+      }
     }
-
-    // 获取审批人ID（支持ObjectId和字符串格式）
-    const approverId = req.user.id;
-    const approverIdString = String(approverId);
+    console.log('Date match object:', dateMatch);
+    console.log('Has date filter:', hasDateFilter);
 
     // 查询差旅统计数据
     const getTravelStats = async () => {
-      // 第一步：匹配日期条件（如果有）
-      const dateStage = Object.keys(dateMatch).length > 0 ? { $match: { createdAt: dateMatch } } : null;
-      
-      // 第二步：展开approvals数组
-      // 第三步：匹配approver
-      // 第四步：按status分组统计
+      // 第一步：先过滤掉空数组，然后匹配日期条件（如果有）
       const pipeline = [];
       
-      if (dateStage) {
-        pipeline.push(dateStage);
+      // 先过滤掉 approvals 数组为空的记录
+      pipeline.push({
+        $match: {
+          approvals: { $exists: true, $ne: [] }
+        }
+      });
+      // 使用 $expr 检查数组长度大于0
+      pipeline.push({
+        $match: {
+          $expr: { $gt: [{ $size: '$approvals' }, 0] }
+        }
+      });
+      
+      // 如果有日期条件，添加日期匹配
+      if (Object.keys(dateMatch).length > 0) {
+        console.log('Adding date match to travel pipeline:', dateMatch);
+        pipeline.push({ $match: { createdAt: dateMatch } });
+      } else {
+        console.log('No date match, querying all travel records with approvals');
       }
       
+      console.log('Travel pipeline stages:', JSON.stringify(pipeline, null, 2));
+      
+      // 第二步：展开approvals数组
+      // 第三步：按status分组统计
       pipeline.push(
         { $unwind: '$approvals' },
-        {
-          $match: {
-            'approvals.approver': { $in: [approverId, approverIdString] }
-          }
-        },
         {
           $group: {
             _id: '$approvals.status',
@@ -327,6 +358,43 @@ router.get('/statistics', protect, async (req, res) => {
       );
 
       const stats = await Travel.aggregate(pipeline);
+      
+      console.log('Travel stats pipeline result:', JSON.stringify(stats, null, 2));
+      console.log('Date match:', dateMatch);
+      console.log('Stats count:', stats.length);
+      
+      // 如果查询结果为空且有日期过滤，尝试查询所有数据以诊断问题
+      if (stats.length === 0 && hasDateFilter) {
+        console.log('No results with date filter, checking total records with approvals...');
+        const totalCount = await Travel.countDocuments({
+          approvals: { $exists: true, $ne: [] },
+          $expr: { $gt: [{ $size: '$approvals' }, 0] }
+        });
+        console.log('Total travel records with approvals (no date filter):', totalCount);
+        
+        // 查询最早和最晚的记录日期
+        const dateRange = await Travel.aggregate([
+          {
+            $match: {
+              approvals: { $exists: true, $ne: [] },
+              $expr: { $gt: [{ $size: '$approvals' }, 0] }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              minDate: { $min: '$createdAt' },
+              maxDate: { $max: '$createdAt' }
+            }
+          }
+        ]);
+        if (dateRange.length > 0) {
+          console.log('Date range of travel records with approvals:', {
+            minDate: dateRange[0].minDate,
+            maxDate: dateRange[0].maxDate
+          });
+        }
+      }
 
       const result = {
         pending: 0,
@@ -344,6 +412,8 @@ router.get('/statistics', protect, async (req, res) => {
         result.total += stat.count;
         result.totalAmount += stat.totalAmount || 0;
       });
+      
+      console.log('Travel stats result:', result);
 
       const completedCount = stats.reduce((sum, stat) => sum + (stat.completedCount || 0), 0);
       const totalApprovalTime = stats.reduce((sum, stat) => sum + (stat.totalApprovalTime || 0), 0);
@@ -359,21 +429,28 @@ router.get('/statistics', protect, async (req, res) => {
 
     // 查询费用统计数据
     const getExpenseStats = async () => {
-      const dateStage = Object.keys(dateMatch).length > 0 ? { $match: { createdAt: dateMatch } } : null;
-      
       const pipeline = [];
       
-      if (dateStage) {
-        pipeline.push(dateStage);
+      // 先过滤掉 approvals 数组为空的记录
+      pipeline.push({
+        $match: {
+          approvals: { $exists: true, $ne: [] }
+        }
+      });
+      // 使用 $expr 检查数组长度大于0
+      pipeline.push({
+        $match: {
+          $expr: { $gt: [{ $size: '$approvals' }, 0] }
+        }
+      });
+      
+      // 如果有日期条件，添加日期匹配
+      if (Object.keys(dateMatch).length > 0) {
+        pipeline.push({ $match: { createdAt: dateMatch } });
       }
       
       pipeline.push(
         { $unwind: '$approvals' },
-        {
-          $match: {
-            'approvals.approver': { $in: [approverId, approverIdString] }
-          }
-        },
         {
           $group: {
             _id: '$approvals.status',
@@ -427,6 +504,42 @@ router.get('/statistics', protect, async (req, res) => {
       );
 
       const stats = await Expense.aggregate(pipeline);
+      
+      console.log('Expense stats pipeline result:', JSON.stringify(stats, null, 2));
+      console.log('Expense stats count:', stats.length);
+      
+      // 如果查询结果为空且有日期过滤，尝试查询所有数据以诊断问题
+      if (stats.length === 0 && hasDateFilter) {
+        console.log('No results with date filter, checking total expense records with approvals...');
+        const totalCount = await Expense.countDocuments({
+          approvals: { $exists: true, $ne: [] },
+          $expr: { $gt: [{ $size: '$approvals' }, 0] }
+        });
+        console.log('Total expense records with approvals (no date filter):', totalCount);
+        
+        // 查询最早和最晚的记录日期
+        const dateRange = await Expense.aggregate([
+          {
+            $match: {
+              approvals: { $exists: true, $ne: [] },
+              $expr: { $gt: [{ $size: '$approvals' }, 0] }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              minDate: { $min: '$createdAt' },
+              maxDate: { $max: '$createdAt' }
+            }
+          }
+        ]);
+        if (dateRange.length > 0) {
+          console.log('Date range of expense records with approvals:', {
+            minDate: dateRange[0].minDate,
+            maxDate: dateRange[0].maxDate
+          });
+        }
+      }
 
       const result = {
         pending: 0,
@@ -444,6 +557,8 @@ router.get('/statistics', protect, async (req, res) => {
         result.total += stat.count;
         result.totalAmount += stat.totalAmount || 0;
       });
+      
+      console.log('Expense stats result:', result);
 
       const completedCount = stats.reduce((sum, stat) => sum + (stat.completedCount || 0), 0);
       const totalApprovalTime = stats.reduce((sum, stat) => sum + (stat.totalApprovalTime || 0), 0);
@@ -663,7 +778,7 @@ router.get('/approver-workload', protect, async (req, res) => {
     const workload = Array.from(workloadMap.values()).map(item => ({
       ...item,
       avgApprovalTime: item.completedCount > 0 ? item.totalApprovalTime / item.completedCount : 0,
-      approvalRate: item.total > 0 ? parseFloat(((item.approved / item.total) * 100).toFixed(2)) : 0
+      approvalRate: item.completedCount > 0 ? parseFloat(((item.approved / item.completedCount) * 100).toFixed(2)) : 0
     }));
 
     res.json({
@@ -687,6 +802,9 @@ router.get('/trend', protect, async (req, res) => {
   try {
     const { startDate, endDate, type } = req.query;
 
+    console.log('=== Approval Trend API ===');
+    console.log('Query params:', { startDate, endDate, type });
+
     // 构建日期查询条件（UTC时间）
     const dateMatch = {};
     if (startDate) {
@@ -696,23 +814,25 @@ router.get('/trend', protect, async (req, res) => {
       dateMatch.$lte = new Date(endDate + 'T23:59:59.999Z');
     }
 
-    const approverId = req.user.id;
-    const approverIdString = String(approverId);
-
-    const matchStage = Object.keys(dateMatch).length > 0 
-      ? { createdAt: dateMatch }
-      : {};
-
     // 查询差旅趋势数据
     const getTravelTrend = async () => {
-      const pipeline = [
-        { $match: matchStage },
+      const pipeline = [];
+      
+      // 先过滤掉 approvals 数组为空的记录
+      pipeline.push({
+        $match: {
+          approvals: { $exists: true, $ne: [] },
+          $expr: { $gt: [{ $size: '$approvals' }, 0] }
+        }
+      });
+      
+      // 如果有日期条件，添加日期匹配
+      if (Object.keys(dateMatch).length > 0) {
+        pipeline.push({ $match: { createdAt: dateMatch } });
+      }
+      
+      pipeline.push(
         { $unwind: '$approvals' },
-        {
-          $match: {
-            'approvals.approver': { $in: [approverId, approverIdString] }
-          }
-        },
         {
           $group: {
             _id: {
@@ -723,21 +843,30 @@ router.get('/trend', protect, async (req, res) => {
           }
         },
         { $sort: { '_id.date': 1 } }
-      ];
+      );
 
       return await Travel.aggregate(pipeline);
     };
 
     // 查询费用趋势数据
     const getExpenseTrend = async () => {
-      const pipeline = [
-        { $match: matchStage },
+      const pipeline = [];
+      
+      // 先过滤掉 approvals 数组为空的记录
+      pipeline.push({
+        $match: {
+          approvals: { $exists: true, $ne: [] },
+          $expr: { $gt: [{ $size: '$approvals' }, 0] }
+        }
+      });
+      
+      // 如果有日期条件，添加日期匹配
+      if (Object.keys(dateMatch).length > 0) {
+        pipeline.push({ $match: { createdAt: dateMatch } });
+      }
+      
+      pipeline.push(
         { $unwind: '$approvals' },
-        {
-          $match: {
-            'approvals.approver': { $in: [approverId, approverIdString] }
-          }
-        },
         {
           $group: {
             _id: {
@@ -748,7 +877,7 @@ router.get('/trend', protect, async (req, res) => {
           }
         },
         { $sort: { '_id.date': 1 } }
-      ];
+      );
 
       return await Expense.aggregate(pipeline);
     };
@@ -757,32 +886,47 @@ router.get('/trend', protect, async (req, res) => {
 
     if (!type || type === 'travel' || type === 'all') {
       const travelTrend = await getTravelTrend();
+      console.log('Travel trend data:', travelTrend);
       trendData = [...trendData, ...travelTrend.map(item => ({ ...item, type: 'travel' }))];
     }
 
     if (!type || type === 'expense' || type === 'all') {
       const expenseTrend = await getExpenseTrend();
+      console.log('Expense trend data:', expenseTrend);
       trendData = [...trendData, ...expenseTrend.map(item => ({ ...item, type: 'expense' }))];
     }
 
-    // 合并相同日期和状态的数据
-    const trendMap = new Map();
+    // 合并相同日期和状态的数据，并转换为前端期望的格式
+    const dateMap = new Map();
     trendData.forEach(item => {
-      const key = `${item._id.date}-${item._id.status}`;
-      if (trendMap.has(key)) {
-        trendMap.get(key).count += item.count;
-      } else {
-        trendMap.set(key, {
-          date: item._id.date,
-          status: item._id.status,
-          count: item.count
+      const date = item._id.date;
+      const status = item._id.status;
+      
+      if (!dateMap.has(date)) {
+        dateMap.set(date, {
+          date,
+          pending: 0,
+          approved: 0,
+          rejected: 0
         });
+      }
+      
+      const dateData = dateMap.get(date);
+      if (status === 'pending') {
+        dateData.pending += item.count;
+      } else if (status === 'approved') {
+        dateData.approved += item.count;
+      } else if (status === 'rejected') {
+        dateData.rejected += item.count;
       }
     });
 
+    const result = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+    console.log('Trend result:', result);
+
     res.json({
       success: true,
-      data: Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+      data: result
     });
   } catch (error) {
     console.error('Get approval trend error:', error);

@@ -101,13 +101,30 @@ const ApprovalStatistics = () => {
         console.log('Setting statistics:', statsData);
         console.log('Travel stats:', statsData.travel);
         console.log('Expense stats:', statsData.expense);
-        console.log('Travel pending:', statsData.travel?.pending);
-        console.log('Travel approved:', statsData.travel?.approved);
-        console.log('Travel rejected:', statsData.travel?.rejected);
-        console.log('Travel total:', statsData.travel?.total);
-        setStatistics(statsData);
+        
+        // 确保即使没有数据也设置默认值
+        const defaultStats = {
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          total: 0,
+          totalAmount: 0,
+          avgAmount: 0,
+          avgApprovalTime: 0,
+          approvalRate: 0
+        };
+        
+        setStatistics({
+          travel: statsData.travel || defaultStats,
+          expense: statsData.expense || defaultStats
+        });
       } else {
         console.warn('Stats API response not successful:', statsResponse.data);
+        // 设置空数据
+        setStatistics({
+          travel: null,
+          expense: null
+        });
       }
 
       // 获取审批人工作量
@@ -118,8 +135,12 @@ const ApprovalStatistics = () => {
         }
       });
 
+      console.log('Workload API Response:', workloadResponse.data);
+
       if (workloadResponse.data && workloadResponse.data.success) {
         setApproverWorkload(workloadResponse.data.data || []);
+      } else {
+        setApproverWorkload([]);
       }
 
       // 获取趋势数据
@@ -131,8 +152,12 @@ const ApprovalStatistics = () => {
         }
       });
 
+      console.log('Trend API Response:', trendResponse.data);
+
       if (trendResponse.data && trendResponse.data.success) {
         setTrendData(trendResponse.data.data || []);
+      } else {
+        setTrendData([]);
       }
 
     } catch (error) {
@@ -143,7 +168,15 @@ const ApprovalStatistics = () => {
       console.error('Error response data:', error.response?.data);
       console.error('Error response status:', error.response?.status);
       console.error('Error config:', error.config);
-      showNotification(t('approval.statistics.loadError'), 'error');
+      showNotification(t('approval.statistics.loadError') || '加载统计数据失败', 'error');
+      
+      // 设置空数据以避免UI错误
+      setStatistics({
+        travel: null,
+        expense: null
+      });
+      setApproverWorkload([]);
+      setTrendData([]);
     } finally {
       setLoading(false);
     }
@@ -207,28 +240,43 @@ const ApprovalStatistics = () => {
 
   // 根据type参数决定使用哪个统计数据
   const currentStats = React.useMemo(() => {
+    const defaultStats = {
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      total: 0,
+      totalAmount: 0,
+      avgAmount: 0,
+      avgApprovalTime: 0,
+      approvalRate: 0
+    };
+    
     if (type === 'travel') {
-      return statistics.travel;
+      return statistics.travel || defaultStats;
     } else if (type === 'expense') {
-      return statistics.expense;
+      return statistics.expense || defaultStats;
     } else {
       // 合并travel和expense的数据
-      const travel = statistics.travel || {};
-      const expense = statistics.expense || {};
+      const travel = statistics.travel || defaultStats;
+      const expense = statistics.expense || defaultStats;
+      
+      const totalCount = (travel.total || 0) + (expense.total || 0);
+      const totalApproved = (travel.approved || 0) + (expense.approved || 0);
+      const totalAmount = (travel.totalAmount || 0) + (expense.totalAmount || 0);
+      
       return {
         pending: (travel.pending || 0) + (expense.pending || 0),
-        approved: (travel.approved || 0) + (expense.approved || 0),
+        approved: totalApproved,
         rejected: (travel.rejected || 0) + (expense.rejected || 0),
-        total: (travel.total || 0) + (expense.total || 0),
-        totalAmount: (travel.totalAmount || 0) + (expense.totalAmount || 0),
-        avgAmount: ((travel.totalAmount || 0) + (expense.totalAmount || 0)) / 
-                   ((travel.total || 0) + (expense.total || 0) || 1),
-        avgApprovalTime: ((travel.avgApprovalTime || 0) * (travel.total || 0) + 
-                          (expense.avgApprovalTime || 0) * (expense.total || 0)) / 
-                         ((travel.total || 0) + (expense.total || 0) || 1),
-        approvalRate: ((travel.total || 0) + (expense.total || 0)) > 0
-          ? parseFloat((((travel.approved || 0) + (expense.approved || 0)) / 
-                        ((travel.total || 0) + (expense.total || 0))) * 100).toFixed(2)
+        total: totalCount,
+        totalAmount: totalAmount,
+        avgAmount: totalCount > 0 ? totalAmount / totalCount : 0,
+        avgApprovalTime: totalCount > 0
+          ? ((travel.avgApprovalTime || 0) * (travel.total || 0) + 
+             (expense.avgApprovalTime || 0) * (expense.total || 0)) / totalCount
+          : 0,
+        approvalRate: totalCount > 0
+          ? parseFloat((totalApproved / totalCount) * 100)
           : 0
       };
     }
@@ -447,8 +495,8 @@ const ApprovalStatistics = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {approverWorkload.map((approver) => (
-                    <TableRow key={approver._id}>
+                  {approverWorkload.map((approver, index) => (
+                    <TableRow key={approver.approverId || approver._id || `approver-${index}`}>
                       <TableCell>
                         <Typography variant="subtitle2">
                           {approver.approverName || t('common.unknown')}
@@ -461,7 +509,7 @@ const ApprovalStatistics = () => {
                           color="warning"
                         />
                       </TableCell>
-                      <TableCell align="right">{approver.total || 0}</TableCell>
+                      <TableCell align="right">{approver.completedCount || (approver.approved || 0) + (approver.rejected || 0)}</TableCell>
                       <TableCell align="right">
                         <Chip
                           label={approver.approved || 0}
