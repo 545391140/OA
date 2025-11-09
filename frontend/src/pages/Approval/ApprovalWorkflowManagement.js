@@ -96,11 +96,14 @@ const ApprovalWorkflowManagement = () => {
       setFormData({
         name: workflow.name,
         description: workflow.description || '',
-        type: workflow.type,
-        conditions: workflow.conditions || {
-          amountRange: { min: 0, max: 999999999 },
-          departments: [],
-          jobLevels: []
+        type: workflow.appliesTo || workflow.type || 'travel',
+        conditions: {
+          amountRange: {
+            min: workflow.conditions?.minAmount || 0,
+            max: workflow.conditions?.maxAmount || 999999999
+          },
+          departments: workflow.conditions?.department ? [workflow.conditions.department] : [],
+          jobLevels: workflow.conditions?.jobLevel ? [workflow.conditions.jobLevel] : []
         },
         steps: workflow.steps || [],
         priority: workflow.priority || 0,

@@ -108,7 +108,9 @@ router.post('/', protect, async (req, res) => {
       appliesTo: type,
       conditions: {
         minAmount: conditions?.amountRange?.min || 0,
-        maxAmount: conditions?.amountRange?.max || Number.MAX_SAFE_INTEGER,
+        maxAmount: conditions?.amountRange?.max === Number.MAX_SAFE_INTEGER || !conditions?.amountRange?.max
+          ? 999999999999
+          : conditions.amountRange.max,
         department: conditions?.departments?.[0],
         jobLevel: conditions?.jobLevels?.[0]
       },
@@ -189,7 +191,9 @@ router.put('/:id', protect, async (req, res) => {
     if (conditions) {
       workflow.conditions = {
         minAmount: conditions.amountRange?.min || 0,
-        maxAmount: conditions.amountRange?.max || Number.MAX_SAFE_INTEGER,
+        maxAmount: conditions.amountRange?.max === Number.MAX_SAFE_INTEGER || !conditions.amountRange?.max
+          ? 999999999999
+          : conditions.amountRange.max,
         department: conditions.departments?.[0],
         jobLevel: conditions.jobLevels?.[0]
       };
