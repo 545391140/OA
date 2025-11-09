@@ -121,6 +121,11 @@ const TravelSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  estimatedBudget: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   currency: {
     type: String,
     default: 'USD',

@@ -233,16 +233,24 @@ exports.createTravel = async (req, res) => {
       }));
     }
 
-    // 计算总费用
-    if (!travelData.estimatedCost) {
-      const outboundTotal = Object.values(travelData.outboundBudget || {}).reduce((sum, item) => {
+    // 计算总费用（包含多程预算）
+    const outboundTotal = Object.values(travelData.outboundBudget || {}).reduce((sum, item) => {
+      return sum + (parseFloat(item.subtotal) || 0);
+    }, 0);
+    const inboundTotal = Object.values(travelData.inboundBudget || {}).reduce((sum, item) => {
+      return sum + (parseFloat(item.subtotal) || 0);
+    }, 0);
+    const multiCityTotal = (travelData.multiCityRoutesBudget || []).reduce((total, budget) => {
+      return total + Object.values(budget || {}).reduce((sum, item) => {
         return sum + (parseFloat(item.subtotal) || 0);
       }, 0);
-      const inboundTotal = Object.values(travelData.inboundBudget || {}).reduce((sum, item) => {
-        return sum + (parseFloat(item.subtotal) || 0);
-      }, 0);
-      travelData.estimatedCost = outboundTotal + inboundTotal;
-    }
+    }, 0);
+    
+    const calculatedTotal = outboundTotal + inboundTotal + multiCityTotal;
+    
+    // 设置 estimatedCost 和 estimatedBudget（保持兼容性）
+    travelData.estimatedCost = calculatedTotal;
+    travelData.estimatedBudget = calculatedTotal;
 
     // 向后兼容：设置dates字段
     if (travelData.startDate || travelData.outbound?.date) {
@@ -348,15 +356,25 @@ exports.updateTravel = async (req, res) => {
       }));
     }
 
-    // 计算总费用
-    if (updateData.outboundBudget || updateData.inboundBudget) {
+    // 计算总费用（包含多程预算）
+    if (updateData.outboundBudget || updateData.inboundBudget || updateData.multiCityRoutesBudget) {
       const outboundTotal = Object.values(updateData.outboundBudget || travel.outboundBudget || {}).reduce((sum, item) => {
         return sum + (parseFloat(item.subtotal) || 0);
       }, 0);
       const inboundTotal = Object.values(updateData.inboundBudget || travel.inboundBudget || {}).reduce((sum, item) => {
         return sum + (parseFloat(item.subtotal) || 0);
       }, 0);
-      updateData.estimatedCost = outboundTotal + inboundTotal;
+      const multiCityTotal = (updateData.multiCityRoutesBudget || travel.multiCityRoutesBudget || []).reduce((total, budget) => {
+        return total + Object.values(budget || {}).reduce((sum, item) => {
+          return sum + (parseFloat(item.subtotal) || 0);
+        }, 0);
+      }, 0);
+      
+      const calculatedTotal = outboundTotal + inboundTotal + multiCityTotal;
+      
+      // 设置 estimatedCost 和 estimatedBudget（保持兼容性）
+      updateData.estimatedCost = calculatedTotal;
+      updateData.estimatedBudget = calculatedTotal;
     }
 
     // 向后兼容：设置dates字段
