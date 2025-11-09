@@ -35,7 +35,8 @@
     "viewAll": "View All",
     "retry": "Retry",
     "nA": "N/A",
-    "dateFormat": "YYYY-MM-DD"
+    "dateFormat": "YYYY-MM-DD",
+    "actions": "Actions"
   },
   "notifications": {
     "title": "Notifications",
@@ -892,6 +893,7 @@
     "project": "Project",
     "costCenter": "Cost Center",
     "isBillable": "Billable",
+    "billable": "Billable",
     "client": "Client",
     "tags": "Tags",
     "status": "Status",
@@ -1367,5 +1369,19 @@
     "saveFailed": "Failed to save settings",
     "loadFailed": "Failed to load settings",
     "saveSettings": "Save Settings"
+  },
+  "placeholders": {
+    "searchTravel": "Search by title, city or country...",
+    "searchExpense": "Search by title, vendor or description...",
+    "describeExpense": "Describe the expense in detail...",
+    "additionalExpenseInfo": "Any additional information about this expense...",
+    "additionalTravelInfo": "Any additional information about this travel request...",
+    "selectProject": "Select or enter project name",
+    "addTags": "Add tags to categorize this expense"
+  },
+  "dialogs": {
+    "confirmDelete": "Confirm Delete",
+    "uploadReceipts": "Upload Receipts",
+    "changePassword": "Change Password"
   }
 }
