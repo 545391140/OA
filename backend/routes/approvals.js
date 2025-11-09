@@ -364,4 +364,228 @@ router.get('/statistics', protect, async (req, res) => {
   }
 });
 
+// @desc    Get approver workload statistics
+// @route   GET /api/approvals/approver-workload
+// @access  Private
+router.get('/approver-workload', protect, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    // 构建日期查询
+    const dateQuery = {};
+    if (startDate) {
+      dateQuery.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      dateQuery.$lte = new Date(endDate);
+    }
+
+    // 聚合查询审批人工作量
+    const workload = await Travel.aggregate([
+      {
+        $match: Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {}
+      },
+      {
+        $unwind: '$approvals'
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'approvals.approver',
+          foreignField: '_id',
+          as: 'approverInfo'
+        }
+      },
+      {
+        $unwind: '$approverInfo'
+      },
+      {
+        $group: {
+          _id: '$approvals.approver',
+          approverName: { $first: { $concat: ['$approverInfo.firstName', ' ', '$approverInfo.lastName'] } },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$approvals.status', 'pending'] }, 1, 0] }
+          },
+          approved: {
+            $sum: { $cond: [{ $eq: ['$approvals.status', 'approved'] }, 1, 0] }
+          },
+          rejected: {
+            $sum: { $cond: [{ $eq: ['$approvals.status', 'rejected'] }, 1, 0] }
+          },
+          total: { $sum: 1 },
+          totalApprovalTime: {
+            $sum: {
+              $cond: [
+                { $in: ['$approvals.status', ['approved', 'rejected']] },
+                {
+                  $divide: [
+                    { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                    3600000 // Convert to hours
+                  ]
+                },
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          approverName: 1,
+          pending: 1,
+          approved: 1,
+          rejected: 1,
+          total: 1,
+          approvalRate: {
+            $cond: [
+              { $gt: ['$total', 0] },
+              { $multiply: [{ $divide: ['$approved', '$total'] }, 100] },
+              0
+            ]
+          },
+          avgApprovalTime: {
+            $cond: [
+              { $gt: [{ $add: ['$approved', '$rejected'] }, 0] },
+              { $divide: ['$totalApprovalTime', { $add: ['$approved', '$rejected'] }] },
+              0
+            ]
+          }
+        }
+      },
+      {
+        $sort: { total: -1 }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: workload
+    });
+  } catch (error) {
+    console.error('Get approver workload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get approval trend data
+// @route   GET /api/approvals/trend
+// @access  Private
+router.get('/trend', protect, async (req, res) => {
+  try {
+    const { startDate, endDate, type } = req.query;
+
+    // 构建日期查询
+    const dateQuery = {};
+    if (startDate) {
+      dateQuery.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      dateQuery.$lte = new Date(endDate);
+    }
+
+    const matchStage = Object.keys(dateQuery).length > 0 
+      ? { createdAt: dateQuery }
+      : {};
+
+    // 聚合查询趋势数据
+    const trendData = await Travel.aggregate([
+      {
+        $match: matchStage
+      },
+      {
+        $unwind: '$approvals'
+      },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$createdAt'
+              }
+            },
+            status: '$approvals.status'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.date',
+          data: {
+            $push: {
+              status: '$_id.status',
+              count: '$count'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          date: '$_id',
+          pending: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$data',
+                    cond: { $eq: ['$$this.status', 'pending'] }
+                  }
+                },
+                in: '$$this.count'
+              }
+            }
+          },
+          approved: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$data',
+                    cond: { $eq: ['$$this.status', 'approved'] }
+                  }
+                },
+                in: '$$this.count'
+              }
+            }
+          },
+          rejected: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$data',
+                    cond: { $eq: ['$$this.status', 'rejected'] }
+                  }
+                },
+                in: '$$this.count'
+              }
+            }
+          }
+        }
+      },
+      {
+        $sort: { date: 1 }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: trendData
+    });
+  } catch (error) {
+    console.error('Get approval trend error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

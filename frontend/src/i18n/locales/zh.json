@@ -58,6 +58,7 @@
     "positionManagement": "岗位管理",
     "userManagement": "用户管理",
     "approvalWorkflows": "审批流程管理",
+    "approvalStatistics": "审批统计分析",
     "appTitle": "差旅费用管理系统",
     "languages": {
       "en": "English",

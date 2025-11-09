@@ -136,6 +136,7 @@ const Layout = () => {
     { text: t('navigation.positionManagement'), icon: <WorkIcon />, path: '/positions', key: 'positionManagement' },
     { text: t('navigation.userManagement'), icon: <PeopleIcon />, path: '/users', key: 'userManagement' },
     { text: t('navigation.approvalWorkflows'), icon: <ApprovalIcon />, path: '/approval-workflows', key: 'approvalWorkflows' },
+    { text: t('navigation.approvalStatistics'), icon: <ReportIcon />, path: '/approval-statistics', key: 'approvalStatistics' },
   ], [t, i18n.language]);
 
   // Filter menu items based on user role
