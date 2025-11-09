@@ -70,7 +70,9 @@ const Reports = () => {
       totalExpenses: 0,
       totalTravel: 0,
       pendingApprovals: 0,
-      monthlyTrend: 0
+      approvalRate: 0,
+      monthlyTrend: 0,
+      approvalRateTrend: 0
     },
     monthlyData: [],
     categoryData: [],
