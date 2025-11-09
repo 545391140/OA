@@ -199,6 +199,8 @@ const ApprovalWorkflowManagement = () => {
       
       const method = selectedWorkflow ? 'put' : 'post';
       
+      console.log('Sending workflow data:', JSON.stringify(formData, null, 2));
+      
       const response = await apiClient[method](url, formData);
       
       if (response.data && response.data.success) {
@@ -211,8 +213,10 @@ const ApprovalWorkflowManagement = () => {
       }
     } catch (error) {
       console.error('Save workflow error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error message:', error.response?.data?.error);
       showNotification(
-        error.response?.data?.message || '保存失败',
+        error.response?.data?.message || error.response?.data?.error || '保存失败',
         'error'
       );
     }
