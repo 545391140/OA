@@ -413,26 +413,27 @@ const ExpenseItemsMaintenance = () => {
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* 搜索框 */}
-      <TextField
-        fullWidth
-        placeholder={t('expenseItem.maintenance.searchPlaceholder')}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-        sx={{ mb: 2 }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon />
-            </InputAdornment>
-          ),
-        }}
-      />
-      
-      {/* 过滤器 */}
+      {/* 搜索和过滤器 */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
+          {/* 搜索框 */}
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              placeholder={t('expenseItem.maintenance.searchPlaceholder')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          {/* 状态过滤 */}
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel>{t('expenseItem.maintenance.filters.status')}</InputLabel>
@@ -447,7 +448,8 @@ const ExpenseItemsMaintenance = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={3}>
+          {/* 标准过滤 */}
+          <Grid item xs={12} md={2}>
             <FormControl fullWidth>
               <InputLabel>{t('expenseItem.maintenance.filters.standard')}</InputLabel>
               <Select
@@ -464,7 +466,8 @@ const ExpenseItemsMaintenance = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={6}>
+          {/* 按钮 */}
+          <Grid item xs={12} md={3}>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
                 variant="outlined"
