@@ -1531,9 +1531,10 @@ const TravelForm = () => {
       
       // 准备提交数据，转换dayjs对象为ISO字符串，转换Location对象为字符串
       // 深度序列化费用预算数据，确保所有数据都能正确提交
+      // 如果要提交审批，先保存为draft状态，然后通过submit API提交
       const submitData = {
         ...formData,
-        status,
+        status: status === 'submitted' ? 'draft' : status, // 提交审批时先保存为draft
         destination: convertLocationToString(formData.destination),
         startDate: formData.startDate ? formData.startDate.toISOString() : null,
         endDate: formData.endDate ? formData.endDate.toISOString() : null,
@@ -1639,9 +1640,11 @@ const TravelForm = () => {
       if (response.data && response.data.success) {
         const travelId = response.data.data._id || id;
         
-        // 如果状态是submitted，调用提交审批API创建审批流程
+        // 如果状态是submitted，先保存为draft，然后调用提交审批API
         if (status === 'submitted' && travelId) {
           try {
+            // 先确保状态是draft（如果后端已经保存为submitted，需要先改回draft）
+            // 或者直接调用submit API（它会检查状态）
             await apiClient.post(`/travel/${travelId}/submit`);
             showNotification(
               isEdit ? t('travel.form.updateSubmitSuccess') : t('travel.form.submitSuccess'),
@@ -1649,11 +1652,19 @@ const TravelForm = () => {
             );
           } catch (submitError) {
             console.error('Submit approval error:', submitError);
-            // 即使提交审批失败，也显示保存成功
+            console.error('Submit error details:', {
+              message: submitError.message,
+              response: submitError.response?.data,
+              status: submitError.response?.status
+            });
+            // 显示具体的错误信息
+            const errorMsg = submitError.response?.data?.message || submitError.message || '提交审批失败';
             showNotification(
-              t('travel.form.saveSuccess') || '保存成功，但提交审批失败',
-              'warning'
+              errorMsg,
+              'error'
             );
+            // 不导航，让用户看到错误信息
+            return;
           }
         } else {
           showNotification(
