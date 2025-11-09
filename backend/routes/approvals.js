@@ -600,11 +600,23 @@ router.get('/travel-statistics/:employeeId', protect, async (req, res) => {
     const yearStart = new Date(currentYear, 0, 1);
     const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59);
 
+    // 验证employeeId格式
+    let employeeObjectId;
+    try {
+      employeeObjectId = new mongoose.Types.ObjectId(employeeId);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid employee ID format',
+        error: error.message
+      });
+    }
+
     // 获取员工年度差旅统计
     const travelStats = await Travel.aggregate([
       {
         $match: {
-          employee: new mongoose.Types.ObjectId(employeeId),
+          employee: employeeObjectId,
           createdAt: { $gte: yearStart, $lte: yearEnd }
         }
       },
