@@ -96,7 +96,7 @@ export const getLocaleFromAcceptLanguage = () => {
   }
 
   // 其他语言匹配
-  for (const [locale, name] of Object.entries(SUPPORTED_LOCALES)) {
+  for (const locale of Object.keys(SUPPORTED_LOCALES)) {
     if (locale.startsWith(languageCode)) {
       return locale;
     }

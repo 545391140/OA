@@ -23,12 +23,10 @@ import {
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../utils/axiosConfig';
-import { useAuth } from '../../contexts/AuthContext';
 import RegionSelector from '../../components/Common/RegionSelector';
 
 const StandardQuery = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [standardData, setStandardData] = useState(null);
   const [error, setError] = useState(null);
@@ -72,16 +70,6 @@ const StandardQuery = () => {
 
   const formatCurrency = (amount) => {
     return `¥${amount.toFixed(2)}`;
-  };
-
-  const getCityLevelName = (level) => {
-    const levelMap = {
-      1: t('travelStandard.query.cityLevels.1'),
-      2: t('travelStandard.query.cityLevels.2'),
-      3: t('travelStandard.query.cityLevels.3'),
-      4: t('travelStandard.query.cityLevels.4')
-    };
-    return levelMap[level] || t('travelStandard.query.cityLevels.other');
   };
 
   return (
