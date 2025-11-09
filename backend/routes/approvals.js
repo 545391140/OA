@@ -324,11 +324,18 @@ router.get('/statistics', protect, async (req, res) => {
         } else if (stat._id === 'rejected') {
           result.rejected += stat.count;
         }
+        // 所有状态的申请都计入总数和总金额
         result.total += stat.count;
         result.totalAmount += stat.totalAmount || 0;
+        console.log(`Travel stat: status=${stat._id}, count=${stat.count}, totalAmount=${stat.totalAmount || 0}`);
       });
       
       console.log('Travel stats result:', result);
+      console.log('Travel avgAmount calculation:', {
+        totalAmount: result.totalAmount,
+        total: result.total,
+        avgAmount: result.total > 0 ? result.totalAmount / result.total : 0
+      });
 
       // 重新查询已完成审批的申请以计算平均审批时间
       const completedTravels = await Travel.find({
@@ -360,7 +367,18 @@ router.get('/statistics', protect, async (req, res) => {
         result.approvalRate = totalCompleted > 0 
           ? parseFloat(((result.approved / totalCompleted) * 100).toFixed(2))
           : 0;
+      } else {
+        // 即使没有数据，也确保返回0而不是undefined
+        result.avgAmount = 0;
+        result.avgApprovalTime = 0;
+        result.approvalRate = 0;
       }
+
+      console.log('Travel final result:', {
+        ...result,
+        avgAmount: result.avgAmount,
+        avgAmountFormatted: result.avgAmount.toFixed(2)
+      });
 
       return result;
     };
@@ -431,11 +449,18 @@ router.get('/statistics', protect, async (req, res) => {
         } else if (stat._id === 'rejected') {
           result.rejected += stat.count;
         }
+        // 所有状态的申请都计入总数和总金额
         result.total += stat.count;
         result.totalAmount += stat.totalAmount || 0;
+        console.log(`Expense stat: status=${stat._id}, count=${stat.count}, totalAmount=${stat.totalAmount || 0}`);
       });
       
       console.log('Expense stats result:', result);
+      console.log('Expense avgAmount calculation:', {
+        totalAmount: result.totalAmount,
+        total: result.total,
+        avgAmount: result.total > 0 ? result.totalAmount / result.total : 0
+      });
 
       // 重新查询已完成审批的申请以计算平均审批时间
       const completedExpenses = await Expense.find({
@@ -467,7 +492,18 @@ router.get('/statistics', protect, async (req, res) => {
         result.approvalRate = totalCompleted > 0 
           ? parseFloat(((result.approved / totalCompleted) * 100).toFixed(2))
           : 0;
+      } else {
+        // 即使没有数据，也确保返回0而不是undefined
+        result.avgAmount = 0;
+        result.avgApprovalTime = 0;
+        result.approvalRate = 0;
       }
+
+      console.log('Expense final result:', {
+        ...result,
+        avgAmount: result.avgAmount,
+        avgAmountFormatted: result.avgAmount.toFixed(2)
+      });
 
       return result;
     };
