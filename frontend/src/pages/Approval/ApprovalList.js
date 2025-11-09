@@ -505,7 +505,7 @@ const ApprovalList = () => {
               </Grid>
               {stats.budgetUsage !== null && (
                 <Grid item xs={12}>
-                  <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid', borderColor: 'grey.300' }}>
+                  <Box sx={{ mt: 1 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
                       {t('approval.budgetUsage')}
                     </Typography>
@@ -534,7 +534,7 @@ const ApprovalList = () => {
 
         {/* 审批信息（紧凑显示） */}
         {item.approver && (
-          <Box sx={{ mb: 1.5, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ mb: 1.5 }}>
             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', lineHeight: 1.5, display: 'block', mb: 0.5 }}>
               <strong>{t('approval.approvedBy')}:</strong> {item.approver.firstName} {item.approver.lastName} ({item.approver.position}) • {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
             </Typography>
@@ -548,7 +548,7 @@ const ApprovalList = () => {
 
         {/* 操作按钮 */}
         {showActions && item.status === 'submitted' && (
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 1 }}>
             <Button
               variant="outlined"
               color="error"
