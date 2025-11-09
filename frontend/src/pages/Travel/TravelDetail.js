@@ -729,6 +729,15 @@ const TravelDetail = () => {
                               </TableRow>
                             );
                           })}
+                          {/* 小计行 */}
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 600, borderTop: 2, borderColor: 'divider' }}>
+                              {t('common.subtotal')}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, borderTop: 2, borderColor: 'divider', color: 'info.main' }}>
+                              {formatCurrency(calculateBudgetTotal(travel.outboundBudget))}
+                            </TableCell>
+                          </TableRow>
                         </TableBody>
                       </Table>
                     </AccordionDetails>
@@ -757,6 +766,15 @@ const TravelDetail = () => {
                               </TableRow>
                             );
                           })}
+                          {/* 小计行 */}
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 600, borderTop: 2, borderColor: 'divider' }}>
+                              {t('common.subtotal')}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, borderTop: 2, borderColor: 'divider', color: 'success.main' }}>
+                              {formatCurrency(calculateBudgetTotal(travel.inboundBudget))}
+                            </TableCell>
+                          </TableRow>
                         </TableBody>
                       </Table>
                     </AccordionDetails>
@@ -774,26 +792,38 @@ const TravelDetail = () => {
                       </Typography>
                     </AccordionSummary>
                     <AccordionDetails>
-                      {travel.multiCityRoutesBudget.map((budget, index) => (
-                        <Box key={index} sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2" color="primary" gutterBottom>
-                            {t('travel.detail.route')} {index + 1}
-                          </Typography>
-                          <Table size="small">
-                            <TableBody>
-                              {Object.entries(budget).map(([key, value]) => {
-                                const amount = extractAmount(value);
-                                return (
-                                  <TableRow key={key}>
-                                    <TableCell>{expenseItems[key] || key}</TableCell>
-                                    <TableCell align="right">{formatCurrency(amount)}</TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        </Box>
-                      ))}
+                      {travel.multiCityRoutesBudget.map((budget, index) => {
+                        const routeTotal = calculateBudgetTotal([budget]);
+                        return (
+                          <Box key={index} sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" color="primary" gutterBottom>
+                              {t('travel.detail.route')} {index + 1}
+                            </Typography>
+                            <Table size="small">
+                              <TableBody>
+                                {Object.entries(budget).map(([key, value]) => {
+                                  const amount = extractAmount(value);
+                                  return (
+                                    <TableRow key={key}>
+                                      <TableCell>{expenseItems[key] || key}</TableCell>
+                                      <TableCell align="right">{formatCurrency(amount)}</TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                                {/* 小计行 */}
+                                <TableRow>
+                                  <TableCell sx={{ fontWeight: 600, borderTop: 2, borderColor: 'divider' }}>
+                                    {t('common.subtotal')}
+                                  </TableCell>
+                                  <TableCell align="right" sx={{ fontWeight: 600, borderTop: 2, borderColor: 'divider', color: 'warning.main' }}>
+                                    {formatCurrency(routeTotal)}
+                                  </TableCell>
+                                </TableRow>
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        );
+                      })}
                     </AccordionDetails>
                   </Accordion>
                 </Grid>
