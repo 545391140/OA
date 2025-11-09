@@ -981,6 +981,12 @@
     "returnDate": "返回日期",
     "totalDays": "共",
     "days": "天",
+    "employeeTravelStats": "员工年度差旅统计",
+    "totalTrips": "年度差旅次数",
+    "totalAmount": "年度总金额",
+    "efficiency": "人天效率",
+    "day": "天",
+    "budgetUsage": "部门预算占比",
     "workflow": {
       "title": "审批流程管理",
       "create": "新建流程",

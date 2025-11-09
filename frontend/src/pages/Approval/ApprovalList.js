@@ -60,6 +60,7 @@ const ApprovalList = () => {
   const [approvalHistory, setApprovalHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
+  const [travelStats, setTravelStats] = useState({}); // 存储员工差旅统计
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [approvalAction, setApprovalAction] = useState('');
@@ -180,6 +181,29 @@ const ApprovalList = () => {
 
         setPendingApprovals([...travelItems, ...expenseItems]);
         
+        // 获取差旅申请的员工统计数据
+        const employeeIds = [...new Set(travelItems.map(item => item.employee._id || item.employee.id))];
+        const statsPromises = employeeIds.map(async (employeeId) => {
+          try {
+            const statsResponse = await apiClient.get(`/approvals/travel-statistics/${employeeId}`);
+            if (statsResponse.data && statsResponse.data.success) {
+              return { employeeId, stats: statsResponse.data.data };
+            }
+          } catch (error) {
+            console.error(`Failed to fetch stats for employee ${employeeId}:`, error);
+          }
+          return null;
+        });
+        
+        const statsResults = await Promise.all(statsPromises);
+        const statsMap = {};
+        statsResults.forEach(result => {
+          if (result) {
+            statsMap[result.employeeId] = result.stats;
+          }
+        });
+        setTravelStats(statsMap);
+        
         // TODO: 获取审批历史（可以从已审批的申请中获取）
         setApprovalHistory([]);
       }
@@ -283,7 +307,12 @@ const ApprovalList = () => {
     return type === 'travel' ? <TravelIcon /> : <ExpenseIcon />;
   };
 
-  const ApprovalCard = ({ item, showActions = true }) => (
+  const ApprovalCard = ({ item, showActions = true }) => {
+    // 获取员工差旅统计
+    const employeeId = item.employee._id || item.employee.id;
+    const stats = travelStats[employeeId] || null;
+    
+    return (
     <Card sx={{ mb: 1.5 }} elevation={2}>
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
         {/* 标题行：图标、标题、类型、状态标签 */}
@@ -296,15 +325,20 @@ const ApprovalList = () => {
               <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.25, lineHeight: 1.3 }}>
                 {item.title}
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
                 <Chip
                   label={item.type === 'travel' ? t('approval.travelRequest') : t('approval.expenseReport')}
                   color={item.type === 'travel' ? 'primary' : 'secondary'}
                   size="small"
                   sx={{ 
                     height: 20, 
-                    fontSize: '0.7rem',
-                    fontWeight: 500
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    px: 0.75,
+                    '& .MuiChip-label': {
+                      px: 0.5,
+                      lineHeight: 1.2
+                    }
                   }}
                 />
                 {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
@@ -331,18 +365,36 @@ const ApprovalList = () => {
               </Box>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 0.75, flexShrink: 0 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
             <Chip
               label={item.priority}
               color={getPriorityColor(item.priority)}
               size="small"
-              sx={{ height: 22, fontSize: '0.7rem' }}
+              sx={{ 
+                height: 20, 
+                fontSize: '0.6875rem',
+                fontWeight: 600,
+                px: 0.75,
+                '& .MuiChip-label': {
+                  px: 0.5,
+                  lineHeight: 1.2
+                }
+              }}
             />
             <Chip
               label={item.status}
               color={getStatusColor(item.status)}
               size="small"
-              sx={{ height: 22, fontSize: '0.7rem' }}
+              sx={{ 
+                height: 20, 
+                fontSize: '0.6875rem',
+                fontWeight: 600,
+                px: 0.75,
+                '& .MuiChip-label': {
+                  px: 0.5,
+                  lineHeight: 1.2
+                }
+              }}
             />
           </Box>
         </Box>
@@ -379,6 +431,73 @@ const ApprovalList = () => {
             </Box>
           </Grid>
         </Grid>
+
+        {/* 差旅统计信息（仅差旅申请显示） */}
+        {item.type === 'travel' && stats && (
+          <Box sx={{ mb: 1.5, p: 1, bgcolor: 'info.light', borderRadius: 1, border: '1px solid', borderColor: 'info.main' }}>
+            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'info.dark', mb: 0.75, display: 'block' }}>
+              {t('approval.employeeTravelStats')} ({stats.year})
+            </Typography>
+            <Grid container spacing={1}>
+              <Grid item xs={6} sm={3}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                  {t('approval.totalTrips')}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                  {stats.totalTrips}
+                </Typography>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                  {t('approval.totalAmount')}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                  {item.currency} {stats.totalAmount.toLocaleString()}
+                </Typography>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                  {t('approval.totalDays')}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                  {stats.totalDays} {t('approval.days')}
+                </Typography>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                  {t('approval.efficiency')}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                  {item.currency} {stats.efficiency}/{t('approval.day')}
+                </Typography>
+              </Grid>
+              {stats.budgetUsage !== null && (
+                <Grid item xs={12}>
+                  <Box sx={{ mt: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mb: 0.25 }}>
+                      {t('approval.budgetUsage')}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ flex: 1, height: 6, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+                        <Box 
+                          sx={{ 
+                            height: '100%', 
+                            bgcolor: stats.budgetUsage > 80 ? 'error.main' : stats.budgetUsage > 60 ? 'warning.main' : 'success.main',
+                            width: `${Math.min(stats.budgetUsage, 100)}%`,
+                            transition: 'width 0.3s ease'
+                          }} 
+                        />
+                      </Box>
+                      <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, minWidth: 40 }}>
+                        {stats.budgetUsage}%
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        )}
 
 
         {/* 审批信息（紧凑显示） */}
@@ -422,7 +541,8 @@ const ApprovalList = () => {
         )}
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   if (loading) {
     return (

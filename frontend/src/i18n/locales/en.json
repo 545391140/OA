@@ -927,6 +927,12 @@
     "returnDate": "Return Date",
     "totalDays": "Total",
     "days": "days",
+    "employeeTravelStats": "Employee Annual Travel Statistics",
+    "totalTrips": "Annual Trips",
+    "totalAmount": "Annual Total Amount",
+    "efficiency": "Efficiency per Day",
+    "day": "day",
+    "budgetUsage": "Department Budget Usage",
     "workflow": {
       "title": "Approval Workflow Management",
       "create": "New Workflow",

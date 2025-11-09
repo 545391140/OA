@@ -2,6 +2,8 @@ const express = require('express');
 const { protect } = require('../middleware/auth');
 const Travel = require('../models/Travel');
 const Expense = require('../models/Expense');
+const User = require('../models/User');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -583,6 +585,100 @@ router.get('/trend', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get employee travel statistics for approval card
+// @route   GET /api/approvals/travel-statistics/:employeeId
+// @access  Private
+router.get('/travel-statistics/:employeeId', protect, async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+
+    // 获取员工年度差旅统计
+    const travelStats = await Travel.aggregate([
+      {
+        $match: {
+          employee: new mongoose.Types.ObjectId(employeeId),
+          createdAt: { $gte: yearStart, $lte: yearEnd }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalTrips: { $sum: 1 },
+          totalAmount: { 
+            $sum: { 
+              $ifNull: ['$estimatedBudget', '$estimatedCost', 0] 
+            } 
+          },
+          totalDays: {
+            $sum: {
+              $cond: [
+                { $and: ['$startDate', '$endDate'] },
+                {
+                  $add: [
+                    1,
+                    {
+                      $divide: [
+                        { $subtract: ['$endDate', '$startDate'] },
+                        1000 * 60 * 60 * 24
+                      ]
+                    }
+                  ]
+                },
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    const stats = travelStats[0] || { totalTrips: 0, totalAmount: 0, totalDays: 0 };
+    
+    // 计算人天效率（总金额/总天数）
+    const efficiency = stats.totalDays > 0 
+      ? (stats.totalAmount / stats.totalDays).toFixed(2)
+      : 0;
+
+    // 获取员工部门信息
+    const employee = await User.findById(employeeId).select('department').lean();
+    
+    // 获取部门预算（如果有预算系统，这里需要根据实际情况调整）
+    // 暂时返回null，需要根据实际的预算模型调整
+    let departmentBudget = null;
+    let budgetUsage = null;
+    
+    // TODO: 集成部门预算系统
+    // const department = await Department.findOne({ name: employee?.department });
+    // if (department && department.budget) {
+    //   departmentBudget = department.budget;
+    //   budgetUsage = stats.totalAmount > 0 ? ((stats.totalAmount / departmentBudget) * 100).toFixed(1) : 0;
+    // }
+
+    res.json({
+      success: true,
+      data: {
+        year: currentYear,
+        totalTrips: stats.totalTrips,
+        totalAmount: stats.totalAmount || 0,
+        totalDays: Math.round(stats.totalDays || 0),
+        efficiency: parseFloat(efficiency),
+        departmentBudget,
+        budgetUsage: budgetUsage ? parseFloat(budgetUsage) : null
+      }
+    });
+  } catch (error) {
+    console.error('Get travel statistics error:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取差旅统计失败',
       error: error.message
     });
   }
