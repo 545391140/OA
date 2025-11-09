@@ -356,6 +356,23 @@ router.get('/statistics', protect, async (req, res) => {
       console.log('Matched documents count (with date filter):', matchedDocsWithDate.length);
       console.log('Sample matched documents (with date filter):', JSON.stringify(matchedDocsWithDate, null, 2));
       
+      // 测试：分别查询日期条件和approver条件
+      const matchedByDateOnly = await Travel.find({
+        createdAt: dateQuery
+      }).limit(5).select('_id approvals createdAt').lean();
+      console.log('Matched documents count (date only):', matchedByDateOnly.length);
+      console.log('Sample matched documents (date only):', JSON.stringify(matchedByDateOnly, null, 2));
+      
+      // 测试：使用$and组合查询
+      const matchedWithAnd = await Travel.find({
+        $and: [
+          { 'approvals.approver': { $in: [approverId, approverIdString] } },
+          { createdAt: dateQuery }
+        ]
+      }).limit(5).select('_id approvals createdAt').lean();
+      console.log('Matched documents count (with $and):', matchedWithAnd.length);
+      console.log('Sample matched documents (with $and):', JSON.stringify(matchedWithAnd, null, 2));
+      
       // 检查所有Travel文档（不限制approver）
       const allTravels = await Travel.find({}).limit(3).select('_id approvals createdAt').lean();
       console.log('Total Travel documents sample:', JSON.stringify(allTravels, null, 2));
@@ -694,17 +711,16 @@ router.get('/approver-workload', protect, async (req, res) => {
 
     // 构建日期查询
     // 注意：结束日期应该包含当天的23:59:59.999，而不是00:00:00
+    // 使用UTC时间避免时区问题
     const dateQuery = {};
     if (startDate) {
-      // 开始日期：设置为当天的00:00:00.000
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
+      // 开始日期：设置为当天的00:00:00.000 UTC
+      const start = new Date(startDate + 'T00:00:00.000Z');
       dateQuery.$gte = start;
     }
     if (endDate) {
-      // 结束日期：设置为当天的23:59:59.999，以包含整天的数据
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      // 结束日期：设置为当天的23:59:59.999 UTC，以包含整天的数据
+      const end = new Date(endDate + 'T23:59:59.999Z');
       dateQuery.$lte = end;
     }
 
@@ -920,17 +936,16 @@ router.get('/trend', protect, async (req, res) => {
 
     // 构建日期查询
     // 注意：结束日期应该包含当天的23:59:59.999，而不是00:00:00
+    // 使用UTC时间避免时区问题
     const dateQuery = {};
     if (startDate) {
-      // 开始日期：设置为当天的00:00:00.000
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
+      // 开始日期：设置为当天的00:00:00.000 UTC
+      const start = new Date(startDate + 'T00:00:00.000Z');
       dateQuery.$gte = start;
     }
     if (endDate) {
-      // 结束日期：设置为当天的23:59:59.999，以包含整天的数据
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      // 结束日期：设置为当天的23:59:59.999 UTC，以包含整天的数据
+      const end = new Date(endDate + 'T23:59:59.999Z');
       dateQuery.$lte = end;
     }
 
