@@ -405,21 +405,6 @@ const ApprovalList = () => {
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
             <Chip
-              label={item.priority}
-              color={getPriorityColor(item.priority)}
-              size="small"
-              sx={{ 
-                height: 20, 
-                fontSize: '0.6875rem',
-                fontWeight: 600,
-                px: 0.75,
-                '& .MuiChip-label': {
-                  px: 0.5,
-                  lineHeight: 1.2
-                }
-              }}
-            />
-            <Chip
               label={item.status}
               color={getStatusColor(item.status)}
               size="small"
