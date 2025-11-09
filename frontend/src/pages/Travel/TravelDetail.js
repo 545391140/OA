@@ -100,9 +100,24 @@ const TravelDetail = () => {
         // 调试：打印预算数据
         console.log('=== 差旅详情数据 ===');
         console.log('estimatedBudget:', travelData.estimatedBudget);
-        console.log('outboundBudget:', travelData.outboundBudget);
-        console.log('inboundBudget:', travelData.inboundBudget);
-        console.log('multiCityRoutesBudget:', travelData.multiCityRoutesBudget);
+        console.log('outboundBudget:', JSON.stringify(travelData.outboundBudget, null, 2));
+        console.log('inboundBudget:', JSON.stringify(travelData.inboundBudget, null, 2));
+        console.log('multiCityRoutesBudget:', JSON.stringify(travelData.multiCityRoutesBudget, null, 2));
+        
+        // 详细分析预算数据结构
+        if (travelData.outboundBudget) {
+          console.log('=== 去程预算结构分析 ===');
+          Object.entries(travelData.outboundBudget).forEach(([key, item]) => {
+            console.log(`Key: ${key}`, {
+              itemId: item?.itemId,
+              itemName: item?.itemName,
+              quantity: item?.quantity,
+              unitPrice: item?.unitPrice,
+              subtotal: item?.subtotal,
+              fullItem: item
+            });
+          });
+        }
         
         setTravel(travelData);
         
@@ -149,25 +164,54 @@ const TravelDetail = () => {
     return `¥${parseFloat(amount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // 统一的金额提取函数
+  // 统一的金额提取函数 - 从数据库预算项中提取subtotal
   const extractAmount = (item) => {
     if (typeof item === 'number') {
       return item;
     }
     if (typeof item === 'object' && item !== null) {
-      // 尝试多个可能的字段
-      return item.subtotal || item.amount || item.total || 0;
+      // 数据库中的预算项结构：{ itemId, itemName, quantity, unitPrice, subtotal }
+      // 优先使用subtotal字段
+      const subtotal = item.subtotal;
+      if (subtotal !== undefined && subtotal !== null) {
+        return parseFloat(subtotal) || 0;
+      }
+      // 降级处理：尝试其他可能的字段
+      return parseFloat(item.amount) || parseFloat(item.total) || 0;
     }
     return 0;
   };
 
-  // 计算预算总和
+  // 获取费用项名称 - 优先使用数据库中的itemName，其次通过itemId查找
+  const getExpenseItemName = (budgetItem, fallbackKey) => {
+    // 如果budgetItem不是对象，使用fallbackKey查找
+    if (!budgetItem || typeof budgetItem !== 'object') {
+      return expenseItems[fallbackKey] || fallbackKey;
+    }
+    
+    // 优先使用数据库存储的itemName（最可靠）
+    if (budgetItem.itemName && budgetItem.itemName.trim()) {
+      return budgetItem.itemName;
+    }
+    
+    // 其次使用itemId查找费用项名称
+    const itemId = budgetItem.itemId || fallbackKey;
+    if (expenseItems[itemId]) {
+      return expenseItems[itemId];
+    }
+    
+    // 最后降级显示itemId或fallbackKey
+    return itemId || fallbackKey;
+  };
+
+  // 计算预算总和 - 累加所有预算项的subtotal
   const calculateBudgetTotal = (budget) => {
     if (!budget) return 0;
     if (Array.isArray(budget)) {
       // 多程预算是数组
       return budget.reduce((total, routeBudget) => {
-        return total + Object.values(routeBudget || {}).reduce((sum, item) => {
+        if (!routeBudget || typeof routeBudget !== 'object') return total;
+        return total + Object.values(routeBudget).reduce((sum, item) => {
           return sum + extractAmount(item);
         }, 0);
       }, 0);
@@ -728,11 +772,10 @@ const TravelDetail = () => {
                     <AccordionDetails>
                       <Table size="small">
                         <TableBody>
-                          {Object.entries(travel.outboundBudget).map(([key, value]) => {
-                            const amount = extractAmount(value);
-                            // 优先使用value.itemId，如果不存在则使用key
-                            const itemId = (typeof value === 'object' && value.itemId) ? value.itemId : key;
-                            const itemName = (typeof value === 'object' && value.itemName) ? value.itemName : (expenseItems[itemId] || itemId);
+                          {Object.entries(travel.outboundBudget).map(([key, budgetItem]) => {
+                            // 从数据库预算项中提取金额和名称
+                            const amount = extractAmount(budgetItem);
+                            const itemName = getExpenseItemName(budgetItem, key);
                             return (
                               <TableRow key={key}>
                                 <TableCell>{itemName}</TableCell>
@@ -768,11 +811,10 @@ const TravelDetail = () => {
                     <AccordionDetails>
                       <Table size="small">
                         <TableBody>
-                          {Object.entries(travel.inboundBudget).map(([key, value]) => {
-                            const amount = extractAmount(value);
-                            // 优先使用value.itemId，如果不存在则使用key
-                            const itemId = (typeof value === 'object' && value.itemId) ? value.itemId : key;
-                            const itemName = (typeof value === 'object' && value.itemName) ? value.itemName : (expenseItems[itemId] || itemId);
+                          {Object.entries(travel.inboundBudget).map(([key, budgetItem]) => {
+                            // 从数据库预算项中提取金额和名称
+                            const amount = extractAmount(budgetItem);
+                            const itemName = getExpenseItemName(budgetItem, key);
                             return (
                               <TableRow key={key}>
                                 <TableCell>{itemName}</TableCell>
@@ -815,11 +857,10 @@ const TravelDetail = () => {
                             </Typography>
                             <Table size="small">
                               <TableBody>
-                                {Object.entries(budget).map(([key, value]) => {
-                                  const amount = extractAmount(value);
-                                  // 优先使用value.itemId，如果不存在则使用key
-                                  const itemId = (typeof value === 'object' && value.itemId) ? value.itemId : key;
-                                  const itemName = (typeof value === 'object' && value.itemName) ? value.itemName : (expenseItems[itemId] || itemId);
+                                {Object.entries(budget).map(([key, budgetItem]) => {
+                                  // 从数据库预算项中提取金额和名称
+                                  const amount = extractAmount(budgetItem);
+                                  const itemName = getExpenseItemName(budgetItem, key);
                                   return (
                                     <TableRow key={key}>
                                       <TableCell>{itemName}</TableCell>
