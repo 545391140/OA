@@ -26,14 +26,17 @@ import {
   CircularProgress,
   Divider,
   Grid,
-  Chip
+  Chip,
+  InputAdornment
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon
+  Cancel as CancelIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -52,6 +55,9 @@ const ExpenseItemsMaintenance = () => {
   const [standards, setStandards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
+  
+  // 搜索状态
+  const [searchTerm, setSearchTerm] = useState('');
 
   // 新增/编辑对话框状态
   const [formDialog, setFormDialog] = useState({ open: false, item: null, mode: 'create' });
@@ -331,6 +337,25 @@ const ExpenseItemsMaintenance = () => {
     }
   };
 
+  // 搜索过滤逻辑
+  const filteredExpenseItems = expenseItems.filter(item => {
+    if (!searchTerm.trim()) return true;
+    
+    const search = searchTerm.toLowerCase();
+    return (
+      item.itemName?.toLowerCase().includes(search) ||
+      item.standardCode?.toLowerCase().includes(search) ||
+      item.standardName?.toLowerCase().includes(search) ||
+      item.description?.toLowerCase().includes(search) ||
+      item.parentItem?.name?.toLowerCase().includes(search)
+    );
+  });
+
+  // 清除搜索
+  const handleClearSearch = () => {
+    setSearchTerm('');
+  };
+
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -359,6 +384,46 @@ const ExpenseItemsMaintenance = () => {
 
         <Divider sx={{ mb: 3 }} />
 
+        {/* 搜索框 */}
+        <Box sx={{ mb: 3 }}>
+          <TextField
+            fullWidth
+            placeholder={t('expenseItem.maintenance.searchPlaceholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              endAdornment: searchTerm && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={handleClearSearch}
+                    edge="end"
+                  >
+                    <ClearIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+
+        {/* 搜索结果统计 */}
+        {searchTerm && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              {t('expenseItem.maintenance.searchResults', { 
+                count: filteredExpenseItems.length,
+                total: expenseItems.length 
+              })}
+            </Typography>
+          </Box>
+        )}
+
         <TableContainer>
           <Table>
             <TableHead>
@@ -373,10 +438,24 @@ const ExpenseItemsMaintenance = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {expenseItems.length === 0 ? (
+              {filteredExpenseItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
-                    {canEdit ? (
+                    {searchTerm ? (
+                      <Box sx={{ py: 4 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {t('expenseItem.maintenance.noSearchResults')}
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          startIcon={<ClearIcon />}
+                          onClick={handleClearSearch}
+                          sx={{ mt: 2 }}
+                        >
+                          {t('expenseItem.maintenance.clearSearch')}
+                        </Button>
+                      </Box>
+                    ) : canEdit ? (
                       <Box sx={{ py: 4 }}>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
                           {t('expenseItem.maintenance.noItems')}
@@ -398,7 +477,7 @@ const ExpenseItemsMaintenance = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                expenseItems.map((item) => (
+                filteredExpenseItems.map((item) => (
                   <TableRow 
                     key={item._id} 
                     hover

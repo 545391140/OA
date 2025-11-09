@@ -1002,6 +1002,10 @@
       "systemDefault": "System Default",
       "otherExpense": "Other Expenses",
       "addSubItem": "Add Sub-item",
+      "searchPlaceholder": "Search by item name, standard code, standard name, description...",
+      "searchResults": "Found {{count}} result(s) (of {{total}} total)",
+      "noSearchResults": "No matching expense items found",
+      "clearSearch": "Clear Search",
       "tableHeaders": {
         "standardCode": "Standard Code",
         "standardName": "Standard Name",
