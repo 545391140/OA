@@ -32,6 +32,14 @@
     "moreThan": "超过",
     "subtotal": "小计"
   },
+  "notifications": {
+    "title": "通知",
+    "empty": "暂无通知",
+    "markAllRead": "全部已读",
+    "loadMore": "加载更多",
+    "markAsRead": "标记为已读",
+    "delete": "删除"
+  },
   "navigation": {
     "dashboard": "仪表板",
     "travel": "差旅",

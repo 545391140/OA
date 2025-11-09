@@ -31,6 +31,14 @@
     "moreThan": "more than",
     "subtotal": "Subtotal"
   },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "markAllRead": "Mark all as read",
+    "loadMore": "Load more",
+    "markAsRead": "Mark as read",
+    "delete": "Delete"
+  },
   "navigation": {
     "dashboard": "Dashboard",
     "travel": "Travel",

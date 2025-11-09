@@ -45,6 +45,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { updateHtmlLang } from '../../utils/htmlLangUpdater';
 import GlobalSearch from '../Common/GlobalSearch';
+import NotificationBell from '../Common/NotificationBell';
 
 const drawerWidth = 240;
 
@@ -244,6 +245,9 @@ const Layout = () => {
           >
             <SearchIcon />
           </IconButton>
+
+          {/* 通知铃铛 */}
+          <NotificationBell />
 
           <IconButton
             color="inherit"
