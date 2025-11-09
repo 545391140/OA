@@ -27,9 +27,7 @@ import {
   Divider,
   Grid,
   Chip,
-  InputAdornment,
-  FormControlLabel,
-  Switch
+  InputAdornment
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -38,7 +36,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Search as SearchIcon,
-  FilterList as FilterIcon
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -372,11 +370,18 @@ const ExpenseItemsMaintenance = () => {
     return true;
   });
 
-  // 重置过滤器
-  const handleResetFilters = () => {
+  // 搜索处理（虽然实时搜索，但保留按钮以保持一致性）
+  const handleSearch = () => {
+    // 实时搜索已经在 filteredExpenseItems 中处理
+    // 此函数保留以保持与其他页面的一致性
+  };
+
+  // 刷新/重置过滤器
+  const handleReset = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setStandardFilter('all');
+    fetchAllData(); // 重新加载数据
   };
 
   if (loading) {
@@ -416,6 +421,7 @@ const ExpenseItemsMaintenance = () => {
                 placeholder={t('expenseItem.maintenance.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -439,7 +445,7 @@ const ExpenseItemsMaintenance = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={2}>
               <FormControl fullWidth>
                 <InputLabel>{t('expenseItem.maintenance.filters.standard')}</InputLabel>
                 <Select
@@ -456,20 +462,30 @@ const ExpenseItemsMaintenance = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleResetFilters}
-                startIcon={<FilterIcon />}
-              >
-                {t('common.reset')}
-              </Button>
+            <Grid item xs={12} md={3}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<SearchIcon />}
+                  onClick={handleSearch}
+                >
+                  {t('common.search')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={handleReset}
+                >
+                  {t('common.refresh')}
+                </Button>
+              </Box>
             </Grid>
           </Grid>
         </Paper>
 
-        <TableContainer>
+        {/* Table */}
+        <TableContainer component={Paper}>
+          {loading && <LinearProgress />}
           <Table>
             <TableHead>
               <TableRow>
@@ -493,11 +509,11 @@ const ExpenseItemsMaintenance = () => {
                         </Typography>
                         <Button
                           variant="outlined"
-                          startIcon={<FilterIcon />}
-                          onClick={handleResetFilters}
+                          startIcon={<RefreshIcon />}
+                          onClick={handleReset}
                           sx={{ mt: 2 }}
                         >
-                          {t('common.reset')}
+                          {t('common.refresh')}
                         </Button>
                       </Box>
                     ) : canEdit ? (
