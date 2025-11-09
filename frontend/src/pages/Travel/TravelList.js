@@ -367,14 +367,14 @@ const TravelList = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>{t('travel.travelNumber')}</TableCell>
-                <TableCell>{t('travel.list.titleColumn')}</TableCell>
-                <TableCell>{t('travel.list.destinationColumn')}</TableCell>
-                <TableCell>{t('travel.list.datesColumn')}</TableCell>
-                <TableCell>{t('travel.list.estimatedCostColumn')}</TableCell>
-                <TableCell>{t('travel.list.statusColumn')}</TableCell>
-                <TableCell>{t('travel.list.createdColumn')}</TableCell>
-                <TableCell>{t('common.actions')}</TableCell>
+                <TableCell sx={{ minWidth: 120 }}>{t('travel.travelNumber')}</TableCell>
+                <TableCell sx={{ minWidth: 250 }}>{t('travel.list.titleColumn')}</TableCell>
+                <TableCell sx={{ minWidth: 150 }}>{t('travel.list.destinationColumn')}</TableCell>
+                <TableCell sx={{ minWidth: 180 }}>{t('travel.list.datesColumn')}</TableCell>
+                <TableCell sx={{ minWidth: 120 }}>{t('travel.list.estimatedCostColumn')}</TableCell>
+                <TableCell sx={{ minWidth: 100 }}>{t('travel.list.statusColumn')}</TableCell>
+                <TableCell sx={{ minWidth: 150 }}>{t('travel.list.createdColumn')}</TableCell>
+                <TableCell sx={{ minWidth: 100 }}>{t('common.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -400,12 +400,23 @@ const TravelList = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                        <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, flexShrink: 0 }}>
                           <FlightIcon />
                         </Avatar>
-                        <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography 
+                            variant="subtitle2" 
+                            sx={{ 
+                              fontWeight: 'bold',
+                              wordBreak: 'break-word',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical'
+                            }}
+                          >
                             {(() => {
                               // 如果 title 有值，显示 title
                               if (travel.title && travel.title.trim()) {
@@ -423,14 +434,26 @@ const TravelList = () => {
                               if (destinationText) {
                                 return `${t('travel.list.travelTo')} ${destinationText}`;
                               } else if (tripDesc) {
-                                return tripDesc.length > 30 ? tripDesc.substring(0, 30) + '...' : tripDesc;
+                                return tripDesc;
                               } else if (travel.travelNumber) {
                                 return `${t('travel.list.travelRequest')} ${travel.travelNumber}`;
                               }
                               return t('travel.list.unnamedTravelRequest');
                             })()}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{
+                              mt: 0.5,
+                              wordBreak: 'break-word',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: 'vertical'
+                            }}
+                          >
                             {travel.purpose || travel.tripDescription || t('travel.list.noDescription')}
                           </Typography>
                         </Box>
