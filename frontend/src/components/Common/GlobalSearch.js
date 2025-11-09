@@ -259,6 +259,7 @@ const GlobalSearch = ({ open, onClose }) => {
       maxWidth="md"
       fullWidth
       PaperProps={{
+        elevation: 8,
         sx: {
           position: 'fixed',
           top: 80,

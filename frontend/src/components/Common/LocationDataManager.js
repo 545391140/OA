@@ -315,6 +315,7 @@ const LocationDataManager = () => {
         open={showDetails}
         onClose={() => setShowDetails(false)}
         maxWidth="md"
+        PaperProps={{ elevation: 8 }}
         fullWidth
       >
         <DialogTitle>

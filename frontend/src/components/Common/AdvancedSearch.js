@@ -154,7 +154,7 @@ const AdvancedSearch = ({ open, onClose, onSearch, searchType = 'all' }) => {
   ];
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ elevation: 8 }}>
       <DialogTitle>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">{t('search.advanced.title')}</Typography>

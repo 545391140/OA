@@ -397,6 +397,7 @@ const ApprovalWorkflowManagement = () => {
         onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
+        PaperProps={{ elevation: 8 }}
       >
         <DialogTitle>
           {selectedWorkflow ? '编辑审批流程' : '新建审批流程'}
@@ -614,6 +615,7 @@ const ApprovalWorkflowManagement = () => {
         onClose={handleCloseViewDialog}
         maxWidth="md"
         fullWidth
+        PaperProps={{ elevation: 8 }}
       >
         <DialogTitle>审批流程详情</DialogTitle>
         <DialogContent>
