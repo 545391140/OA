@@ -30,7 +30,9 @@
     "rowsPerPage": "ページあたりの行数",
     "of": "の",
     "moreThan": "以上",
-    "subtotal": "小計"
+    "subtotal": "小計",
+    "required": "必須",
+    "unknown": "不明"
   },
   "navigation": {
     "dashboard": "ダッシュボード",

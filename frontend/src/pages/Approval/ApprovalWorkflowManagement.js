@@ -84,7 +84,7 @@ const ApprovalWorkflowManagement = () => {
       }
     } catch (error) {
       console.error('Failed to fetch workflows:', error);
-      showNotification('加载审批流程失败', 'error');
+      showNotification(t('approval.workflow.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -150,7 +150,7 @@ const ApprovalWorkflowManagement = () => {
         ...prev.steps,
         {
           level: prev.steps.length + 1,
-          name: `第${prev.steps.length + 1}级审批`,
+          name: t('approval.workflow.stepLevel', { level: prev.steps.length + 1 }),
           approverType: 'manager',
           approverUsers: [],
           approverRoles: [],
@@ -184,12 +184,12 @@ const ApprovalWorkflowManagement = () => {
   const handleSave = async () => {
     try {
       if (!formData.name.trim()) {
-        showNotification('请输入流程名称', 'warning');
+        showNotification(t('approval.workflow.nameRequired'), 'warning');
         return;
       }
 
       if (formData.steps.length === 0) {
-        showNotification('请至少添加一个审批步骤', 'warning');
+        showNotification(t('approval.workflow.stepsRequired'), 'warning');
         return;
       }
 
@@ -205,7 +205,7 @@ const ApprovalWorkflowManagement = () => {
       
       if (response.data && response.data.success) {
         showNotification(
-          selectedWorkflow ? '更新成功' : '创建成功',
+          selectedWorkflow ? t('approval.workflow.updateSuccess') : t('approval.workflow.createSuccess'),
           'success'
         );
         handleCloseDialog();
@@ -216,24 +216,24 @@ const ApprovalWorkflowManagement = () => {
       console.error('Error response:', error.response?.data);
       console.error('Error message:', error.response?.data?.error);
       showNotification(
-        error.response?.data?.message || error.response?.data?.error || '保存失败',
+        error.response?.data?.message || error.response?.data?.error || t('approval.workflow.saveError'),
         'error'
       );
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('确定要删除这个审批流程吗？')) {
+    if (!window.confirm(t('approval.workflow.confirmDelete'))) {
       return;
     }
 
     try {
       await apiClient.delete(`/approval-workflows/${id}`);
-      showNotification('删除成功', 'success');
+      showNotification(t('approval.workflow.deleteSuccess'), 'success');
       fetchWorkflows();
     } catch (error) {
       console.error('Delete workflow error:', error);
-      showNotification('删除失败', 'error');
+      showNotification(t('approval.workflow.deleteError'), 'error');
     }
   };
 
@@ -244,48 +244,36 @@ const ApprovalWorkflowManagement = () => {
         isActive: !workflow.isActive
       });
       showNotification(
-        workflow.isActive ? '已禁用' : '已启用',
+        workflow.isActive ? t('approval.workflow.disabled') : t('approval.workflow.enabled'),
         'success'
       );
       fetchWorkflows();
     } catch (error) {
       console.error('Toggle active error:', error);
-      showNotification('操作失败', 'error');
+      showNotification(t('messages.error.general'), 'error');
     }
   };
 
   const getApproverTypeLabel = (type) => {
-    const labels = {
-      manager: '直接上级',
-      role: '按角色',
-      specific_user: '指定用户',
-      department_head: '部门负责人',
-      finance: '财务'
-    };
-    return labels[type] || type;
+    return t(`approval.workflow.approverTypes.${type}`, type);
   };
 
   const getApprovalModeLabel = (mode) => {
-    const labels = {
-      any: '任一审批',
-      all: '全部审批',
-      sequence: '按顺序'
-    };
-    return labels[mode] || mode;
+    return t(`approval.workflow.approvalModes.${mode}`, mode);
   };
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" fontWeight={600}>
-          审批流程管理
+          {t('approval.workflow.title')}
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
         >
-          新建流程
+          {t('approval.workflow.create')}
         </Button>
       </Box>
 
@@ -293,13 +281,13 @@ const ApprovalWorkflowManagement = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>流程名称</TableCell>
-              <TableCell>类型</TableCell>
-              <TableCell>金额范围</TableCell>
-              <TableCell>审批级别</TableCell>
-              <TableCell>优先级</TableCell>
-              <TableCell>状态</TableCell>
-              <TableCell align="right">操作</TableCell>
+              <TableCell>{t('approval.workflow.workflowName')}</TableCell>
+              <TableCell>{t('approval.workflow.workflowType')}</TableCell>
+              <TableCell>{t('approval.workflow.amountRange')}</TableCell>
+              <TableCell>{t('approval.workflow.approvalLevels')}</TableCell>
+              <TableCell>{t('approval.workflow.priority')}</TableCell>
+              <TableCell>{t('approval.workflow.status')}</TableCell>
+              <TableCell align="right">{t('approval.workflow.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -317,7 +305,7 @@ const ApprovalWorkflowManagement = () => {
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={workflow.type === 'travel' ? '差旅' : '费用'}
+                    label={workflow.type === 'travel' ? t('approval.workflow.travel') : t('approval.workflow.expense')}
                     size="small"
                     color={workflow.type === 'travel' ? 'primary' : 'secondary'}
                   />
@@ -344,7 +332,7 @@ const ApprovalWorkflowManagement = () => {
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={workflow.isActive ? '启用' : '禁用'}
+                    label={workflow.isActive ? t('approval.workflow.enabled') : t('approval.workflow.disabled')}
                     size="small"
                     color={workflow.isActive ? 'success' : 'default'}
                   />
@@ -353,28 +341,28 @@ const ApprovalWorkflowManagement = () => {
                   <IconButton
                     size="small"
                     onClick={() => handleViewWorkflow(workflow)}
-                    title="查看"
+                    title={t('approval.workflow.view')}
                   >
                     <ViewIcon />
                   </IconButton>
                   <IconButton
                     size="small"
                     onClick={() => handleOpenDialog(workflow)}
-                    title="编辑"
+                    title={t('approval.workflow.edit')}
                   >
                     <EditIcon />
                   </IconButton>
                   <IconButton
                     size="small"
                     onClick={() => handleToggleActive(workflow)}
-                    title={workflow.isActive ? '禁用' : '启用'}
+                    title={workflow.isActive ? t('approval.workflow.disabled') : t('approval.workflow.enabled')}
                   >
                     <Switch checked={workflow.isActive} size="small" />
                   </IconButton>
                   <IconButton
                     size="small"
                     onClick={() => handleDelete(workflow._id)}
-                    title="删除"
+                    title={t('approval.workflow.delete')}
                     color="error"
                   >
                     <DeleteIcon />
@@ -386,7 +374,7 @@ const ApprovalWorkflowManagement = () => {
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
-                    暂无审批流程
+                    {t('approval.workflow.noWorkflows')}
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -404,25 +392,25 @@ const ApprovalWorkflowManagement = () => {
         PaperProps={{ elevation: 8 }}
       >
         <DialogTitle>
-          {selectedWorkflow ? '编辑审批流程' : '新建审批流程'}
+          {selectedWorkflow ? t('approval.workflow.edit') : t('approval.workflow.create')}
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="流程名称"
+                label={t('approval.workflow.name')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
                 error={!formData.name.trim()}
-                helperText={!formData.name.trim() ? '流程名称为必填项' : ''}
+                helperText={!formData.name.trim() ? t('approval.workflow.nameRequired') : ''}
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="流程描述"
+                label={t('approval.workflow.description')}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 multiline
@@ -431,21 +419,21 @@ const ApprovalWorkflowManagement = () => {
             </Grid>
             <Grid item xs={6}>
               <FormControl fullWidth required>
-                <InputLabel>类型 *</InputLabel>
+                <InputLabel>{t('approval.workflow.type')} *</InputLabel>
                 <Select
                   value={formData.type}
-                  label="类型 *"
+                  label={`${t('approval.workflow.type')} *`}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 >
-                  <MenuItem value="travel">差旅</MenuItem>
-                  <MenuItem value="expense">费用</MenuItem>
+                  <MenuItem value="travel">{t('approval.workflow.travel')}</MenuItem>
+                  <MenuItem value="expense">{t('approval.workflow.expense')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="优先级"
+                label={t('approval.workflow.priority')}
                 type="number"
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
@@ -454,7 +442,7 @@ const ApprovalWorkflowManagement = () => {
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="最小金额"
+                label={t('approval.workflow.minAmount')}
                 type="number"
                 value={formData.conditions.amountRange.min}
                 onChange={(e) => setFormData({
@@ -472,7 +460,7 @@ const ApprovalWorkflowManagement = () => {
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="最大金额"
+                label={t('approval.workflow.maxAmount')}
                 type="number"
                 value={formData.conditions.amountRange.max === Number.MAX_SAFE_INTEGER 
                   ? '' 
@@ -487,7 +475,7 @@ const ApprovalWorkflowManagement = () => {
                     }
                   }
                 })}
-                placeholder="不限"
+                placeholder={t('approval.workflow.unlimited')}
               />
             </Grid>
             <Grid item xs={12}>
@@ -498,7 +486,7 @@ const ApprovalWorkflowManagement = () => {
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                   />
                 }
-                label="启用此流程"
+                label={t('approval.workflow.enableWorkflow')}
               />
             </Grid>
 
@@ -506,15 +494,15 @@ const ApprovalWorkflowManagement = () => {
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="h6">审批步骤</Typography>
-                  <Chip label="必填" size="small" color="error" />
+                  <Typography variant="h6">{t('approval.workflow.steps')}</Typography>
+                  <Chip label={t('common.required')} size="small" color="error" />
                 </Box>
                 <Button
                   size="small"
                   startIcon={<AddIcon />}
                   onClick={handleAddStep}
                 >
-                  添加步骤
+                  {t('approval.workflow.addStep')}
                 </Button>
               </Box>
 
@@ -522,7 +510,7 @@ const ApprovalWorkflowManagement = () => {
                 {formData.steps.map((step, index) => (
                   <Step key={index} active>
                     <StepLabel>
-                      第 {step.level} 级审批
+                      {t('approval.workflow.stepLevel', { level: step.level })}
                     </StepLabel>
                     <StepContent>
                       <Grid container spacing={2}>
@@ -530,41 +518,41 @@ const ApprovalWorkflowManagement = () => {
                           <TextField
                             fullWidth
                             size="small"
-                            label="步骤名称"
+                            label={t('approval.workflow.stepName')}
                             value={step.name}
                             onChange={(e) => handleStepChange(index, 'name', e.target.value)}
                             required
                             error={!step.name.trim()}
-                            helperText={!step.name.trim() ? '步骤名称为必填项' : ''}
+                            helperText={!step.name.trim() ? t('approval.workflow.stepNameRequired') : ''}
                           />
                         </Grid>
                         <Grid item xs={6}>
                           <FormControl fullWidth size="small" required>
-                            <InputLabel>审批人类型 *</InputLabel>
+                            <InputLabel>{t('approval.workflow.approverType')} *</InputLabel>
                             <Select
                               value={step.approverType}
-                              label="审批人类型 *"
+                              label={`${t('approval.workflow.approverType')} *`}
                               onChange={(e) => handleStepChange(index, 'approverType', e.target.value)}
                             >
-                              <MenuItem value="manager">直接上级</MenuItem>
-                              <MenuItem value="department_head">部门负责人</MenuItem>
-                              <MenuItem value="finance">财务</MenuItem>
-                              <MenuItem value="role">按角色</MenuItem>
-                              <MenuItem value="specific_user">指定用户</MenuItem>
+                              <MenuItem value="manager">{t('approval.workflow.approverTypes.manager')}</MenuItem>
+                              <MenuItem value="department_head">{t('approval.workflow.approverTypes.department_head')}</MenuItem>
+                              <MenuItem value="finance">{t('approval.workflow.approverTypes.finance')}</MenuItem>
+                              <MenuItem value="role">{t('approval.workflow.approverTypes.role')}</MenuItem>
+                              <MenuItem value="specific_user">{t('approval.workflow.approverTypes.specific_user')}</MenuItem>
                             </Select>
                           </FormControl>
                         </Grid>
                         <Grid item xs={6}>
                           <FormControl fullWidth size="small">
-                            <InputLabel>审批方式</InputLabel>
+                            <InputLabel>{t('approval.workflow.approvalMode')}</InputLabel>
                             <Select
                               value={step.approvalMode}
-                              label="审批方式"
+                              label={t('approval.workflow.approvalMode')}
                               onChange={(e) => handleStepChange(index, 'approvalMode', e.target.value)}
                             >
-                              <MenuItem value="any">任一审批</MenuItem>
-                              <MenuItem value="all">全部审批</MenuItem>
-                              <MenuItem value="sequence">按顺序</MenuItem>
+                              <MenuItem value="any">{t('approval.workflow.approvalModes.any')}</MenuItem>
+                              <MenuItem value="all">{t('approval.workflow.approvalModes.all')}</MenuItem>
+                              <MenuItem value="sequence">{t('approval.workflow.approvalModes.sequence')}</MenuItem>
                             </Select>
                           </FormControl>
                         </Grid>
@@ -572,7 +560,7 @@ const ApprovalWorkflowManagement = () => {
                           <TextField
                             fullWidth
                             size="small"
-                            label="超时时间（小时）"
+                            label={t('approval.workflow.timeoutHours')}
                             type="number"
                             value={step.timeoutHours}
                             onChange={(e) => handleStepChange(index, 'timeoutHours', parseInt(e.target.value) || 48)}
@@ -587,7 +575,7 @@ const ApprovalWorkflowManagement = () => {
                                 size="small"
                               />
                             }
-                            label="必须"
+                            label={t('approval.workflow.required')}
                           />
                         </Grid>
                         <Grid item xs={12}>
@@ -596,7 +584,7 @@ const ApprovalWorkflowManagement = () => {
                             color="error"
                             onClick={() => handleRemoveStep(index)}
                           >
-                            删除此步骤
+                            {t('approval.workflow.deleteStep')}
                           </Button>
                         </Grid>
                       </Grid>
@@ -607,16 +595,16 @@ const ApprovalWorkflowManagement = () => {
 
               {formData.steps.length === 0 && (
                 <Alert severity="warning">
-                  请添加至少一个审批步骤（必填）
+                  {t('approval.workflow.stepsRequired')}
                 </Alert>
               )}
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>取消</Button>
+          <Button onClick={handleCloseDialog}>{t('common.cancel')}</Button>
           <Button onClick={handleSave} variant="contained">
-            保存
+            {t('common.save')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -629,7 +617,7 @@ const ApprovalWorkflowManagement = () => {
         fullWidth
         PaperProps={{ elevation: 8 }}
       >
-        <DialogTitle>审批流程详情</DialogTitle>
+        <DialogTitle>{t('approval.workflow.view')}</DialogTitle>
         <DialogContent>
           {selectedWorkflow && (
             <Box sx={{ mt: 2 }}>
@@ -641,15 +629,15 @@ const ApprovalWorkflowManagement = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">类型</Typography>
-                  <Typography>{selectedWorkflow.type === 'travel' ? '差旅' : '费用'}</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('approval.workflow.workflowType')}</Typography>
+                  <Typography>{selectedWorkflow.type === 'travel' ? t('approval.workflow.travel') : t('approval.workflow.expense')}</Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" color="text.secondary">优先级</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('approval.workflow.priority')}</Typography>
                   <Typography>{selectedWorkflow.priority}</Typography>
                 </Grid>
                 <Grid item xs={12}>
-                  <Typography variant="caption" color="text.secondary">金额范围</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('approval.workflow.amountRange')}</Typography>
                   <Typography>
                     ¥{selectedWorkflow.conditions?.amountRange?.min || 0} - 
                     ¥{selectedWorkflow.conditions?.amountRange?.max === Number.MAX_SAFE_INTEGER 
@@ -659,25 +647,25 @@ const ApprovalWorkflowManagement = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <Divider sx={{ my: 2 }} />
-                  <Typography variant="h6" gutterBottom>审批步骤</Typography>
+                  <Typography variant="h6" gutterBottom>{t('approval.workflow.steps')}</Typography>
                   <Stepper orientation="vertical">
                     {selectedWorkflow.steps?.map((step, index) => (
                       <Step key={index} active>
                         <StepLabel>
-                          第 {step.level} 级 - {step.name}
+                          {t('approval.workflow.stepLevelWithName', { level: step.level, name: step.name })}
                         </StepLabel>
                         <StepContent>
                           <Typography variant="body2">
-                            审批人类型: {getApproverTypeLabel(step.approverType)}
+                            {t('approval.workflow.approverType')}: {getApproverTypeLabel(step.approverType)}
                           </Typography>
                           <Typography variant="body2">
-                            审批方式: {getApprovalModeLabel(step.approvalMode)}
+                            {t('approval.workflow.approvalMode')}: {getApprovalModeLabel(step.approvalMode)}
                           </Typography>
                           <Typography variant="body2">
-                            超时时间: {step.timeoutHours}小时
+                            {t('approval.workflow.timeoutHours')}: {step.timeoutHours}
                           </Typography>
                           <Typography variant="body2">
-                            必须: {step.required ? '是' : '否'}
+                            {t('approval.workflow.required')}: {step.required ? t('common.yes') : t('common.no')}
                           </Typography>
                         </StepContent>
                       </Step>
@@ -689,7 +677,7 @@ const ApprovalWorkflowManagement = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseViewDialog}>关闭</Button>
+          <Button onClick={handleCloseViewDialog}>{t('common.close')}</Button>
         </DialogActions>
       </Dialog>
     </Container>

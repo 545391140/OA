@@ -30,7 +30,9 @@
     "rowsPerPage": "페이지당 행 수",
     "of": "의",
     "moreThan": "이상",
-    "subtotal": "소계"
+    "subtotal": "소계",
+    "required": "필수",
+    "unknown": "알 수 없음"
   },
   "navigation": {
     "dashboard": "대시보드",

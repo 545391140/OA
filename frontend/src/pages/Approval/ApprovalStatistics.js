@@ -117,7 +117,7 @@ const ApprovalStatistics = () => {
 
     } catch (error) {
       console.error('Failed to fetch statistics:', error);
-      showNotification('加载统计数据失败', 'error');
+      showNotification(t('approval.statistics.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -187,7 +187,7 @@ const ApprovalStatistics = () => {
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" fontWeight={600}>
-          审批统计分析
+          {t('approval.statistics.title')}
         </Typography>
       </Box>
 
@@ -197,7 +197,7 @@ const ApprovalStatistics = () => {
           <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
-              label="开始日期"
+              label={t('approval.statistics.startDate')}
               type="date"
               value={dateRange.startDate}
               onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
@@ -207,7 +207,7 @@ const ApprovalStatistics = () => {
           <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
-              label="结束日期"
+              label={t('approval.statistics.endDate')}
               type="date"
               value={dateRange.endDate}
               onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
@@ -216,15 +216,15 @@ const ApprovalStatistics = () => {
           </Grid>
           <Grid item xs={12} sm={3}>
             <FormControl fullWidth>
-              <InputLabel>类型</InputLabel>
+              <InputLabel>{t('approval.statistics.type')}</InputLabel>
               <Select
                 value={type}
-                label="类型"
+                label={t('approval.statistics.type')}
                 onChange={(e) => setType(e.target.value)}
               >
-                <MenuItem value="all">全部</MenuItem>
-                <MenuItem value="travel">差旅</MenuItem>
-                <MenuItem value="expense">费用</MenuItem>
+                <MenuItem value="all">{t('approval.statistics.all')}</MenuItem>
+                <MenuItem value="travel">{t('approval.workflow.travel')}</MenuItem>
+                <MenuItem value="expense">{t('approval.workflow.expense')}</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -235,7 +235,7 @@ const ApprovalStatistics = () => {
               onClick={fetchStatistics}
               disabled={loading}
             >
-              {loading ? <CircularProgress size={24} /> : '查询'}
+              {loading ? <CircularProgress size={24} /> : t('approval.statistics.query')}
             </Button>
           </Grid>
         </Grid>
@@ -251,7 +251,7 @@ const ApprovalStatistics = () => {
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={3}>
               {renderStatCard(
-                '待审批',
+                t('approval.statistics.pending'),
                 currentStats.pending || 0,
                 <PendingIcon sx={{ color: 'warning.main' }} />,
                 'warning.main'
@@ -259,7 +259,7 @@ const ApprovalStatistics = () => {
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               {renderStatCard(
-                '已通过',
+                t('approval.statistics.approved'),
                 currentStats.approved || 0,
                 <ApprovedIcon sx={{ color: 'success.main' }} />,
                 'success.main'
@@ -267,7 +267,7 @@ const ApprovalStatistics = () => {
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               {renderStatCard(
-                '已拒绝',
+                t('approval.statistics.rejected'),
                 currentStats.rejected || 0,
                 <RejectedIcon sx={{ color: 'error.main' }} />,
                 'error.main'
@@ -275,7 +275,7 @@ const ApprovalStatistics = () => {
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               {renderStatCard(
-                '通过率',
+                t('approval.statistics.approvalRate'),
                 `${currentStats.approvalRate?.toFixed(1) || 0}%`,
                 <SpeedIcon sx={{ color: getApprovalRateColor(currentStats.approvalRate) }} />,
                 getApprovalRateColor(currentStats.approvalRate)
@@ -288,7 +288,7 @@ const ApprovalStatistics = () => {
               <Card>
                 <CardContent>
                   <Typography variant="caption" color="text.secondary" gutterBottom>
-                    平均审批金额
+                    {t('approval.statistics.avgAmount')}
                   </Typography>
                   <Typography variant="h5" fontWeight={600}>
                     {formatCurrency(currentStats.avgAmount)}
@@ -300,7 +300,7 @@ const ApprovalStatistics = () => {
               <Card>
                 <CardContent>
                   <Typography variant="caption" color="text.secondary" gutterBottom>
-                    平均审批时长
+                    {t('approval.statistics.avgApprovalTime')}
                   </Typography>
                   <Typography variant="h5" fontWeight={600}>
                     {formatDuration(currentStats.avgApprovalTime || 0)}
@@ -312,7 +312,7 @@ const ApprovalStatistics = () => {
               <Card>
                 <CardContent>
                   <Typography variant="caption" color="text.secondary" gutterBottom>
-                    总审批金额
+                    {t('approval.statistics.totalAmount')}
                   </Typography>
                   <Typography variant="h5" fontWeight={600}>
                     {formatCurrency(currentStats.totalAmount)}
@@ -327,15 +327,15 @@ const ApprovalStatistics = () => {
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  审批状态分布
+                  {t('approval.statistics.statusDistribution')}
                 </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
                       data={[
-                        { name: '待审批', value: currentStats.pending || 0 },
-                        { name: '已通过', value: currentStats.approved || 0 },
-                        { name: '已拒绝', value: currentStats.rejected || 0 }
+                        { name: t('approval.statistics.pending'), value: currentStats.pending || 0 },
+                        { name: t('approval.statistics.approved'), value: currentStats.approved || 0 },
+                        { name: t('approval.statistics.rejected'), value: currentStats.rejected || 0 }
                       ]}
                       cx="50%"
                       cy="50%"
@@ -359,7 +359,7 @@ const ApprovalStatistics = () => {
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom>
-                  审批趋势
+                  {t('approval.statistics.trend')}
                 </Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={trendData}>
@@ -368,9 +368,9 @@ const ApprovalStatistics = () => {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="approved" stroke="#00C49F" name="通过" />
-                    <Line type="monotone" dataKey="rejected" stroke="#FF8042" name="拒绝" />
-                    <Line type="monotone" dataKey="pending" stroke="#FFBB28" name="待审" />
+                    <Line type="monotone" dataKey="approved" stroke="#00C49F" name={t('approval.statistics.approved')} />
+                    <Line type="monotone" dataKey="rejected" stroke="#FF8042" name={t('approval.statistics.rejected')} />
+                    <Line type="monotone" dataKey="pending" stroke="#FFBB28" name={t('approval.statistics.pending')} />
                   </LineChart>
                 </ResponsiveContainer>
               </Paper>
@@ -380,19 +380,19 @@ const ApprovalStatistics = () => {
           {/* 审批人工作量统计 */}
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              审批人工作量统计
+              {t('approval.statistics.approverWorkload')}
             </Typography>
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>审批人</TableCell>
-                    <TableCell align="right">待审批</TableCell>
-                    <TableCell align="right">已审批</TableCell>
-                    <TableCell align="right">通过</TableCell>
-                    <TableCell align="right">拒绝</TableCell>
-                    <TableCell align="right">通过率</TableCell>
-                    <TableCell align="right">平均审批时长</TableCell>
+                    <TableCell>{t('approval.statistics.approver')}</TableCell>
+                    <TableCell align="right">{t('approval.statistics.pending')}</TableCell>
+                    <TableCell align="right">{t('approval.statistics.total')}</TableCell>
+                    <TableCell align="right">{t('approval.statistics.approved')}</TableCell>
+                    <TableCell align="right">{t('approval.statistics.rejected')}</TableCell>
+                    <TableCell align="right">{t('approval.statistics.approvalRate')}</TableCell>
+                    <TableCell align="right">{t('approval.statistics.avgApprovalTime')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -400,7 +400,7 @@ const ApprovalStatistics = () => {
                     <TableRow key={approver._id}>
                       <TableCell>
                         <Typography variant="subtitle2">
-                          {approver.approverName || '未知'}
+                          {approver.approverName || t('common.unknown')}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
@@ -443,7 +443,7 @@ const ApprovalStatistics = () => {
                     <TableRow>
                       <TableCell colSpan={7} align="center">
                         <Typography variant="body2" color="text.secondary">
-                          暂无数据
+                          {t('approval.statistics.noData')}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -454,7 +454,7 @@ const ApprovalStatistics = () => {
           </Paper>
         </>
       ) : (
-        <Alert severity="info">暂无统计数据</Alert>
+        <Alert severity="info">{t('approval.statistics.noData')}</Alert>
       )}
     </Container>
   );

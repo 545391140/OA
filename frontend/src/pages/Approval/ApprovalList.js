@@ -81,7 +81,7 @@ const ApprovalList = () => {
         const travelItems = travels.map(travel => ({
           id: travel._id,
           type: 'travel',
-          title: travel.title || travel.travelNumber || '差旅申请',
+          title: travel.title || travel.travelNumber || t('approval.travelRequest'),
           employee: travel.employee || {},
           amount: travel.estimatedBudget || travel.estimatedCost || 0,
           currency: travel.currency || 'CNY',
@@ -98,7 +98,7 @@ const ApprovalList = () => {
         const expenseItems = expenses.map(expense => ({
           id: expense._id,
           type: 'expense',
-          title: expense.title || expense.expenseNumber || '费用申请',
+          title: expense.title || expense.expenseNumber || t('approval.expenseReport'),
           employee: expense.employee || {},
           amount: expense.totalAmount || expense.amount || 0,
           currency: expense.currency || 'CNY',
@@ -138,7 +138,7 @@ const ApprovalList = () => {
 
   const handleApprovalSubmit = async () => {
     if (!approvalComments.trim()) {
-      showNotification('请输入审批意见', 'warning');
+      showNotification(t('approval.approvalCommentsRequired'), 'warning');
       return;
     }
 
@@ -174,7 +174,7 @@ const ApprovalList = () => {
       setApprovalHistory(prev => [historyItem, ...prev]);
 
       showNotification(
-        approvalAction === 'approve' ? '审批通过' : '已拒绝',
+        approvalAction === 'approve' ? t('approval.approved') : t('approval.rejected'),
         'success'
       );
 
@@ -185,7 +185,7 @@ const ApprovalList = () => {
     } catch (error) {
       console.error('Approval error:', error);
       showNotification(
-        error.response?.data?.message || '审批失败',
+        error.response?.data?.message || t('messages.error.general'),
         'error'
       );
     }
@@ -227,7 +227,7 @@ const ApprovalList = () => {
                 {item.title}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {item.type === 'travel' ? 'Travel Request' : 'Expense Report'}
+                {item.type === 'travel' ? t('approval.travelRequest') : t('approval.expenseReport')}
               </Typography>
             </Box>
           </Box>
@@ -250,7 +250,7 @@ const ApprovalList = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <PersonIcon color="action" fontSize="small" />
               <Typography variant="body2">
-                <strong>Employee:</strong> {item.employee.firstName} {item.employee.lastName}
+                <strong>{t('approval.employee')}:</strong> {item.employee.firstName} {item.employee.lastName}
               </Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
@@ -261,13 +261,13 @@ const ApprovalList = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <MoneyIcon color="action" fontSize="small" />
               <Typography variant="body2">
-                <strong>Amount:</strong> {item.currency} {item.amount.toLocaleString()}
+                <strong>{t('approval.amount')}:</strong> {item.currency} {item.amount.toLocaleString()}
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CalendarIcon color="action" fontSize="small" />
               <Typography variant="body2">
-                <strong>Date:</strong> {dayjs(item.date).format('MMM DD, YYYY')}
+                <strong>{t('approval.date')}:</strong> {dayjs(item.date).format('MMM DD, YYYY')}
               </Typography>
             </Box>
           </Grid>
@@ -276,14 +276,14 @@ const ApprovalList = () => {
         {item.approver && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              <strong>Approved by:</strong> {item.approver.firstName} {item.approver.lastName} ({item.approver.position})
+              <strong>{t('approval.approvedBy')}:</strong> {item.approver.firstName} {item.approver.lastName} ({item.approver.position})
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              <strong>Approved on:</strong> {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
+              <strong>{t('approval.approvedOn')}:</strong> {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
             </Typography>
             {item.comments && (
               <Typography variant="body2" sx={{ mt: 1 }}>
-                <strong>Comments:</strong> {item.comments}
+                <strong>{t('approval.comments')}:</strong> {item.comments}
               </Typography>
             )}
           </Box>
@@ -297,7 +297,7 @@ const ApprovalList = () => {
               startIcon={<RejectIcon />}
               onClick={() => handleApproval(item, 'reject')}
             >
-              Reject
+              {t('approval.reject')}
             </Button>
             <Button
               variant="contained"
@@ -305,7 +305,7 @@ const ApprovalList = () => {
               startIcon={<ApproveIcon />}
               onClick={() => handleApproval(item, 'approve')}
             >
-              Approve
+              {t('approval.approve')}
             </Button>
           </Box>
         )}
@@ -338,12 +338,12 @@ const ApprovalList = () => {
             textColor="primary"
           >
             <Tab
-              label={`Pending Approvals (${pendingApprovals.length})`}
+              label={`${t('approval.pendingApprovals')} (${pendingApprovals.length})`}
               icon={<ApprovalIcon />}
               iconPosition="start"
             />
             <Tab
-              label={`Approval History (${approvalHistory.length})`}
+              label={`${t('approval.approvalHistory')} (${approvalHistory.length})`}
               icon={<ApprovalIcon />}
               iconPosition="start"
             />
@@ -357,7 +357,7 @@ const ApprovalList = () => {
                 </Typography>
                 {pendingApprovals.length === 0 ? (
                   <Alert severity="info">
-                    No pending approvals at this time.
+                    {t('approval.noPendingApprovals')}
                   </Alert>
                 ) : (
                   pendingApprovals.map((item) => (
@@ -374,7 +374,7 @@ const ApprovalList = () => {
                 </Typography>
                 {approvalHistory.length === 0 ? (
                   <Alert severity="info">
-                    No approval history available.
+                    {t('approval.noApprovalHistory')}
                   </Alert>
                 ) : (
                   approvalHistory.map((item) => (
@@ -394,7 +394,7 @@ const ApprovalList = () => {
           fullWidth
         >
           <DialogTitle>
-            {approvalAction === 'approve' ? 'Approve Request' : 'Reject Request'}
+            {approvalAction === 'approve' ? t('approval.approveRequest') : t('approval.rejectRequest')}
           </DialogTitle>
           <DialogContent>
             {selectedItem && (
@@ -403,10 +403,10 @@ const ApprovalList = () => {
                   {selectedItem.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Employee: {selectedItem.employee.firstName} {selectedItem.employee.lastName}
+                  {t('approval.employee')}: {selectedItem.employee.firstName} {selectedItem.employee.lastName}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Amount: {selectedItem.currency} {selectedItem.amount.toLocaleString()}
+                  {t('approval.amount')}: {selectedItem.currency} {selectedItem.amount.toLocaleString()}
                 </Typography>
               </Box>
             )}
@@ -415,26 +415,23 @@ const ApprovalList = () => {
               fullWidth
               multiline
               rows={4}
-              label={t('approval.comments')}
+              label={t('approval.approvalComments')}
               value={approvalComments}
               onChange={(e) => setApprovalComments(e.target.value)}
-              placeholder={approvalAction === 'approve' 
-                ? 'Add any comments about this approval...' 
-                : 'Please explain why this request is being rejected...'
-              }
+              placeholder={t('approval.approvalCommentsPlaceholder')}
               sx={{ mt: 2 }}
             />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setApprovalDialogOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleApprovalSubmit}
               variant="contained"
               color={approvalAction === 'approve' ? 'success' : 'error'}
             >
-              {approvalAction === 'approve' ? 'Approve' : 'Reject'}
+              {approvalAction === 'approve' ? t('approval.approve') : t('approval.reject')}
             </Button>
           </DialogActions>
         </Dialog>
