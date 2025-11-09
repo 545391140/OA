@@ -440,7 +440,7 @@ const ApprovalList = () => {
         {/* 主要信息：员工、金额、日期 */}
         <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
           <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
               <PersonIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
               <Typography variant="body2" sx={{ fontSize: '0.8125rem', lineHeight: 1.5 }}>
                 <strong>{t('approval.employee')}:</strong> {item.employee.firstName} {item.employee.lastName}
@@ -450,6 +450,15 @@ const ApprovalList = () => {
                   </Typography>
                 )}
               </Typography>
+              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                •
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <CalendarIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                  {dayjs(item.date).format('MMM DD, YYYY')}
+                </Typography>
+              </Box>
             </Box>
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -457,14 +466,6 @@ const ApprovalList = () => {
               <MoneyIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
               <Typography variant="body2" sx={{ fontSize: '0.8125rem', lineHeight: 1.5 }}>
                 <strong>{t('approval.amount')}:</strong> {item.currency} {item.amount.toLocaleString()}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-              <Typography variant="body2" sx={{ fontSize: '0.8125rem', lineHeight: 1.5 }}>
-                <strong>{t('approval.date')}:</strong> {dayjs(item.date).format('MMM DD, YYYY')}
               </Typography>
             </Box>
           </Grid>
