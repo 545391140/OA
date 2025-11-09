@@ -289,13 +289,6 @@ router.get('/statistics', protect, async (req, res) => {
       approverId = req.user.id;
     }
     
-    // 构建匹配条件数组
-    const matchStages = [
-      {
-        'approvals.approver': approverId
-      }
-    ];
-    
     // 如果有日期查询，需要在unwind之后添加
     const afterUnwindMatch = {
       'approvals.approver': approverId
