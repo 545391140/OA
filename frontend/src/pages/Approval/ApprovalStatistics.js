@@ -114,10 +114,16 @@ const ApprovalStatistics = () => {
           approvalRate: 0
         };
         
-        setStatistics({
+        const finalStats = {
           travel: statsData.travel || defaultStats,
           expense: statsData.expense || defaultStats
-        });
+        };
+        
+        console.log('Setting statistics:', finalStats);
+        console.log('Travel avgAmount:', finalStats.travel.avgAmount, typeof finalStats.travel.avgAmount);
+        console.log('Expense avgAmount:', finalStats.expense.avgAmount, typeof finalStats.expense.avgAmount);
+        
+        setStatistics(finalStats);
       } else {
         console.warn('Stats API response not successful:', statsResponse.data);
         // 设置空数据
@@ -230,7 +236,9 @@ const ApprovalStatistics = () => {
   };
 
   const formatCurrency = (amount) => {
-    return `¥${amount?.toLocaleString() || 0}`;
+    // 确保amount是有效数字
+    const numAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
+    return `¥${numAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatDuration = (hours) => {
