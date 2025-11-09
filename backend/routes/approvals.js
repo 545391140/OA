@@ -313,9 +313,18 @@ router.get('/statistics', protect, async (req, res) => {
       console.log('Base match condition:', JSON.stringify(baseMatchCondition, null, 2));
       
       // 先检查是否有匹配的文档
-      const matchedDocs = await Travel.find(baseMatchCondition).limit(5).select('_id approvals').lean();
+      const matchedDocs = await Travel.find(baseMatchCondition).limit(5).select('_id approvals createdAt').lean();
       console.log('Matched documents count:', matchedDocs.length);
       console.log('Sample matched documents:', JSON.stringify(matchedDocs, null, 2));
+      
+      // 检查所有Travel文档（不限制approver）
+      const allTravels = await Travel.find({}).limit(3).select('_id approvals createdAt').lean();
+      console.log('Total Travel documents sample:', JSON.stringify(allTravels, null, 2));
+      
+      // 检查approverId的类型
+      console.log('ApproverId type:', typeof approverId);
+      console.log('ApproverId value:', approverId);
+      console.log('ApproverId is ObjectId?', approverId instanceof mongoose.Types.ObjectId);
       
       const stats = await Travel.aggregate([
         {
