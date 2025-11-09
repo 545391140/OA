@@ -321,6 +321,7 @@ router.get('/statistics', protect, async (req, res) => {
     // 查询差旅统计数据
     const getTravelStats = async () => {
       console.log('=== Travel Stats Query ===');
+      console.log('Collection/Table: travels (Travel model)');
       console.log('Approver ID:', approverId);
       console.log('Base match condition:', JSON.stringify(baseMatchCondition, null, 2));
       
@@ -332,6 +333,14 @@ router.get('/statistics', protect, async (req, res) => {
       // 检查所有Travel文档（不限制approver）
       const allTravels = await Travel.find({}).limit(3).select('_id approvals createdAt').lean();
       console.log('Total Travel documents sample:', JSON.stringify(allTravels, null, 2));
+      
+      // 检查Travel集合的总文档数
+      const totalTravelCount = await Travel.countDocuments({});
+      console.log('Total Travel documents in collection:', totalTravelCount);
+      
+      // 检查有approvals的Travel文档数
+      const travelWithApprovalsCount = await Travel.countDocuments({ 'approvals.0': { $exists: true } });
+      console.log('Travel documents with approvals:', travelWithApprovalsCount);
       
       // 检查approverId的类型
       console.log('ApproverId type:', typeof approverId);
@@ -441,13 +450,26 @@ router.get('/statistics', protect, async (req, res) => {
     // 查询费用统计数据
     const getExpenseStats = async () => {
       console.log('=== Expense Stats Query ===');
+      console.log('Collection/Table: expenses (Expense model)');
       console.log('Approver ID:', approverId);
       console.log('Base match condition:', JSON.stringify(baseMatchCondition, null, 2));
       
       // 先检查是否有匹配的文档
-      const matchedDocs = await Expense.find(baseMatchCondition).limit(5).select('_id approvals').lean();
+      const matchedDocs = await Expense.find(baseMatchCondition).limit(5).select('_id approvals createdAt').lean();
       console.log('Matched expense documents count:', matchedDocs.length);
       console.log('Sample matched expense documents:', JSON.stringify(matchedDocs, null, 2));
+      
+      // 检查所有Expense文档（不限制approver）
+      const allExpenses = await Expense.find({}).limit(3).select('_id approvals createdAt').lean();
+      console.log('Total Expense documents sample:', JSON.stringify(allExpenses, null, 2));
+      
+      // 检查Expense集合的总文档数
+      const totalExpenseCount = await Expense.countDocuments({});
+      console.log('Total Expense documents in collection:', totalExpenseCount);
+      
+      // 检查有approvals的Expense文档数
+      const expenseWithApprovalsCount = await Expense.countDocuments({ 'approvals.0': { $exists: true } });
+      console.log('Expense documents with approvals:', expenseWithApprovalsCount);
       
       const stats = await Expense.aggregate([
         {
