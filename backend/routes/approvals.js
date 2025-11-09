@@ -342,10 +342,38 @@ router.get('/statistics', protect, async (req, res) => {
       const travelWithApprovalsCount = await Travel.countDocuments({ 'approvals.0': { $exists: true } });
       console.log('Travel documents with approvals:', travelWithApprovalsCount);
       
+      // 检查approvals数组中approver字段的格式
+      if (allTravels.length > 0 && allTravels[0].approvals && allTravels[0].approvals.length > 0) {
+        const firstApproval = allTravels[0].approvals[0];
+        console.log('Sample approval object:', JSON.stringify(firstApproval, null, 2));
+        console.log('Sample approval.approver:', firstApproval.approver);
+        console.log('Sample approval.approver type:', typeof firstApproval.approver);
+        console.log('Sample approval.approver is ObjectId?', firstApproval.approver instanceof mongoose.Types.ObjectId);
+        console.log('Sample approval.approver toString:', String(firstApproval.approver));
+      }
+      
       // 检查approverId的类型
       console.log('ApproverId type:', typeof approverId);
       console.log('ApproverId value:', approverId);
+      console.log('ApproverId toString:', String(approverId));
       console.log('ApproverId is ObjectId?', approverId instanceof mongoose.Types.ObjectId);
+      console.log('ApproverIdString:', approverIdString);
+      
+      // 尝试直接查询匹配的approver
+      const directMatch = await Travel.find({
+        'approvals.approver': approverId
+      }).limit(1).select('_id approvals').lean();
+      console.log('Direct match with approverId (ObjectId):', directMatch.length);
+      
+      const directMatchString = await Travel.find({
+        'approvals.approver': approverIdString
+      }).limit(1).select('_id approvals').lean();
+      console.log('Direct match with approverIdString:', directMatchString.length);
+      
+      const directMatchIn = await Travel.find({
+        'approvals.approver': { $in: [approverId, approverIdString] }
+      }).limit(1).select('_id approvals').lean();
+      console.log('Direct match with $in:', directMatchIn.length);
       
       const stats = await Travel.aggregate([
         {
