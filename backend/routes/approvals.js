@@ -285,20 +285,32 @@ router.get('/statistics', protect, async (req, res) => {
 
     // 构建基础匹配条件
     // 确保req.user.id正确转换为ObjectId
+    // 注意：MongoDB查询数组字段时，ObjectId和字符串可能不匹配
+    // 我们需要同时尝试ObjectId和字符串格式
     let approverId;
+    let approverIdString;
     try {
-      approverId = mongoose.Types.ObjectId.isValid(req.user.id) 
-        ? mongoose.Types.ObjectId(req.user.id)
-        : req.user.id;
+      if (mongoose.Types.ObjectId.isValid(req.user.id)) {
+        approverId = mongoose.Types.ObjectId(req.user.id);
+        approverIdString = String(req.user.id);
+      } else {
+        approverId = req.user.id;
+        approverIdString = String(req.user.id);
+      }
     } catch (error) {
       approverId = req.user.id;
+      approverIdString = String(req.user.id);
     }
+    
+    console.log('Approver ID (ObjectId):', approverId);
+    console.log('Approver ID (String):', approverIdString);
     
     // 构建匹配条件
     // 注意：approvals数组中没有createdAt字段，只有approvedAt
-    // 日期查询应该使用文档级别的createdAt（文档创建时间）或approvedAt（审批时间）
+    // 日期查询应该使用文档级别的createdAt（文档创建时间）
+    // 使用$in来匹配ObjectId或字符串格式
     const baseMatchCondition = {
-      'approvals.approver': approverId
+      'approvals.approver': { $in: [approverId, approverIdString] }
     };
     
     // 如果有日期查询，使用文档级别的createdAt
@@ -335,7 +347,7 @@ router.get('/statistics', protect, async (req, res) => {
         },
         {
           $match: {
-            'approvals.approver': approverId
+            'approvals.approver': { $in: [approverId, approverIdString] }
           }
         },
         {
@@ -446,7 +458,7 @@ router.get('/statistics', protect, async (req, res) => {
         },
         {
           $match: {
-            'approvals.approver': approverId
+            'approvals.approver': { $in: [approverId, approverIdString] }
           }
         },
         {
@@ -820,7 +832,7 @@ router.get('/trend', protect, async (req, res) => {
         },
         {
           $match: {
-            'approvals.approver': approverId
+            'approvals.approver': { $in: [approverId, approverIdString] }
           }
         },
         {
@@ -909,7 +921,7 @@ router.get('/trend', protect, async (req, res) => {
         },
         {
           $match: {
-            'approvals.approver': approverId
+            'approvals.approver': { $in: [approverId, approverIdString] }
           }
         },
         {
