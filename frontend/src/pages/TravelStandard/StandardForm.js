@@ -32,6 +32,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useTranslation } from 'react-i18next';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 import BasicInfoStep from './StandardFormSteps/BasicInfoStep';
@@ -39,19 +40,20 @@ import ConditionStep from './StandardFormSteps/ConditionStep';
 import ExpenseStep from './StandardFormSteps/ExpenseStep';
 import PreviewStep from './StandardFormSteps/PreviewStep';
 
-const steps = [
-  '基础信息',
-  '适用条件',
-  '费用标准',
-  '预览确认'
-];
-
 const StandardForm = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const isEdit = Boolean(id);
+  
+  const steps = [
+    t('travelStandard.form.steps.basicInfo'),
+    t('travelStandard.form.steps.conditions'),
+    t('travelStandard.form.steps.expenses'),
+    t('travelStandard.form.steps.preview')
+  ];
 
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
@@ -166,7 +168,7 @@ const StandardForm = () => {
       }
     } catch (err) {
       console.error('Fetch standard error:', err);
-      showNotification('加载标准失败', 'error');
+      showNotification(t('travelStandard.form.errors.loadFailed'), 'error');
       navigate('/travel-standards');
     } finally {
       setLoading(false);
@@ -180,25 +182,25 @@ const StandardForm = () => {
       // 基础信息验证
       const standardCode = formData.standardCode.trim().toUpperCase();
       if (!standardCode) {
-        newErrors.standardCode = '标准编码不能为空';
+        newErrors.standardCode = t('travelStandard.form.basicInfo.errors.standardCodeRequired');
       } else if (!/^[A-Z0-9_]+$/.test(standardCode)) {
-        newErrors.standardCode = '标准编码只能包含大写字母、数字和下划线';
+        newErrors.standardCode = t('travelStandard.form.basicInfo.errors.standardCodeInvalid');
       }
       
       if (!formData.standardName.trim()) {
-        newErrors.standardName = '标准名称不能为空';
+        newErrors.standardName = t('travelStandard.form.basicInfo.errors.standardNameRequired');
       }
       
       if (!formData.effectiveDate) {
-        newErrors.effectiveDate = '生效日期不能为空';
+        newErrors.effectiveDate = t('travelStandard.form.basicInfo.errors.effectiveDateRequired');
       }
       
       if (formData.expiryDate && formData.expiryDate.isBefore(formData.effectiveDate)) {
-        newErrors.expiryDate = '失效日期不能早于生效日期';
+        newErrors.expiryDate = t('travelStandard.form.basicInfo.errors.expiryDateInvalid');
       }
       
       if (formData.priority < 0 || formData.priority > 100) {
-        newErrors.priority = '优先级必须在0-100之间';
+        newErrors.priority = t('travelStandard.form.basicInfo.errors.priorityInvalid');
       }
     }
     
@@ -210,7 +212,7 @@ const StandardForm = () => {
     if (validateStep(activeStep)) {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
     } else {
-      showNotification('请检查表单错误', 'error');
+      showNotification(t('travelStandard.form.errors.checkFormErrors'), 'error');
     }
   };
 
@@ -220,7 +222,7 @@ const StandardForm = () => {
 
   const handleSubmit = async () => {
     if (!validateStep(activeStep)) {
-      showNotification('请检查表单错误', 'error');
+      showNotification(t('travelStandard.form.errors.checkFormErrors'), 'error');
       return;
     }
 
@@ -264,27 +266,27 @@ const StandardForm = () => {
 
       if (response.data.success) {
         showNotification(
-          isEdit ? '标准更新成功' : '标准创建成功',
+          isEdit ? t('travelStandard.form.success.updateSuccess') : t('travelStandard.form.success.createSuccess'),
           'success'
         );
         navigate('/travel-standards');
       }
     } catch (err) {
       console.error('Save standard error:', err);
-      let errorMessage = err.response?.data?.message || err.message || (isEdit ? '更新失败' : '创建失败');
+      let errorMessage = err.response?.data?.message || err.message || (isEdit ? t('travelStandard.form.errors.updateFailed') : t('travelStandard.form.errors.createFailed'));
       
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (err.response?.status === 503) {
-        errorMessage = '数据库未连接，无法保存标准。请检查数据库连接或联系管理员。';
+        errorMessage = t('travelStandard.form.errors.dbNotConnected');
       } else if (err.response?.status >= 500) {
-        errorMessage = '服务器错误，请稍后重试或联系管理员。';
+        errorMessage = t('travelStandard.form.errors.serverError');
       }
       
       showNotification(errorMessage, 'error');
 
       if (errorMessage.includes('已存在') || errorMessage.includes('already exists') || errorMessage.includes('code')) {
-        setErrors({ standardCode: '标准编码已存在' });
+        setErrors({ standardCode: t('travelStandard.form.basicInfo.errors.standardCodeExists') });
       }
     } finally {
       setSaving(false);
@@ -314,10 +316,10 @@ const StandardForm = () => {
             onClick={handleCancel}
             sx={{ mr: 2 }}
           >
-            返回
+            {t('travelStandard.form.buttons.back')}
           </Button>
           <Typography variant="h4">
-            {isEdit ? '编辑差旅标准' : '创建差旅标准'}
+            {isEdit ? t('travelStandard.form.title.edit') : t('travelStandard.form.title.create')}
           </Typography>
         </Box>
 
@@ -371,7 +373,7 @@ const StandardForm = () => {
             onClick={handleCancel}
             disabled={saving}
           >
-            取消
+            {t('travelStandard.form.buttons.cancel')}
           </Button>
           {activeStep > 0 && (
             <Button
@@ -379,7 +381,7 @@ const StandardForm = () => {
               onClick={handleBack}
               disabled={saving}
             >
-              上一步
+              {t('travelStandard.form.buttons.previous')}
             </Button>
           )}
           {activeStep < steps.length - 1 ? (
@@ -388,7 +390,7 @@ const StandardForm = () => {
               onClick={handleNext}
               disabled={saving}
             >
-              下一步
+              {t('travelStandard.form.buttons.next')}
             </Button>
           ) : (
             <Button
@@ -397,7 +399,7 @@ const StandardForm = () => {
               onClick={handleSubmit}
               disabled={saving}
             >
-              {saving ? '保存中...' : '保存标准'}
+              {saving ? t('travelStandard.form.buttons.saving') : t('travelStandard.form.buttons.save')}
             </Button>
           )}
         </Box>

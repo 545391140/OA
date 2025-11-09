@@ -11,9 +11,12 @@ import {
   Alert
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
 const BasicInfoStep = ({ formData, setFormData, errors, isEdit }) => {
+  const { t } = useTranslation();
+  
   const handleChange = (field, value) => {
     if (field === 'standardCode') {
       value = value.toUpperCase();
@@ -25,26 +28,26 @@ const BasicInfoStep = ({ formData, setFormData, errors, isEdit }) => {
   };
 
   const statusOptions = [
-    { value: 'draft', label: '草稿' },
-    { value: 'active', label: '生效' },
-    { value: 'expired', label: '失效' }
+    { value: 'draft', label: t('travelStandard.form.basicInfo.statuses.draft') },
+    { value: 'active', label: t('travelStandard.form.basicInfo.statuses.active') },
+    { value: 'expired', label: t('travelStandard.form.basicInfo.statuses.expired') }
   ];
 
   return (
     <Box>
       <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-        基础信息配置
+        {t('travelStandard.form.basicInfo.title')}
       </Typography>
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth
-            label="标准编码"
+            label={t('travelStandard.form.basicInfo.standardCode')}
             value={formData.standardCode}
             onChange={(e) => handleChange('standardCode', e.target.value)}
             error={!!errors.standardCode}
-            helperText={errors.standardCode || '只能包含大写字母、数字和下划线'}
+            helperText={errors.standardCode || t('travelStandard.form.basicInfo.standardCodeHelper')}
             required
             disabled={isEdit}
             inputProps={{
@@ -56,19 +59,19 @@ const BasicInfoStep = ({ formData, setFormData, errors, isEdit }) => {
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth
-            label="标准名称"
+            label={t('travelStandard.form.basicInfo.standardName')}
             value={formData.standardName}
             onChange={(e) => handleChange('standardName', e.target.value)}
             error={!!errors.standardName}
             helperText={errors.standardName}
             required
-            placeholder="如：国内一线城市高管标准"
+            placeholder={t('travelStandard.form.basicInfo.standardNamePlaceholder')}
           />
         </Grid>
 
         <Grid item xs={12} md={6}>
           <DatePicker
-            label="生效日期"
+            label={t('travelStandard.form.basicInfo.effectiveDate')}
             value={formData.effectiveDate}
             onChange={(date) => handleChange('effectiveDate', date)}
             slotProps={{
@@ -84,15 +87,14 @@ const BasicInfoStep = ({ formData, setFormData, errors, isEdit }) => {
 
         <Grid item xs={12} md={6}>
           <DatePicker
-            label="失效日期"
+            label={t('travelStandard.form.basicInfo.expiryDate')}
             value={formData.expiryDate}
             onChange={(date) => handleChange('expiryDate', date)}
             slotProps={{
               textField: {
                 fullWidth: true,
-                helperText: '留空表示长期有效',
-                error: !!errors.expiryDate,
-                helperText: errors.expiryDate || '留空表示长期有效'
+                helperText: errors.expiryDate || t('travelStandard.form.basicInfo.expiryDateHelper'),
+                error: !!errors.expiryDate
               }
             }}
           />
@@ -101,12 +103,12 @@ const BasicInfoStep = ({ formData, setFormData, errors, isEdit }) => {
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth
-            label="优先级"
+            label={t('travelStandard.form.basicInfo.priority')}
             type="number"
             value={formData.priority}
             onChange={(e) => handleChange('priority', parseInt(e.target.value) || 50)}
             error={!!errors.priority}
-            helperText={errors.priority || '数值越大优先级越高，建议：50-100'}
+            helperText={errors.priority || t('travelStandard.form.basicInfo.priorityHelper')}
             inputProps={{
               min: 0,
               max: 100
@@ -114,17 +116,17 @@ const BasicInfoStep = ({ formData, setFormData, errors, isEdit }) => {
             required
           />
           <Alert severity="info" sx={{ mt: 1 }}>
-            建议：高优先级 90-100，中优先级 60-89，低优先级 50-59
+            {t('travelStandard.form.basicInfo.priorityInfo')}
           </Alert>
         </Grid>
 
         <Grid item xs={12} md={6}>
           <FormControl fullWidth>
-            <InputLabel>状态</InputLabel>
+            <InputLabel>{t('travelStandard.form.basicInfo.status')}</InputLabel>
             <Select
               value={formData.status}
               onChange={(e) => handleChange('status', e.target.value)}
-              label="状态"
+              label={t('travelStandard.form.basicInfo.status')}
             >
               {statusOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
@@ -140,10 +142,10 @@ const BasicInfoStep = ({ formData, setFormData, errors, isEdit }) => {
             fullWidth
             multiline
             rows={3}
-            label="描述"
+            label={t('travelStandard.form.basicInfo.description')}
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
-            placeholder="请输入标准的详细描述..."
+            placeholder={t('travelStandard.form.basicInfo.descriptionPlaceholder')}
           />
         </Grid>
       </Grid>

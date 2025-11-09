@@ -34,7 +34,7 @@ i18n
     resources,
     lng: resolvedLocale,
     fallbackLng: getFallbackChain(resolvedLocale),
-    debug: process.env.NODE_ENV === 'development',
+    debug: false, // 禁用详细日志，减少控制台输出
     
     interpolation: {
       escapeValue: false,

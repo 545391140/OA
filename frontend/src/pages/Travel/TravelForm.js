@@ -343,7 +343,7 @@ const TravelForm = () => {
         
         // 如果有任何行程匹配成功，显示通知
         if (routeMatches.outbound || routeMatches.inbound || Object.keys(routeMatches.multiCity).length > 0) {
-          showNotification('已根据差旅标准自动更新费用', 'success');
+          showNotification(t('travel.form.autoMatchSuccess'), 'success');
         }
       } catch (error) {
         console.error('Auto match standard error:', error);
@@ -423,7 +423,7 @@ const TravelForm = () => {
             length: cleanId.length,
             matches: /^[0-9a-fA-F]{24}$/.test(cleanId)
           });
-          throw new Error(`无效的差旅申请ID格式: ${cleanId.length !== 24 ? `长度应为24位，实际为${cleanId.length}位` : '包含非法字符'}`);
+          throw new Error(t('travel.form.invalidIdFormat') + ': ' + (cleanId.length !== 24 ? t('travel.form.idLengthError', { length: cleanId.length }) : t('travel.form.idInvalidChars')));
         }
         
         // 使用清理后的 ID
@@ -455,7 +455,7 @@ const TravelForm = () => {
               if (item && typeof item === 'object') {
                 processed[itemId] = {
                   itemId: itemId,
-                  itemName: item.itemName || '未知费用项',
+                  itemName: item.itemName || t('travel.form.unknownExpenseItem'),
                   unitPrice: item.unitPrice !== undefined && item.unitPrice !== null 
                     ? String(item.unitPrice) 
                     : '',
@@ -526,7 +526,7 @@ const TravelForm = () => {
                 expenseItems[itemId] = {
                   itemName: item.itemName,
                   limitType: 'FIXED', // 默认类型
-                  unit: '元/天', // 默认单位
+                  unit: t('travel.form.unitPerDay'), // 默认单位
                   limit: parseFloat(item.unitPrice) || 0
                 };
               }
@@ -654,18 +654,18 @@ const TravelForm = () => {
       });
       
       // 显示更详细的错误信息
-      let errorMessage = '获取差旅数据失败';
+      let errorMessage = t('travel.form.fetchError');
       if (error.response) {
         if (error.response.status === 404) {
-          errorMessage = '差旅申请不存在或已被删除';
+          errorMessage = t('travel.form.notFound');
         } else if (error.response.status === 403) {
-          errorMessage = '您没有权限查看此差旅申请';
+          errorMessage = t('travel.form.noPermission');
         } else if (error.response.status === 400) {
-          errorMessage = error.response.data?.message || '无效的差旅申请ID格式';
+          errorMessage = error.response.data?.message || t('travel.form.invalidId');
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         } else {
-          errorMessage = `服务器错误 (${error.response.status})`;
+          errorMessage = t('travel.form.serverError', { status: error.response.status });
         }
       } else if (error.message) {
         errorMessage = error.message;
@@ -924,7 +924,7 @@ const TravelForm = () => {
         const outboundExpenseItems = routeMatchedExpenseItems.outbound || matchedExpenseItems;
         if (outboundExpenseItems) {
           Object.entries(outboundExpenseItems).forEach(([itemId, expense]) => {
-          const isPerDay = expense.unit === '元/天' || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
+          const isPerDay = expense.unit === t('travel.form.unitPerDay') || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
           
             // 如果预算项不存在，初始化它
             if (!newOutboundBudget[itemId]) {
@@ -961,7 +961,7 @@ const TravelForm = () => {
         const inboundExpenseItems = routeMatchedExpenseItems.inbound || matchedExpenseItems;
         if (inboundExpenseItems) {
           Object.entries(inboundExpenseItems).forEach(([itemId, expense]) => {
-            const isPerDay = expense.unit === '元/天' || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
+            const isPerDay = expense.unit === t('travel.form.unitPerDay') || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
             
             // 如果预算项不存在，初始化它
             if (!newInboundBudget[itemId]) {
@@ -1004,7 +1004,7 @@ const TravelForm = () => {
               }
               
               Object.entries(multiCityExpenseItems).forEach(([itemId, expense]) => {
-                const isPerDay = expense.unit === '元/天' || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
+                const isPerDay = expense.unit === t('travel.form.unitPerDay') || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
                 const quantityKey = `multiCity_${index}`;
                 
                 // 如果预算项不存在，初始化它
@@ -1114,15 +1114,15 @@ const TravelForm = () => {
       // 确保费用项存在
       if (!budget[itemId]) {
         // 根据行程类型获取对应的匹配费用项
-        let expenseItemName = '未知费用项';
+        let expenseItemName = t('travel.form.unknownExpenseItem');
         if (tripType === 'outbound' && routeMatchedExpenseItems.outbound) {
-          expenseItemName = routeMatchedExpenseItems.outbound[itemId]?.itemName || '未知费用项';
+          expenseItemName = routeMatchedExpenseItems.outbound[itemId]?.itemName || t('travel.form.unknownExpenseItem');
         } else if (tripType === 'inbound' && routeMatchedExpenseItems.inbound) {
-          expenseItemName = routeMatchedExpenseItems.inbound[itemId]?.itemName || '未知费用项';
+          expenseItemName = routeMatchedExpenseItems.inbound[itemId]?.itemName || t('travel.form.unknownExpenseItem');
         } else if (tripType === 'multiCity' && routeIndex !== null && routeMatchedExpenseItems.multiCity[routeIndex]) {
-          expenseItemName = routeMatchedExpenseItems.multiCity[routeIndex][itemId]?.itemName || '未知费用项';
+          expenseItemName = routeMatchedExpenseItems.multiCity[routeIndex][itemId]?.itemName || t('travel.form.unknownExpenseItem');
         } else if (matchedExpenseItems) {
-          expenseItemName = matchedExpenseItems[itemId]?.itemName || '未知费用项';
+          expenseItemName = matchedExpenseItems[itemId]?.itemName || t('travel.form.unknownExpenseItem');
         }
         
         budget[itemId] = {
@@ -1254,14 +1254,14 @@ const TravelForm = () => {
     if (basicInfoComplete) {
       newCompletedSteps.push(0);
       newValidationResults.push({
-        message: '基本信息填写完整',
+        message: t('travel.form.basicInfoComplete'),
         status: 'valid'
       });
     } else {
       const missingFields = [];
       if (!formData.tripType) missingFields.push(t('travel.tripType'));
       if (!formData.costOwingDepartment) missingFields.push(t('travel.costOwingDepartment'));
-      if (!hasAnyDestination) missingFields.push('目的地（基本信息、去程、返程或多程行程中至少填写一个）');
+      if (!hasAnyDestination) missingFields.push(t('travel.form.destinationAtLeastOne'));
       if (!formData.requestName) missingFields.push(t('travel.requestName'));
       if (!formData.startDate) missingFields.push(t('travel.startDate'));
       if (!formData.endDate) missingFields.push(t('travel.endDate'));
@@ -1269,7 +1269,7 @@ const TravelForm = () => {
       
       newErrorSteps.push(0);
       newValidationResults.push({
-        message: `请填写：${missingFields.join('、')}`,
+        message: t('travel.form.pleaseFill', { fields: missingFields.join('、') }),
         status: 'error'
       });
     }
@@ -1287,23 +1287,23 @@ const TravelForm = () => {
     if (outboundComplete && inboundComplete) {
       newCompletedSteps.push(1);
       newValidationResults.push({
-        message: '出行安排设置完整',
+        message: t('travel.form.travelArrangementComplete'),
         status: 'valid'
       });
     } else {
       const missingFields = [];
-      if (!formData.outbound.transportation) missingFields.push('去程交通工具');
-      if (!formData.outbound.date) missingFields.push('去程出发日期');
-      if (!(typeof formData.outbound.departure === 'string' ? formData.outbound.departure.trim() : formData.outbound.departure)) missingFields.push('去程出发地');
-      if (!(typeof formData.outbound.destination === 'string' ? formData.outbound.destination.trim() : formData.outbound.destination)) missingFields.push('去程目的地');
-      if (!formData.inbound.transportation) missingFields.push('返程交通工具');
-      if (!formData.inbound.date) missingFields.push('返程出发日期');
-      if (!(typeof formData.inbound.departure === 'string' ? formData.inbound.departure.trim() : formData.inbound.departure)) missingFields.push('返程出发地');
-      if (!(typeof formData.inbound.destination === 'string' ? formData.inbound.destination.trim() : formData.inbound.destination)) missingFields.push('返程目的地');
+      if (!formData.outbound.transportation) missingFields.push(t('travel.form.pleaseSelectOutboundTransportation'));
+      if (!formData.outbound.date) missingFields.push(t('travel.form.pleaseSelectOutboundDate'));
+      if (!(typeof formData.outbound.departure === 'string' ? formData.outbound.departure.trim() : formData.outbound.departure)) missingFields.push(t('travel.form.pleaseSelectOutboundDeparture'));
+      if (!(typeof formData.outbound.destination === 'string' ? formData.outbound.destination.trim() : formData.outbound.destination)) missingFields.push(t('travel.form.pleaseSelectOutboundDestination'));
+      if (!formData.inbound.transportation) missingFields.push(t('travel.form.pleaseSelectInboundTransportation'));
+      if (!formData.inbound.date) missingFields.push(t('travel.form.pleaseSelectInboundDate'));
+      if (!(typeof formData.inbound.departure === 'string' ? formData.inbound.departure.trim() : formData.inbound.departure)) missingFields.push(t('travel.form.pleaseSelectInboundDeparture'));
+      if (!(typeof formData.inbound.destination === 'string' ? formData.inbound.destination.trim() : formData.inbound.destination)) missingFields.push(t('travel.form.pleaseSelectInboundDestination'));
       
       newErrorSteps.push(1);
       newValidationResults.push({
-        message: `请完善出行安排：${missingFields.join('、')}`,
+        message: t('travel.form.pleaseComplete', { fields: missingFields.join('、') }),
         status: 'error'
       });
     }
@@ -1327,19 +1327,19 @@ const TravelForm = () => {
             
             if (!outboundItem || !outboundItem.unitPrice || parseFloat(outboundItem.unitPrice) <= 0) {
               outboundBudgetValid = false;
-              missingFields.push(`去程${expense.itemName || '未知费用项'}`);
+              missingFields.push(t('travel.form.outboundExpenseItem', { itemName: expense.itemName || t('travel.form.unknownExpenseItem') }));
             }
             
             if (!inboundItem || !inboundItem.unitPrice || parseFloat(inboundItem.unitPrice) <= 0) {
               inboundBudgetValid = false;
-              missingFields.push(`返程${expense.itemName || '未知费用项'}`);
+              missingFields.push(t('travel.form.inboundExpenseItem', { itemName: expense.itemName || t('travel.form.unknownExpenseItem') }));
             }
           });
         } else {
           // 如果没有匹配的费用项，标记为未完成
           outboundBudgetValid = false;
           inboundBudgetValid = false;
-          missingFields.push('费用项目（请先填写目的地和出发日期以匹配差旅标准）');
+          missingFields.push(t('travel.form.expenseItemsRequired'));
         }
         
         const costValid = outboundBudgetValid && inboundBudgetValid;
@@ -1347,13 +1347,13 @@ const TravelForm = () => {
         if (costValid) {
       newCompletedSteps.push(2);
       newValidationResults.push({
-            message: '费用预算设置完整',
+            message: t('travel.form.expenseBudgetComplete'),
         status: 'valid'
       });
     } else {
           newErrorSteps.push(2);
       newValidationResults.push({
-            message: `请完善费用预算：${missingFields.slice(0, 5).join('、')}${missingFields.length > 5 ? '...' : ''}`,
+            message: t('travel.form.pleaseCompleteBudget', { fields: missingFields.slice(0, 5).join('、') + (missingFields.length > 5 ? '...' : '') }),
         status: 'error'
       });
     }
@@ -1370,11 +1370,11 @@ const TravelForm = () => {
 
     // 基本信息验证
     if (!formData.tripType) {
-      newErrors.tripType = '请选择行程类型';
+      newErrors.tripType = t('travel.form.pleaseSelectTripType');
     }
 
     if (!formData.costOwingDepartment) {
-      newErrors.costOwingDepartment = '请选择费用承担部门';
+      newErrors.costOwingDepartment = t('travel.form.pleaseSelectDepartment');
     }
 
     // destination 字段现在是可选的，因为主要使用 outbound.destination 和 inbound.destination
@@ -1398,63 +1398,63 @@ const TravelForm = () => {
         basicDestination: formData.destination,
         multiCityRoutes: formData.multiCityRoutes
       });
-      newErrors.destination = '请选择目的地（基本信息、去程、返程或多程行程中至少填写一个）';
+      newErrors.destination = t('travel.form.pleaseSelectDestination');
     }
 
     if (!formData.requestName) {
-      newErrors.requestName = '请选择申请人姓名';
+      newErrors.requestName = t('travel.form.pleaseSelectRequestName');
     }
 
     if (!formData.startDate) {
-      newErrors.startDate = '请选择开始日期';
+      newErrors.startDate = t('travel.form.pleaseSelectStartDate');
     }
 
     if (!formData.endDate) {
-      newErrors.endDate = '请选择结束日期';
+      newErrors.endDate = t('travel.form.pleaseSelectEndDate');
     }
 
     if (!formData.tripDescription.trim()) {
-      newErrors.tripDescription = '请输入差旅描述';
+      newErrors.tripDescription = t('travel.form.pleaseInputDescription');
     }
 
     // 去程信息验证
     if (!formData.outbound.date) {
-      newErrors.outboundDate = '请选择去程出发日期';
+      newErrors.outboundDate = t('travel.form.pleaseSelectOutboundDate');
     }
 
     if (!formData.outbound.transportation) {
-      newErrors.outboundTransportation = '请选择去程交通工具';
+      newErrors.outboundTransportation = t('travel.form.pleaseSelectOutboundTransportation');
     }
 
     if (!hasLocationValue(formData.outbound.departure)) {
-      newErrors.outboundDeparture = '请选择去程出发地';
+      newErrors.outboundDeparture = t('travel.form.pleaseSelectOutboundDeparture');
     }
 
     if (!hasLocationValue(formData.outbound.destination)) {
-      newErrors.outboundDestination = '请选择去程目的地';
+      newErrors.outboundDestination = t('travel.form.pleaseSelectOutboundDestination');
     }
 
     // 返程信息验证
     if (!formData.inbound.date) {
-      newErrors.inboundDate = '请选择返程日期';
+      newErrors.inboundDate = t('travel.form.pleaseSelectInboundDate');
     }
 
     if (!formData.inbound.transportation) {
-      newErrors.inboundTransportation = '请选择返程交通工具';
+      newErrors.inboundTransportation = t('travel.form.pleaseSelectInboundTransportation');
     }
 
     if (!hasLocationValue(formData.inbound.departure)) {
-      newErrors.inboundDeparture = '请选择返程出发地';
+      newErrors.inboundDeparture = t('travel.form.pleaseSelectInboundDeparture');
     }
 
     if (!hasLocationValue(formData.inbound.destination)) {
-      newErrors.inboundDestination = '请选择返程目的地';
+      newErrors.inboundDestination = t('travel.form.pleaseSelectInboundDestination');
     }
 
     // 日期逻辑验证
     if (formData.startDate && formData.endDate && 
         formData.startDate.isAfter(formData.endDate)) {
-      newErrors.endDate = '返回日期不能早于出发日期';
+      newErrors.endDate = t('travel.form.endDateBeforeStartDate');
     }
 
     // 计算estimatedCost（如果未设置）
@@ -1478,7 +1478,7 @@ const TravelForm = () => {
 
     // 费用验证（如果计算后的费用仍为0，则报错）
     if (!calculatedCost || isNaN(calculatedCost) || parseFloat(calculatedCost) <= 0) {
-      newErrors.estimatedCost = '请填写费用预算或确保预算项目已填写';
+      newErrors.estimatedCost = t('travel.form.pleaseFillBudget');
     }
 
     setErrors(newErrors);
@@ -1486,7 +1486,7 @@ const TravelForm = () => {
     // 如果有错误，显示提示
     if (Object.keys(newErrors).length > 0) {
       const errorMessages = Object.values(newErrors).join('、');
-      showNotification(`请完善以下信息：${errorMessages}`, 'error');
+      showNotification(t('travel.form.pleaseCompleteInfo', { messages: errorMessages }), 'error');
     }
     
     return Object.keys(newErrors).length === 0;
@@ -1639,8 +1639,8 @@ const TravelForm = () => {
       if (response.data && response.data.success) {
         showNotification(
           status === 'draft' 
-            ? (isEdit ? '差旅申请已更新为草稿' : '差旅申请已保存为草稿')
-            : (isEdit ? '差旅申请已提交' : '差旅申请已创建并提交'),
+            ? (isEdit ? t('travel.form.updateDraftSuccess') : t('travel.form.saveDraftSuccess'))
+            : (isEdit ? t('travel.form.updateSubmitSuccess') : t('travel.form.submitSuccess')),
           'success'
         );
         
@@ -1662,12 +1662,12 @@ const TravelForm = () => {
         }
       });
       
-      let errorMessage = isEdit ? '更新差旅申请失败' : '保存差旅申请失败';
+      let errorMessage = isEdit ? t('travel.form.updateError') : t('travel.form.saveError');
       if (error.response) {
         if (error.response.status === 404) {
-          errorMessage = 'API路由未找到，请检查后端服务器是否正常运行';
+          errorMessage = t('travel.form.apiNotFound');
         } else if (error.response.status === 401) {
-          errorMessage = '未授权，请重新登录';
+          errorMessage = t('travel.form.unauthorized');
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
@@ -1692,11 +1692,11 @@ const TravelForm = () => {
   // 渲染基本信息步骤
   const renderBasicInfoStep = () => (
     <ModernFormSection
-            title="基本信息"
-      description="填写差旅申请的基本信息、类型和行程"
+            title={t('travel.form.title')}
+      description={t('travel.form.basicInfoDescription')}
             stepNumber={1}
             status={completedSteps.includes(0) ? 'completed' : errorSteps.includes(0) ? 'error' : currentStep === 0 ? 'active' : 'pending'}
-            statusLabel={errorSteps.includes(0) ? '待填写' : undefined}
+            statusLabel={errorSteps.includes(0) ? t('travel.form.pendingFill') : undefined}
           >
             <Grid container spacing={3}>
               {/* Trip Type */}
@@ -1731,7 +1731,7 @@ const TravelForm = () => {
                   label={t('travel.destination')}
                   value={formData.destination}
                   onChange={(value) => handleChange('destination', value)}
-                  placeholder="搜索目的地城市或机场"
+                  placeholder={t('travel.form.searchDestinationPlaceholder')}
                   error={!!errors.destination}
                   helperText={errors.destination}
                   required={true}
@@ -1789,7 +1789,7 @@ const TravelForm = () => {
               <Grid item xs={12} md={6}>
                 <ModernInput
                   type="select"
-                  label="币种"
+                  label={t('travel.form.currency')}
                   value={formData.currency}
                   onChange={(e) => handleChange('currency', e.target.value)}
                   error={!!errors.currency}
@@ -1821,17 +1821,17 @@ const TravelForm = () => {
   // 渲染出行安排步骤（包含出行日期和目的地）
   const renderTravelArrangementStep = () => (
     <ModernFormSection
-      title="出行安排"
-      description="设置出行日期、出发地和目的地"
+      title={t('travel.form.travelArrangement')}
+      description={t('travel.form.description')}
       stepNumber={2}
       status={completedSteps.includes(1) ? 'completed' : errorSteps.includes(1) ? 'error' : currentStep === 1 ? 'active' : 'pending'}
-      statusLabel={errorSteps.includes(1) ? '待填写' : undefined}
+      statusLabel={errorSteps.includes(1) ? t('travel.form.pendingFill') : undefined}
     >
       <Grid container spacing={2}>
         {/* 去程信息 */}
             <Grid item xs={12}>
           <TravelRouteCard
-            title={formData.multiCityRoutes.length >= 1 ? '第一程信息' : '去程信息'}
+            title={formData.multiCityRoutes.length >= 1 ? t('travel.form.firstRouteTitle') : t('travel.form.outboundTitle')}
             icon="🛫"
             routeData={formData.outbound}
             transportationOptions={transportationOptions}
@@ -1854,7 +1854,7 @@ const TravelForm = () => {
         {/* 返程信息 */}
             <Grid item xs={12}>
           <TravelRouteCard
-            title={formData.multiCityRoutes.length >= 1 ? '第二程信息' : '返程信息'}
+            title={formData.multiCityRoutes.length >= 1 ? t('travel.form.secondRouteTitle') : t('travel.form.inboundTitle')}
             icon="🛬"
             routeData={formData.inbound}
             transportationOptions={transportationOptions}
@@ -1877,7 +1877,7 @@ const TravelForm = () => {
         {formData.multiCityRoutes.map((route, index) => (
           <Grid item xs={12} key={index}>
             <TravelRouteCard
-              title={`第${index + 3}程信息`}
+              title={t('travel.form.routeTitle', { index: index + 3 })}
               icon="🚌"
               routeData={route}
               transportationOptions={transportationOptions}
@@ -1911,7 +1911,7 @@ const TravelForm = () => {
               }
             }}
           >
-            添加行程
+            {t('travel.form.addRoute')}
           </Button>
               </Grid>
       </Grid>
@@ -1921,7 +1921,7 @@ const TravelForm = () => {
 
   // 渲染费用预算步骤
   // 渲染费用项目组件
-  const renderExpenseItem = (tripType, category, label, icon, unitLabel = '单价') => {
+  const renderExpenseItem = (tripType, category, label, icon, unitLabel = t('travel.form.unitPrice')) => {
     const budget = tripType === 'outbound' ? formData.outboundBudget : formData.inboundBudget;
     const item = budget[category];
     
@@ -1935,7 +1935,7 @@ const TravelForm = () => {
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={3}>
             <Typography variant="body2" color="text.secondary">
-              货币: {formData.currency}
+              {t('travel.form.currencyLabel', { currency: formData.currency })}
             </Typography>
           </Grid>
           
@@ -1962,7 +1962,7 @@ const TravelForm = () => {
             <TextField
               fullWidth
               size="small"
-              label="数量 *"
+              label={`${t('travel.form.quantity')} *`}
               type="number"
               value={item.quantity}
               onChange={(e) => handleBudgetChange(tripType, category, 'quantity', e.target.value)}
@@ -1973,7 +1973,7 @@ const TravelForm = () => {
           <Grid item xs={12} sm={4}>
             <Box sx={{ textAlign: 'right' }}>
               <Typography variant="h6" color="primary">
-                小计: {formData.currency} {item.subtotal || '0.00'}
+                {t('travel.form.subtotal', { currency: formData.currency, amount: item.subtotal || '0.00' })}
               </Typography>
             </Box>
           </Grid>
@@ -1984,8 +1984,8 @@ const TravelForm = () => {
 
   const renderBudgetStep = () => (
     <ModernFormSection
-      title="费用预算"
-      description="设置详细的费用预算项目"
+      title={t('travel.form.budgetTitle')}
+      description={t('travel.form.budgetDescription')}
       icon="💰"
       stepNumber={3}
       status={completedSteps.includes(2) ? 'completed' : errorSteps.includes(2) ? 'error' : currentStep === 2 ? 'active' : 'pending'}
@@ -1995,7 +1995,7 @@ const TravelForm = () => {
         {/* 去程费用预算 */}
             <Grid item xs={12}>
           <BudgetCard
-            title={formData.multiCityRoutes.length >= 1 ? '第一程费用预算' : '去程费用预算'}
+            title={formData.multiCityRoutes.length >= 1 ? t('travel.form.firstRouteBudgetTitle') : t('travel.form.outboundBudgetTitle')}
             icon="💰"
             routeData={formData.outbound}
             budgetData={formData.outboundBudget}
@@ -2011,7 +2011,7 @@ const TravelForm = () => {
         {(formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date)) && (
             <Grid item xs={12}>
             <BudgetCard
-              title={formData.multiCityRoutes.length >= 1 ? '第二程费用预算' : '返程费用预算'}
+              title={formData.multiCityRoutes.length >= 1 ? t('travel.form.secondRouteBudgetTitle') : t('travel.form.inboundBudgetTitle')}
               icon="💰"
               routeData={formData.inbound}
               budgetData={formData.inboundBudget}
@@ -2028,7 +2028,7 @@ const TravelForm = () => {
         {formData.multiCityRoutes && formData.multiCityRoutes.map((route, index) => (
           <Grid item xs={12} key={`multi-city-${index}`}>
             <BudgetCard
-              title={`第${index + 3}程费用预算`}
+              title={t('travel.form.routeBudgetTitle', { index: index + 3 })}
               icon="💰"
               routeData={route}
               budgetData={formData.multiCityRoutesBudget[index] || {}}
@@ -2105,12 +2105,12 @@ const TravelForm = () => {
             disabled={currentStep === 0}
             sx={{ borderRadius: 2 }}
           >
-            上一页
+            {t('travel.form.previousPage')}
           </Button>
 
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              第 {currentStep + 1} 页，共 {steps.length} 页
+              {t('travel.form.pageInfo', { current: currentStep + 1, total: steps.length })}
             </Typography>
           </Box>
 
@@ -2151,7 +2151,7 @@ const TravelForm = () => {
                 onClick={handleNextStep}
                 sx={{ borderRadius: 2 }}
               >
-                下一页
+                {t('travel.form.nextPage')}
               </Button>
             )}
           </Box>
