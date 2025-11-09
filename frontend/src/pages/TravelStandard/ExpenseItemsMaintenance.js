@@ -397,94 +397,94 @@ const ExpenseItemsMaintenance = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4">{t('expenseItem.maintenance.title')}</Typography>
-          {canEdit && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenAddDialog}
+      {/* 标题区域 */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">{t('expenseItem.maintenance.title')}</Typography>
+        {canEdit && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddDialog}
+          >
+            {t('expenseItem.maintenance.addExpenseItem')}
+          </Button>
+        )}
+      </Box>
+
+      <Divider sx={{ mb: 3 }} />
+
+      {/* 搜索框 - 独立容器 */}
+      <TextField
+        fullWidth
+        placeholder={t('expenseItem.maintenance.searchPlaceholder')}
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+        sx={{ mb: 2 }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon />
+            </InputAdornment>
+          ),
+        }}
+      />
+      
+      {/* 过滤器 - 独立容器 */}
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth>
+            <InputLabel>{t('expenseItem.maintenance.filters.status')}</InputLabel>
+            <Select
+              value={statusFilter}
+              label={t('expenseItem.maintenance.filters.status')}
+              onChange={(e) => setStatusFilter(e.target.value)}
             >
-              {t('expenseItem.maintenance.addExpenseItem')}
-            </Button>
-          )}
-        </Box>
-
-        <Divider sx={{ mb: 3 }} />
-
-        {/* 搜索框 */}
-        <TextField
-          fullWidth
-          placeholder={t('expenseItem.maintenance.searchPlaceholder')}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-          sx={{ mb: 2 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-        
-        {/* 过滤器 */}
-        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>{t('expenseItem.maintenance.filters.status')}</InputLabel>
-              <Select
-                value={statusFilter}
-                label={t('expenseItem.maintenance.filters.status')}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <MenuItem value="all">{t('expenseItem.maintenance.filters.allStatus')}</MenuItem>
-                <MenuItem value="enabled">{t('expenseItem.maintenance.form.enabled')}</MenuItem>
-                <MenuItem value="disabled">{t('expenseItem.maintenance.form.disabled')}</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>{t('expenseItem.maintenance.filters.standard')}</InputLabel>
-              <Select
-                value={standardFilter}
-                label={t('expenseItem.maintenance.filters.standard')}
-                onChange={(e) => setStandardFilter(e.target.value)}
-              >
-                <MenuItem value="all">{t('expenseItem.maintenance.filters.allStandards')}</MenuItem>
-                {standards.map((standard) => (
-                  <MenuItem key={standard._id} value={standard._id}>
-                    {standard.standardCode} - {standard.standardName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                variant="outlined"
-                startIcon={<SearchIcon />}
-                onClick={handleSearch}
-              >
-                {t('common.search')}
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={handleReset}
-              >
-                {t('common.refresh')}
-              </Button>
-            </Box>
-          </Grid>
+              <MenuItem value="all">{t('expenseItem.maintenance.filters.allStatus')}</MenuItem>
+              <MenuItem value="enabled">{t('expenseItem.maintenance.form.enabled')}</MenuItem>
+              <MenuItem value="disabled">{t('expenseItem.maintenance.form.disabled')}</MenuItem>
+            </Select>
+          </FormControl>
         </Grid>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth>
+            <InputLabel>{t('expenseItem.maintenance.filters.standard')}</InputLabel>
+            <Select
+              value={standardFilter}
+              label={t('expenseItem.maintenance.filters.standard')}
+              onChange={(e) => setStandardFilter(e.target.value)}
+            >
+              <MenuItem value="all">{t('expenseItem.maintenance.filters.allStandards')}</MenuItem>
+              {standards.map((standard) => (
+                <MenuItem key={standard._id} value={standard._id}>
+                  {standard.standardCode} - {standard.standardName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<SearchIcon />}
+              onClick={handleSearch}
+            >
+              {t('common.search')}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={handleReset}
+            >
+              {t('common.refresh')}
+            </Button>
+          </Box>
+        </Grid>
+      </Grid>
 
-        {/* Table */}
-        <TableContainer component={Paper}>
+      {/* Table - 独立容器 */}
+      <TableContainer component={Paper}>
           {loading && <LinearProgress />}
           <Table>
             <TableHead>
@@ -812,7 +812,6 @@ const ExpenseItemsMaintenance = () => {
             </Button>
           </DialogActions>
         </Dialog>
-      </Paper>
     </Container>
   );
 };
