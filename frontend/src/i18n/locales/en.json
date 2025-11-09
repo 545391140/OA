@@ -1084,7 +1084,19 @@
     "exportPDF": "Export PDF",
     "exportExcel": "Export Excel",
     "exportError": "Export failed",
-    "loadError": "Failed to load report data"
+    "loadError": "Failed to load report data",
+    "last7Days": "Last 7 Days",
+    "last30Days": "Last 30 Days",
+    "last90Days": "Last 90 Days",
+    "thisYear": "This Year",
+    "trendFromLastMonth": "{{trend}} from last month",
+    "fromLastMonth": "from last month",
+    "monthlyTrends": "Monthly Trends",
+    "expenseCategories": "Expense Categories",
+    "approvalStatus": "Approval Status",
+    "expenseAnalysis": "Expense Analysis",
+    "travelAnalysis": "Travel Analysis",
+    "departmentAnalysis": "Department Analysis"
   },
   "messages": {
     "success": {

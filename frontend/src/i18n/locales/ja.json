@@ -929,7 +929,19 @@
     "exportPDF": "PDFエクスポート",
     "exportExcel": "Excelエクスポート",
     "exportError": "エクスポート失敗",
-    "loadError": "レポートデータの読み込みに失敗しました"
+    "loadError": "レポートデータの読み込みに失敗しました",
+    "last7Days": "過去7日間",
+    "last30Days": "過去30日間",
+    "last90Days": "過去90日間",
+    "thisYear": "今年",
+    "trendFromLastMonth": "先月から{{trend}}",
+    "fromLastMonth": "先月から",
+    "monthlyTrends": "月次トレンド",
+    "expenseCategories": "経費カテゴリ",
+    "approvalStatus": "承認ステータス",
+    "expenseAnalysis": "経費分析",
+    "travelAnalysis": "出張分析",
+    "departmentAnalysis": "部署分析"
   },
   "messages": {
     "success": {

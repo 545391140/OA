@@ -53,7 +53,7 @@ import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
 const Reports = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { showNotification } = useNotification();
 
@@ -80,11 +80,11 @@ const Reports = () => {
   });
 
   const dateRangeOptions = [
-    { value: 'last7days', label: 'Last 7 Days' },
-    { value: 'last30days', label: 'Last 30 Days' },
-    { value: 'last90days', label: 'Last 90 Days' },
-    { value: 'thisYear', label: 'This Year' },
-    { value: 'custom', label: t('reports.customRange') }
+    { value: 'last7days', label: t('reports.last7Days') || 'Last 7 Days' },
+    { value: 'last30days', label: t('reports.last30Days') || 'Last 30 Days' },
+    { value: 'last90days', label: t('reports.last90Days') || 'Last 90 Days' },
+    { value: 'thisYear', label: t('reports.thisYear') || 'This Year' },
+    { value: 'custom', label: t('reports.customRange') || 'Custom Range' }
   ];
 
   // 获取部门列表
@@ -268,11 +268,79 @@ const Reports = () => {
   };
 
   const generatePDFContent = (data) => {
+    // 使用当前语言生成PDF内容
+    const currentLang = i18n.language || 'en';
+    const langMap = {
+      zh: {
+        title: '费用与差旅报告',
+        period: '期间',
+        generated: '生成时间',
+        summary: '汇总',
+        totalExpenses: '总费用',
+        totalTravel: '总差旅',
+        pendingApprovals: '待审批',
+        monthlyData: '月度数据',
+        month: '月份',
+        expenses: '费用',
+        travel: '差旅',
+        approved: '已批准',
+        pending: '待处理'
+      },
+      ja: {
+        title: '経費・出張レポート',
+        period: '期間',
+        generated: '生成日時',
+        summary: '概要',
+        totalExpenses: '総経費',
+        totalTravel: '総出張',
+        pendingApprovals: '承認待ち',
+        monthlyData: '月次データ',
+        month: '月',
+        expenses: '経費',
+        travel: '出張',
+        approved: '承認済み',
+        pending: '承認待ち'
+      },
+      ko: {
+        title: '비용 및 출장 보고서',
+        period: '기간',
+        generated: '생성 시간',
+        summary: '요약',
+        totalExpenses: '총 비용',
+        totalTravel: '총 출장',
+        pendingApprovals: '승인 대기',
+        monthlyData: '월별 데이터',
+        month: '월',
+        expenses: '비용',
+        travel: '출장',
+        approved: '승인됨',
+        pending: '대기 중'
+      },
+      en: {
+        title: 'Expense & Travel Report',
+        period: 'Period',
+        generated: 'Generated',
+        summary: 'Summary',
+        totalExpenses: 'Total Expenses',
+        totalTravel: 'Total Travel',
+        pendingApprovals: 'Pending Approvals',
+        monthlyData: 'Monthly Data',
+        month: 'Month',
+        expenses: 'Expenses',
+        travel: 'Travel',
+        approved: 'Approved',
+        pending: 'Pending'
+      }
+    };
+    
+    const labels = langMap[currentLang] || langMap.en;
+    const toLabel = currentLang === 'zh' ? '至' : currentLang === 'ja' ? 'から' : currentLang === 'ko' ? '부터' : 'to';
+    
     return `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Expense Report</title>
+          <title>${labels.title}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 20px; }
             h1 { color: #333; }
@@ -282,20 +350,20 @@ const Reports = () => {
           </style>
         </head>
         <body>
-          <h1>Expense & Travel Report</h1>
-          <p><strong>Period:</strong> ${data.filters.startDate} to ${data.filters.endDate}</p>
-          <p><strong>Generated:</strong> ${new Date(data.generatedAt).toLocaleString()}</p>
+          <h1>${labels.title}</h1>
+          <p><strong>${labels.period}:</strong> ${data.filters.startDate} ${toLabel} ${data.filters.endDate}</p>
+          <p><strong>${labels.generated}:</strong> ${new Date(data.generatedAt).toLocaleString()}</p>
           
-          <h2>Summary</h2>
+          <h2>${labels.summary}</h2>
           <table>
-            <tr><th>Total Expenses</th><td>$${data.summary.totalExpenses.toLocaleString()}</td></tr>
-            <tr><th>Total Travel</th><td>$${data.summary.totalTravel.toLocaleString()}</td></tr>
-            <tr><th>Pending Approvals</th><td>${data.summary.pendingApprovals}</td></tr>
+            <tr><th>${labels.totalExpenses}</th><td>$${data.summary.totalExpenses.toLocaleString()}</td></tr>
+            <tr><th>${labels.totalTravel}</th><td>$${data.summary.totalTravel.toLocaleString()}</td></tr>
+            <tr><th>${labels.pendingApprovals}</th><td>${data.summary.pendingApprovals}</td></tr>
           </table>
           
-          <h2>Monthly Data</h2>
+          <h2>${labels.monthlyData}</h2>
           <table>
-            <tr><th>Month</th><th>Expenses</th><th>Travel</th><th>Approved</th><th>Pending</th></tr>
+            <tr><th>${labels.month}</th><th>${labels.expenses}</th><th>${labels.travel}</th><th>${labels.approved}</th><th>${labels.pending}</th></tr>
             ${data.monthlyData.map(m => `
               <tr>
                 <td>${m.month}</td>
@@ -312,23 +380,106 @@ const Reports = () => {
   };
 
   const generateCSVContent = (data) => {
-    let csv = 'Expense & Travel Report\n';
-    csv += `Period: ${data.filters.startDate} to ${data.filters.endDate}\n`;
-    csv += `Generated: ${new Date(data.generatedAt).toLocaleString()}\n\n`;
+    const currentLang = i18n.language || 'en';
+    const langMap = {
+      zh: {
+        title: '费用与差旅报告',
+        period: '期间',
+        generated: '生成时间',
+        summary: '汇总',
+        totalExpenses: '总费用',
+        totalTravel: '总差旅',
+        pendingApprovals: '待审批',
+        monthlyData: '月度数据',
+        month: '月份',
+        expenses: '费用',
+        travel: '差旅',
+        approved: '已批准',
+        pending: '待处理',
+        categoryData: '类别数据',
+        category: '类别',
+        amount: '金额',
+        count: '数量'
+      },
+      ja: {
+        title: '経費・出張レポート',
+        period: '期間',
+        generated: '生成日時',
+        summary: '概要',
+        totalExpenses: '総経費',
+        totalTravel: '総出張',
+        pendingApprovals: '承認待ち',
+        monthlyData: '月次データ',
+        month: '月',
+        expenses: '経費',
+        travel: '出張',
+        approved: '承認済み',
+        pending: '承認待ち',
+        categoryData: 'カテゴリデータ',
+        category: 'カテゴリ',
+        amount: '金額',
+        count: '件数'
+      },
+      ko: {
+        title: '비용 및 출장 보고서',
+        period: '기간',
+        generated: '생성 시간',
+        summary: '요약',
+        totalExpenses: '총 비용',
+        totalTravel: '총 출장',
+        pendingApprovals: '승인 대기',
+        monthlyData: '월별 데이터',
+        month: '월',
+        expenses: '비용',
+        travel: '출장',
+        approved: '승인됨',
+        pending: '대기 중',
+        categoryData: '카테고리 데이터',
+        category: '카테고리',
+        amount: '금액',
+        count: '건수'
+      },
+      en: {
+        title: 'Expense & Travel Report',
+        period: 'Period',
+        generated: 'Generated',
+        summary: 'Summary',
+        totalExpenses: 'Total Expenses',
+        totalTravel: 'Total Travel',
+        pendingApprovals: 'Pending Approvals',
+        monthlyData: 'Monthly Data',
+        month: 'Month',
+        expenses: 'Expenses',
+        travel: 'Travel',
+        approved: 'Approved',
+        pending: 'Pending',
+        categoryData: 'Category Data',
+        category: 'Category',
+        amount: 'Amount',
+        count: 'Count'
+      }
+    };
     
-    csv += 'Summary\n';
-    csv += 'Total Expenses,' + data.summary.totalExpenses + '\n';
-    csv += 'Total Travel,' + data.summary.totalTravel + '\n';
-    csv += 'Pending Approvals,' + data.summary.pendingApprovals + '\n\n';
+    const labels = langMap[currentLang] || langMap.en;
+    const toLabel = currentLang === 'zh' ? '至' : currentLang === 'ja' ? 'から' : currentLang === 'ko' ? '부터' : 'to';
     
-    csv += 'Monthly Data\n';
-    csv += 'Month,Expenses,Travel,Approved,Pending\n';
+    let csv = `${labels.title}\n`;
+    csv += `${labels.period}: ${data.filters.startDate} ${toLabel} ${data.filters.endDate}\n`;
+    csv += `${labels.generated}: ${new Date(data.generatedAt).toLocaleString()}\n\n`;
+    
+    csv += `${labels.summary}\n`;
+    csv += `${labels.totalExpenses},${data.summary.totalExpenses}\n`;
+    csv += `${labels.totalTravel},${data.summary.totalTravel}\n`;
+    csv += `${labels.pendingApprovals},${data.summary.pendingApprovals}\n\n`;
+    
+    csv += `${labels.monthlyData}\n`;
+    csv += `${labels.month},${labels.expenses},${labels.travel},${labels.approved},${labels.pending}\n`;
     data.monthlyData.forEach(m => {
       csv += `${m.month},${m.expenses},${m.travel},${m.approved},${m.pending}\n`;
     });
     
-    csv += '\nCategory Data\n';
-    csv += 'Category,Amount,Count\n';
+    csv += `\n${labels.categoryData}\n`;
+    csv += `${labels.category},${labels.amount},${labels.count}\n`;
     data.categoryData.forEach(c => {
       csv += `${c.name},${c.value},${c.count}\n`;
     });
@@ -351,7 +502,7 @@ const Reports = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                 <TrendingUpIcon color="success" fontSize="small" />
                 <Typography variant="body2" color="success.main">
-                  +{trend}% from last month
+                  {t('reports.trendFromLastMonth', { trend: `+${trend}%` }) || `+${trend}% ${t('reports.fromLastMonth') || 'from last month'}`}
                 </Typography>
               </Box>
             )}
@@ -520,7 +671,7 @@ const Reports = () => {
             {tabValue === 0 && (
               <Box>
                 <Typography variant="h6" gutterBottom>
-                  Monthly Trends
+                  {t('reports.monthlyTrends') || 'Monthly Trends'}
                 </Typography>
                 <Box sx={{ height: 400, mb: 3 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -553,7 +704,7 @@ const Reports = () => {
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
                     <Typography variant="h6" gutterBottom>
-                      Expense Categories
+                      {t('reports.expenseCategories') || 'Expense Categories'}
                     </Typography>
                     <Box sx={{ height: 300 }}>
                       <ResponsiveContainer width="100%" height="100%">
@@ -579,7 +730,7 @@ const Reports = () => {
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography variant="h6" gutterBottom>
-                      Approval Status
+                      {t('reports.approvalStatus') || 'Approval Status'}
                     </Typography>
                     <Box sx={{ height: 300 }}>
                       <ResponsiveContainer width="100%" height="100%">
@@ -602,7 +753,7 @@ const Reports = () => {
             {tabValue === 1 && (
               <Box>
                 <Typography variant="h6" gutterBottom>
-                  Expense Analysis
+                  {t('reports.expenseAnalysis') || 'Expense Analysis'}
                 </Typography>
                 <Box sx={{ height: 400, mb: 3 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -621,7 +772,7 @@ const Reports = () => {
             {tabValue === 2 && (
               <Box>
                 <Typography variant="h6" gutterBottom>
-                  Travel Analysis
+                  {t('reports.travelAnalysis') || 'Travel Analysis'}
                 </Typography>
                 <Box sx={{ height: 400, mb: 3 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -630,7 +781,7 @@ const Reports = () => {
                       <XAxis dataKey="destination" />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="cost" fill="#82ca9d" name={t('reports.totalCost')} />
+                      <Bar dataKey="cost" fill="#82ca9d" name={t('reports.totalCost') || 'Total Cost'} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -640,7 +791,7 @@ const Reports = () => {
             {tabValue === 3 && (
               <Box>
                 <Typography variant="h6" gutterBottom>
-                  Department Analysis
+                  {t('reports.departmentAnalysis') || 'Department Analysis'}
                 </Typography>
                 <Box sx={{ height: 400, mb: 3 }}>
                   <ResponsiveContainer width="100%" height="100%">

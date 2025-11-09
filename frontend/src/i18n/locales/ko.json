@@ -964,7 +964,19 @@
     "exportPDF": "PDF 내보내기",
     "exportExcel": "Excel 내보내기",
     "exportError": "내보내기 실패",
-    "loadError": "보고서 데이터를 불러오는데 실패했습니다"
+    "loadError": "보고서 데이터를 불러오는데 실패했습니다",
+    "last7Days": "최근 7일",
+    "last30Days": "최근 30일",
+    "last90Days": "최근 90일",
+    "thisYear": "올해",
+    "trendFromLastMonth": "지난달 대비 {{trend}}",
+    "fromLastMonth": "지난달 대비",
+    "monthlyTrends": "월별 트렌드",
+    "expenseCategories": "비용 카테고리",
+    "approvalStatus": "승인 상태",
+    "expenseAnalysis": "비용 분석",
+    "travelAnalysis": "출장 분석",
+    "departmentAnalysis": "부서 분석"
   },
   "messages": {
     "success": {
