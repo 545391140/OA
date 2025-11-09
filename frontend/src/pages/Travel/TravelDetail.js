@@ -65,10 +65,28 @@ const TravelDetail = () => {
   const [approvalAction, setApprovalAction] = useState(''); // 'approve' or 'reject'
   const [approvalComment, setApprovalComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [expenseItems, setExpenseItems] = useState({});
 
   useEffect(() => {
+    fetchExpenseItems();
     fetchTravelDetail();
   }, [id]);
+
+  const fetchExpenseItems = async () => {
+    try {
+      const response = await apiClient.get('/expense-items');
+      if (response.data && response.data.success) {
+        // 创建ID到名称的映射
+        const itemsMap = {};
+        response.data.data.forEach(item => {
+          itemsMap[item._id] = item.itemName;
+        });
+        setExpenseItems(itemsMap);
+      }
+    } catch (error) {
+      console.error('Failed to load expense items:', error);
+    }
+  };
 
   const fetchTravelDetail = async () => {
     try {
@@ -605,8 +623,8 @@ const TravelDetail = () => {
                         <TableBody>
                           {Object.entries(travel.outboundBudget).map(([key, value]) => (
                             <TableRow key={key}>
-                              <TableCell>{key}</TableCell>
-                              <TableCell align="right">{formatCurrency(value)}</TableCell>
+                              <TableCell>{expenseItems[key] || key}</TableCell>
+                              <TableCell align="right">{formatCurrency(typeof value === 'number' ? value : 0)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -630,8 +648,8 @@ const TravelDetail = () => {
                         <TableBody>
                           {Object.entries(travel.inboundBudget).map(([key, value]) => (
                             <TableRow key={key}>
-                              <TableCell>{key}</TableCell>
-                              <TableCell align="right">{formatCurrency(value)}</TableCell>
+                              <TableCell>{expenseItems[key] || key}</TableCell>
+                              <TableCell align="right">{formatCurrency(typeof value === 'number' ? value : 0)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -660,8 +678,8 @@ const TravelDetail = () => {
                             <TableBody>
                               {Object.entries(budget).map(([key, value]) => (
                                 <TableRow key={key}>
-                                  <TableCell>{key}</TableCell>
-                                  <TableCell align="right">{formatCurrency(value)}</TableCell>
+                                  <TableCell>{expenseItems[key] || key}</TableCell>
+                                  <TableCell align="right">{formatCurrency(typeof value === 'number' ? value : 0)}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
