@@ -28,7 +28,9 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
-  Alert
+  Alert,
+  useTheme,
+  alpha
 } from '@mui/material';
 import {
   Approval as ApprovalIcon,
@@ -53,6 +55,7 @@ const ApprovalList = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [approvalHistory, setApprovalHistory] = useState([]);
@@ -214,88 +217,190 @@ const ApprovalList = () => {
     return type === 'travel' ? <TravelIcon /> : <ExpenseIcon />;
   };
 
-  const ApprovalCard = ({ item, showActions = true }) => (
-    <Card sx={{ mb: 2 }}>
-      <CardContent>
+  const ApprovalCard = ({ item, showActions = true }) => {
+    const statusColor = getStatusColor(item.status);
+    const statusColorValue = theme.palette[statusColor]?.main || theme.palette.grey[500];
+    
+    return (
+      <Card 
+        sx={{ 
+          mb: 2.5,
+          borderRadius: 2,
+          boxShadow: `0 2px 8px ${alpha(statusColorValue, 0.15)}, 0 1px 3px ${alpha(statusColorValue, 0.1)}`,
+          border: `1px solid ${alpha(statusColorValue, 0.2)}`,
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            boxShadow: `0 4px 16px ${alpha(statusColorValue, 0.25)}, 0 2px 6px ${alpha(statusColorValue, 0.15)}`,
+            transform: 'translateY(-2px)',
+            borderColor: alpha(statusColorValue, 0.4),
+          },
+          backgroundColor: alpha(statusColorValue, 0.02),
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ bgcolor: 'primary.main' }}>
+            <Avatar 
+              sx={{ 
+                bgcolor: statusColorValue,
+                width: 56,
+                height: 56,
+                boxShadow: `0 2px 8px ${alpha(statusColorValue, 0.3)}`,
+              }}
+            >
               {getTypeIcon(item.type)}
             </Avatar>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
                 {item.title}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
                 {item.type === 'travel' ? t('approval.travelRequest') : t('approval.expenseReport')}
               </Typography>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <Chip
               label={item.priority}
               color={getPriorityColor(item.priority)}
               size="small"
+              sx={{ fontWeight: 600 }}
             />
             <Chip
               label={item.status}
               color={getStatusColor(item.status)}
               size="small"
+              sx={{ 
+                fontWeight: 600,
+                boxShadow: `0 1px 4px ${alpha(statusColorValue, 0.3)}`,
+              }}
             />
           </Box>
         </Box>
 
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <PersonIcon color="action" fontSize="small" />
-              <Typography variant="body2">
-                <strong>{t('approval.employee')}:</strong> {item.employee.firstName} {item.employee.lastName}
-              </Typography>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1.5, 
+                mb: 1.5,
+                p: 1.5,
+                borderRadius: 1,
+                backgroundColor: alpha(theme.palette.primary.main, 0.04),
+              }}
+            >
+              <PersonIcon sx={{ color: theme.palette.primary.main }} fontSize="small" />
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  {t('approval.employee')}
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  {item.employee.firstName} {item.employee.lastName}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {item.employee.department} • {item.employee.email}
+                </Typography>
+              </Box>
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
-              {item.employee.department} • {item.employee.email}
-            </Typography>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <MoneyIcon color="action" fontSize="small" />
-              <Typography variant="body2">
-                <strong>{t('approval.amount')}:</strong> {item.currency} {item.amount.toLocaleString()}
-              </Typography>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1.5, 
+                mb: 1.5,
+                p: 1.5,
+                borderRadius: 1,
+                backgroundColor: alpha(theme.palette.info.main, 0.04),
+              }}
+            >
+              <MoneyIcon sx={{ color: theme.palette.info.main }} fontSize="small" />
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  {t('approval.amount')}
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600, color: theme.palette.info.main }}>
+                  {item.currency} {item.amount.toLocaleString()}
+                </Typography>
+              </Box>
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CalendarIcon color="action" fontSize="small" />
-              <Typography variant="body2">
-                <strong>{t('approval.date')}:</strong> {dayjs(item.date).format('MMM DD, YYYY')}
-              </Typography>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1.5,
+                p: 1.5,
+                borderRadius: 1,
+                backgroundColor: alpha(theme.palette.secondary.main, 0.04),
+              }}
+            >
+              <CalendarIcon sx={{ color: theme.palette.secondary.main }} fontSize="small" />
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  {t('approval.date')}
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  {dayjs(item.date).format('MMM DD, YYYY')}
+                </Typography>
+              </Box>
             </Box>
           </Grid>
         </Grid>
 
         {item.approver && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
+          <Box 
+            sx={{ 
+              mb: 2,
+              p: 2,
+              borderRadius: 1,
+              backgroundColor: alpha(theme.palette.success.main, 0.05),
+              border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               <strong>{t('approval.approvedBy')}:</strong> {item.approver.firstName} {item.approver.lastName} ({item.approver.position})
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ mb: item.comments ? 1 : 0 }}>
               <strong>{t('approval.approvedOn')}:</strong> {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
             </Typography>
             {item.comments && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                <strong>{t('approval.comments')}:</strong> {item.comments}
-              </Typography>
+              <Box sx={{ mt: 1.5, pt: 1.5, borderTop: `1px solid ${alpha(theme.palette.divider, 0.5)}` }}>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                  {t('approval.comments')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {item.comments}
+                </Typography>
+              </Box>
             )}
           </Box>
         )}
 
         {showActions && item.status === 'submitted' && (
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 2, 
+            justifyContent: 'flex-end',
+            pt: 2,
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+            mt: 2
+          }}>
             <Button
               variant="outlined"
               color="error"
               startIcon={<RejectIcon />}
               onClick={() => handleApproval(item, 'reject')}
+              sx={{
+                minWidth: 120,
+                fontWeight: 600,
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.error.main, 0.1),
+                  borderWidth: 2,
+                }
+              }}
             >
               {t('approval.reject')}
             </Button>
@@ -304,6 +409,15 @@ const ApprovalList = () => {
               color="success"
               startIcon={<ApproveIcon />}
               onClick={() => handleApproval(item, 'approve')}
+              sx={{
+                minWidth: 120,
+                fontWeight: 600,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.3)}`,
+                '&:hover': {
+                  boxShadow: `0 4px 12px ${alpha(theme.palette.success.main, 0.4)}`,
+                  transform: 'translateY(-1px)',
+                }
+              }}
             >
               {t('approval.approve')}
             </Button>
@@ -311,7 +425,8 @@ const ApprovalList = () => {
         )}
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   if (loading) {
     return (
