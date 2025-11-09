@@ -76,7 +76,7 @@ exports.getDashboardStats = async (req, res) => {
       Expense.countDocuments(expenseQuery),
       
       // 待审批费用数
-      Expense.countDocuments({ ...expenseQuery, status: 'pending' })
+      Expense.countDocuments({ ...expenseQuery, status: 'submitted' })
     ]);
 
     // 计算月度趋势
@@ -344,7 +344,7 @@ exports.getPendingTasks = async (req, res) => {
         });
       }
 
-      const pendingExpenses = await Expense.countDocuments({ status: 'pending' });
+      const pendingExpenses = await Expense.countDocuments({ status: 'submitted' });
       if (pendingExpenses > 0) {
         tasks.push({
           type: 'approval',
