@@ -555,7 +555,7 @@ const ApprovalList = () => {
               )}
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0, alignItems: 'center', ml: 1 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
             {showActions && item.status === 'submitted' && (
               <>
                 <Button
@@ -593,21 +593,6 @@ const ApprovalList = () => {
                 </Button>
               </>
             )}
-            <Button
-              variant="text"
-              size="small"
-              onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
-              sx={{ 
-                minWidth: 'auto',
-                px: 0.75,
-                py: 0.25,
-                fontSize: '0.75rem',
-                textTransform: 'none',
-                lineHeight: 1.2
-              }}
-            >
-              {t('approval.viewDetail') || 'Detail'}
-            </Button>
           </Box>
         </Box>
 
@@ -721,7 +706,7 @@ const ApprovalList = () => {
 
         {/* 审批信息（紧凑显示） */}
         {item.approver && (
-          <Box sx={{ mt: 0.5 }}>
+          <Box sx={{ mt: 0.5, mb: 0.5 }}>
             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2, display: 'block' }}>
               {t('approval.approvedBy')}: {item.approver.firstName} {item.approver.lastName} ({item.approver.position}) • {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
             </Typography>
@@ -732,6 +717,25 @@ const ApprovalList = () => {
             )}
           </Box>
         )}
+
+        {/* 查看详情按钮 */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 0.5 }}>
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
+            sx={{ 
+              minWidth: 'auto',
+              px: 0.75,
+              py: 0.25,
+              fontSize: '0.75rem',
+              textTransform: 'none',
+              lineHeight: 1.2
+            }}
+          >
+            {t('approval.viewDetail') || 'Detail'}
+          </Button>
+        </Box>
       </CardContent>
     </Card>
     );
