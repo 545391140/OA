@@ -361,7 +361,7 @@ const Dashboard = () => {
                   </ListItemIcon>
                   <ListItemText
                       primary={
-                        <Box>
+                        <Box component="div">
                           <Typography variant="body1" component="span" fontWeight={500}>
                             {travel.travelNumber || travel._id?.slice(-8) || '-'}
                           </Typography>
@@ -371,7 +371,7 @@ const Dashboard = () => {
                         </Box>
                       }
                       secondary={
-                        <Box sx={{ mt: 0.5 }}>
+                        <Box component="div" sx={{ mt: 0.5 }}>
                           <Typography variant="body2" component="span">
                             {travel.destination || t('dashboard.noDestination')}
                           </Typography>

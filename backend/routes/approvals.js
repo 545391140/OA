@@ -279,8 +279,18 @@ router.get('/statistics', protect, async (req, res) => {
     }
 
     // 构建基础匹配条件
+    // 确保req.user.id正确转换为ObjectId
+    let approverId;
+    try {
+      approverId = mongoose.Types.ObjectId.isValid(req.user.id) 
+        ? mongoose.Types.ObjectId(req.user.id)
+        : req.user.id;
+    } catch (error) {
+      approverId = req.user.id;
+    }
+    
     const baseMatch = {
-      'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+      'approvals.approver': approverId
     };
     
     if (Object.keys(dateQuery).length > 0) {
@@ -298,7 +308,7 @@ router.get('/statistics', protect, async (req, res) => {
         },
         {
           $match: {
-            'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+            'approvals.approver': approverId
           }
         },
         {
@@ -377,7 +387,7 @@ router.get('/statistics', protect, async (req, res) => {
         },
         {
           $match: {
-            'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+            'approvals.approver': approverId
           }
         },
         {
@@ -718,7 +728,7 @@ router.get('/trend', protect, async (req, res) => {
         },
         {
           $match: {
-            'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+            'approvals.approver': approverId
           }
         },
         {
@@ -807,7 +817,7 @@ router.get('/trend', protect, async (req, res) => {
         },
         {
           $match: {
-            'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+            'approvals.approver': approverId
           }
         },
         {
