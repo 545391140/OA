@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -52,6 +52,147 @@ import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
+// 优化的表格行组件，使用React.memo避免不必要的重渲染
+const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t }) => {
+  const formattedDeparture = useMemo(() => 
+    travel.dates.departure ? dayjs(travel.dates.departure).format('MMM DD') : '-',
+    [travel.dates.departure]
+  );
+  
+  const formattedReturn = useMemo(() => 
+    travel.dates.return ? dayjs(travel.dates.return).format('MMM DD') : '-',
+    [travel.dates.return]
+  );
+  
+  const formattedYear = useMemo(() => 
+    travel.dates.departure ? dayjs(travel.dates.departure).format('YYYY') : '',
+    [travel.dates.departure]
+  );
+  
+  const formattedCreatedDate = useMemo(() => 
+    travel.createdAt ? dayjs(travel.createdAt).format('MMM DD, YYYY') : '-',
+    [travel.createdAt]
+  );
+  
+  const formattedCreatedTime = useMemo(() => 
+    travel.createdAt ? dayjs(travel.createdAt).format('HH:mm') : '',
+    [travel.createdAt]
+  );
+
+  return (
+    <TableRow hover>
+      <TableCell>
+        <Typography variant="body2" sx={{ fontWeight: 'medium', fontFamily: 'monospace' }}>
+          {travel.travelNumber || '-'}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+          <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, flexShrink: 0 }}>
+            <FlightIcon />
+          </Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography 
+              variant="subtitle2" 
+              sx={{ 
+                fontWeight: 'bold',
+                wordBreak: 'break-word',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical'
+              }}
+            >
+              {travel.title}
+            </Typography>
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{
+                mt: 0.5,
+                wordBreak: 'break-word',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 1,
+                WebkitBoxOrient: 'vertical'
+              }}
+            >
+              {travel.displayDescription}
+            </Typography>
+          </Box>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <LocationIcon color="action" fontSize="small" />
+          <Box>
+            <Typography variant="body2">
+              {travel.displayDestination}
+            </Typography>
+            {travel.destination?.address && (
+              <Typography variant="caption" color="text.secondary">
+                {travel.destination.address}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CalendarIcon color="action" fontSize="small" />
+          <Box>
+            <Typography variant="body2">
+              {formattedDeparture} - {formattedReturn}
+            </Typography>
+            {formattedYear && (
+              <Typography variant="caption" color="text.secondary">
+                {formattedYear}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <MoneyIcon color="action" fontSize="small" />
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+            {travel.currency} {travel.estimatedCost?.toLocaleString() || 0}
+          </Typography>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Chip
+          label={t(`travel.statuses.${travel.status}`) || travel.status}
+          color={getStatusColor(travel.status)}
+          size="small"
+        />
+      </TableCell>
+      <TableCell>
+        <Typography variant="body2">
+          {formattedCreatedDate}
+        </Typography>
+        {formattedCreatedTime && (
+          <Typography variant="caption" color="text.secondary">
+            {formattedCreatedTime}
+          </Typography>
+        )}
+      </TableCell>
+      <TableCell>
+        <IconButton
+          onClick={(e) => onMenuOpen(e, travel)}
+          size="small"
+        >
+          <MoreVertIcon />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+});
+
+TravelTableRow.displayName = 'TravelTableRow';
+
 const TravelList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -61,6 +202,7 @@ const TravelList = () => {
   const [travels, setTravels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedTravel, setSelectedTravel] = useState(null);
@@ -70,6 +212,15 @@ const TravelList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [total, setTotal] = useState(0);
+
+  // 搜索防抖
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const statusOptions = [
     { value: 'all', label: t('travel.list.allStatus') },
@@ -82,7 +233,7 @@ const TravelList = () => {
     { value: 'cancelled', label: t('travel.statuses.cancelled') }
   ];
 
-  const getStatusColor = (status) => {
+  const getStatusColor = useCallback((status) => {
     const colors = {
       draft: 'default',
       submitted: 'warning',
@@ -93,12 +244,12 @@ const TravelList = () => {
       cancelled: 'error'
     };
     return colors[status] || 'default';
-  };
+  }, []);
 
   useEffect(() => {
     fetchTravels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, rowsPerPage, statusFilter, searchTerm]);
+  }, [page, rowsPerPage, statusFilter, debouncedSearchTerm]);
 
   const fetchTravels = async () => {
     try {
@@ -116,15 +267,16 @@ const TravelList = () => {
       }
       
       // 添加搜索关键词
-      if (searchTerm && searchTerm.trim()) {
-        params.search = searchTerm.trim();
+      if (debouncedSearchTerm && debouncedSearchTerm.trim()) {
+        params.search = debouncedSearchTerm.trim();
       }
       
       const response = await apiClient.get('/travel', { params });
       
       if (response.data && response.data.success) {
         // 处理返回的数据，确保每个 travel 都有 id 字段（使用 _id 或 id）
-        const travels = (response.data.data || []).map(travel => {
+        // 在数据获取时完成所有转换，避免在渲染时重复计算
+        const processedTravels = (response.data.data || []).map(travel => {
           // 处理 destination 字段：可能是字符串或对象
           let processedDestination = {
             city: '',
@@ -145,11 +297,36 @@ const TravelList = () => {
               processedDestination.address = travel.destination.address || travel.destinationAddress || processedDestination.address;
             }
           }
+
+          // 预计算标题和描述，避免在渲染时重复计算
+          const destination = processedDestination;
+          const city = destination.city || '';
+          const country = destination.country || '';
+          const destinationText = city && country ? `${city}, ${country}` : (city || country || '');
+          const tripDesc = travel.tripDescription?.trim() || '';
+          
+          let displayTitle = travel.title?.trim() || '';
+          if (!displayTitle) {
+            if (destinationText) {
+              displayTitle = `${t('travel.list.travelTo')} ${destinationText}`;
+            } else if (tripDesc) {
+              displayTitle = tripDesc;
+            } else if (travel.travelNumber) {
+              displayTitle = `${t('travel.list.travelRequest')} ${travel.travelNumber}`;
+            } else {
+              displayTitle = t('travel.list.unnamedTravelRequest');
+            }
+          }
+
+          const displayDescription = travel.tripDescription || travel.purpose || travel.comment || t('travel.list.noDescription');
+          const displayDestination = city && country ? `${city}, ${country}` : (city || country || '-');
           
           return {
             ...travel,
             id: travel._id || travel.id, // 统一使用 id 字段
-            title: travel.title || '', // 确保 title 字段存在
+            title: displayTitle,
+            displayDescription,
+            displayDestination,
             // 处理 destination 字段
             destination: processedDestination,
             dates: {
@@ -158,7 +335,7 @@ const TravelList = () => {
             }
           };
         });
-        setTravels(travels);
+        setTravels(processedTravels);
         setTotal(response.data.total || 0);
       } else {
         throw new Error(response.data?.message || t('travel.list.fetchError'));
@@ -171,10 +348,10 @@ const TravelList = () => {
     }
   };
 
-  const handleMenuOpen = (event, travel) => {
+  const handleMenuOpen = useCallback((event, travel) => {
     setAnchorEl(event.currentTarget);
     setSelectedTravel(travel);
-  };
+  }, []);
 
   const handleMenuClose = () => {
     setAnchorEl(null);
@@ -393,143 +570,13 @@ const TravelList = () => {
                 </TableRow>
               ) : (
                 travels.map((travel) => (
-                  <TableRow key={travel._id || travel.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 'medium', fontFamily: 'monospace' }}>
-                        {travel.travelNumber || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                        <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, flexShrink: 0 }}>
-                          <FlightIcon />
-                        </Avatar>
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography 
-                            variant="subtitle2" 
-                            sx={{ 
-                              fontWeight: 'bold',
-                              wordBreak: 'break-word',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical'
-                            }}
-                          >
-                            {(() => {
-                              // 如果 title 有值，显示 title
-                              if (travel.title && travel.title.trim()) {
-                                return travel.title;
-                              }
-                              // 否则，使用目的地或差旅描述作为标题
-                              const destination = travel.destination || {};
-                              const city = destination.city || '';
-                              const country = destination.country || '';
-                              const destinationText = city && country 
-                                ? `${city}, ${country}` 
-                                : (city || country || '');
-                              const tripDesc = travel.tripDescription?.trim() || '';
-                              
-                              if (destinationText) {
-                                return `${t('travel.list.travelTo')} ${destinationText}`;
-                              } else if (tripDesc) {
-                                return tripDesc;
-                              } else if (travel.travelNumber) {
-                                return `${t('travel.list.travelRequest')} ${travel.travelNumber}`;
-                              }
-                              return t('travel.list.unnamedTravelRequest');
-                            })()}
-                          </Typography>
-                          <Typography 
-                            variant="body2" 
-                            color="text.secondary"
-                            sx={{
-                              mt: 0.5,
-                              wordBreak: 'break-word',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 1,
-                              WebkitBoxOrient: 'vertical'
-                            }}
-                          >
-                            {travel.tripDescription || travel.purpose || travel.comment || t('travel.list.noDescription')}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <LocationIcon color="action" fontSize="small" />
-                        <Box>
-                          <Typography variant="body2">
-                            {(() => {
-                              const city = travel.destination?.city || '';
-                              const country = travel.destination?.country || '';
-                              if (city && country) {
-                                return `${city}, ${country}`;
-                              } else if (city) {
-                                return city;
-                              } else if (country) {
-                                return country;
-                              }
-                              return '-';
-                            })()}
-                          </Typography>
-                          {travel.destination?.address && (
-                            <Typography variant="caption" color="text.secondary">
-                              {travel.destination.address}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <CalendarIcon color="action" fontSize="small" />
-                        <Box>
-                          <Typography variant="body2">
-                            {dayjs(travel.dates.departure).format('MMM DD')} - {dayjs(travel.dates.return).format('MMM DD')}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {dayjs(travel.dates.departure).format('YYYY')}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <MoneyIcon color="action" fontSize="small" />
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {travel.currency} {travel.estimatedCost.toLocaleString()}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={t(`travel.statuses.${travel.status}`) || travel.status}
-                        color={getStatusColor(travel.status)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {dayjs(travel.createdAt).format('MMM DD, YYYY')}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {dayjs(travel.createdAt).format('HH:mm')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        onClick={(e) => handleMenuOpen(e, travel)}
-                        size="small"
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
+                  <TravelTableRow
+                    key={travel.id || travel._id}
+                    travel={travel}
+                    onMenuOpen={handleMenuOpen}
+                    getStatusColor={getStatusColor}
+                    t={t}
+                  />
                 ))
               )}
             </TableBody>
@@ -556,7 +603,7 @@ const TravelList = () => {
               {t('travel.list.noResultsFound')}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {searchTerm || statusFilter !== 'all' 
+              {(searchTerm || statusFilter !== 'all') 
                 ? t('travel.list.tryAdjustingSearch')
                 : t('travel.list.createFirstRequest')
               }
