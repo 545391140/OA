@@ -97,8 +97,15 @@ const ApprovalStatistics = () => {
       console.log('Stats API Data:', statsResponse.data);
 
       if (statsResponse.data && statsResponse.data.success) {
-        console.log('Setting statistics:', statsResponse.data.data);
-        setStatistics(statsResponse.data.data);
+        const statsData = statsResponse.data.data;
+        console.log('Setting statistics:', statsData);
+        console.log('Travel stats:', statsData.travel);
+        console.log('Expense stats:', statsData.expense);
+        console.log('Travel pending:', statsData.travel?.pending);
+        console.log('Travel approved:', statsData.travel?.approved);
+        console.log('Travel rejected:', statsData.travel?.rejected);
+        console.log('Travel total:', statsData.travel?.total);
+        setStatistics(statsData);
       } else {
         console.warn('Stats API response not successful:', statsResponse.data);
       }
