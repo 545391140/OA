@@ -150,7 +150,7 @@ const ApprovalWorkflowManagement = () => {
         ...prev.steps,
         {
           level: prev.steps.length + 1,
-          name: '',
+          name: `第${prev.steps.length + 1}级审批`,
           approverType: 'manager',
           approverUsers: [],
           approverRoles: [],
