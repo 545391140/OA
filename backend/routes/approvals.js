@@ -258,19 +258,14 @@ router.get('/statistics', protect, async (req, res) => {
     console.log('Has date filter:', hasDateFilter);
 
     // 查询差旅统计数据
+    // 按申请的整体状态统计，而不是审批节点数量
     const getTravelStats = async () => {
-      // 第一步：先过滤掉空数组，然后匹配日期条件（如果有）
       const pipeline = [];
       
-      // 先过滤掉 approvals 数组为空的记录
+      // 只统计有审批流程的申请（有approvals数组且不为空）
       pipeline.push({
         $match: {
-          approvals: { $exists: true, $ne: [] }
-        }
-      });
-      // 使用 $expr 检查数组长度大于0
-      pipeline.push({
-        $match: {
+          approvals: { $exists: true, $ne: [] },
           $expr: { $gt: [{ $size: '$approvals' }, 0] }
         }
       });
@@ -279,111 +274,40 @@ router.get('/statistics', protect, async (req, res) => {
       if (Object.keys(dateMatch).length > 0) {
         console.log('Adding date match to travel pipeline:', dateMatch);
         pipeline.push({ $match: { createdAt: dateMatch } });
-      } else {
-        console.log('No date match, querying all travel records with approvals');
       }
       
-      console.log('Travel pipeline stages:', JSON.stringify(pipeline, null, 2));
-      
-      // 第二步：展开approvals数组
-      // 第三步：按status分组统计
-      pipeline.push(
-        { $unwind: '$approvals' },
-        {
-          $group: {
-            _id: '$approvals.status',
-            count: { $sum: 1 },
-            totalAmount: {
-              $sum: {
-                $ifNull: [
-                  { $ifNull: ['$estimatedBudget', '$estimatedCost'] },
-                  0
-                ]
-              }
-            },
-            avgAmount: {
-              $avg: {
-                $ifNull: [
-                  { $ifNull: ['$estimatedBudget', '$estimatedCost'] },
-                  0
-                ]
-              }
-            },
-            totalApprovalTime: {
-              $sum: {
-                $cond: [
-                  {
-                    $and: [
-                      { $ne: ['$approvals.approvedAt', null] },
-                      { $ne: ['$createdAt', null] }
-                    ]
-                  },
-                  {
-                    $divide: [
-                      { $subtract: ['$approvals.approvedAt', '$createdAt'] },
-                      3600000
-                    ]
-                  },
-                  0
-                ]
-              }
-            },
-            completedCount: {
-              $sum: {
-                $cond: [
-                  { $in: ['$approvals.status', ['approved', 'rejected']] },
-                  1,
-                  0
-                ]
-              }
+      // 按申请的整体status分组统计
+      pipeline.push({
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: {
+            $sum: {
+              $ifNull: [
+                { $ifNull: ['$estimatedBudget', '$estimatedCost'] },
+                0
+              ]
+            }
+          },
+          avgAmount: {
+            $avg: {
+              $ifNull: [
+                { $ifNull: ['$estimatedBudget', '$estimatedCost'] },
+                0
+              ]
             }
           }
         }
-      );
+      });
 
       const stats = await Travel.aggregate(pipeline);
       
       console.log('Travel stats pipeline result:', JSON.stringify(stats, null, 2));
-      console.log('Date match:', dateMatch);
-      console.log('Stats count:', stats.length);
       
-      // 如果查询结果为空且有日期过滤，尝试查询所有数据以诊断问题
-      if (stats.length === 0 && hasDateFilter) {
-        console.log('No results with date filter, checking total records with approvals...');
-        const totalCount = await Travel.countDocuments({
-          approvals: { $exists: true, $ne: [] },
-          $expr: { $gt: [{ $size: '$approvals' }, 0] }
-        });
-        console.log('Total travel records with approvals (no date filter):', totalCount);
-        
-        // 查询最早和最晚的记录日期
-        const dateRange = await Travel.aggregate([
-          {
-            $match: {
-              approvals: { $exists: true, $ne: [] },
-              $expr: { $gt: [{ $size: '$approvals' }, 0] }
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              minDate: { $min: '$createdAt' },
-              maxDate: { $max: '$createdAt' }
-            }
-          }
-        ]);
-        if (dateRange.length > 0) {
-          console.log('Date range of travel records with approvals:', {
-            minDate: dateRange[0].minDate,
-            maxDate: dateRange[0].maxDate
-          });
-        }
-      }
-
       const result = {
-        pending: 0,
-        approved: 0,
-        rejected: 0,
+        pending: 0,      // submitted状态（流程未完成）
+        approved: 0,    // approved状态（流程已完成且通过）
+        rejected: 0,    // rejected状态（流程已完成但被拒绝）
         total: 0,
         totalAmount: 0,
         avgAmount: 0,
@@ -391,39 +315,65 @@ router.get('/statistics', protect, async (req, res) => {
         approvalRate: 0
       };
 
+      // 映射状态：submitted -> pending
       stats.forEach(stat => {
-        result[stat._id] = stat.count;
+        if (stat._id === 'submitted') {
+          result.pending += stat.count;
+        } else if (stat._id === 'approved') {
+          result.approved += stat.count;
+        } else if (stat._id === 'rejected') {
+          result.rejected += stat.count;
+        }
         result.total += stat.count;
         result.totalAmount += stat.totalAmount || 0;
       });
       
       console.log('Travel stats result:', result);
 
-      const completedCount = stats.reduce((sum, stat) => sum + (stat.completedCount || 0), 0);
-      const totalApprovalTime = stats.reduce((sum, stat) => sum + (stat.totalApprovalTime || 0), 0);
+      // 重新查询已完成审批的申请以计算平均审批时间
+      const completedTravels = await Travel.find({
+        approvals: { $exists: true, $ne: [] },
+        $expr: { $gt: [{ $size: '$approvals' }, 0] },
+        status: { $in: ['approved', 'rejected'] },
+        ...(Object.keys(dateMatch).length > 0 ? { createdAt: dateMatch } : {})
+      }).select('createdAt approvals').lean();
+
+      let totalApprovalTime = 0;
+      let completedCount = 0;
+      
+      completedTravels.forEach(travel => {
+        const lastApproval = travel.approvals
+          .filter(a => a.approvedAt)
+          .sort((a, b) => new Date(b.approvedAt) - new Date(a.approvedAt))[0];
+        
+        if (lastApproval && travel.createdAt) {
+          const approvalTime = (new Date(lastApproval.approvedAt) - new Date(travel.createdAt)) / 3600000; // 转换为小时
+          totalApprovalTime += approvalTime;
+          completedCount++;
+        }
+      });
 
       if (result.total > 0) {
         result.avgAmount = result.totalAmount / result.total;
         result.avgApprovalTime = completedCount > 0 ? totalApprovalTime / completedCount : 0;
-        result.approvalRate = parseFloat(((result.approved / result.total) * 100).toFixed(2));
+        const totalCompleted = result.approved + result.rejected;
+        result.approvalRate = totalCompleted > 0 
+          ? parseFloat(((result.approved / totalCompleted) * 100).toFixed(2))
+          : 0;
       }
 
       return result;
     };
 
     // 查询费用统计数据
+    // 按申请的整体状态统计，而不是审批节点数量
     const getExpenseStats = async () => {
       const pipeline = [];
       
-      // 先过滤掉 approvals 数组为空的记录
+      // 只统计有审批流程的申请（有approvals数组且不为空）
       pipeline.push({
         $match: {
-          approvals: { $exists: true, $ne: [] }
-        }
-      });
-      // 使用 $expr 检查数组长度大于0
-      pipeline.push({
-        $match: {
+          approvals: { $exists: true, $ne: [] },
           $expr: { $gt: [{ $size: '$approvals' }, 0] }
         }
       });
@@ -433,102 +383,38 @@ router.get('/statistics', protect, async (req, res) => {
         pipeline.push({ $match: { createdAt: dateMatch } });
       }
       
-      pipeline.push(
-        { $unwind: '$approvals' },
-        {
-          $group: {
-            _id: '$approvals.status',
-            count: { $sum: 1 },
-            totalAmount: {
-              $sum: {
-                $ifNull: [
-                  { $ifNull: ['$totalAmount', '$amount'] },
-                  0
-                ]
-              }
-            },
-            avgAmount: {
-              $avg: {
-                $ifNull: [
-                  { $ifNull: ['$totalAmount', '$amount'] },
-                  0
-                ]
-              }
-            },
-            totalApprovalTime: {
-              $sum: {
-                $cond: [
-                  {
-                    $and: [
-                      { $ne: ['$approvals.approvedAt', null] },
-                      { $ne: ['$createdAt', null] }
-                    ]
-                  },
-                  {
-                    $divide: [
-                      { $subtract: ['$approvals.approvedAt', '$createdAt'] },
-                      3600000
-                    ]
-                  },
-                  0
-                ]
-              }
-            },
-            completedCount: {
-              $sum: {
-                $cond: [
-                  { $in: ['$approvals.status', ['approved', 'rejected']] },
-                  1,
-                  0
-                ]
-              }
+      // 按申请的整体status分组统计
+      pipeline.push({
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: {
+            $sum: {
+              $ifNull: [
+                { $ifNull: ['$totalAmount', '$amount'] },
+                0
+              ]
+            }
+          },
+          avgAmount: {
+            $avg: {
+              $ifNull: [
+                { $ifNull: ['$totalAmount', '$amount'] },
+                0
+              ]
             }
           }
         }
-      );
+      });
 
       const stats = await Expense.aggregate(pipeline);
       
       console.log('Expense stats pipeline result:', JSON.stringify(stats, null, 2));
-      console.log('Expense stats count:', stats.length);
       
-      // 如果查询结果为空且有日期过滤，尝试查询所有数据以诊断问题
-      if (stats.length === 0 && hasDateFilter) {
-        console.log('No results with date filter, checking total expense records with approvals...');
-        const totalCount = await Expense.countDocuments({
-          approvals: { $exists: true, $ne: [] },
-          $expr: { $gt: [{ $size: '$approvals' }, 0] }
-        });
-        console.log('Total expense records with approvals (no date filter):', totalCount);
-        
-        // 查询最早和最晚的记录日期
-        const dateRange = await Expense.aggregate([
-          {
-            $match: {
-              approvals: { $exists: true, $ne: [] },
-              $expr: { $gt: [{ $size: '$approvals' }, 0] }
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              minDate: { $min: '$createdAt' },
-              maxDate: { $max: '$createdAt' }
-            }
-          }
-        ]);
-        if (dateRange.length > 0) {
-          console.log('Date range of expense records with approvals:', {
-            minDate: dateRange[0].minDate,
-            maxDate: dateRange[0].maxDate
-          });
-        }
-      }
-
       const result = {
-        pending: 0,
-        approved: 0,
-        rejected: 0,
+        pending: 0,      // submitted状态（流程未完成）
+        approved: 0,    // approved状态（流程已完成且通过）
+        rejected: 0,    // rejected状态（流程已完成但被拒绝）
         total: 0,
         totalAmount: 0,
         avgAmount: 0,
@@ -536,21 +422,51 @@ router.get('/statistics', protect, async (req, res) => {
         approvalRate: 0
       };
 
+      // 映射状态：submitted -> pending
       stats.forEach(stat => {
-        result[stat._id] = stat.count;
+        if (stat._id === 'submitted') {
+          result.pending += stat.count;
+        } else if (stat._id === 'approved') {
+          result.approved += stat.count;
+        } else if (stat._id === 'rejected') {
+          result.rejected += stat.count;
+        }
         result.total += stat.count;
         result.totalAmount += stat.totalAmount || 0;
       });
       
       console.log('Expense stats result:', result);
 
-      const completedCount = stats.reduce((sum, stat) => sum + (stat.completedCount || 0), 0);
-      const totalApprovalTime = stats.reduce((sum, stat) => sum + (stat.totalApprovalTime || 0), 0);
+      // 重新查询已完成审批的申请以计算平均审批时间
+      const completedExpenses = await Expense.find({
+        approvals: { $exists: true, $ne: [] },
+        $expr: { $gt: [{ $size: '$approvals' }, 0] },
+        status: { $in: ['approved', 'rejected'] },
+        ...(Object.keys(dateMatch).length > 0 ? { createdAt: dateMatch } : {})
+      }).select('createdAt approvals').lean();
+
+      let totalApprovalTime = 0;
+      let completedCount = 0;
+      
+      completedExpenses.forEach(expense => {
+        const lastApproval = expense.approvals
+          .filter(a => a.approvedAt)
+          .sort((a, b) => new Date(b.approvedAt) - new Date(a.approvedAt))[0];
+        
+        if (lastApproval && expense.createdAt) {
+          const approvalTime = (new Date(lastApproval.approvedAt) - new Date(expense.createdAt)) / 3600000; // 转换为小时
+          totalApprovalTime += approvalTime;
+          completedCount++;
+        }
+      });
 
       if (result.total > 0) {
         result.avgAmount = result.totalAmount / result.total;
         result.avgApprovalTime = completedCount > 0 ? totalApprovalTime / completedCount : 0;
-        result.approvalRate = parseFloat(((result.approved / result.total) * 100).toFixed(2));
+        const totalCompleted = result.approved + result.rejected;
+        result.approvalRate = totalCompleted > 0 
+          ? parseFloat(((result.approved / totalCompleted) * 100).toFixed(2))
+          : 0;
       }
 
       return result;
