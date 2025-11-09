@@ -315,12 +315,31 @@ router.get('/statistics', protect, async (req, res) => {
           $group: {
             _id: '$approvals.status',
             count: { $sum: 1 },
-            totalAmount: { $sum: { $ifNull: ['$estimatedBudget', '$estimatedCost', 0] } },
-            avgAmount: { $avg: { $ifNull: ['$estimatedBudget', '$estimatedCost', 0] } },
+            totalAmount: { 
+              $sum: { 
+                $ifNull: [
+                  { $ifNull: ['$estimatedBudget', '$estimatedCost'] },
+                  0
+                ]
+              } 
+            },
+            avgAmount: { 
+              $avg: { 
+                $ifNull: [
+                  { $ifNull: ['$estimatedBudget', '$estimatedCost'] },
+                  0
+                ]
+              } 
+            },
             totalApprovalTime: {
               $sum: {
                 $cond: [
-                  { $and: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                  {
+                    $and: [
+                      { $ne: ['$approvals.approvedAt', null] },
+                      { $ne: ['$approvals.createdAt', null] }
+                    ]
+                  },
                   {
                     $divide: [
                       { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
@@ -394,12 +413,31 @@ router.get('/statistics', protect, async (req, res) => {
           $group: {
             _id: '$approvals.status',
             count: { $sum: 1 },
-            totalAmount: { $sum: { $ifNull: ['$totalAmount', '$amount', 0] } },
-            avgAmount: { $avg: { $ifNull: ['$totalAmount', '$amount', 0] } },
+            totalAmount: { 
+              $sum: { 
+                $ifNull: [
+                  { $ifNull: ['$totalAmount', '$amount'] },
+                  0
+                ]
+              } 
+            },
+            avgAmount: { 
+              $avg: { 
+                $ifNull: [
+                  { $ifNull: ['$totalAmount', '$amount'] },
+                  0
+                ]
+              } 
+            },
             totalApprovalTime: {
               $sum: {
                 $cond: [
-                  { $and: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                  {
+                    $and: [
+                      { $ne: ['$approvals.approvedAt', null] },
+                      { $ne: ['$approvals.createdAt', null] }
+                    ]
+                  },
                   {
                     $divide: [
                       { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
