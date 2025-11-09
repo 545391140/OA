@@ -324,7 +324,13 @@ const Dashboard = () => {
                   cx="50%"
                   cy="50%"
                     labelLine={false}
-                    label={({ name, value }) => `${name} ${value}%`}
+                    label={({ name, value }) => {
+                      // 尝试翻译类别名称
+                      const categoryKey = `expense.categories.${name}`;
+                      const translatedName = t(categoryKey);
+                      const displayName = translatedName !== categoryKey ? translatedName : name;
+                      return `${displayName} ${value}%`;
+                    }}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -333,8 +339,21 @@ const Dashboard = () => {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                  <ChartTooltip formatter={(value) => [`${value}%`, t('dashboard.percentage')]} />
-                  <Legend />
+                  <ChartTooltip 
+                    formatter={(value, name) => {
+                      const categoryKey = `expense.categories.${name}`;
+                      const translatedName = t(categoryKey);
+                      const displayName = translatedName !== categoryKey ? translatedName : name;
+                      return [`${value}%`, displayName];
+                    }}
+                  />
+                  <Legend 
+                    formatter={(value) => {
+                      const categoryKey = `expense.categories.${value}`;
+                      const translated = t(categoryKey);
+                      return translated !== categoryKey ? translated : value;
+                    }}
+                  />
               </PieChart>
             </ResponsiveContainer>
             )}
