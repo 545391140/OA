@@ -221,8 +221,120 @@ const ApprovalList = () => {
         console.log('Final stats map:', statsMap);
         setTravelStats(statsMap);
         
-        // TODO: 获取审批历史（可以从已审批的申请中获取）
-        setApprovalHistory([]);
+        // 获取审批历史
+        try {
+          const historyResponse = await apiClient.get('/approvals/history', {
+            params: { limit: 100 } // 获取最近100条审批历史
+          });
+          
+          if (historyResponse.data && historyResponse.data.success) {
+            const { travels = [], expenses = [] } = historyResponse.data.data;
+            
+            // 转换差旅申请历史数据格式
+            const historyTravelItems = travels.map(travel => {
+              // 找到当前用户审批的记录
+              const userApproval = travel.approvals?.find(
+                a => String(a.approver?._id || a.approver) === String(user.id) && 
+                     (a.status === 'approved' || a.status === 'rejected')
+              );
+              
+              if (!userApproval) return null;
+              
+              // 计算日期信息
+              const dates = [];
+              if (travel.outbound?.date) dates.push(new Date(travel.outbound.date));
+              if (travel.inbound?.date) dates.push(new Date(travel.inbound.date));
+              if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
+                travel.multiCityRoutes.forEach(route => {
+                  if (route.date) dates.push(new Date(route.date));
+                });
+              }
+              
+              let earliestDate = null;
+              let latestDate = null;
+              let days = 0;
+              
+              if (dates.length > 0) {
+                const validDates = dates.filter(d => !isNaN(d.getTime()));
+                if (validDates.length > 0) {
+                  earliestDate = new Date(Math.min(...validDates.map(d => d.getTime())));
+                  latestDate = new Date(Math.max(...validDates.map(d => d.getTime())));
+                  days = Math.ceil((latestDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                }
+              }
+              
+              // 提取出发地和目的地
+              const getLocationName = (location) => {
+                if (!location) return null;
+                if (typeof location === 'string') return location;
+                if (location.name) return location.name;
+                if (location.city) return location.city;
+                return null;
+              };
+              
+              const departureCity = getLocationName(travel.outbound?.departure) || null;
+              const destinationCity = getLocationName(travel.outbound?.destination) ||
+                                      getLocationName(travel.destination) ||
+                                      getLocationName(travel.inbound?.destination) ||
+                                      null;
+              
+              return {
+                id: travel._id,
+                type: 'travel',
+                title: travel.title || travel.travelNumber || t('approval.travelRequest'),
+                employee: travel.employee || {},
+                amount: travel.estimatedBudget || travel.estimatedCost || 0,
+                currency: travel.currency || 'CNY',
+                date: travel.startDate || travel.outbound?.date || travel.createdAt,
+                status: userApproval.status === 'approved' ? 'approved' : 'rejected',
+                submittedAt: travel.createdAt,
+                approvedAt: userApproval.approvedAt || userApproval.createdAt,
+                approver: userApproval.approver || {},
+                comments: userApproval.comments || '',
+                travelNumber: travel.travelNumber,
+                destination: destinationCity,
+                departureCity,
+                earliestDate,
+                latestDate,
+                days,
+                _raw: travel
+              };
+            }).filter(item => item !== null);
+            
+            // 转换费用申请历史数据格式
+            const historyExpenseItems = expenses.map(expense => {
+              // 找到当前用户审批的记录
+              const userApproval = expense.approvals?.find(
+                a => String(a.approver?._id || a.approver) === String(user.id) && 
+                     (a.status === 'approved' || a.status === 'rejected')
+              );
+              
+              if (!userApproval) return null;
+              
+              return {
+                id: expense._id,
+                type: 'expense',
+                title: expense.title || expense.expenseNumber || t('approval.expenseReport'),
+                employee: expense.employee || {},
+                amount: expense.totalAmount || expense.amount || 0,
+                currency: expense.currency || 'CNY',
+                date: expense.expenseDate || expense.createdAt,
+                status: userApproval.status === 'approved' ? 'approved' : 'rejected',
+                submittedAt: expense.createdAt,
+                approvedAt: userApproval.approvedAt || userApproval.createdAt,
+                approver: userApproval.approver || {},
+                comments: userApproval.comments || '',
+                _raw: expense
+              };
+            }).filter(item => item !== null);
+            
+            setApprovalHistory([...historyTravelItems, ...historyExpenseItems]);
+          }
+        } catch (historyError) {
+          console.error('Failed to fetch approval history:', historyError);
+          // 不显示错误通知，因为审批历史不是必需的
+          setApprovalHistory([]);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch approvals:', error);
