@@ -37,12 +37,14 @@ import {
   AccountBalanceWallet as ExpenseItemsIcon,
   Security as SecurityIcon,
   Work as WorkIcon,
-  People as PeopleIcon
+  People as PeopleIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { updateHtmlLang } from '../../utils/htmlLangUpdater';
+import GlobalSearch from '../Common/GlobalSearch';
 
 const drawerWidth = 240;
 
@@ -50,6 +52,7 @@ const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [languageMenuAnchor, setLanguageMenuAnchor] = useState(null);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -90,6 +93,27 @@ const Layout = () => {
     logout();
     handleProfileMenuClose();
   };
+
+  const handleOpenGlobalSearch = () => {
+    setGlobalSearchOpen(true);
+  };
+
+  const handleCloseGlobalSearch = () => {
+    setGlobalSearchOpen(false);
+  };
+
+  // 监听键盘快捷键 Ctrl+K 或 Cmd+K 打开全局搜索
+  React.useEffect(() => {
+    const handleKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+        event.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // 使用 useMemo 确保菜单项在语言变化时重新计算
   const menuItems = useMemo(() => [
@@ -211,6 +235,15 @@ const Layout = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {getPageTitle()}
           </Typography>
+
+          <IconButton
+            color="inherit"
+            onClick={handleOpenGlobalSearch}
+            sx={{ mr: 1 }}
+            title={t('search.globalSearch') + ' (Ctrl+K)'}
+          >
+            <SearchIcon />
+          </IconButton>
 
           <IconButton
             color="inherit"
@@ -358,6 +391,9 @@ const Layout = () => {
           {t('navigation.languages.ko')}
         </MenuItem>
       </Menu>
+
+      {/* Global Search */}
+      <GlobalSearch open={globalSearchOpen} onClose={handleCloseGlobalSearch} />
     </Box>
   );
 };

@@ -26,6 +26,7 @@ const expenseItemRoutes = require('./routes/expenseItems');
 const locationRoutes = require('./routes/locations');
 const roleRoutes = require('./routes/roles');
 const positionRoutes = require('./routes/positions');
+const searchRoutes = require('./routes/search');
 
 // Connect to database
 connectDB();
@@ -138,6 +139,7 @@ app.use('/api/expense-items', expenseItemRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/positions', positionRoutes);
+app.use('/api/search', searchRoutes);
 
 // Serve frontend static files (if deployed together)
 if (frontendExists) {
