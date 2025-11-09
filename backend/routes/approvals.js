@@ -309,14 +309,13 @@ router.get('/statistics', protect, async (req, res) => {
     // 注意：approvals数组中没有createdAt字段，只有approvedAt
     // 日期查询应该使用文档级别的createdAt（文档创建时间）
     // 使用$in来匹配ObjectId或字符串格式
+    // 注意：日期查询应该在聚合查询的$match阶段分别处理，而不是在基础查询中
     const baseMatchCondition = {
       'approvals.approver': { $in: [approverId, approverIdString] }
     };
     
-    // 如果有日期查询，使用文档级别的createdAt
-    if (Object.keys(dateQuery).length > 0) {
-      baseMatchCondition.createdAt = dateQuery;
-    }
+    console.log('Date query:', dateQuery);
+    console.log('Date query keys:', Object.keys(dateQuery));
 
     // 查询差旅统计数据
     const getTravelStats = async () => {
@@ -325,10 +324,17 @@ router.get('/statistics', protect, async (req, res) => {
       console.log('Approver ID:', approverId);
       console.log('Base match condition:', JSON.stringify(baseMatchCondition, null, 2));
       
-      // 先检查是否有匹配的文档
-      const matchedDocs = await Travel.find(baseMatchCondition).limit(5).select('_id approvals createdAt').lean();
-      console.log('Matched documents count:', matchedDocs.length);
-      console.log('Sample matched documents:', JSON.stringify(matchedDocs, null, 2));
+      // 先检查是否有匹配的文档（不包含日期条件）
+      const matchedDocsWithoutDate = await Travel.find({
+        'approvals.approver': { $in: [approverId, approverIdString] }
+      }).limit(5).select('_id approvals createdAt').lean();
+      console.log('Matched documents count (without date filter):', matchedDocsWithoutDate.length);
+      console.log('Sample matched documents (without date filter):', JSON.stringify(matchedDocsWithoutDate, null, 2));
+      
+      // 检查是否有匹配的文档（包含日期条件）
+      const matchedDocsWithDate = await Travel.find(aggregateMatchCondition).limit(5).select('_id approvals createdAt').lean();
+      console.log('Matched documents count (with date filter):', matchedDocsWithDate.length);
+      console.log('Sample matched documents (with date filter):', JSON.stringify(matchedDocsWithDate, null, 2));
       
       // 检查所有Travel文档（不限制approver）
       const allTravels = await Travel.find({}).limit(3).select('_id approvals createdAt').lean();
@@ -341,6 +347,24 @@ router.get('/statistics', protect, async (req, res) => {
       // 检查有approvals的Travel文档数
       const travelWithApprovalsCount = await Travel.countDocuments({ 'approvals.0': { $exists: true } });
       console.log('Travel documents with approvals:', travelWithApprovalsCount);
+      
+      // 检查有approvals且approver匹配的文档（不限制日期）
+      const travelsWithMatchingApprover = await Travel.find({
+        'approvals.approver': { $in: [approverId, approverIdString] }
+      }).limit(5).select('_id approvals createdAt').lean();
+      console.log('Travel documents with matching approver (no date filter):', travelsWithMatchingApprover.length);
+      console.log('Sample travels with matching approver:', JSON.stringify(travelsWithMatchingApprover, null, 2));
+      
+      // 检查这些文档的createdAt是否在日期范围内
+      if (travelsWithMatchingApprover.length > 0) {
+        travelsWithMatchingApprover.forEach((travel, index) => {
+          console.log(`Travel ${index} createdAt:`, travel.createdAt);
+          console.log(`Travel ${index} createdAt in range?`, 
+            (!dateQuery.$gte || travel.createdAt >= dateQuery.$gte) && 
+            (!dateQuery.$lte || travel.createdAt <= dateQuery.$lte)
+          );
+        });
+      }
       
       // 检查approvals数组中approver字段的格式
       if (allTravels.length > 0 && allTravels[0].approvals && allTravels[0].approvals.length > 0) {
@@ -375,9 +399,22 @@ router.get('/statistics', protect, async (req, res) => {
       }).limit(1).select('_id approvals').lean();
       console.log('Direct match with $in:', directMatchIn.length);
       
+      // 构建聚合查询的匹配条件
+      const aggregateMatchCondition = {
+        'approvals.approver': { $in: [approverId, approverIdString] }
+      };
+      
+      // 如果有日期查询，添加到聚合查询的匹配条件中
+      // 注意：日期查询应该在文档级别，而不是在unwind之后
+      if (Object.keys(dateQuery).length > 0) {
+        aggregateMatchCondition.createdAt = dateQuery;
+      }
+      
+      console.log('Aggregate match condition:', JSON.stringify(aggregateMatchCondition, null, 2));
+      
       const stats = await Travel.aggregate([
         {
-          $match: baseMatchCondition
+          $match: aggregateMatchCondition
         },
         {
           $unwind: '$approvals'
@@ -439,7 +476,7 @@ router.get('/statistics', protect, async (req, res) => {
         }
       ]);
 
-      console.log('Aggregation expense stats result:', JSON.stringify(stats, null, 2));
+      console.log('Aggregation travel stats result:', JSON.stringify(stats, null, 2));
 
       const result = {
         pending: 0,
@@ -482,10 +519,17 @@ router.get('/statistics', protect, async (req, res) => {
       console.log('Approver ID:', approverId);
       console.log('Base match condition:', JSON.stringify(baseMatchCondition, null, 2));
       
-      // 先检查是否有匹配的文档
-      const matchedDocs = await Expense.find(baseMatchCondition).limit(5).select('_id approvals createdAt').lean();
-      console.log('Matched expense documents count:', matchedDocs.length);
-      console.log('Sample matched expense documents:', JSON.stringify(matchedDocs, null, 2));
+      // 先检查是否有匹配的文档（不包含日期条件）
+      const matchedDocsWithoutDate = await Expense.find({
+        'approvals.approver': { $in: [approverId, approverIdString] }
+      }).limit(5).select('_id approvals createdAt').lean();
+      console.log('Matched expense documents count (without date filter):', matchedDocsWithoutDate.length);
+      console.log('Sample matched expense documents (without date filter):', JSON.stringify(matchedDocsWithoutDate, null, 2));
+      
+      // 检查是否有匹配的文档（包含日期条件）
+      const matchedDocsWithDate = await Expense.find(aggregateMatchConditionExpense).limit(5).select('_id approvals createdAt').lean();
+      console.log('Matched expense documents count (with date filter):', matchedDocsWithDate.length);
+      console.log('Sample matched expense documents (with date filter):', JSON.stringify(matchedDocsWithDate, null, 2));
       
       // 检查所有Expense文档（不限制approver）
       const allExpenses = await Expense.find({}).limit(3).select('_id approvals createdAt').lean();
@@ -499,9 +543,21 @@ router.get('/statistics', protect, async (req, res) => {
       const expenseWithApprovalsCount = await Expense.countDocuments({ 'approvals.0': { $exists: true } });
       console.log('Expense documents with approvals:', expenseWithApprovalsCount);
       
+      // 构建聚合查询的匹配条件
+      const aggregateMatchConditionExpense = {
+        'approvals.approver': { $in: [approverId, approverIdString] }
+      };
+      
+      // 如果有日期查询，添加到聚合查询的匹配条件中
+      if (Object.keys(dateQuery).length > 0) {
+        aggregateMatchConditionExpense.createdAt = dateQuery;
+      }
+      
+      console.log('Expense aggregate match condition:', JSON.stringify(aggregateMatchConditionExpense, null, 2));
+      
       const stats = await Expense.aggregate([
         {
-          $match: baseMatchCondition
+          $match: aggregateMatchConditionExpense
         },
         {
           $unwind: '$approvals'
