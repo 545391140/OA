@@ -280,6 +280,16 @@ async function getSummaryStats(dateMatch, departmentMatch) {
     status: 'submitted'
   });
 
+  // 计算审批率
+  const totalTravelRequests = await Travel.countDocuments(travelMatch);
+  const approvedTravelRequests = await Travel.countDocuments({
+    ...travelMatch,
+    status: 'approved'
+  });
+  const approvalRate = totalTravelRequests > 0 
+    ? (approvedTravelRequests / totalTravelRequests * 100) 
+    : 0;
+
   // 计算月度趋势（与上个月比较）
   const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -300,11 +310,44 @@ async function getSummaryStats(dateMatch, departmentMatch) {
   const lastTotal = lastMonthExpenses[0]?.total || 0;
   const monthlyTrend = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal * 100) : 0;
 
+  // 计算审批率趋势（与上个月比较）
+  const currentMonthApproved = await Travel.countDocuments({
+    ...travelMatch,
+    createdAt: { $gte: currentMonthStart },
+    status: 'approved'
+  });
+  const currentMonthTotal = await Travel.countDocuments({
+    ...travelMatch,
+    createdAt: { $gte: currentMonthStart }
+  });
+  const currentMonthApprovalRate = currentMonthTotal > 0 
+    ? (currentMonthApproved / currentMonthTotal * 100) 
+    : 0;
+
+  const lastMonthApproved = await Travel.countDocuments({
+    ...travelMatch,
+    createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd },
+    status: 'approved'
+  });
+  const lastMonthTotal = await Travel.countDocuments({
+    ...travelMatch,
+    createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd }
+  });
+  const lastMonthApprovalRate = lastMonthTotal > 0 
+    ? (lastMonthApproved / lastMonthTotal * 100) 
+    : 0;
+
+  const approvalRateTrend = lastMonthApprovalRate > 0 
+    ? ((currentMonthApprovalRate - lastMonthApprovalRate) / lastMonthApprovalRate * 100) 
+    : 0;
+
   return {
     totalExpenses,
     totalTravel,
     pendingApprovals,
-    monthlyTrend: parseFloat(monthlyTrend.toFixed(2))
+    approvalRate: parseFloat(approvalRate.toFixed(1)),
+    monthlyTrend: parseFloat(monthlyTrend.toFixed(2)),
+    approvalRateTrend: parseFloat(approvalRateTrend.toFixed(2))
   };
 }
 

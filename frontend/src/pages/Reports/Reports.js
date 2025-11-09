@@ -177,7 +177,9 @@ const Reports = () => {
             totalExpenses: data.summary?.totalExpenses || 0,
             totalTravel: data.summary?.totalTravel || 0,
             pendingApprovals: data.summary?.pendingApprovals || 0,
-            monthlyTrend: data.summary?.monthlyTrend || 0
+            approvalRate: data.summary?.approvalRate || 0,
+            monthlyTrend: data.summary?.monthlyTrend || 0,
+            approvalRateTrend: data.summary?.approvalRateTrend || 0
           },
           monthlyData: data.monthlyData || [],
           categoryData: data.categoryData || [],
@@ -201,7 +203,9 @@ const Reports = () => {
           totalExpenses: 0,
           totalTravel: 0,
           pendingApprovals: 0,
-          monthlyTrend: 0
+          approvalRate: 0,
+          monthlyTrend: 0,
+          approvalRateTrend: 0
         },
         monthlyData: [],
         categoryData: [],
@@ -487,33 +491,80 @@ const Reports = () => {
     return csv;
   };
 
-  const SummaryCard = ({ title, value, icon, trend, color = 'primary' }) => (
-    <Card>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box>
-            <Typography color="textSecondary" gutterBottom variant="h6">
-              {title}
-            </Typography>
-            <Typography variant="h4" component="div" color={color}>
-              {typeof value === 'number' ? value.toLocaleString() : value}
-            </Typography>
-            {trend && (
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <TrendingUpIcon color="success" fontSize="small" />
-                <Typography variant="body2" color="success.main">
-                  {t('reports.trendFromLastMonth', { trend: `+${trend}%` }) || `+${trend}% ${t('reports.fromLastMonth') || 'from last month'}`}
-                </Typography>
-              </Box>
-            )}
+  const SummaryCard = ({ title, value, icon, trend, color = 'primary', valueType = 'number' }) => {
+    // 统一格式化显示值
+    const formatValue = () => {
+      if (valueType === 'currency') {
+        return `$${typeof value === 'number' ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : parseFloat(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      } else if (valueType === 'percentage') {
+        return typeof value === 'number' ? `${value.toFixed(1)}%` : value;
+      } else if (valueType === 'number') {
+        return typeof value === 'number' ? value.toLocaleString('en-US') : value;
+      }
+      return value;
+    };
+
+    return (
+      <Card sx={{ height: '100%' }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', height: '100%' }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography 
+                color="textSecondary" 
+                gutterBottom 
+                variant="body2"
+                sx={{ 
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  mb: 1
+                }}
+              >
+                {title}
+              </Typography>
+              <Typography 
+                variant="h4" 
+                component="div" 
+                sx={{ 
+                  fontWeight: 600,
+                  color: `${color}.main`,
+                  mb: trend ? 1 : 0
+                }}
+              >
+                {formatValue()}
+              </Typography>
+              {trend !== undefined && trend !== null && (
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <TrendingUpIcon 
+                    color="success" 
+                    fontSize="small" 
+                    sx={{ fontSize: '1rem', mr: 0.5 }}
+                  />
+                  <Typography 
+                    variant="body2" 
+                    color="success.main"
+                    sx={{ fontSize: '0.75rem' }}
+                  >
+                    {t('reports.trendFromLastMonth', { trend: `+${trend}%` }) || `+${trend}% ${t('reports.fromLastMonth') || 'from last month'}`}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+            <Box 
+              sx={{ 
+                color: `${color}.main`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                ml: 2
+              }}
+            >
+              {icon}
+            </Box>
           </Box>
-          <Box sx={{ color: `${color}.main` }}>
-            {icon}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
@@ -619,25 +670,28 @@ const Reports = () => {
           <Grid item xs={12} sm={6} md={3}>
             <SummaryCard
               title={t('reports.totalExpenses')}
-              value={`$${reportData.summary.totalExpenses.toLocaleString()}`}
+              value={reportData.summary.totalExpenses || 0}
+              valueType="currency"
               icon={<MoneyIcon sx={{ fontSize: 40 }} />}
-              trend={reportData.summary.monthlyTrend}
+              trend={reportData.summary.monthlyTrend !== undefined && reportData.summary.monthlyTrend !== null ? reportData.summary.monthlyTrend : undefined}
               color="primary"
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <SummaryCard
               title={t('reports.travelCosts')}
-              value={`$${reportData.summary.totalTravel.toLocaleString()}`}
+              value={reportData.summary.totalTravel || 0}
+              valueType="currency"
               icon={<TravelIcon sx={{ fontSize: 40 }} />}
-              trend={5.2}
+              trend={reportData.summary.monthlyTrend !== undefined && reportData.summary.monthlyTrend !== null ? reportData.summary.monthlyTrend : undefined}
               color="info"
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <SummaryCard
               title={t('reports.pendingApprovals')}
-              value={reportData.summary.pendingApprovals}
+              value={reportData.summary.pendingApprovals || 0}
+              valueType="number"
               icon={<AssessmentIcon sx={{ fontSize: 40 }} />}
               color="warning"
             />
@@ -645,9 +699,10 @@ const Reports = () => {
           <Grid item xs={12} sm={6} md={3}>
             <SummaryCard
               title={t('reports.approvalRate')}
-              value="94.5%"
+              value={reportData.summary.approvalRate || 0}
+              valueType="percentage"
               icon={<TrendingUpIcon sx={{ fontSize: 40 }} />}
-              trend={2.1}
+              trend={reportData.summary.approvalRateTrend !== undefined && reportData.summary.approvalRateTrend !== null ? reportData.summary.approvalRateTrend : undefined}
               color="success"
             />
           </Grid>
