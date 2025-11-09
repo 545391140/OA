@@ -289,27 +289,35 @@ router.get('/statistics', protect, async (req, res) => {
       approverId = req.user.id;
     }
     
-    const baseMatch = {
+    // 构建匹配条件数组
+    const matchStages = [
+      {
+        'approvals.approver': approverId
+      }
+    ];
+    
+    // 如果有日期查询，需要在unwind之后添加
+    const afterUnwindMatch = {
       'approvals.approver': approverId
     };
     
     if (Object.keys(dateQuery).length > 0) {
-      baseMatch['approvals.createdAt'] = dateQuery;
+      afterUnwindMatch['approvals.createdAt'] = dateQuery;
     }
 
     // 查询差旅统计数据
     const getTravelStats = async () => {
       const stats = await Travel.aggregate([
         {
-          $match: baseMatch
+          $match: {
+            'approvals.approver': approverId
+          }
         },
         {
           $unwind: '$approvals'
         },
         {
-          $match: {
-            'approvals.approver': approverId
-          }
+          $match: afterUnwindMatch
         },
         {
           $group: {
@@ -399,15 +407,15 @@ router.get('/statistics', protect, async (req, res) => {
     const getExpenseStats = async () => {
       const stats = await Expense.aggregate([
         {
-          $match: baseMatch
+          $match: {
+            'approvals.approver': approverId
+          }
         },
         {
           $unwind: '$approvals'
         },
         {
-          $match: {
-            'approvals.approver': approverId
-          }
+          $match: afterUnwindMatch
         },
         {
           $group: {
