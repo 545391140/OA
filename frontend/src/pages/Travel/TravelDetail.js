@@ -66,6 +66,7 @@ const TravelDetail = () => {
   const [approvalComment, setApprovalComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [expenseItems, setExpenseItems] = useState({});
+  const [budgetValidation, setBudgetValidation] = useState(null);
 
   useEffect(() => {
     fetchExpenseItems();
@@ -94,7 +95,14 @@ const TravelDetail = () => {
       const response = await apiClient.get(`/travel/${id}`);
       
       if (response.data && response.data.success) {
-        setTravel(response.data.data);
+        const travelData = response.data.data;
+        setTravel(travelData);
+        
+        // 延迟验证，确保travel state已更新
+        setTimeout(() => {
+          const validation = validateBudgetTotal();
+          setBudgetValidation(validation);
+        }, 100);
       } else {
         throw new Error('Failed to load travel details');
       }
@@ -131,6 +139,71 @@ const TravelDetail = () => {
 
   const formatCurrency = (amount) => {
     return `¥${parseFloat(amount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // 统一的金额提取函数
+  const extractAmount = (item) => {
+    if (typeof item === 'number') {
+      return item;
+    }
+    if (typeof item === 'object' && item !== null) {
+      // 尝试多个可能的字段
+      return item.subtotal || item.amount || item.total || 0;
+    }
+    return 0;
+  };
+
+  // 计算预算总和
+  const calculateBudgetTotal = (budget) => {
+    if (!budget) return 0;
+    if (Array.isArray(budget)) {
+      // 多程预算是数组
+      return budget.reduce((total, routeBudget) => {
+        return total + Object.values(routeBudget || {}).reduce((sum, item) => {
+          return sum + extractAmount(item);
+        }, 0);
+      }, 0);
+    } else {
+      // 单程预算是对象
+      return Object.values(budget).reduce((sum, item) => {
+        return sum + extractAmount(item);
+      }, 0);
+    }
+  };
+
+  // 验证总预算是否等于各项之和
+  const validateBudgetTotal = () => {
+    if (!travel) return { isValid: true, message: '' };
+    
+    const outboundTotal = calculateBudgetTotal(travel.outboundBudget);
+    const inboundTotal = calculateBudgetTotal(travel.inboundBudget);
+    const multiCityTotal = calculateBudgetTotal(travel.multiCityRoutesBudget);
+    const calculatedTotal = outboundTotal + inboundTotal + multiCityTotal;
+    const estimatedBudget = travel.estimatedBudget || 0;
+    
+    const difference = Math.abs(calculatedTotal - estimatedBudget);
+    const isValid = difference < 0.01; // 允许0.01的误差（浮点数精度问题）
+    
+    console.log('预算验证:', {
+      去程: outboundTotal,
+      返程: inboundTotal,
+      多程: multiCityTotal,
+      计算总和: calculatedTotal,
+      预算总额: estimatedBudget,
+      差异: difference,
+      验证通过: isValid
+    });
+    
+    return {
+      isValid,
+      message: isValid ? '' : `预算总额与明细之和不一致，差异：${formatCurrency(difference)}`,
+      outboundTotal,
+      inboundTotal,
+      multiCityTotal,
+      calculatedTotal,
+      estimatedBudget,
+      difference
+    };
   };
 
   const formatDate = (date) => {
@@ -567,6 +640,19 @@ const TravelDetail = () => {
             </Typography>
             <Divider sx={{ mb: 1.5 }} />
 
+            {/* 预算验证警告 */}
+            {budgetValidation && !budgetValidation.isValid && (
+              <Alert severity="warning" sx={{ mb: 1.5 }}>
+                <Typography variant="body2">
+                  {budgetValidation.message}
+                </Typography>
+                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                  计算总和: {formatCurrency(budgetValidation.calculatedTotal)} | 
+                  预算总额: {formatCurrency(budgetValidation.estimatedBudget)}
+                </Typography>
+              </Alert>
+            )}
+
             <Grid container spacing={1.5}>
               {/* 总额 */}
               <Grid item xs={6} md={3}>
@@ -588,12 +674,7 @@ const TravelDetail = () => {
                       {t('travel.detail.outbound')}
                     </Typography>
                     <Typography variant="h6" color="info.main">
-                      {formatCurrency(
-                        Object.values(travel.outboundBudget).reduce((sum, item) => {
-                          const amount = typeof item === 'object' ? (item.subtotal || 0) : (typeof item === 'number' ? item : 0);
-                          return sum + amount;
-                        }, 0)
-                      )}
+                      {formatCurrency(calculateBudgetTotal(travel.outboundBudget))}
                     </Typography>
                   </Card>
                 </Grid>
@@ -607,12 +688,7 @@ const TravelDetail = () => {
                       {t('travel.detail.inbound')}
                     </Typography>
                     <Typography variant="h6" color="success.main">
-                      {formatCurrency(
-                        Object.values(travel.inboundBudget).reduce((sum, item) => {
-                          const amount = typeof item === 'object' ? (item.subtotal || 0) : (typeof item === 'number' ? item : 0);
-                          return sum + amount;
-                        }, 0)
-                      )}
+                      {formatCurrency(calculateBudgetTotal(travel.inboundBudget))}
                     </Typography>
                   </Card>
                 </Grid>
@@ -626,14 +702,7 @@ const TravelDetail = () => {
                       {t('travel.detail.multiCity')} ({travel.multiCityRoutesBudget.length})
                     </Typography>
                     <Typography variant="h6" color="warning.main">
-                      {formatCurrency(
-                        travel.multiCityRoutesBudget.reduce((total, budget) => {
-                          return total + Object.values(budget).reduce((sum, item) => {
-                            const amount = typeof item === 'object' ? (item.subtotal || 0) : (typeof item === 'number' ? item : 0);
-                            return sum + amount;
-                          }, 0);
-                        }, 0)
-                      )}
+                      {formatCurrency(calculateBudgetTotal(travel.multiCityRoutesBudget))}
                     </Typography>
                   </Card>
                 </Grid>
@@ -652,8 +721,7 @@ const TravelDetail = () => {
                       <Table size="small">
                         <TableBody>
                           {Object.entries(travel.outboundBudget).map(([key, value]) => {
-                            // value可能是对象 {subtotal: number} 或直接是数字
-                            const amount = typeof value === 'object' ? (value.subtotal || 0) : (typeof value === 'number' ? value : 0);
+                            const amount = extractAmount(value);
                             return (
                               <TableRow key={key}>
                                 <TableCell>{expenseItems[key] || key}</TableCell>
@@ -681,8 +749,7 @@ const TravelDetail = () => {
                       <Table size="small">
                         <TableBody>
                           {Object.entries(travel.inboundBudget).map(([key, value]) => {
-                            // value可能是对象 {subtotal: number} 或直接是数字
-                            const amount = typeof value === 'object' ? (value.subtotal || 0) : (typeof value === 'number' ? value : 0);
+                            const amount = extractAmount(value);
                             return (
                               <TableRow key={key}>
                                 <TableCell>{expenseItems[key] || key}</TableCell>
@@ -715,8 +782,7 @@ const TravelDetail = () => {
                           <Table size="small">
                             <TableBody>
                               {Object.entries(budget).map(([key, value]) => {
-                                // value可能是对象 {subtotal: number} 或直接是数字
-                                const amount = typeof value === 'object' ? (value.subtotal || 0) : (typeof value === 'number' ? value : 0);
+                                const amount = extractAmount(value);
                                 return (
                                   <TableRow key={key}>
                                     <TableCell>{expenseItems[key] || key}</TableCell>
