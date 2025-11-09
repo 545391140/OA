@@ -300,12 +300,6 @@ const ApprovalList = () => {
                 <Typography variant="caption" color="text.secondary">
                   {item.type === 'travel' ? t('approval.travelRequest') : t('approval.expenseReport')}
                 </Typography>
-                {item.travelNumber && (
-                  <>
-                    <Typography variant="caption" color="text.secondary">•</Typography>
-                    <Typography variant="caption" color="text.secondary">{item.travelNumber}</Typography>
-                  </>
-                )}
                 {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
                 {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
                   <>
