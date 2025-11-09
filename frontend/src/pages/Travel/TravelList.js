@@ -454,7 +454,7 @@ const TravelList = () => {
                               WebkitBoxOrient: 'vertical'
                             }}
                           >
-                            {travel.purpose || travel.tripDescription || t('travel.list.noDescription')}
+                            {travel.tripDescription || travel.purpose || travel.comment || t('travel.list.noDescription')}
                           </Typography>
                         </Box>
                       </Box>
