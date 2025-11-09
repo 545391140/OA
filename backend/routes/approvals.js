@@ -289,28 +289,31 @@ router.get('/statistics', protect, async (req, res) => {
       approverId = req.user.id;
     }
     
-    // 如果有日期查询，需要在unwind之后添加
-    const afterUnwindMatch = {
+    // 构建匹配条件
+    // 注意：approvals数组中没有createdAt字段，只有approvedAt
+    // 日期查询应该使用文档级别的createdAt（文档创建时间）或approvedAt（审批时间）
+    const baseMatchCondition = {
       'approvals.approver': approverId
     };
     
+    // 如果有日期查询，使用文档级别的createdAt
     if (Object.keys(dateQuery).length > 0) {
-      afterUnwindMatch['approvals.createdAt'] = dateQuery;
+      baseMatchCondition.createdAt = dateQuery;
     }
 
     // 查询差旅统计数据
     const getTravelStats = async () => {
       const stats = await Travel.aggregate([
         {
-          $match: {
-            'approvals.approver': approverId
-          }
+          $match: baseMatchCondition
         },
         {
           $unwind: '$approvals'
         },
         {
-          $match: afterUnwindMatch
+          $match: {
+            'approvals.approver': approverId
+          }
         },
         {
           $group: {
@@ -338,12 +341,12 @@ router.get('/statistics', protect, async (req, res) => {
                   {
                     $and: [
                       { $ne: ['$approvals.approvedAt', null] },
-                      { $ne: ['$approvals.createdAt', null] }
+                      { $ne: ['$createdAt', null] }
                     ]
                   },
                   {
                     $divide: [
-                      { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                      { $subtract: ['$approvals.approvedAt', '$createdAt'] },
                       3600000 // Convert to hours
                     ]
                   },
@@ -400,15 +403,15 @@ router.get('/statistics', protect, async (req, res) => {
     const getExpenseStats = async () => {
       const stats = await Expense.aggregate([
         {
-          $match: {
-            'approvals.approver': approverId
-          }
+          $match: baseMatchCondition
         },
         {
           $unwind: '$approvals'
         },
         {
-          $match: afterUnwindMatch
+          $match: {
+            'approvals.approver': approverId
+          }
         },
         {
           $group: {
@@ -436,12 +439,12 @@ router.get('/statistics', protect, async (req, res) => {
                   {
                     $and: [
                       { $ne: ['$approvals.approvedAt', null] },
-                      { $ne: ['$approvals.createdAt', null] }
+                      { $ne: ['$createdAt', null] }
                     ]
                   },
                   {
                     $divide: [
-                      { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                      { $subtract: ['$approvals.approvedAt', '$createdAt'] },
                       3600000 // Convert to hours
                     ]
                   },
