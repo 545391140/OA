@@ -5,14 +5,14 @@ const Expense = require('../models/Expense');
 const User = require('../models/User');
 const TravelStandard = require('../models/TravelStandard');
 const Location = require('../models/Location');
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 
 /**
  * @route   GET /api/search/global
  * @desc    全局搜索 - 搜索所有模块
  * @access  Private
  */
-router.get('/global', auth, async (req, res) => {
+router.get('/global', protect, async (req, res) => {
   try {
     const { q, limit = 5 } = req.query;
 
@@ -128,7 +128,7 @@ router.get('/global', auth, async (req, res) => {
  * @desc    高级搜索 - 支持多条件组合搜索
  * @access  Private
  */
-router.post('/advanced', auth, async (req, res) => {
+router.post('/advanced', protect, async (req, res) => {
   try {
     const {
       type = 'all', // travel, expense, user, standard, location
