@@ -44,7 +44,11 @@ import {
   AttachMoney as MoneyIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
-  Comment as CommentIcon
+  Comment as CommentIcon,
+  AccessTime as AccessTimeIcon,
+  PersonOutline as PersonOutlineIcon,
+  Label as LabelIcon,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -145,9 +149,28 @@ const TravelDetail = () => {
       approved: 'success',
       rejected: 'error',
       completed: 'success',
-      cancelled: 'error'
+      cancelled: 'error',
+      pending: 'warning'
     };
     return colors[status] || 'default';
+  };
+
+  const getApprovalStatusIcon = (status) => {
+    switch (status) {
+      case 'approved':
+        return <CheckCircleIcon sx={{ fontSize: 20 }} />;
+      case 'rejected':
+        return <CancelIcon sx={{ fontSize: 20 }} />;
+      case 'pending':
+        return <ScheduleIcon sx={{ fontSize: 20 }} />;
+      default:
+        return <AccessTimeIcon sx={{ fontSize: 20 }} />;
+    }
+  };
+
+  const formatDateTime = (date) => {
+    if (!date) return '-';
+    return dayjs(date).format('YYYY-MM-DD HH:mm');
   };
 
   const getTransportIcon = (type) => {
@@ -914,66 +937,209 @@ const TravelDetail = () => {
         <Grid item xs={12} md={4}>
           {/* 审批信息 */}
           <Paper sx={{ p: 2, mb: 2 }}>
-            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CommentIcon color="primary" fontSize="small" />
               {t('travel.detail.approvalHistory')}
             </Typography>
-            <Divider sx={{ mb: 1.5 }} />
+            <Divider sx={{ mb: 2 }} />
             
             {travel.approvals && travel.approvals.length > 0 ? (
-              travel.approvals.map((approval, index) => (
-                <Card key={index} variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
-                  <Grid container spacing={1}>
-                    <Grid item xs={12}>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {t('travel.detail.approver')}
-                      </Typography>
-                      <Typography variant="body2" fontWeight={500}>
-                        {approval.approver?.firstName} {approval.approver?.lastName}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {t('travel.detail.level')}
-                      </Typography>
-                      <Typography variant="body2">
-                        {t('travel.detail.levelNumber', { level: approval.level })}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {t('common.status')}
-                      </Typography>
-                      <Chip
-                        label={t(`travel.approvalStatus.${approval.status}`) || approval.status}
-                        color={getStatusColor(approval.status)}
-                        size="small"
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {t('travel.detail.approvalDate')}
-                      </Typography>
-                      <Typography variant="body2">
-                        {formatDate(approval.approvedAt)}
-                      </Typography>
-                    </Grid>
-                    {approval.comments && (
-                      <Grid item xs={12}>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {t('travel.detail.comments')}
-                        </Typography>
-                        <Typography variant="body2">
-                          {approval.comments}
-                        </Typography>
-                      </Grid>
-            )}
-          </Grid>
-                </Card>
-              ))
+              <Box sx={{ position: 'relative' }}>
+                {/* 时间线连接线 */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: 20,
+                    top: 0,
+                    bottom: 0,
+                    width: 2,
+                    bgcolor: 'divider',
+                    zIndex: 0
+                  }}
+                />
+                
+                {travel.approvals.map((approval, index) => {
+                  const isLast = index === travel.approvals.length - 1;
+                  const isPending = approval.status === 'pending';
+                  const isApproved = approval.status === 'approved';
+                  const isRejected = approval.status === 'rejected';
+                  
+                  return (
+                    <Box
+                      key={index}
+                      sx={{
+                        position: 'relative',
+                        mb: isLast ? 0 : 2,
+                        pl: 4
+                      }}
+                    >
+                      {/* 时间线节点 */}
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          left: 12,
+                          top: 8,
+                          width: 16,
+                          height: 16,
+                          borderRadius: '50%',
+                          border: 2,
+                          borderColor: isPending 
+                            ? 'warning.main' 
+                            : isApproved 
+                            ? 'success.main' 
+                            : isRejected 
+                            ? 'error.main' 
+                            : 'divider',
+                          bgcolor: 'background.paper',
+                          zIndex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor: isPending 
+                              ? 'warning.main' 
+                              : isApproved 
+                              ? 'success.main' 
+                              : isRejected 
+                              ? 'error.main' 
+                              : 'divider'
+                          }}
+                        />
+                      </Box>
+                      
+                      {/* 审批卡片 */}
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          p: 2,
+                          bgcolor: isPending 
+                            ? 'warning.50' 
+                            : isApproved 
+                            ? 'success.50' 
+                            : isRejected 
+                            ? 'error.50' 
+                            : 'grey.50',
+                          borderLeft: 3,
+                          borderLeftColor: isPending 
+                            ? 'warning.main' 
+                            : isApproved 
+                            ? 'success.main' 
+                            : isRejected 
+                            ? 'error.main' 
+                            : 'divider',
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            boxShadow: 2,
+                            transform: 'translateX(4px)'
+                          }
+                        }}
+                      >
+                        {/* 审批人信息 */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                          <PersonOutlineIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <Typography variant="body2" fontWeight={600} color="text.primary">
+                            {approval.approver?.firstName} {approval.approver?.lastName || t('travel.detail.unknownApprover')}
+                          </Typography>
+                        </Box>
+                        
+                        {/* 状态和级别 */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5, flexWrap: 'wrap' }}>
+                          <Chip
+                            icon={getApprovalStatusIcon(approval.status)}
+                            label={t(`travel.approvalStatus.${approval.status}`) || approval.status}
+                            color={getStatusColor(approval.status)}
+                            size="small"
+                            sx={{ fontWeight: 500 }}
+                          />
+                          <Chip
+                            icon={<LabelIcon sx={{ fontSize: 14 }} />}
+                            label={t('travel.detail.levelNumber', { level: approval.level })}
+                            variant="outlined"
+                            size="small"
+                            sx={{ fontSize: '0.75rem' }}
+                          />
+                        </Box>
+                        
+                        {/* 审批时间 */}
+                        {approval.approvedAt && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: approval.comments ? 1.5 : 0 }}>
+                            <AccessTimeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                            <Typography variant="caption" color="text.secondary">
+                              {t('travel.detail.approvalDate')}: {formatDateTime(approval.approvedAt)}
+                            </Typography>
+                          </Box>
+                        )}
+                        
+                        {/* 审批意见 */}
+                        {approval.comments && (
+                          <Box
+                            sx={{
+                              mt: 1.5,
+                              pt: 1.5,
+                              borderTop: 1,
+                              borderColor: 'divider'
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+                              <CommentIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.25 }} />
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                                  {t('travel.detail.comments')}
+                                </Typography>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: 'text.primary',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word'
+                                  }}
+                                >
+                                  {approval.comments}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </Box>
+                        )}
+                        
+                        {/* 待审批提示 */}
+                        {isPending && !approval.approvedAt && (
+                          <Box
+                            sx={{
+                              mt: 1.5,
+                              pt: 1.5,
+                              borderTop: 1,
+                              borderColor: 'divider'
+                            }}
+                          >
+                            <Typography variant="caption" color="warning.main" sx={{ fontStyle: 'italic' }}>
+                              {t('travel.detail.pendingApproval')}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Card>
+                    </Box>
+                  );
+                })}
+              </Box>
             ) : (
-              <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 1 }}>
-                {t('travel.detail.nA')}
-              </Typography>
+              <Box
+                sx={{
+                  py: 4,
+                  textAlign: 'center',
+                  color: 'text.secondary'
+                }}
+              >
+                <CommentIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                <Typography variant="body2">
+                  {t('travel.detail.noApprovalHistory')}
+                </Typography>
+              </Box>
             )}
           </Paper>
         </Grid>
