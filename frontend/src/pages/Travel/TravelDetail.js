@@ -621,12 +621,16 @@ const TravelDetail = () => {
                     <AccordionDetails>
                       <Table size="small">
                         <TableBody>
-                          {Object.entries(travel.outboundBudget).map(([key, value]) => (
-                            <TableRow key={key}>
-                              <TableCell>{expenseItems[key] || key}</TableCell>
-                              <TableCell align="right">{formatCurrency(typeof value === 'number' ? value : 0)}</TableCell>
-                            </TableRow>
-                          ))}
+                          {Object.entries(travel.outboundBudget).map(([key, value]) => {
+                            // value可能是对象 {subtotal: number} 或直接是数字
+                            const amount = typeof value === 'object' ? (value.subtotal || 0) : (typeof value === 'number' ? value : 0);
+                            return (
+                              <TableRow key={key}>
+                                <TableCell>{expenseItems[key] || key}</TableCell>
+                                <TableCell align="right">{formatCurrency(amount)}</TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </AccordionDetails>
@@ -646,12 +650,16 @@ const TravelDetail = () => {
                     <AccordionDetails>
                       <Table size="small">
                         <TableBody>
-                          {Object.entries(travel.inboundBudget).map(([key, value]) => (
-                            <TableRow key={key}>
-                              <TableCell>{expenseItems[key] || key}</TableCell>
-                              <TableCell align="right">{formatCurrency(typeof value === 'number' ? value : 0)}</TableCell>
-                            </TableRow>
-                          ))}
+                          {Object.entries(travel.inboundBudget).map(([key, value]) => {
+                            // value可能是对象 {subtotal: number} 或直接是数字
+                            const amount = typeof value === 'object' ? (value.subtotal || 0) : (typeof value === 'number' ? value : 0);
+                            return (
+                              <TableRow key={key}>
+                                <TableCell>{expenseItems[key] || key}</TableCell>
+                                <TableCell align="right">{formatCurrency(amount)}</TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </AccordionDetails>
@@ -676,12 +684,16 @@ const TravelDetail = () => {
                           </Typography>
                           <Table size="small">
                             <TableBody>
-                              {Object.entries(budget).map(([key, value]) => (
-                                <TableRow key={key}>
-                                  <TableCell>{expenseItems[key] || key}</TableCell>
-                                  <TableCell align="right">{formatCurrency(typeof value === 'number' ? value : 0)}</TableCell>
-                                </TableRow>
-                              ))}
+                              {Object.entries(budget).map(([key, value]) => {
+                                // value可能是对象 {subtotal: number} 或直接是数字
+                                const amount = typeof value === 'object' ? (value.subtotal || 0) : (typeof value === 'number' ? value : 0);
+                                return (
+                                  <TableRow key={key}>
+                                    <TableCell>{expenseItems[key] || key}</TableCell>
+                                    <TableCell align="right">{formatCurrency(amount)}</TableCell>
+                                  </TableRow>
+                                );
+                              })}
                             </TableBody>
                           </Table>
                         </Box>
