@@ -122,6 +122,26 @@ const ApprovalList = () => {
             }
           }
           
+          // 提取出发地名称
+          const getLocationName = (location) => {
+            if (!location) return null;
+            if (typeof location === 'string') return location;
+            if (location.name) return location.name;
+            if (location.city) return location.city;
+            return null;
+          };
+          
+          // 提取出发地（优先从outbound.departure获取）
+          const departureCity = getLocationName(travel.outbound?.departure) || 
+                                getLocationName(travel.departureCity) || 
+                                null;
+          
+          // 提取目的地（优先从outbound.destination获取，其次destination字段，最后inbound.destination）
+          const destinationCity = getLocationName(travel.outbound?.destination) ||
+                                  getLocationName(travel.destination) ||
+                                  getLocationName(travel.inbound?.destination) ||
+                                  null;
+          
           return {
             id: travel._id,
             type: 'travel',
@@ -134,7 +154,8 @@ const ApprovalList = () => {
             submittedAt: travel.createdAt,
             level: travel.approvals?.find(a => a.status === 'pending')?.level || 1,
             travelNumber: travel.travelNumber,
-            destination: travel.destination,
+            destination: destinationCity,
+            departureCity,
             earliestDate,
             latestDate,
             days,
@@ -285,10 +306,26 @@ const ApprovalList = () => {
                     <Typography variant="caption" color="text.secondary">{item.travelNumber}</Typography>
                   </>
                 )}
-                {item.destination && (
+                {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
+                {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
                   <>
                     <Typography variant="caption" color="text.secondary">•</Typography>
-                    <Typography variant="caption" color="text.secondary">{item.destination}</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                      {item.departureCity || '?'}-{item.destination || '?'}
+                      {(item.earliestDate && item.latestDate) && (
+                        <>
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ mx: 0.5 }}>  </Typography>
+                          {dayjs(item.earliestDate).format('MMM DD')}-{dayjs(item.latestDate).format('MMM DD')}
+                          {item.days > 0 && (
+                            <>
+                              <Typography component="span" variant="caption" color="text.secondary" sx={{ mx: 0.5 }}>
+                                {t('approval.totalDays')}{item.days}{t('approval.days')}
+                              </Typography>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </Typography>
                   </>
                 )}
               </Box>
@@ -343,37 +380,6 @@ const ApprovalList = () => {
           </Grid>
         </Grid>
 
-        {/* 差旅信息：出发、返回、天数（紧凑显示） */}
-        {item.type === 'travel' && item.earliestDate && item.latestDate && (
-          <Box sx={{ mb: 1.5, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
-            <Grid container spacing={1}>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                  <DepartureIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                  <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
-                    <strong>{t('approval.departureDate')}:</strong> {dayjs(item.earliestDate).format('MMM DD, YYYY')}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                  <ReturnIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                  <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
-                    <strong>{t('approval.returnDate')}:</strong> {dayjs(item.latestDate).format('MMM DD, YYYY')}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                  <CalendarIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                  <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
-                    <strong>{t('approval.totalDays')}:</strong> {item.days} {t('approval.days')}
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-        )}
 
         {/* 审批信息（紧凑显示） */}
         {item.approver && (
