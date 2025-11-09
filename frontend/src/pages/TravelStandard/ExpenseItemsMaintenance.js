@@ -413,25 +413,27 @@ const ExpenseItemsMaintenance = () => {
 
         <Divider sx={{ mb: 3 }} />
 
-        {/* 搜索和过滤区域 */}
+        {/* 搜索框 */}
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            placeholder={t('expenseItem.maintenance.searchPlaceholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+
+        {/* 过滤器区域 */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                placeholder={t('expenseItem.maintenance.searchPlaceholder')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
                 <InputLabel>{t('expenseItem.maintenance.filters.status')}</InputLabel>
@@ -446,7 +448,7 @@ const ExpenseItemsMaintenance = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} md={3}>
               <FormControl fullWidth>
                 <InputLabel>{t('expenseItem.maintenance.filters.standard')}</InputLabel>
                 <Select
@@ -463,7 +465,7 @@ const ExpenseItemsMaintenance = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={6}>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button
                   variant="outlined"
