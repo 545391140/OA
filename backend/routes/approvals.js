@@ -275,12 +275,19 @@ router.get('/statistics', protect, async (req, res) => {
     console.log('Parsed params:', { startDate, endDate, type });
 
     // 构建日期查询
+    // 注意：结束日期应该包含当天的23:59:59.999，而不是00:00:00
     const dateQuery = {};
     if (startDate) {
-      dateQuery.$gte = new Date(startDate);
+      // 开始日期：设置为当天的00:00:00.000
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateQuery.$gte = start;
     }
     if (endDate) {
-      dateQuery.$lte = new Date(endDate);
+      // 结束日期：设置为当天的23:59:59.999，以包含整天的数据
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateQuery.$lte = end;
     }
 
     // 构建基础匹配条件
@@ -686,12 +693,19 @@ router.get('/approver-workload', protect, async (req, res) => {
     const { startDate, endDate } = req.query;
 
     // 构建日期查询
+    // 注意：结束日期应该包含当天的23:59:59.999，而不是00:00:00
     const dateQuery = {};
     if (startDate) {
-      dateQuery.$gte = new Date(startDate);
+      // 开始日期：设置为当天的00:00:00.000
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateQuery.$gte = start;
     }
     if (endDate) {
-      dateQuery.$lte = new Date(endDate);
+      // 结束日期：设置为当天的23:59:59.999，以包含整天的数据
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateQuery.$lte = end;
     }
 
     const matchStage = Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {};
@@ -905,12 +919,19 @@ router.get('/trend', protect, async (req, res) => {
     const { startDate, endDate, type } = req.query;
 
     // 构建日期查询
+    // 注意：结束日期应该包含当天的23:59:59.999，而不是00:00:00
     const dateQuery = {};
     if (startDate) {
-      dateQuery.$gte = new Date(startDate);
+      // 开始日期：设置为当天的00:00:00.000
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateQuery.$gte = start;
     }
     if (endDate) {
-      dateQuery.$lte = new Date(endDate);
+      // 结束日期：设置为当天的23:59:59.999，以包含整天的数据
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateQuery.$lte = end;
     }
 
     const matchStage = Object.keys(dateQuery).length > 0 
