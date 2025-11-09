@@ -276,17 +276,16 @@ router.get('/statistics', protect, async (req, res) => {
 
     // 构建日期查询
     // 注意：结束日期应该包含当天的23:59:59.999，而不是00:00:00
+    // 使用UTC时间避免时区问题
     const dateQuery = {};
     if (startDate) {
-      // 开始日期：设置为当天的00:00:00.000
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
+      // 开始日期：设置为当天的00:00:00.000 UTC
+      const start = new Date(startDate + 'T00:00:00.000Z');
       dateQuery.$gte = start;
     }
     if (endDate) {
-      // 结束日期：设置为当天的23:59:59.999，以包含整天的数据
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+      // 结束日期：设置为当天的23:59:59.999 UTC，以包含整天的数据
+      const end = new Date(endDate + 'T23:59:59.999Z');
       dateQuery.$lte = end;
     }
 
