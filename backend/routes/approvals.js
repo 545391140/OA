@@ -959,7 +959,7 @@ router.get('/travel-statistics/:employeeId', protect, async (req, res) => {
     const stats = await Travel.aggregate([
       {
         $match: {
-          employee: mongoose.Types.ObjectId(employeeId),
+          employee: new mongoose.Types.ObjectId(employeeId),
           createdAt: {
             $gte: yearStart,
             $lte: yearEnd
