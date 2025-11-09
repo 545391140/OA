@@ -57,6 +57,7 @@
     "roleManagement": "角色管理",
     "positionManagement": "岗位管理",
     "userManagement": "用户管理",
+    "approvalWorkflows": "审批流程管理",
     "appTitle": "差旅费用管理系统",
     "languages": {
       "en": "English",

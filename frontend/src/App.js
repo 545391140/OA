@@ -24,6 +24,7 @@ import ExpenseList from './pages/Expense/ExpenseList';
 import ExpenseForm from './pages/Expense/ExpenseForm';
 import ExpenseDetail from './pages/Expense/ExpenseDetail';
 import ApprovalList from './pages/Approval/ApprovalList';
+import ApprovalWorkflowManagement from './pages/Approval/ApprovalWorkflowManagement';
 import ApprovalDetail from './pages/Approval/ApprovalDetail';
 import Reports from './pages/Reports/Reports';
 import Profile from './pages/Profile/Profile';
@@ -76,6 +77,7 @@ function App() {
               {/* Approval Routes */}
               <Route path="approvals" element={<ApprovalList />} />
               <Route path="approvals/:id" element={<ApprovalDetail />} />
+              <Route path="approval-workflows" element={<ApprovalWorkflowManagement />} />
               
               {/* Reports Routes */}
               <Route path="reports" element={<Reports />} />
