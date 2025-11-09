@@ -261,11 +261,6 @@ const ApprovalList = () => {
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Chip
-              label={item.priority}
-              color={getPriorityColor(item.priority)}
-              size="small"
-            />
-            <Chip
               label={item.status}
               color={getStatusColor(item.status)}
               size="small"
