@@ -366,7 +366,7 @@ const Dashboard = () => {
                             {travel.travelNumber || travel._id?.slice(-8) || '-'}
                           </Typography>
                           <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 2 }}>
-                            {travel.user?.firstName} {travel.user?.lastName}
+                            {travel.employee?.firstName} {travel.employee?.lastName}
                           </Typography>
                         </Box>
                       }

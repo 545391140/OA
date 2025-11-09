@@ -16,7 +16,7 @@ exports.getDashboardStats = async (req, res) => {
     const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
 
     // 根据角色确定查询条件
-    const travelQuery = userRole === 'admin' ? {} : { user: userId };
+    const travelQuery = userRole === 'admin' ? {} : { employee: userId };
     const expenseQuery = userRole === 'admin' ? {} : { employee: userId };
 
     // 并行查询所有统计数据
@@ -121,13 +121,13 @@ exports.getRecentTravels = async (req, res) => {
     const userRole = req.user.role;
     const limit = parseInt(req.query.limit) || 5;
 
-    const query = userRole === 'admin' ? {} : { user: userId };
+    const query = userRole === 'admin' ? {} : { employee: userId };
 
     const recentTravels = await Travel.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
       .select('travelNumber title destination startDate endDate status purpose estimatedBudget')
-      .populate('user', 'firstName lastName email')
+      .populate('employee', 'firstName lastName email')
       .lean();
 
     res.json({
@@ -357,7 +357,7 @@ exports.getPendingTasks = async (req, res) => {
     }
 
     // 获取用户自己的草稿
-    const draftTravels = await Travel.countDocuments({ user: userId, status: 'draft' });
+    const draftTravels = await Travel.countDocuments({ employee: userId, status: 'draft' });
     if (draftTravels > 0) {
       tasks.push({
         type: 'draft',
@@ -370,7 +370,7 @@ exports.getPendingTasks = async (req, res) => {
 
     // 获取即将开始的差旅
     const upcomingTravels = await Travel.find({
-      user: userId,
+      employee: userId,
       status: 'approved',
       startDate: {
         $gte: new Date(),
@@ -446,7 +446,7 @@ exports.getDashboardData = async (req, res) => {
 
 // 辅助函数（内部使用）
 async function getDashboardStatsData(userId, userRole) {
-  const travelQuery = userRole === 'admin' ? {} : { user: userId };
+  const travelQuery = userRole === 'admin' ? {} : { employee: userId };
   const expenseQuery = userRole === 'admin' ? {} : { employee: userId };
   const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const lastMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
@@ -487,12 +487,12 @@ async function getDashboardStatsData(userId, userRole) {
 }
 
 async function getRecentTravelsData(userId, userRole, limit) {
-  const query = userRole === 'admin' ? {} : { user: userId };
+  const query = userRole === 'admin' ? {} : { employee: userId };
   return await Travel.find(query)
     .sort({ createdAt: -1 })
     .limit(limit)
     .select('travelNumber title destination startDate endDate status')
-    .populate('user', 'firstName lastName email')
+    .populate('employee', 'firstName lastName email')
     .lean();
 }
 
@@ -572,7 +572,7 @@ async function getPendingTasksData(userId, userRole) {
     }
   }
 
-  const draftTravels = await Travel.countDocuments({ user: userId, status: 'draft' });
+  const draftTravels = await Travel.countDocuments({ employee: userId, status: 'draft' });
   if (draftTravels > 0) {
     tasks.push({
       type: 'draft',
