@@ -182,7 +182,19 @@ const ApprovalList = () => {
         setPendingApprovals([...travelItems, ...expenseItems]);
         
         // 获取差旅申请的员工统计数据
-        const employeeIds = [...new Set(travelItems.map(item => item.employee._id || item.employee.id))];
+        const employeeIds = [...new Set(travelItems
+          .map(item => {
+            const emp = item.employee;
+            if (!emp) return null;
+            // 处理不同的employee对象格式
+            if (typeof emp === 'string') return emp;
+            if (emp._id) return String(emp._id);
+            if (emp.id) return String(emp.id);
+            return null;
+          })
+          .filter(id => id !== null)
+        )];
+        
         const statsPromises = employeeIds.map(async (employeeId) => {
           try {
             const statsResponse = await apiClient.get(`/approvals/travel-statistics/${employeeId}`);
@@ -309,8 +321,18 @@ const ApprovalList = () => {
 
   const ApprovalCard = ({ item, showActions = true }) => {
     // 获取员工差旅统计
-    const employeeId = item.employee._id || item.employee.id;
-    const stats = travelStats[employeeId] || null;
+    const emp = item.employee;
+    let employeeId = null;
+    if (emp) {
+      if (typeof emp === 'string') {
+        employeeId = emp;
+      } else if (emp._id) {
+        employeeId = String(emp._id);
+      } else if (emp.id) {
+        employeeId = String(emp.id);
+      }
+    }
+    const stats = employeeId ? travelStats[employeeId] || null : null;
     
     return (
     <Card sx={{ mb: 1.5 }} elevation={2}>
@@ -433,7 +455,7 @@ const ApprovalList = () => {
         </Grid>
 
         {/* 差旅统计信息（仅差旅申请显示） */}
-        {item.type === 'travel' && stats && (
+        {item.type === 'travel' && stats && stats.totalTrips !== undefined && (
           <Box sx={{ mb: 1.5, p: 1, bgcolor: 'info.light', borderRadius: 1, border: '1px solid', borderColor: 'info.main' }}>
             <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'info.dark', mb: 0.75, display: 'block' }}>
               {t('approval.employeeTravelStats')} ({stats.year})
