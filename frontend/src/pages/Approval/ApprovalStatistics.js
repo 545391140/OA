@@ -70,12 +70,19 @@ const ApprovalStatistics = () => {
   const [trendData, setTrendData] = useState([]);
 
   useEffect(() => {
+    console.log('=== Frontend: ApprovalStatistics useEffect triggered ===');
+    console.log('Date range changed:', dateRange);
+    console.log('Type changed:', type);
     fetchStatistics();
   }, [dateRange, type]);
 
   const fetchStatistics = async () => {
     try {
       setLoading(true);
+      
+      console.log('=== Frontend: Fetching Approval Statistics ===');
+      console.log('Date range:', dateRange);
+      console.log('Type:', type);
       
       // 获取审批统计
       const statsResponse = await apiClient.get('/approvals/statistics', {
@@ -86,8 +93,14 @@ const ApprovalStatistics = () => {
         }
       });
 
+      console.log('Stats API Response:', statsResponse);
+      console.log('Stats API Data:', statsResponse.data);
+
       if (statsResponse.data && statsResponse.data.success) {
+        console.log('Setting statistics:', statsResponse.data.data);
         setStatistics(statsResponse.data.data);
+      } else {
+        console.warn('Stats API response not successful:', statsResponse.data);
       }
 
       // 获取审批人工作量
@@ -116,7 +129,13 @@ const ApprovalStatistics = () => {
       }
 
     } catch (error) {
-      console.error('Failed to fetch statistics:', error);
+      console.error('=== Frontend: Failed to fetch statistics ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error response status:', error.response?.status);
+      console.error('Error config:', error.config);
       showNotification(t('approval.statistics.loadError'), 'error');
     } finally {
       setLoading(false);
