@@ -762,6 +762,10 @@ router.delete('/:id', protect, async (req, res) => {
 router.post('/:id/submit', protect, async (req, res) => {
   try {
     const mongoose = require('mongoose');
+    const approvalWorkflowService = require('../services/approvalWorkflowService');
+    const notificationService = require('../services/notificationService');
+    const User = require('../models/User');
+    
     if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
         success: false,
@@ -769,7 +773,7 @@ router.post('/:id/submit', protect, async (req, res) => {
       });
     }
 
-    const travel = await Travel.findById(req.params.id);
+    const travel = await Travel.findById(req.params.id).populate('employee', 'firstName lastName email department jobLevel');
 
     if (!travel) {
       return res.status(404).json({
@@ -806,50 +810,62 @@ router.post('/:id/submit', protect, async (req, res) => {
       });
     }
 
-    // 创建审批流程
-    // 根据预算金额确定审批级别
+    // 使用审批工作流服务匹配审批流程
     const budgetAmount = travel.estimatedBudget || travel.estimatedCost || 0;
-    const approvals = [];
+    const workflow = await approvalWorkflowService.matchWorkflow({
+      type: 'travel',
+      amount: budgetAmount,
+      department: travel.employee?.department || req.user.department,
+      jobLevel: travel.employee?.jobLevel || req.user.jobLevel
+    });
 
-    // 简单的审批流程：根据金额设置审批级别
-    // 可以根据实际需求调整审批流程
-    if (budgetAmount > 10000) {
-      // 超过10000需要两级审批：经理 -> 财务
-      approvals.push({
-        approver: req.user.manager || req.user.id, // 如果没有经理，使用当前用户
-        level: 1,
-        status: 'pending'
-      });
-      approvals.push({
-        approver: req.user.id, // 财务审批人（可以从用户角色中获取）
-        level: 2,
-        status: 'pending'
-      });
-    } else if (budgetAmount > 5000) {
-      // 超过5000需要一级审批：经理
-      approvals.push({
-        approver: req.user.manager || req.user.id,
-        level: 1,
-        status: 'pending'
+    let approvals = [];
+    
+    if (workflow) {
+      // 使用匹配的工作流生成审批人
+      approvals = await approvalWorkflowService.generateApprovers({
+        workflow,
+        requesterId: req.user.id,
+        department: travel.employee?.department || req.user.department
       });
     } else {
-      // 小于5000需要一级审批：直接上级
-      approvals.push({
-        approver: req.user.manager || req.user.id,
-        level: 1,
-        status: 'pending'
-      });
-    }
+      // 没有匹配的工作流，使用默认逻辑
+      console.log('No matching workflow found, using default approval logic');
+      
+      if (budgetAmount > 10000) {
+        approvals.push({
+          approver: req.user.manager || req.user.id,
+          level: 1,
+          status: 'pending'
+        });
+        approvals.push({
+          approver: req.user.id,
+          level: 2,
+          status: 'pending'
+        });
+      } else if (budgetAmount > 5000) {
+        approvals.push({
+          approver: req.user.manager || req.user.id,
+          level: 1,
+          status: 'pending'
+        });
+      } else {
+        approvals.push({
+          approver: req.user.manager || req.user.id,
+          level: 1,
+          status: 'pending'
+        });
+      }
 
-    // 如果没有指定审批人，使用管理员作为默认审批人
-    const User = require('../models/User');
-    const adminUser = await User.findOne({ role: 'admin' });
-    if (adminUser) {
-      approvals.forEach(approval => {
-        if (!approval.approver || approval.approver.toString() === req.user.id.toString()) {
-          approval.approver = adminUser._id;
-        }
-      });
+      // 如果没有指定审批人，使用管理员作为默认审批人
+      const adminUser = await User.findOne({ role: 'admin', isActive: true });
+      if (adminUser) {
+        approvals.forEach(approval => {
+          if (!approval.approver || approval.approver.toString() === req.user.id.toString()) {
+            approval.approver = adminUser._id;
+          }
+        });
+      }
     }
 
     // 更新状态和审批流程
@@ -857,6 +873,25 @@ router.post('/:id/submit', protect, async (req, res) => {
     travel.approvals = approvals;
 
     await travel.save();
+
+    // 发送审批通知
+    try {
+      const approverIds = [...new Set(approvals.map(a => a.approver.toString()))];
+      await notificationService.notifyApprovalRequest({
+        approvers: approverIds,
+        requestType: 'travel',
+        requestId: travel._id,
+        requestTitle: travel.title || travel.travelNumber,
+        requester: {
+          _id: req.user.id,
+          firstName: req.user.firstName,
+          lastName: req.user.lastName
+        }
+      });
+    } catch (notifyError) {
+      console.error('Failed to send approval notifications:', notifyError);
+      // 通知失败不影响提交流程
+    }
 
     res.json({
       success: true,

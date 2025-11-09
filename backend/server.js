@@ -28,6 +28,7 @@ const roleRoutes = require('./routes/roles');
 const positionRoutes = require('./routes/positions');
 const searchRoutes = require('./routes/search');
 const dashboardRoutes = require('./routes/dashboard');
+const notificationRoutes = require('./routes/notifications');
 
 // Connect to database
 connectDB();
@@ -142,6 +143,7 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/positions', positionRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Serve frontend static files (if deployed together)
 if (frontendExists) {
