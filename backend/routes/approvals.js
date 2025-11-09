@@ -435,9 +435,18 @@ router.get('/statistics', protect, async (req, res) => {
       }).limit(1).select('_id approvals').lean();
       console.log('Direct match with $in:', directMatchIn.length);
       
+      // 注意：在聚合查询中，$match阶段对数组字段的查询方式可能不同
+      // 我们需要先匹配日期，然后在unwind之后匹配approver
+      const aggregateMatchStage = {};
+      if (Object.keys(dateQuery).length > 0) {
+        aggregateMatchStage.createdAt = dateQuery;
+      }
+      
+      console.log('Aggregate match stage (before unwind):', JSON.stringify(aggregateMatchStage, null, 2));
+      
       const stats = await Travel.aggregate([
         {
-          $match: aggregateMatchCondition
+          $match: aggregateMatchStage
         },
         {
           $unwind: '$approvals'
