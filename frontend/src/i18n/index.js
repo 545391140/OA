@@ -61,16 +61,33 @@ i18n
     
     // 缺失键处理
     saveMissing: process.env.NODE_ENV === 'development',
-    missingKeyHandler: (lng, ns, key) => {
+    missingKeyHandler: (lng, ns, key, fallbackValue) => {
+      // 记录缺失的翻译键
       i18nMonitor.recordMissingKey(key, ns, lng);
+      
+      // 如果使用了回退值，记录回退信息
+      if (fallbackValue && fallbackValue !== key) {
+        // 尝试确定回退到的语言
+        const fallbackChain = getFallbackChain(lng);
+        if (fallbackChain.length > 1) {
+          // 记录回退命中（仅在真正发生回退时）
+          i18nMonitor.recordFallbackHit(lng, fallbackChain[1] || 'en', key);
+        }
+      }
     },
     
-    // 回退处理
+    // 回退处理 - 优化：只在真正发生回退时记录
     fallbackLng: (code) => {
       const fallbackChain = getFallbackChain(code);
-      i18nMonitor.recordFallbackHit(code, fallbackChain[1] || 'en', '');
+      // 如果当前语言在资源中存在，不需要回退，不记录
+      // 只有当资源中不存在该语言时，才会真正回退
+      // 这里只返回回退链，实际回退由 i18next 内部处理
       return fallbackChain;
-    }
+    },
+    
+    // 优化：使用更智能的回退处理
+    // 当翻译键不存在时，i18next 会自动使用回退链
+    // 我们通过 missingKeyHandler 来记录真正的缺失情况
   });
 
 // 监听语言变化，更新HTML和样式

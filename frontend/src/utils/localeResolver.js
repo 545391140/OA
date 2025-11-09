@@ -16,9 +16,10 @@ export const SUPPORTED_LOCALES = {
 };
 
 // 回退链配置
+// 优化：由于 zh-Hans-CN 和 zh-Hans 都映射到同一个资源，简化回退链
 export const FALLBACK_CHAINS = {
-  'zh-Hans-CN': ['zh-Hans-CN', 'zh-Hans', 'zh', 'en'],
-  'zh-Hans': ['zh-Hans', 'zh', 'en'],
+  'zh-Hans-CN': ['zh-Hans-CN', 'zh', 'en'],  // 简化：直接回退到 zh
+  'zh-Hans': ['zh-Hans', 'zh', 'en'],        // 简化：直接回退到 zh
   'zh-Hant-TW': ['zh-Hant-TW', 'zh-Hant', 'zh', 'en'],
   'zh-Hant': ['zh-Hant', 'zh', 'en'],
   'zh': ['zh', 'en'],
