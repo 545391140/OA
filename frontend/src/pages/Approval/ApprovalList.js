@@ -686,7 +686,7 @@ const ApprovalList = () => {
           {showActions && item.status === 'submitted' && (
             <>
               <Button
-                variant="text"
+                variant="outlined"
                 color="error"
                 onClick={() => handleApproval(item, 'reject')}
                 size="small"
@@ -702,7 +702,7 @@ const ApprovalList = () => {
                 {t('approval.reject')}
               </Button>
               <Button
-                variant="text"
+                variant="outlined"
                 color="success"
                 onClick={() => handleApproval(item, 'approve')}
                 size="small"
@@ -721,7 +721,7 @@ const ApprovalList = () => {
             </>
           )}
           <Button
-            variant="text"
+            variant="outlined"
             size="small"
             onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
             sx={{ 
