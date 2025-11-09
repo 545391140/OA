@@ -730,9 +730,12 @@ const TravelDetail = () => {
                         <TableBody>
                           {Object.entries(travel.outboundBudget).map(([key, value]) => {
                             const amount = extractAmount(value);
+                            // 优先使用value.itemId，如果不存在则使用key
+                            const itemId = (typeof value === 'object' && value.itemId) ? value.itemId : key;
+                            const itemName = (typeof value === 'object' && value.itemName) ? value.itemName : (expenseItems[itemId] || itemId);
                             return (
                               <TableRow key={key}>
-                                <TableCell>{expenseItems[key] || key}</TableCell>
+                                <TableCell>{itemName}</TableCell>
                                 <TableCell align="right">{formatCurrency(amount)}</TableCell>
                               </TableRow>
                             );
@@ -767,9 +770,12 @@ const TravelDetail = () => {
                         <TableBody>
                           {Object.entries(travel.inboundBudget).map(([key, value]) => {
                             const amount = extractAmount(value);
+                            // 优先使用value.itemId，如果不存在则使用key
+                            const itemId = (typeof value === 'object' && value.itemId) ? value.itemId : key;
+                            const itemName = (typeof value === 'object' && value.itemName) ? value.itemName : (expenseItems[itemId] || itemId);
                             return (
                               <TableRow key={key}>
-                                <TableCell>{expenseItems[key] || key}</TableCell>
+                                <TableCell>{itemName}</TableCell>
                                 <TableCell align="right">{formatCurrency(amount)}</TableCell>
                               </TableRow>
                             );
@@ -811,9 +817,12 @@ const TravelDetail = () => {
                               <TableBody>
                                 {Object.entries(budget).map(([key, value]) => {
                                   const amount = extractAmount(value);
+                                  // 优先使用value.itemId，如果不存在则使用key
+                                  const itemId = (typeof value === 'object' && value.itemId) ? value.itemId : key;
+                                  const itemName = (typeof value === 'object' && value.itemName) ? value.itemName : (expenseItems[itemId] || itemId);
                                   return (
                                     <TableRow key={key}>
-                                      <TableCell>{expenseItems[key] || key}</TableCell>
+                                      <TableCell>{itemName}</TableCell>
                                       <TableCell align="right">{formatCurrency(amount)}</TableCell>
                                     </TableRow>
                                   );
