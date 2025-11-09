@@ -297,13 +297,19 @@ const ApprovalList = () => {
                 {item.title}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                <Typography variant="caption" color="text.secondary">
-                  {item.type === 'travel' ? t('approval.travelRequest') : t('approval.expenseReport')}
-                </Typography>
+                <Chip
+                  label={item.type === 'travel' ? t('approval.travelRequest') : t('approval.expenseReport')}
+                  color={item.type === 'travel' ? 'primary' : 'secondary'}
+                  size="small"
+                  sx={{ 
+                    height: 20, 
+                    fontSize: '0.7rem',
+                    fontWeight: 500
+                  }}
+                />
                 {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
                 {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
                   <>
-                    <Typography variant="caption" color="text.secondary">•</Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
                       {item.departureCity || '?'}-{item.destination || '?'}
                       {(item.earliestDate && item.latestDate) && (
