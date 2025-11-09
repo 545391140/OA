@@ -116,10 +116,14 @@ router.post('/', protect, async (req, res) => {
       },
       steps: steps.map((step, index) => ({
         level: index + 1,
+        name: step.name,
         approverType: step.approverType,
         role: step.approverRoles?.[0],
         user: step.approverUsers?.[0],
-        department: step.department
+        department: step.department,
+        approvalMode: step.approvalMode || 'any',
+        required: step.required !== false,
+        timeoutHours: step.timeoutHours || 48
       })),
       priority: priority || 0,
       isActive: isActive !== false,
@@ -202,10 +206,14 @@ router.put('/:id', protect, async (req, res) => {
     if (steps && steps.length > 0) {
       workflow.steps = steps.map((step, index) => ({
         level: index + 1,
+        name: step.name,
         approverType: step.approverType,
         role: step.approverRoles?.[0],
         user: step.approverUsers?.[0],
-        department: step.department
+        department: step.department,
+        approvalMode: step.approvalMode || 'any',
+        required: step.required !== false,
+        timeoutHours: step.timeoutHours || 48
       }));
     }
 
