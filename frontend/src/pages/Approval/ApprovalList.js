@@ -500,17 +500,17 @@ const ApprovalList = () => {
     return (
     <Card sx={{ mb: 1 }} elevation={1}>
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-        {/* 标题行：图标、标题、类型、状态标签、操作按钮 */}
+        {/* 标题行：图标、标题、状态标签、操作按钮 */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
             <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, flexShrink: 0 }}>
               {getTypeIcon(item.type)}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25, flexWrap: 'wrap' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: '0.875rem' }}>
-                  {item.title}
-                </Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: '0.875rem', mb: 0.25 }}>
+                {item.title}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
                 <Chip
                   label={item.type === 'travel' ? t('approval.travelRequest') : t('approval.expenseReport')}
                   color={item.type === 'travel' ? 'primary' : 'secondary'}
@@ -526,36 +526,36 @@ const ApprovalList = () => {
                     }
                   }}
                 />
-                <Chip
-                  label={item.status}
-                  color={getStatusColor(item.status)}
-                  size="small"
-                  sx={{ 
-                    height: 18, 
-                    fontSize: '0.65rem',
-                    fontWeight: 600,
-                    px: 0.5,
-                    '& .MuiChip-label': {
-                      px: 0.5,
-                      lineHeight: 1.1
-                    }
-                  }}
-                />
+                {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
+                {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                    {item.departureCity || '?'}-{item.destination || '?'}
+                    {(item.earliestDate && item.latestDate) && (
+                      <> • {dayjs(item.earliestDate).format('MMM DD')}-{dayjs(item.latestDate).format('MMM DD')}
+                      {item.days > 0 && <> • {t('approval.totalDays')}{item.days}{t('approval.days')}</>}
+                      </>
+                    )}
+                  </Typography>
+                )}
               </Box>
-              {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
-              {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
-                  {item.departureCity || '?'}-{item.destination || '?'}
-                  {(item.earliestDate && item.latestDate) && (
-                    <> • {dayjs(item.earliestDate).format('MMM DD')}-{dayjs(item.latestDate).format('MMM DD')}
-                    {item.days > 0 && <> • {t('approval.totalDays')}{item.days}{t('approval.days')}</>}
-                    </>
-                  )}
-                </Typography>
-              )}
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0, alignItems: 'center' }}>
+            <Chip
+              label={item.status}
+              color={getStatusColor(item.status)}
+              size="small"
+              sx={{ 
+                height: 18, 
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                px: 0.5,
+                '& .MuiChip-label': {
+                  px: 0.5,
+                  lineHeight: 1.1
+                }
+              }}
+            />
             {showActions && item.status === 'submitted' && (
               <>
                 <Button
