@@ -694,30 +694,40 @@ const ApprovalList = () => {
         )}
 
         {/* 操作按钮 */}
-        {showActions && item.status === 'submitted' && (
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 1 }}>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<RejectIcon />}
-              onClick={() => handleApproval(item, 'reject')}
-              size="small"
-              sx={{ minWidth: 90 }}
-            >
-              {t('approval.reject')}
-            </Button>
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={<ApproveIcon />}
-              onClick={() => handleApproval(item, 'approve')}
-              size="small"
-              sx={{ minWidth: 90 }}
-            >
-              {t('approval.approve')}
-            </Button>
-          </Box>
-        )}
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
+            sx={{ minWidth: 90 }}
+          >
+            {t('approval.viewDetail') || 'View Detail'}
+          </Button>
+          {showActions && item.status === 'submitted' && (
+            <>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<RejectIcon />}
+                onClick={() => handleApproval(item, 'reject')}
+                size="small"
+                sx={{ minWidth: 90 }}
+              >
+                {t('approval.reject')}
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<ApproveIcon />}
+                onClick={() => handleApproval(item, 'approve')}
+                size="small"
+                sx={{ minWidth: 90 }}
+              >
+                {t('approval.approve')}
+              </Button>
+            </>
+          )}
+        </Box>
       </CardContent>
     </Card>
     );

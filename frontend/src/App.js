@@ -77,7 +77,7 @@ function App() {
               
               {/* Approval Routes */}
               <Route path="approvals" element={<ApprovalList />} />
-              <Route path="approvals/:id" element={<ApprovalDetail />} />
+              <Route path="approvals/:type/:id" element={<ApprovalDetail />} />
               <Route path="approval-workflows" element={<ApprovalWorkflowManagement />} />
               <Route path="approval-statistics" element={<ApprovalStatistics />} />
               
