@@ -413,14 +413,16 @@ const ExpenseItemsMaintenance = () => {
 
         <Divider sx={{ mb: 3 }} />
 
-        {/* 搜索框 */}
-        <Box sx={{ mb: 2 }}>
+        {/* 搜索和过滤区域 */}
+        <Box sx={{ mb: 3 }}>
+          {/* 搜索框 */}
           <TextField
             fullWidth
             placeholder={t('expenseItem.maintenance.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            sx={{ mb: 2 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -429,10 +431,8 @@ const ExpenseItemsMaintenance = () => {
               ),
             }}
           />
-        </Box>
-
-        {/* 过滤器区域 */}
-        <Paper sx={{ p: 2, mb: 3 }}>
+          
+          {/* 过滤器 */}
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
@@ -484,7 +484,7 @@ const ExpenseItemsMaintenance = () => {
               </Box>
             </Grid>
           </Grid>
-        </Paper>
+        </Box>
 
         {/* Table */}
         <TableContainer component={Paper}>
