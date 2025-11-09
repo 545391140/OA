@@ -42,8 +42,10 @@ import {
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useTranslation } from 'react-i18next';
 
 const ExpenseItemsManagement = () => {
+  const { t } = useTranslation();
   const { standardId } = useParams();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
@@ -141,7 +143,7 @@ const ExpenseItemsManagement = () => {
       }
     } catch (err) {
       console.error('Fetch standard info error:', err);
-      showNotification('加载标准信息失败', 'error');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.loadStandardFailed'), 'error');
     }
   };
 
@@ -193,7 +195,7 @@ const ExpenseItemsManagement = () => {
       }
     } catch (err) {
       console.error('Fetch data error:', err);
-      showNotification('加载数据失败', 'error');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.loadDataFailed'), 'error');
     } finally {
       setLoadingData(false);
       setLoading(false);
@@ -241,10 +243,10 @@ const ExpenseItemsManagement = () => {
 
       if (transportDialog.mode === 'create') {
         await apiClient.post(`/expense-items/${standardId}/transport`, payload);
-        showNotification('交通标准创建成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.transportCreateSuccess'), 'success');
       } else {
         await apiClient.put(`/expense-items/transport/${transportDialog.data._id}`, payload);
-        showNotification('交通标准更新成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.transportUpdateSuccess'), 'success');
       }
 
       setTransportDialog({ open: false, data: null, mode: 'create' });
@@ -252,7 +254,7 @@ const ExpenseItemsManagement = () => {
       fetchStandardInfo(); // 刷新标准信息以更新配置状态
     } catch (err) {
       console.error('Save transport error:', err);
-      showNotification('保存失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
 
@@ -289,10 +291,10 @@ const ExpenseItemsManagement = () => {
 
       if (accommodationDialog.mode === 'create') {
         await apiClient.post(`/expense-items/${standardId}/accommodation`, payload);
-        showNotification('住宿标准创建成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.accommodationCreateSuccess'), 'success');
       } else {
         await apiClient.put(`/expense-items/accommodation/${accommodationDialog.data._id}`, payload);
-        showNotification('住宿标准更新成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.accommodationUpdateSuccess'), 'success');
       }
 
       setAccommodationDialog({ open: false, data: null, mode: 'create' });
@@ -300,7 +302,7 @@ const ExpenseItemsManagement = () => {
       fetchStandardInfo();
     } catch (err) {
       console.error('Save accommodation error:', err);
-      showNotification('保存失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
 
@@ -344,10 +346,10 @@ const ExpenseItemsManagement = () => {
 
       if (mealDialog.mode === 'create') {
         await apiClient.post(`/expense-items/${standardId}/meal`, payload);
-        showNotification('餐饮标准创建成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.mealCreateSuccess'), 'success');
       } else {
         await apiClient.put(`/expense-items/meal/${mealDialog.data._id}`, payload);
-        showNotification('餐饮标准更新成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.mealUpdateSuccess'), 'success');
       }
 
       setMealDialog({ open: false, data: null, mode: 'create' });
@@ -355,7 +357,7 @@ const ExpenseItemsManagement = () => {
       fetchStandardInfo();
     } catch (err) {
       console.error('Save meal error:', err);
-      showNotification('保存失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
 
@@ -391,10 +393,10 @@ const ExpenseItemsManagement = () => {
 
       if (allowanceDialog.mode === 'create') {
         await apiClient.post(`/expense-items/${standardId}/allowance`, payload);
-        showNotification('津贴标准创建成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.allowanceCreateSuccess'), 'success');
       } else {
         await apiClient.put(`/expense-items/allowance/${allowanceDialog.data._id}`, payload);
-        showNotification('津贴标准更新成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.allowanceUpdateSuccess'), 'success');
       }
 
       setAllowanceDialog({ open: false, data: null, mode: 'create' });
@@ -402,7 +404,7 @@ const ExpenseItemsManagement = () => {
       fetchStandardInfo();
     } catch (err) {
       console.error('Save allowance error:', err);
-      showNotification('保存失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
 
@@ -460,10 +462,10 @@ const ExpenseItemsManagement = () => {
 
       if (otherExpenseDialog.mode === 'create') {
         await apiClient.post(`/expense-items/${standardId}/other`, payload);
-        showNotification('其他费用标准创建成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.otherCreateSuccess'), 'success');
       } else {
         await apiClient.put(`/expense-items/other/${otherExpenseDialog.data._id}`, payload);
-        showNotification('其他费用标准更新成功', 'success');
+        showNotification(t('travelStandard.expenseItemsManagement.messages.otherUpdateSuccess'), 'success');
       }
 
       setOtherExpenseDialog({ open: false, data: null, mode: 'create' });
@@ -471,7 +473,7 @@ const ExpenseItemsManagement = () => {
       fetchStandardInfo();
     } catch (err) {
       console.error('Save other expense error:', err);
-      showNotification('保存失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
 
@@ -500,13 +502,13 @@ const ExpenseItemsManagement = () => {
       }
 
       await apiClient.delete(endpoint);
-      showNotification('删除成功', 'success');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.deleteSuccess'), 'success');
       setDeleteDialog({ open: false, type: '', id: null });
       fetchDataForTab(currentTab);
       fetchStandardInfo();
     } catch (err) {
       console.error('Delete error:', err);
-      showNotification('删除失败: ' + (err.response?.data?.message || '未知错误'), 'error');
+      showNotification(t('travelStandard.expenseItemsManagement.messages.deleteFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
 
@@ -516,13 +518,13 @@ const ExpenseItemsManagement = () => {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>职级</TableCell>
-            <TableCell>交通工具</TableCell>
-            <TableCell>座位等级</TableCell>
-            <TableCell>最高金额</TableCell>
-            <TableCell>城市级别</TableCell>
-            <TableCell>距离范围</TableCell>
-            <TableCell align="right">操作</TableCell>
+            <TableCell>{t('travelStandard.expenseItemsManagement.table.jobLevel')}</TableCell>
+            <TableCell>{t('travelStandard.expenseItemsManagement.table.transportType')}</TableCell>
+            <TableCell>{t('travelStandard.expenseItemsManagement.table.seatClass')}</TableCell>
+            <TableCell>{t('travelStandard.expenseItemsManagement.table.maxAmount')}</TableCell>
+            <TableCell>{t('travelStandard.expenseItemsManagement.table.cityLevel')}</TableCell>
+            <TableCell>{t('travelStandard.expenseItemsManagement.table.distanceRange')}</TableCell>
+            <TableCell align="right">{t('travelStandard.expenseItemsManagement.table.actions')}</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -535,7 +537,7 @@ const ExpenseItemsManagement = () => {
           ) : transportStandards.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} align="center">
-                暂无数据，点击上方"新增"按钮添加
+                {t('travelStandard.expenseItemsManagement.noData')}
               </TableCell>
             </TableRow>
           ) : (
@@ -543,14 +545,11 @@ const ExpenseItemsManagement = () => {
               <TableRow key={item._id}>
                 <TableCell>{item.jobLevelCode}</TableCell>
                 <TableCell>
-                  {item.transportType === 'flight' ? '飞机' :
-                   item.transportType === 'train' ? '火车' :
-                   item.transportType === 'bus' ? '大巴' :
-                   item.transportType === 'car' ? '汽车' : item.transportType}
+                  {t(`travelStandard.expenseItemsManagement.transportTypes.${item.transportType}`) || item.transportType}
                 </TableCell>
                 <TableCell>{item.seatClass}</TableCell>
                 <TableCell>¥{item.maxAmount?.toLocaleString()}</TableCell>
-                <TableCell>{item.cityLevel ? `${item.cityLevel}级` : '不限'}</TableCell>
+                <TableCell>{item.cityLevel ? t('travelStandard.expenseItemsManagement.table.cityLevelFormat', { level: item.cityLevel }) : t('travelStandard.expenseItemsManagement.table.unlimited')}</TableCell>
                 <TableCell>{item.distanceRange || '-'}</TableCell>
                 <TableCell align="right">
                   <IconButton size="small" onClick={() => handleOpenTransportDialog(item)}>
@@ -594,7 +593,7 @@ const ExpenseItemsManagement = () => {
           ) : accommodationStandards.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} align="center">
-                暂无数据，点击上方"新增"按钮添加
+                {t('travelStandard.expenseItemsManagement.noData')}
               </TableCell>
             </TableRow>
           ) : (
@@ -648,7 +647,7 @@ const ExpenseItemsManagement = () => {
           ) : mealStandards.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} align="center">
-                暂无数据，点击上方"新增"按钮添加
+                {t('travelStandard.expenseItemsManagement.noData')}
               </TableCell>
             </TableRow>
           ) : (
@@ -702,7 +701,7 @@ const ExpenseItemsManagement = () => {
           ) : allowanceStandards.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} align="center">
-                暂无数据，点击上方"新增"按钮添加
+                {t('travelStandard.expenseItemsManagement.noData')}
               </TableCell>
             </TableRow>
           ) : (
@@ -780,7 +779,7 @@ const ExpenseItemsManagement = () => {
             ) : otherExpenseStandards.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
-                  暂无数据，点击上方"新增"按钮添加
+                  {t('travelStandard.expenseItemsManagement.noData')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -794,7 +793,7 @@ const ExpenseItemsManagement = () => {
                     />
                   </TableCell>
                   <TableCell>{item.jobLevelCode}</TableCell>
-                  <TableCell>{item.cityLevel ? `${item.cityLevel}级` : '不限'}</TableCell>
+                  <TableCell>{item.cityLevel ? t('travelStandard.expenseItemsManagement.table.cityLevelFormat', { level: item.cityLevel }) : t('travelStandard.expenseItemsManagement.table.unlimited')}</TableCell>
                   <TableCell>{amountTypeMap[item.amountType] || item.amountType}</TableCell>
                   <TableCell>
                     {item.amountType === 'percentage' && item.percentage 
@@ -843,10 +842,10 @@ const ExpenseItemsManagement = () => {
             onClick={() => navigate(`/travel-standards/${standardId}/edit`)}
             sx={{ mr: 2 }}
           >
-            返回
+            {t('travelStandard.expenseItemsManagement.back')}
           </Button>
           <Typography variant="h4">
-            费用项维护 - {standardInfo?.standardName || standardId}
+            {t('travelStandard.expenseItemsManagement.title')} - {standardInfo?.standardName || standardId}
           </Typography>
         </Box>
 
@@ -854,11 +853,11 @@ const ExpenseItemsManagement = () => {
 
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs value={currentTab} onChange={handleTabChange}>
-            <Tab label="交通费用" />
-            <Tab label="住宿费用" />
-            <Tab label="餐饮费用" />
-            <Tab label="津贴补贴" />
-            <Tab label="其他费用" />
+            <Tab label={t('travelStandard.expenseItemsManagement.tabs.transport')} />
+            <Tab label={t('travelStandard.expenseItemsManagement.tabs.accommodation')} />
+            <Tab label={t('travelStandard.expenseItemsManagement.tabs.meal')} />
+            <Tab label={t('travelStandard.expenseItemsManagement.tabs.allowance')} />
+            <Tab label={t('travelStandard.expenseItemsManagement.tabs.other')} />
           </Tabs>
         </Box>
 
@@ -867,13 +866,13 @@ const ExpenseItemsManagement = () => {
           <Card variant="outlined">
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">交通费用标准</Typography>
+                <Typography variant="h6">{t('travelStandard.expenseItemsManagement.headers.transport')}</Typography>
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenTransportDialog()}
                 >
-                  新增
+                  {t('travelStandard.expenseItemsManagement.add')}
                 </Button>
               </Box>
               {renderTransportTable()}
@@ -886,13 +885,13 @@ const ExpenseItemsManagement = () => {
           <Card variant="outlined">
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">住宿费用标准</Typography>
+                <Typography variant="h6">{t('travelStandard.expenseItemsManagement.headers.accommodation')}</Typography>
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenAccommodationDialog()}
                 >
-                  新增
+                  {t('travelStandard.expenseItemsManagement.add')}
                 </Button>
               </Box>
               {renderAccommodationTable()}
@@ -905,13 +904,13 @@ const ExpenseItemsManagement = () => {
           <Card variant="outlined">
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">餐饮费用标准</Typography>
+                <Typography variant="h6">{t('travelStandard.expenseItemsManagement.headers.meal')}</Typography>
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenMealDialog()}
                 >
-                  新增
+                  {t('travelStandard.expenseItemsManagement.add')}
                 </Button>
               </Box>
               {renderMealTable()}
@@ -924,13 +923,13 @@ const ExpenseItemsManagement = () => {
           <Card variant="outlined">
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">津贴补贴标准</Typography>
+                <Typography variant="h6">{t('travelStandard.expenseItemsManagement.headers.allowance')}</Typography>
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenAllowanceDialog()}
                 >
-                  新增
+                  {t('travelStandard.expenseItemsManagement.add')}
                 </Button>
               </Box>
               {renderAllowanceTable()}
@@ -943,13 +942,13 @@ const ExpenseItemsManagement = () => {
           <Card variant="outlined">
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">其他费用标准</Typography>
+                <Typography variant="h6">{t('travelStandard.expenseItemsManagement.headers.other')}</Typography>
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenOtherExpenseDialog()}
                 >
-                  新增
+                  {t('travelStandard.expenseItemsManagement.add')}
                 </Button>
               </Box>
               {renderOtherExpenseTable()}
@@ -959,16 +958,16 @@ const ExpenseItemsManagement = () => {
 
         {/* 交通费用对话框 */}
         <Dialog open={transportDialog.open} onClose={() => setTransportDialog({ open: false, data: null, mode: 'create' })} maxWidth="md" fullWidth>
-          <DialogTitle>{transportDialog.mode === 'create' ? '新增交通费用标准' : '编辑交通费用标准'}</DialogTitle>
+          <DialogTitle>{transportDialog.mode === 'create' ? t('travelStandard.expenseItemsManagement.dialogs.transport.create') : t('travelStandard.expenseItemsManagement.dialogs.transport.edit')}</DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required>
-                  <InputLabel>职级</InputLabel>
+                  <InputLabel>{t('travelStandard.expenseItemsManagement.form.jobLevel')}</InputLabel>
                   <Select
                     value={transportForm.jobLevelCode}
                     onChange={(e) => setTransportForm({ ...transportForm, jobLevelCode: e.target.value })}
-                    label="职级"
+                    label={t('travelStandard.expenseItemsManagement.form.jobLevel')}
                   >
                     {jobLevels.map((jl) => (
                       <MenuItem key={jl.levelCode} value={jl.levelCode}>
@@ -984,7 +983,7 @@ const ExpenseItemsManagement = () => {
                   <Select
                     value={transportForm.transportType}
                     onChange={(e) => setTransportForm({ ...transportForm, transportType: e.target.value })}
-                    label="交通工具"
+                    label={t('travelStandard.expenseItemsManagement.form.transportType')}
                   >
                     <MenuItem value="flight">飞机</MenuItem>
                     <MenuItem value="train">火车</MenuItem>
@@ -997,18 +996,18 @@ const ExpenseItemsManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="座位等级"
+                  label={t('travelStandard.expenseItemsManagement.form.seatClass')}
                   value={transportForm.seatClass}
                   onChange={(e) => setTransportForm({ ...transportForm, seatClass: e.target.value })}
                   required
-                  placeholder="如：经济舱、商务舱、一等座"
+                  placeholder={t('travelStandard.expenseItemsManagement.form.seatClassPlaceholder')}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
                   type="number"
-                  label="最高金额"
+                  label={t('travelStandard.expenseItemsManagement.form.maxAmount')}
                   value={transportForm.maxAmount}
                   onChange={(e) => setTransportForm({ ...transportForm, maxAmount: e.target.value })}
                   required
@@ -1022,7 +1021,7 @@ const ExpenseItemsManagement = () => {
                   <Select
                     value={transportForm.cityLevel}
                     onChange={(e) => setTransportForm({ ...transportForm, cityLevel: e.target.value })}
-                    label="城市级别"
+                    label={t('travelStandard.expenseItemsManagement.form.cityLevel')}
                   >
                     <MenuItem value="">不限</MenuItem>
                     <MenuItem value={1}>1级 - 一线城市</MenuItem>
@@ -1035,10 +1034,10 @@ const ExpenseItemsManagement = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="距离范围"
+                  label={t('travelStandard.expenseItemsManagement.form.distanceRange')}
                   value={transportForm.distanceRange}
                   onChange={(e) => setTransportForm({ ...transportForm, distanceRange: e.target.value })}
-                  placeholder="如：>1000km、<500km、全部"
+                  placeholder={t('travelStandard.expenseItemsManagement.form.distanceRangePlaceholder')}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -1046,7 +1045,7 @@ const ExpenseItemsManagement = () => {
                   fullWidth
                   multiline
                   rows={2}
-                  label="备注"
+                  label={t('travelStandard.expenseItemsManagement.form.remark')}
                   value={transportForm.remark}
                   onChange={(e) => setTransportForm({ ...transportForm, remark: e.target.value })}
                 />
@@ -1061,7 +1060,7 @@ const ExpenseItemsManagement = () => {
 
         {/* 住宿费用对话框 */}
         <Dialog open={accommodationDialog.open} onClose={() => setAccommodationDialog({ open: false, data: null, mode: 'create' })} maxWidth="md" fullWidth>
-          <DialogTitle>{accommodationDialog.mode === 'create' ? '新增住宿费用标准' : '编辑住宿费用标准'}</DialogTitle>
+          <DialogTitle>{accommodationDialog.mode === 'create' ? t('travelStandard.expenseItemsManagement.dialogs.accommodation.create') : t('travelStandard.expenseItemsManagement.dialogs.accommodation.edit')}</DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
@@ -1086,7 +1085,7 @@ const ExpenseItemsManagement = () => {
                   <Select
                     value={accommodationForm.cityLevel}
                     onChange={(e) => setAccommodationForm({ ...accommodationForm, cityLevel: e.target.value })}
-                    label="城市级别"
+                    label={t('travelStandard.expenseItemsManagement.form.cityLevel')}
                   >
                     <MenuItem value={1}>1级 - 一线城市</MenuItem>
                     <MenuItem value={2}>2级 - 二线城市</MenuItem>
@@ -1121,7 +1120,7 @@ const ExpenseItemsManagement = () => {
                   fullWidth
                   multiline
                   rows={2}
-                  label="备注"
+                  label={t('travelStandard.expenseItemsManagement.form.remark')}
                   value={accommodationForm.remark}
                   onChange={(e) => setAccommodationForm({ ...accommodationForm, remark: e.target.value })}
                 />
@@ -1136,7 +1135,7 @@ const ExpenseItemsManagement = () => {
 
         {/* 餐饮费用对话框 */}
         <Dialog open={mealDialog.open} onClose={() => setMealDialog({ open: false, data: null, mode: 'create' })} maxWidth="md" fullWidth>
-          <DialogTitle>{mealDialog.mode === 'create' ? '新增餐饮费用标准' : '编辑餐饮费用标准'}</DialogTitle>
+          <DialogTitle>{mealDialog.mode === 'create' ? t('travelStandard.expenseItemsManagement.dialogs.meal.create') : t('travelStandard.expenseItemsManagement.dialogs.meal.edit')}</DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
@@ -1161,7 +1160,7 @@ const ExpenseItemsManagement = () => {
                   <Select
                     value={mealForm.cityLevel}
                     onChange={(e) => setMealForm({ ...mealForm, cityLevel: e.target.value })}
-                    label="城市级别"
+                    label={t('travelStandard.expenseItemsManagement.form.cityLevel')}
                   >
                     <MenuItem value={1}>1级 - 一线城市</MenuItem>
                     <MenuItem value={2}>2级 - 二线城市</MenuItem>
@@ -1220,7 +1219,7 @@ const ExpenseItemsManagement = () => {
                   fullWidth
                   multiline
                   rows={2}
-                  label="备注"
+                  label={t('travelStandard.expenseItemsManagement.form.remark')}
                   value={mealForm.remark}
                   onChange={(e) => setMealForm({ ...mealForm, remark: e.target.value })}
                 />
@@ -1235,7 +1234,7 @@ const ExpenseItemsManagement = () => {
 
         {/* 津贴补贴对话框 */}
         <Dialog open={allowanceDialog.open} onClose={() => setAllowanceDialog({ open: false, data: null, mode: 'create' })} maxWidth="md" fullWidth>
-          <DialogTitle>{allowanceDialog.mode === 'create' ? '新增津贴补贴标准' : '编辑津贴补贴标准'}</DialogTitle>
+          <DialogTitle>{allowanceDialog.mode === 'create' ? t('travelStandard.expenseItemsManagement.dialogs.allowance.create') : t('travelStandard.expenseItemsManagement.dialogs.allowance.edit')}</DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
@@ -1295,7 +1294,7 @@ const ExpenseItemsManagement = () => {
                   fullWidth
                   multiline
                   rows={2}
-                  label="备注"
+                  label={t('travelStandard.expenseItemsManagement.form.remark')}
                   value={allowanceForm.remark}
                   onChange={(e) => setAllowanceForm({ ...allowanceForm, remark: e.target.value })}
                 />
@@ -1310,7 +1309,7 @@ const ExpenseItemsManagement = () => {
 
         {/* 其他费用对话框 */}
         <Dialog open={otherExpenseDialog.open} onClose={() => setOtherExpenseDialog({ open: false, data: null, mode: 'create' })} maxWidth="md" fullWidth>
-          <DialogTitle>{otherExpenseDialog.mode === 'create' ? '新增其他费用标准' : '编辑其他费用标准'}</DialogTitle>
+          <DialogTitle>{otherExpenseDialog.mode === 'create' ? t('travelStandard.expenseItemsManagement.dialogs.other.create') : t('travelStandard.expenseItemsManagement.dialogs.other.edit')}</DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={6}>
@@ -1382,7 +1381,7 @@ const ExpenseItemsManagement = () => {
                   <Select
                     value={otherExpenseForm.cityLevel}
                     onChange={(e) => setOtherExpenseForm({ ...otherExpenseForm, cityLevel: e.target.value })}
-                    label="城市级别"
+                    label={t('travelStandard.expenseItemsManagement.form.cityLevel')}
                   >
                     <MenuItem value="">不限</MenuItem>
                     <MenuItem value={1}>1级 - 一线城市</MenuItem>
@@ -1508,7 +1507,7 @@ const ExpenseItemsManagement = () => {
                   fullWidth
                   multiline
                   rows={2}
-                  label="备注"
+                  label={t('travelStandard.expenseItemsManagement.form.remark')}
                   value={otherExpenseForm.remark}
                   onChange={(e) => setOtherExpenseForm({ ...otherExpenseForm, remark: e.target.value })}
                 />

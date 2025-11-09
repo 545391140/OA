@@ -876,6 +876,137 @@
         "createSuccess": "Standard created successfully",
         "updateSuccess": "Standard updated successfully"
       }
+    },
+    "expenseItemsManagement": {
+      "title": "Expense Items Management",
+      "back": "Back",
+      "tabs": {
+        "transport": "Transport",
+        "accommodation": "Accommodation",
+        "meal": "Meals",
+        "allowance": "Allowances",
+        "other": "Other Expenses"
+      },
+      "headers": {
+        "transport": "Transport Standards",
+        "accommodation": "Accommodation Standards",
+        "meal": "Meal Standards",
+        "allowance": "Allowance Standards",
+        "other": "Other Expense Standards"
+      },
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "noData": "No data, click \"Add\" button above to add",
+      "messages": {
+        "loadStandardFailed": "Failed to load standard information",
+        "loadDataFailed": "Failed to load data",
+        "transportCreateSuccess": "Transport standard created successfully",
+        "transportUpdateSuccess": "Transport standard updated successfully",
+        "accommodationCreateSuccess": "Accommodation standard created successfully",
+        "accommodationUpdateSuccess": "Accommodation standard updated successfully",
+        "mealCreateSuccess": "Meal standard created successfully",
+        "mealUpdateSuccess": "Meal standard updated successfully",
+        "allowanceCreateSuccess": "Allowance standard created successfully",
+        "allowanceUpdateSuccess": "Allowance standard updated successfully",
+        "otherCreateSuccess": "Other expense standard created successfully",
+        "otherUpdateSuccess": "Other expense standard updated successfully",
+        "saveFailed": "Save failed",
+        "deleteSuccess": "Deleted successfully",
+        "deleteFailed": "Delete failed",
+        "unknownError": "Unknown error"
+      },
+      "dialogs": {
+        "transport": {
+          "create": "Add Transport Standard",
+          "edit": "Edit Transport Standard"
+        },
+        "accommodation": {
+          "create": "Add Accommodation Standard",
+          "edit": "Edit Accommodation Standard"
+        },
+        "meal": {
+          "create": "Add Meal Standard",
+          "edit": "Edit Meal Standard"
+        },
+        "allowance": {
+          "create": "Add Allowance Standard",
+          "edit": "Edit Allowance Standard"
+        },
+        "other": {
+          "create": "Add Other Expense Standard",
+          "edit": "Edit Other Expense Standard"
+        }
+      },
+      "form": {
+        "jobLevel": "Job Level",
+        "transportType": "Transport Type",
+        "seatClass": "Seat Class",
+        "seatClassPlaceholder": "e.g., Economy, Business, First Class",
+        "maxAmount": "Maximum Amount",
+        "cityLevel": "City Level",
+        "distanceRange": "Distance Range",
+        "distanceRangePlaceholder": "e.g., >1000km, <500km, All",
+        "maxAmountPerNight": "Maximum Amount Per Night",
+        "starLevel": "Star Level Requirement",
+        "starLevelPlaceholder": "e.g., 4-star and below, 5-star",
+        "breakfastAmount": "Breakfast Amount",
+        "lunchAmount": "Lunch Amount",
+        "dinnerAmount": "Dinner Amount",
+        "dailyTotal": "Daily Total",
+        "allowanceType": "Allowance Type",
+        "allowanceTypePlaceholder": "e.g., Communication subsidy, City transportation",
+        "amountType": "Calculation Method",
+        "amount": "Amount",
+        "expenseType": "Expense Type",
+        "expenseTypeName": "Expense Type Name",
+        "expenseTypeNamePlaceholder": "Custom expense type name",
+        "baseAmount": "Base Amount",
+        "percentage": "Percentage (%)",
+        "applicableScope": "Applicable Scope",
+        "applicableScopePlaceholder": "e.g., Client entertainment, Team meals, Phone bills",
+        "hasMaxLimit": "Set Maximum Limit",
+        "maxLimit": "Maximum Limit Amount",
+        "requireReceipt": "Require Receipt",
+        "requireApproval": "Require Approval",
+        "remark": "Remark"
+      },
+      "table": {
+        "jobLevel": "Job Level",
+        "transportType": "Transport Type",
+        "seatClass": "Seat Class",
+        "maxAmount": "Maximum Amount",
+        "cityLevel": "City Level",
+        "distanceRange": "Distance Range",
+        "remark": "Remark",
+        "actions": "Actions",
+        "cityLevelFormat": "Level {level}",
+        "unlimited": "Unlimited"
+      },
+      "transportTypes": {
+        "flight": "Flight",
+        "train": "Train",
+        "bus": "Bus",
+        "car": "Car"
+      },
+      "amountTypes": {
+        "daily": "Per Day",
+        "per_trip": "Per Trip",
+        "per_item": "Per Item",
+        "percentage": "By Percentage",
+        "fixed": "Fixed"
+      },
+      "expenseTypes": {
+        "entertainment": "Entertainment",
+        "communication": "Communication",
+        "office_supplies": "Office Supplies",
+        "training": "Training",
+        "parking": "Parking",
+        "toll": "Toll",
+        "insurance": "Insurance",
+        "visa": "Visa",
+        "other": "Other Expenses"
+      }
     }
   },
   "expense": {

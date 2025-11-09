@@ -920,6 +920,137 @@
         "createSuccess": "标准创建成功",
         "updateSuccess": "标准更新成功"
       }
+    },
+    "expenseItemsManagement": {
+      "title": "费用项维护",
+      "back": "返回",
+      "tabs": {
+        "transport": "交通费用",
+        "accommodation": "住宿费用",
+        "meal": "餐饮费用",
+        "allowance": "津贴补贴",
+        "other": "其他费用"
+      },
+      "headers": {
+        "transport": "交通费用标准",
+        "accommodation": "住宿费用标准",
+        "meal": "餐饮费用标准",
+        "allowance": "津贴补贴标准",
+        "other": "其他费用标准"
+      },
+      "add": "新增",
+      "edit": "编辑",
+      "delete": "删除",
+      "noData": "暂无数据，点击上方\"新增\"按钮添加",
+      "messages": {
+        "loadStandardFailed": "加载标准信息失败",
+        "loadDataFailed": "加载数据失败",
+        "transportCreateSuccess": "交通标准创建成功",
+        "transportUpdateSuccess": "交通标准更新成功",
+        "accommodationCreateSuccess": "住宿标准创建成功",
+        "accommodationUpdateSuccess": "住宿标准更新成功",
+        "mealCreateSuccess": "餐饮标准创建成功",
+        "mealUpdateSuccess": "餐饮标准更新成功",
+        "allowanceCreateSuccess": "津贴标准创建成功",
+        "allowanceUpdateSuccess": "津贴标准更新成功",
+        "otherCreateSuccess": "其他费用标准创建成功",
+        "otherUpdateSuccess": "其他费用标准更新成功",
+        "saveFailed": "保存失败",
+        "deleteSuccess": "删除成功",
+        "deleteFailed": "删除失败",
+        "unknownError": "未知错误"
+      },
+      "dialogs": {
+        "transport": {
+          "create": "新增交通费用标准",
+          "edit": "编辑交通费用标准"
+        },
+        "accommodation": {
+          "create": "新增住宿费用标准",
+          "edit": "编辑住宿费用标准"
+        },
+        "meal": {
+          "create": "新增餐饮费用标准",
+          "edit": "编辑餐饮费用标准"
+        },
+        "allowance": {
+          "create": "新增津贴补贴标准",
+          "edit": "编辑津贴补贴标准"
+        },
+        "other": {
+          "create": "新增其他费用标准",
+          "edit": "编辑其他费用标准"
+        }
+      },
+      "form": {
+        "jobLevel": "职级",
+        "transportType": "交通工具",
+        "seatClass": "座位等级",
+        "seatClassPlaceholder": "如：经济舱、商务舱、一等座",
+        "maxAmount": "最高金额",
+        "cityLevel": "城市级别",
+        "distanceRange": "距离范围",
+        "distanceRangePlaceholder": "如：>1000km、<500km、全部",
+        "maxAmountPerNight": "每晚最高金额",
+        "starLevel": "星级要求",
+        "starLevelPlaceholder": "如：四星级及以下、五星级",
+        "breakfastAmount": "早餐金额",
+        "lunchAmount": "午餐金额",
+        "dinnerAmount": "晚餐金额",
+        "dailyTotal": "每日总额",
+        "allowanceType": "津贴类型",
+        "allowanceTypePlaceholder": "如：通讯补贴、市内交通",
+        "amountType": "计算方式",
+        "amount": "金额",
+        "expenseType": "费用类型",
+        "expenseTypeName": "费用类型名称",
+        "expenseTypeNamePlaceholder": "自定义费用类型名称",
+        "baseAmount": "基础金额",
+        "percentage": "比例 (%)",
+        "applicableScope": "适用范围",
+        "applicableScopePlaceholder": "如：客户招待、团队聚餐、电话费等",
+        "hasMaxLimit": "设置上限",
+        "maxLimit": "上限金额",
+        "requireReceipt": "需要票据",
+        "requireApproval": "需要审批",
+        "remark": "备注"
+      },
+      "table": {
+        "jobLevel": "职级",
+        "transportType": "交通工具",
+        "seatClass": "座位等级",
+        "maxAmount": "最高金额",
+        "cityLevel": "城市级别",
+        "distanceRange": "距离范围",
+        "remark": "备注",
+        "actions": "操作",
+        "cityLevelFormat": "{level}级",
+        "unlimited": "不限"
+      },
+      "transportTypes": {
+        "flight": "飞机",
+        "train": "火车",
+        "bus": "大巴",
+        "car": "汽车"
+      },
+      "amountTypes": {
+        "daily": "按天",
+        "per_trip": "按次",
+        "per_item": "按项",
+        "percentage": "按比例",
+        "fixed": "固定"
+      },
+      "expenseTypes": {
+        "entertainment": "娱乐费用",
+        "communication": "通讯费用",
+        "office_supplies": "办公用品",
+        "training": "培训费用",
+        "parking": "停车费",
+        "toll": "过路费",
+        "insurance": "保险费用",
+        "visa": "签证费用",
+        "other": "其他费用"
+      }
     }
   },
   "expense": {
