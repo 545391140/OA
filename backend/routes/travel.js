@@ -72,7 +72,7 @@ router.get('/', protect, async (req, res) => {
     
     // 查询数据：只选择列表需要的字段，使用 lean() 提高性能
     const travels = await Travel.find(query)
-      .select('title travelNumber status estimatedCost currency startDate endDate destination destinationAddress outbound inbound createdAt employee')
+      .select('title travelNumber status estimatedCost currency startDate endDate destination destinationAddress outbound inbound createdAt employee purpose tripDescription')
       .populate('employee', 'firstName lastName email')
       .populate({
         path: 'approvals.approver',
