@@ -812,13 +812,21 @@ router.get('/trend', protect, async (req, res) => {
       : {};
 
     // 确保req.user.id正确转换为ObjectId
+    // 注意：MongoDB查询数组字段时，ObjectId和字符串可能不匹配
+    // 我们需要同时尝试ObjectId和字符串格式
     let approverId;
+    let approverIdString;
     try {
-      approverId = mongoose.Types.ObjectId.isValid(req.user.id) 
-        ? mongoose.Types.ObjectId(req.user.id)
-        : req.user.id;
+      if (mongoose.Types.ObjectId.isValid(req.user.id)) {
+        approverId = mongoose.Types.ObjectId(req.user.id);
+        approverIdString = String(req.user.id);
+      } else {
+        approverId = req.user.id;
+        approverIdString = String(req.user.id);
+      }
     } catch (error) {
       approverId = req.user.id;
+      approverIdString = String(req.user.id);
     }
 
     // 获取差旅趋势数据
