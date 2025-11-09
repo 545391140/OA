@@ -36,9 +36,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
+import dayjs from 'dayjs';
 
 const Dashboard = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
@@ -124,13 +125,24 @@ const Dashboard = () => {
   };
 
   const formatCurrency = (amount) => {
-    return `¥${parseFloat(amount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const numAmount = parseFloat(amount || 0);
+    // 根据当前语言使用不同的货币符号和格式
+    const locale = i18n.language || 'zh';
+    if (locale.startsWith('zh')) {
+      return `¥${numAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else if (locale === 'ja') {
+      return `¥${numAmount.toLocaleString('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else if (locale === 'ko') {
+      return `₩${numAmount.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else {
+      return `$${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    if (!dateString) return t('common.nA') || '-';
+    const locale = i18n.language || 'zh';
+    return dayjs(dateString).format(t('common.dateFormat') || 'YYYY-MM-DD');
   };
 
   const StatCard = ({ title, value, icon, trend, trendValue, loading }) => (
@@ -269,7 +281,15 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={dashboardData.monthlySpending}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
+                <XAxis 
+                  dataKey="month" 
+                  tickFormatter={(value) => {
+                    // 尝试翻译月份名称
+                    const monthKey = `common.months.${value}`;
+                    const translated = t(monthKey);
+                    return translated !== monthKey ? translated : value;
+                  }}
+                />
                 <YAxis />
                   <ChartTooltip formatter={(value) => [formatCurrency(value), t('dashboard.amount')]} />
                 <Line type="monotone" dataKey="amount" stroke="#1976d2" strokeWidth={2} />
@@ -433,7 +453,7 @@ const Dashboard = () => {
                   </ListItemIcon>
                   <ListItemText
                       primary={expense.title || expense.description}
-                      secondary={`${formatDate(expense.date)} • ${expense.category || '-'}`}
+                      secondary={`${formatDate(expense.date)} • ${t(`expense.categories.${expense.category}`) || expense.category || t('common.nA') || '-'}`}
                   />
                   <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
                       {formatCurrency(expense.amount)}

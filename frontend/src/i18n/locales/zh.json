@@ -32,7 +32,11 @@
     "moreThan": "超过",
     "subtotal": "小计",
     "required": "必填",
-    "unknown": "未知"
+    "unknown": "未知",
+    "viewAll": "查看全部",
+    "retry": "重试",
+    "nA": "暂无",
+    "dateFormat": "YYYY-MM-DD"
   },
   "notifications": {
     "title": "通知",

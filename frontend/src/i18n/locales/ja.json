@@ -32,7 +32,11 @@
     "moreThan": "以上",
     "subtotal": "小計",
     "required": "必須",
-    "unknown": "不明"
+    "unknown": "不明",
+    "viewAll": "すべて表示",
+    "retry": "再試行",
+    "nA": "該当なし",
+    "dateFormat": "YYYY-MM-DD"
   },
   "navigation": {
     "dashboard": "ダッシュボード",

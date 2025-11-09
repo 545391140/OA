@@ -31,7 +31,11 @@
     "moreThan": "more than",
     "subtotal": "Subtotal",
     "required": "Required",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "viewAll": "View All",
+    "retry": "Retry",
+    "nA": "N/A",
+    "dateFormat": "YYYY-MM-DD"
   },
   "notifications": {
     "title": "Notifications",
