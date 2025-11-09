@@ -96,6 +96,14 @@ const TravelDetail = () => {
       
       if (response.data && response.data.success) {
         const travelData = response.data.data;
+        
+        // 调试：打印预算数据
+        console.log('=== 差旅详情数据 ===');
+        console.log('estimatedBudget:', travelData.estimatedBudget);
+        console.log('outboundBudget:', travelData.outboundBudget);
+        console.log('inboundBudget:', travelData.inboundBudget);
+        console.log('multiCityRoutesBudget:', travelData.multiCityRoutesBudget);
+        
         setTravel(travelData);
         
         // 延迟验证，确保travel state已更新
