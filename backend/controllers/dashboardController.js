@@ -17,7 +17,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // 根据角色确定查询条件
     const travelQuery = userRole === 'admin' ? {} : { user: userId };
-    const expenseQuery = userRole === 'admin' ? {} : { user: userId };
+    const expenseQuery = userRole === 'admin' ? {} : { employee: userId };
 
     // 并行查询所有统计数据
     const [
@@ -45,10 +45,9 @@ exports.getDashboardStats = async (req, res) => {
       // 当月支出
       Expense.aggregate([
         {
-          $match: {
-            ...expenseQuery,
+          $match: Object.assign({}, expenseQuery, {
             date: { $gte: currentMonth }
-          }
+          })
         },
         {
           $group: {
@@ -61,10 +60,9 @@ exports.getDashboardStats = async (req, res) => {
       // 上月支出
       Expense.aggregate([
         {
-          $match: {
-            ...expenseQuery,
+          $match: Object.assign({}, expenseQuery, {
             date: { $gte: lastMonth, $lt: currentMonth }
-          }
+          })
         },
         {
           $group: {
@@ -157,13 +155,13 @@ exports.getRecentExpenses = async (req, res) => {
     const userRole = req.user.role;
     const limit = parseInt(req.query.limit) || 5;
 
-    const query = userRole === 'admin' ? {} : { user: userId };
+    const query = userRole === 'admin' ? {} : { employee: userId };
 
     const recentExpenses = await Expense.find(query)
       .sort({ date: -1 })
       .limit(limit)
       .select('title description amount category date status')
-      .populate('user', 'firstName lastName email')
+      .populate('employee', 'firstName lastName email')
       .lean();
 
     res.json({
@@ -191,7 +189,7 @@ exports.getMonthlySpending = async (req, res) => {
     const userRole = req.user.role;
     const months = parseInt(req.query.months) || 6;
 
-    const query = userRole === 'admin' ? {} : { user: userId };
+    const query = userRole === 'admin' ? {} : { employee: userId };
 
     // 计算起始日期（往前N个月）
     const startDate = new Date();
@@ -201,10 +199,9 @@ exports.getMonthlySpending = async (req, res) => {
 
     const monthlyData = await Expense.aggregate([
       {
-        $match: {
-          ...query,
+        $match: Object.assign({}, query, {
           date: { $gte: startDate }
-        }
+        })
       },
       {
         $group: {
@@ -255,7 +252,7 @@ exports.getCategoryBreakdown = async (req, res) => {
     const userRole = req.user.role;
     const period = req.query.period || 'month'; // month, quarter, year
 
-    const query = userRole === 'admin' ? {} : { user: userId };
+    const query = userRole === 'admin' ? {} : { employee: userId };
 
     // 计算时间范围
     const startDate = new Date();
@@ -269,10 +266,9 @@ exports.getCategoryBreakdown = async (req, res) => {
 
     const categoryData = await Expense.aggregate([
       {
-        $match: {
-          ...query,
+        $match: Object.assign({}, query, {
           date: { $gte: startDate }
-        }
+        })
       },
       {
         $group: {
@@ -451,7 +447,7 @@ exports.getDashboardData = async (req, res) => {
 // 辅助函数（内部使用）
 async function getDashboardStatsData(userId, userRole) {
   const travelQuery = userRole === 'admin' ? {} : { user: userId };
-  const expenseQuery = userRole === 'admin' ? {} : { user: userId };
+  const expenseQuery = userRole === 'admin' ? {} : { employee: userId };
   const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const lastMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
 
@@ -466,11 +462,11 @@ async function getDashboardStatsData(userId, userRole) {
     Travel.countDocuments({ ...travelQuery, status: 'submitted' }),
     Travel.countDocuments({ ...travelQuery, status: 'approved' }),
     Expense.aggregate([
-      { $match: { ...expenseQuery, date: { $gte: currentMonth } } },
+      { $match: Object.assign({}, expenseQuery, { date: { $gte: currentMonth } }) },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]),
     Expense.aggregate([
-      { $match: { ...expenseQuery, date: { $gte: lastMonth, $lt: currentMonth } } },
+      { $match: Object.assign({}, expenseQuery, { date: { $gte: lastMonth, $lt: currentMonth } }) },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ])
   ]);
@@ -500,7 +496,7 @@ async function getRecentTravelsData(userId, userRole, limit) {
 }
 
 async function getRecentExpensesData(userId, userRole, limit) {
-  const query = userRole === 'admin' ? {} : { user: userId };
+  const query = userRole === 'admin' ? {} : { employee: userId };
   return await Expense.find(query)
     .sort({ date: -1 })
     .limit(limit)
@@ -509,13 +505,13 @@ async function getRecentExpensesData(userId, userRole, limit) {
 }
 
 async function getMonthlySpendingData(userId, userRole, months) {
-  const query = userRole === 'admin' ? {} : { user: userId };
+  const query = userRole === 'admin' ? {} : { employee: userId };
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - months);
   startDate.setDate(1);
 
   const monthlyData = await Expense.aggregate([
-    { $match: { ...query, date: { $gte: startDate } } },
+    { $match: Object.assign({}, query, { date: { $gte: startDate } }) },
     {
       $group: {
         _id: { year: { $year: '$date' }, month: { $month: '$date' } },
@@ -533,12 +529,12 @@ async function getMonthlySpendingData(userId, userRole, months) {
 }
 
 async function getCategoryBreakdownData(userId, userRole, period) {
-  const query = userRole === 'admin' ? {} : { user: userId };
+  const query = userRole === 'admin' ? {} : { employee: userId };
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - 1);
 
   const categoryData = await Expense.aggregate([
-    { $match: { ...query, date: { $gte: startDate } } },
+    { $match: Object.assign({}, query, { date: { $gte: startDate } }) },
     { $group: { _id: '$category', total: { $sum: '$amount' } } },
     { $sort: { total: -1 } }
   ]);
