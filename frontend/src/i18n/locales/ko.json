@@ -554,7 +554,20 @@
       "rejected": "거부됨",
       "pending": "대기 중",
       "comments": "댓글",
-      "nA": "해당 없음"
+      "nA": "해당 없음",
+      "approve": "승인",
+      "reject": "거부",
+      "approveTitle": "신청 승인",
+      "rejectTitle": "신청 거부",
+      "approvalComment": "승인 의견",
+      "approveCommentPlaceholder": "승인 의견을 입력하세요...",
+      "rejectCommentPlaceholder": "거부 사유를 설명하세요...",
+      "commentRequired": "승인 의견을 입력하세요",
+      "approveSuccess": "승인되었습니다",
+      "rejectSuccess": "거부되었습니다",
+      "approvalError": "승인 실패",
+      "confirmApprove": "승인 확인",
+      "confirmReject": "거부 확인"
     }
   },
   "travelStandard": {

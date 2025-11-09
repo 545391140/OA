@@ -603,7 +603,20 @@
       "nA": "暂无",
       "pending": "待审批",
       "comments": "评论",
-      "nA": "不适用"
+      "nA": "不适用",
+      "approve": "审批通过",
+      "reject": "拒绝",
+      "approveTitle": "审批通过",
+      "rejectTitle": "拒绝申请",
+      "approvalComment": "审批意见",
+      "approveCommentPlaceholder": "请输入审批意见...",
+      "rejectCommentPlaceholder": "请说明拒绝原因...",
+      "commentRequired": "请输入审批意见",
+      "approveSuccess": "审批通过",
+      "rejectSuccess": "已拒绝",
+      "approvalError": "审批失败",
+      "confirmApprove": "确认通过",
+      "confirmReject": "确认拒绝"
     }
   },
   "travelStandard": {

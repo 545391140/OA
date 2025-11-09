@@ -20,7 +20,12 @@ import {
   TableCell,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -36,7 +41,10 @@ import {
   Person as PersonIcon,
   Business as BusinessIcon,
   Description as DescriptionIcon,
-  AttachMoney as MoneyIcon
+  AttachMoney as MoneyIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  Comment as CommentIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -53,6 +61,10 @@ const TravelDetail = () => {
 
   const [travel, setTravel] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [approvalAction, setApprovalAction] = useState(''); // 'approve' or 'reject'
+  const [approvalComment, setApprovalComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchTravelDetail();
@@ -123,6 +135,58 @@ const TravelDetail = () => {
     }
   };
 
+  const handleOpenApprovalDialog = (action) => {
+    setApprovalAction(action);
+    setApprovalDialogOpen(true);
+  };
+
+  const handleCloseApprovalDialog = () => {
+    setApprovalDialogOpen(false);
+    setApprovalComment('');
+    setApprovalAction('');
+  };
+
+  const handleSubmitApproval = async () => {
+    if (!approvalComment.trim()) {
+      showNotification(t('travel.detail.commentRequired') || '请输入审批意见', 'warning');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const endpoint = approvalAction === 'approve' ? 'approve' : 'reject';
+      await apiClient.post(`/travel/${id}/${endpoint}`, {
+        comments: approvalComment
+      });
+      
+      showNotification(
+        approvalAction === 'approve' 
+          ? (t('travel.detail.approveSuccess') || '审批通过') 
+          : (t('travel.detail.rejectSuccess') || '已拒绝'),
+        'success'
+      );
+      
+      handleCloseApprovalDialog();
+      fetchTravelDetail(); // 刷新数据
+    } catch (error) {
+      console.error('Approval error:', error);
+      showNotification(
+        error.response?.data?.message || t('travel.detail.approvalError') || '审批失败',
+        'error'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 检查当前用户是否可以审批
+  const canApprove = () => {
+    if (!user || !travel) return false;
+    if (user.role !== 'admin' && user.role !== 'manager') return false;
+    if (travel.status !== 'submitted') return false;
+    return true;
+  };
+
   if (loading) {
     return (
       <Container maxWidth="xl">
@@ -172,25 +236,50 @@ const TravelDetail = () => {
             </Typography>
           </Box>
         </Box>
-        {(user?.role === 'admin' || travel.employee?._id === user?.id) && travel.status === 'draft' && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="contained"
-              startIcon={<EditIcon />}
-              onClick={handleEdit}
-            >
-              {t('common.edit')}
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
-            >
-              {t('common.delete')}
-            </Button>
-          </Box>
-        )}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {/* 编辑和删除按钮 - 仅草稿状态 */}
+          {(user?.role === 'admin' || travel.employee?._id === user?.id) && travel.status === 'draft' && (
+            <>
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={handleEdit}
+              >
+                {t('common.edit')}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleDelete}
+              >
+                {t('common.delete')}
+              </Button>
+            </>
+          )}
+          
+          {/* 审批按钮 - 管理员和经理可见，仅已提交状态 */}
+          {canApprove() && (
+            <>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<CheckCircleIcon />}
+                onClick={() => handleOpenApprovalDialog('approve')}
+              >
+                {t('travel.detail.approve')}
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<CancelIcon />}
+                onClick={() => handleOpenApprovalDialog('reject')}
+              >
+                {t('travel.detail.reject')}
+              </Button>
+            </>
+          )}
+        </Box>
       </Box>
 
       <Grid container spacing={3}>
@@ -650,6 +739,58 @@ const TravelDetail = () => {
           </Grid>
         )}
       </Grid>
+
+      {/* 审批对话框 */}
+      <Dialog 
+        open={approvalDialogOpen} 
+        onClose={handleCloseApprovalDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {approvalAction === 'approve' 
+            ? t('travel.detail.approveTitle') || '审批通过' 
+            : t('travel.detail.rejectTitle') || '拒绝申请'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              label={t('travel.detail.approvalComment') || '审批意见'}
+              placeholder={
+                approvalAction === 'approve'
+                  ? (t('travel.detail.approveCommentPlaceholder') || '请输入审批意见...')
+                  : (t('travel.detail.rejectCommentPlaceholder') || '请说明拒绝原因...')
+              }
+              value={approvalComment}
+              onChange={(e) => setApprovalComment(e.target.value)}
+              required
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseApprovalDialog} disabled={submitting}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={handleSubmitApproval}
+            variant="contained"
+            color={approvalAction === 'approve' ? 'success' : 'error'}
+            disabled={submitting || !approvalComment.trim()}
+            startIcon={approvalAction === 'approve' ? <CheckCircleIcon /> : <CancelIcon />}
+          >
+            {submitting 
+              ? (t('common.submitting') || '提交中...') 
+              : (approvalAction === 'approve' 
+                  ? (t('travel.detail.confirmApprove') || '确认通过') 
+                  : (t('travel.detail.confirmReject') || '确认拒绝')
+                )
+            }
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

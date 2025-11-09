@@ -519,7 +519,20 @@
       "rejected": "却下",
       "pending": "承認待ち",
       "comments": "コメント",
-      "nA": "該当なし"
+      "nA": "該当なし",
+      "approve": "承認",
+      "reject": "却下",
+      "approveTitle": "申請を承認",
+      "rejectTitle": "申請を却下",
+      "approvalComment": "承認コメント",
+      "approveCommentPlaceholder": "承認コメントを入力してください...",
+      "rejectCommentPlaceholder": "却下理由を説明してください...",
+      "commentRequired": "承認コメントを入力してください",
+      "approveSuccess": "承認されました",
+      "rejectSuccess": "却下されました",
+      "approvalError": "承認に失敗しました",
+      "confirmApprove": "承認を確認",
+      "confirmReject": "却下を確認"
     }
   },
   "travelStandard": {

@@ -551,7 +551,20 @@
       "rejected": "Rejected",
       "pending": "Pending",
       "comments": "Comments",
-      "nA": "N/A"
+      "nA": "N/A",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveTitle": "Approve Request",
+      "rejectTitle": "Reject Request",
+      "approvalComment": "Approval Comment",
+      "approveCommentPlaceholder": "Please enter approval comments...",
+      "rejectCommentPlaceholder": "Please explain the reason for rejection...",
+      "commentRequired": "Please enter approval comment",
+      "approveSuccess": "Approved successfully",
+      "rejectSuccess": "Rejected",
+      "approvalError": "Approval failed",
+      "confirmApprove": "Confirm Approval",
+      "confirmReject": "Confirm Rejection"
     }
   },
   "travelStandard": {
