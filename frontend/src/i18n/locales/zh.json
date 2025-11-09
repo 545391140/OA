@@ -920,6 +920,7 @@
     "noData": "暂无数据",
     "noRecentTravel": "暂无最近的差旅申请",
     "noRecentExpenses": "暂无最近的费用记录",
+    "noDestination": "未填写目的地",
     "loadError": "加载Dashboard数据失败",
     "refreshSuccess": "数据已刷新"
   },

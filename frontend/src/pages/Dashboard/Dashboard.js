@@ -360,8 +360,26 @@ const Dashboard = () => {
                       <TravelIcon color="primary" />
                     </ListItemIcon>
                     <ListItemText
-                      primary={travel.title}
-                      secondary={`${formatDate(travel.startDate)} - ${formatDate(travel.endDate)}`}
+                      primary={
+                        <Box>
+                          <Typography variant="body1" component="span" fontWeight={500}>
+                            {travel.travelNumber || travel._id?.slice(-8) || '-'}
+                          </Typography>
+                          <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 2 }}>
+                            {travel.user?.firstName} {travel.user?.lastName}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <Box sx={{ mt: 0.5 }}>
+                          <Typography variant="body2" component="span">
+                            {travel.destination || t('dashboard.noDestination')}
+                          </Typography>
+                          <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 2 }}>
+                            {formatDate(travel.startDate)} - {formatDate(travel.endDate)}
+                          </Typography>
+                        </Box>
+                      }
                     />
                     <Chip
                       label={t(`travel.statuses.${travel.status}`)}

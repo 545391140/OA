@@ -862,6 +862,7 @@
     "noData": "データがありません",
     "noRecentTravel": "最近の出張申請がありません",
     "noRecentExpenses": "最近の経費記録がありません",
+    "noDestination": "目的地未記入",
     "loadError": "ダッシュボードデータの読み込みに失敗しました",
     "refreshSuccess": "データが更新されました"
   },

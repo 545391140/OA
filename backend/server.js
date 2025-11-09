@@ -140,7 +140,7 @@ app.use('/api/expense-items', expenseItemRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/positions', positionRoutes);
-// app.use('/api/search', searchRoutes); // 临时注释
+app.use('/api/search', searchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 // Serve frontend static files (if deployed together)

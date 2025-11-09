@@ -126,7 +126,7 @@ exports.getRecentTravels = async (req, res) => {
     const recentTravels = await Travel.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
-      .select('title destination startDate endDate status purpose estimatedBudget')
+      .select('travelNumber title destination startDate endDate status purpose estimatedBudget')
       .populate('user', 'firstName lastName email')
       .lean();
 
@@ -491,7 +491,8 @@ async function getRecentTravelsData(userId, userRole, limit) {
   return await Travel.find(query)
     .sort({ createdAt: -1 })
     .limit(limit)
-    .select('title destination startDate endDate status')
+    .select('travelNumber title destination startDate endDate status')
+    .populate('user', 'firstName lastName email')
     .lean();
 }
 

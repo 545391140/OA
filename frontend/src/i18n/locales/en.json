@@ -894,6 +894,7 @@
     "noData": "No data available",
     "noRecentTravel": "No recent travel requests",
     "noRecentExpenses": "No recent expense records",
+    "noDestination": "No destination",
     "loadError": "Failed to load dashboard data",
     "refreshSuccess": "Data refreshed"
   },
