@@ -283,9 +283,10 @@ const TravelDetail = () => {
       </Box>
 
       <Grid container spacing={3}>
-        {/* 基本信息 */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
+        {/* 左侧主要内容 */}
+        <Grid item xs={12} md={8}>
+          {/* 基本信息 */}
+          <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <DescriptionIcon color="primary" />
               {t('travel.detail.basicInfo')}
@@ -381,11 +382,9 @@ const TravelDetail = () => {
               )}
             </Grid>
           </Paper>
-        </Grid>
 
-        {/* 行程信息 */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
+          {/* 行程信息 */}
+          <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <FlightIcon color="primary" />
               {t('travel.detail.itinerary')}
@@ -541,11 +540,9 @@ const TravelDetail = () => {
               </Box>
             )}
           </Paper>
-        </Grid>
 
-        {/* 费用预算 */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
+          {/* 费用预算 */}
+          <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <MoneyIcon color="primary" />
               {t('travel.detail.budgetInfo')}
@@ -679,27 +676,28 @@ const TravelDetail = () => {
           </Paper>
         </Grid>
 
-        {/* 审批信息 */}
-        {travel.approvals && travel.approvals.length > 0 && (
-          <Grid item xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                {t('travel.detail.approvalHistory')}
-              </Typography>
-              <Divider sx={{ my: 2 }} />
-              
-              {travel.approvals.map((approval, index) => (
+        {/* 右侧边栏 */}
+        <Grid item xs={12} md={4}>
+          {/* 审批信息 */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              {t('travel.detail.approvalHistory')}
+            </Typography>
+            <Divider sx={{ my: 2 }} />
+            
+            {travel.approvals && travel.approvals.length > 0 ? (
+              travel.approvals.map((approval, index) => (
                 <Card key={index} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                  <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} md={3}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
                       <Typography variant="subtitle2" color="text.secondary">
                         {t('travel.detail.approver')}
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" fontWeight={500}>
                         {approval.approver?.firstName} {approval.approver?.lastName}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={2}>
+                    <Grid item xs={6}>
                       <Typography variant="subtitle2" color="text.secondary">
                         {t('travel.detail.level')}
                       </Typography>
@@ -707,14 +705,17 @@ const TravelDetail = () => {
                         {t('travel.detail.levelNumber', { level: approval.level })}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={2}>
+                    <Grid item xs={6}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {t('common.status')}
+                      </Typography>
                       <Chip
                         label={t(`travel.approvalStatus.${approval.status}`) || approval.status}
                         color={getStatusColor(approval.status)}
                         size="small"
                       />
                     </Grid>
-                    <Grid item xs={12} md={3}>
+                    <Grid item xs={12}>
                       <Typography variant="subtitle2" color="text.secondary">
                         {t('travel.detail.approvalDate')}
                       </Typography>
@@ -734,10 +735,14 @@ const TravelDetail = () => {
                     )}
                   </Grid>
                 </Card>
-              ))}
-            </Paper>
-          </Grid>
-        )}
+              ))
+            ) : (
+              <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>
+                {t('travel.detail.nA')}
+              </Typography>
+            )}
+          </Paper>
+        </Grid>
       </Grid>
 
       {/* 审批对话框 */}
