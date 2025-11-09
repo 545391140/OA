@@ -545,20 +545,24 @@ const LocationManagement = () => {
                         </TableCell>
                         {canEdit && (
                           <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEdit(location)}
-                              color="primary"
-                            >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDelete(location)}
-                              color="error"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEdit(location)}
+                                color="primary"
+                                sx={{ flexShrink: 0 }}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDelete(location)}
+                                color="error"
+                                sx={{ flexShrink: 0 }}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
                           </TableCell>
                         )}
                       </TableRow>
