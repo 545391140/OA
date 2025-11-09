@@ -215,7 +215,7 @@ const ApprovalList = () => {
   };
 
   const ApprovalCard = ({ item, showActions = true }) => (
-    <Card sx={{ mb: 2 }}>
+    <Card sx={{ mb: 2 }} elevation={2}>
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -330,7 +330,7 @@ const ApprovalList = () => {
           {t('approval.title')}
         </Typography>
 
-        <Paper sx={{ mt: 3 }}>
+        <Paper sx={{ mt: 3 }} elevation={2}>
           <Tabs
             value={tabValue}
             onChange={handleTabChange}
