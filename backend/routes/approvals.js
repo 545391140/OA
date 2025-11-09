@@ -519,6 +519,11 @@ router.get('/statistics', protect, async (req, res) => {
       results.expense = await getExpenseStats();
     }
 
+    // 设置响应头，禁止缓存，确保数据实时更新
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     res.json({
       success: true,
       data: results

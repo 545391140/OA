@@ -68,13 +68,7 @@ const ApprovalStatistics = () => {
   });
   const [approverWorkload, setApproverWorkload] = useState([]);
   const [trendData, setTrendData] = useState([]);
-
-  useEffect(() => {
-    console.log('=== Frontend: ApprovalStatistics useEffect triggered ===');
-    console.log('Date range changed:', dateRange);
-    console.log('Type changed:', type);
-    fetchStatistics();
-  }, [dateRange, type]);
+  const [refreshKey, setRefreshKey] = useState(0); // 用于强制刷新
 
   const fetchStatistics = async () => {
     try {
@@ -85,11 +79,17 @@ const ApprovalStatistics = () => {
       console.log('Type:', type);
       
       // 获取审批统计
+      // 添加时间戳参数防止缓存，确保数据实时更新
       const statsResponse = await apiClient.get('/approvals/statistics', {
         params: {
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
-          type: type === 'all' ? undefined : type
+          type: type === 'all' ? undefined : type,
+          _t: Date.now() // 添加时间戳防止缓存
+        },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
       });
 
@@ -137,7 +137,12 @@ const ApprovalStatistics = () => {
       const workloadResponse = await apiClient.get('/approvals/approver-workload', {
         params: {
           startDate: dateRange.startDate,
-          endDate: dateRange.endDate
+          endDate: dateRange.endDate,
+          _t: Date.now() // 添加时间戳防止缓存
+        },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
       });
 
@@ -154,7 +159,12 @@ const ApprovalStatistics = () => {
         params: {
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
-          type: type === 'all' ? undefined : type
+          type: type === 'all' ? undefined : type,
+          _t: Date.now() // 添加时间戳防止缓存
+        },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
       });
 
@@ -187,6 +197,25 @@ const ApprovalStatistics = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    console.log('=== Frontend: ApprovalStatistics useEffect triggered ===');
+    console.log('Date range changed:', dateRange);
+    console.log('Type changed:', type);
+    console.log('Refresh key:', refreshKey);
+    fetchStatistics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange, type, refreshKey]);
+
+  // 添加自动刷新功能，每30秒刷新一次统计数据
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('Auto refreshing statistics...');
+      setRefreshKey(prev => prev + 1);
+    }, 30000); // 30秒刷新一次
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleDateRangeChange = (field, value) => {
     setDateRange(prev => ({
@@ -339,7 +368,10 @@ const ApprovalStatistics = () => {
             <Button
               fullWidth
               variant="contained"
-              onClick={fetchStatistics}
+              onClick={() => {
+                setRefreshKey(prev => prev + 1);
+                fetchStatistics();
+              }}
               disabled={loading}
             >
               {loading ? <CircularProgress size={24} /> : t('approval.statistics.query')}
