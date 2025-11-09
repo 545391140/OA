@@ -223,6 +223,15 @@ const TravelDetail = () => {
     }
   };
 
+  // 计算所有预算的总和（去程+返程+多程）
+  const calculateTotalBudget = () => {
+    if (!travel) return 0;
+    const outboundTotal = calculateBudgetTotal(travel.outboundBudget);
+    const inboundTotal = calculateBudgetTotal(travel.inboundBudget);
+    const multiCityTotal = calculateBudgetTotal(travel.multiCityRoutesBudget);
+    return outboundTotal + inboundTotal + multiCityTotal;
+  };
+
   // 验证总预算是否等于各项之和
   const validateBudgetTotal = () => {
     if (!travel) return { isValid: true, message: '' };
@@ -713,7 +722,7 @@ const TravelDetail = () => {
                     {t('travel.detail.totalBudget')}
                   </Typography>
                   <Typography variant="h6" color="primary">
-                    {formatCurrency(travel.estimatedBudget || 0)}
+                    {formatCurrency(calculateTotalBudget())}
                   </Typography>
                 </Card>
               </Grid>
