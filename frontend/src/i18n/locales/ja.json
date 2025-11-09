@@ -985,9 +985,13 @@
       "otherExpense": "その他の経費",
       "addSubItem": "サブ項目を追加",
       "searchPlaceholder": "項目名、基準コード、基準名、説明で検索...",
-      "searchResults": "{{count}} 件見つかりました（全 {{total}} 件）",
       "noSearchResults": "一致する経費項目が見つかりません",
-      "clearSearch": "検索をクリア",
+      "filters": {
+        "status": "ステータス",
+        "allStatus": "すべてのステータス",
+        "standard": "出張基準",
+        "allStandards": "すべての基準"
+      },
       "tableHeaders": {
         "standardCode": "基準コード",
         "standardName": "基準名",

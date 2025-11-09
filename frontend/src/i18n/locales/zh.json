@@ -1091,9 +1091,13 @@
       "otherExpense": "其他费用",
       "addSubItem": "添加子费用项",
       "searchPlaceholder": "搜索费用项目名称、标准编码、标准名称、说明...",
-      "searchResults": "找到 {{count}} 条结果（共 {{total}} 条）",
       "noSearchResults": "未找到匹配的费用项目",
-      "clearSearch": "清除搜索",
+      "filters": {
+        "status": "状态",
+        "allStatus": "全部状态",
+        "standard": "差旅标准",
+        "allStandards": "全部标准"
+      },
       "tableHeaders": {
         "standardCode": "标准编码",
         "standardName": "标准名称",

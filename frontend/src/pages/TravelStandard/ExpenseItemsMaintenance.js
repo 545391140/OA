@@ -27,7 +27,9 @@ import {
   Divider,
   Grid,
   Chip,
-  InputAdornment
+  InputAdornment,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,7 +38,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Search as SearchIcon,
-  Clear as ClearIcon
+  FilterList as FilterIcon
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -56,8 +58,10 @@ const ExpenseItemsMaintenance = () => {
   const [loading, setLoading] = useState(true);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
   
-  // 搜索状态
+  // 搜索和过滤状态
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [standardFilter, setStandardFilter] = useState('all');
 
   // 新增/编辑对话框状态
   const [formDialog, setFormDialog] = useState({ open: false, item: null, mode: 'create' });
@@ -337,23 +341,42 @@ const ExpenseItemsMaintenance = () => {
     }
   };
 
-  // 搜索过滤逻辑
+  // 搜索和过滤逻辑
   const filteredExpenseItems = expenseItems.filter(item => {
-    if (!searchTerm.trim()) return true;
+    // 搜索过滤
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      const matchSearch = 
+        item.itemName?.toLowerCase().includes(search) ||
+        item.standardCode?.toLowerCase().includes(search) ||
+        item.standardName?.toLowerCase().includes(search) ||
+        item.description?.toLowerCase().includes(search) ||
+        item.parentItem?.name?.toLowerCase().includes(search);
+      
+      if (!matchSearch) return false;
+    }
     
-    const search = searchTerm.toLowerCase();
-    return (
-      item.itemName?.toLowerCase().includes(search) ||
-      item.standardCode?.toLowerCase().includes(search) ||
-      item.standardName?.toLowerCase().includes(search) ||
-      item.description?.toLowerCase().includes(search) ||
-      item.parentItem?.name?.toLowerCase().includes(search)
-    );
+    // 状态过滤
+    if (statusFilter !== 'all' && item.status !== statusFilter) {
+      return false;
+    }
+    
+    // 标准过滤
+    if (standardFilter !== 'all') {
+      const itemStandardId = item.standard?._id || item.standard;
+      if (itemStandardId !== standardFilter) {
+        return false;
+      }
+    }
+    
+    return true;
   });
 
-  // 清除搜索
-  const handleClearSearch = () => {
+  // 重置过滤器
+  const handleResetFilters = () => {
     setSearchTerm('');
+    setStatusFilter('all');
+    setStandardFilter('all');
   };
 
   if (loading) {
@@ -384,45 +407,67 @@ const ExpenseItemsMaintenance = () => {
 
         <Divider sx={{ mb: 3 }} />
 
-        {/* 搜索框 */}
-        <Box sx={{ mb: 3 }}>
-          <TextField
-            fullWidth
-            placeholder={t('expenseItem.maintenance.searchPlaceholder')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-              endAdornment: searchTerm && (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={handleClearSearch}
-                    edge="end"
-                  >
-                    <ClearIcon />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Box>
-
-        {/* 搜索结果统计 */}
-        {searchTerm && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              {t('expenseItem.maintenance.searchResults', { 
-                count: filteredExpenseItems.length,
-                total: expenseItems.length 
-              })}
-            </Typography>
-          </Box>
-        )}
+        {/* 搜索和过滤区域 */}
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                placeholder={t('expenseItem.maintenance.searchPlaceholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>{t('expenseItem.maintenance.filters.status')}</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label={t('expenseItem.maintenance.filters.status')}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="all">{t('expenseItem.maintenance.filters.allStatus')}</MenuItem>
+                  <MenuItem value="enabled">{t('expenseItem.maintenance.form.enabled')}</MenuItem>
+                  <MenuItem value="disabled">{t('expenseItem.maintenance.form.disabled')}</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>{t('expenseItem.maintenance.filters.standard')}</InputLabel>
+                <Select
+                  value={standardFilter}
+                  label={t('expenseItem.maintenance.filters.standard')}
+                  onChange={(e) => setStandardFilter(e.target.value)}
+                >
+                  <MenuItem value="all">{t('expenseItem.maintenance.filters.allStandards')}</MenuItem>
+                  {standards.map((standard) => (
+                    <MenuItem key={standard._id} value={standard._id}>
+                      {standard.standardCode} - {standard.standardName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleResetFilters}
+                startIcon={<FilterIcon />}
+              >
+                {t('common.reset')}
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
 
         <TableContainer>
           <Table>
@@ -441,18 +486,18 @@ const ExpenseItemsMaintenance = () => {
               {filteredExpenseItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
-                    {searchTerm ? (
+                    {(searchTerm || statusFilter !== 'all' || standardFilter !== 'all') ? (
                       <Box sx={{ py: 4 }}>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
                           {t('expenseItem.maintenance.noSearchResults')}
                         </Typography>
                         <Button
                           variant="outlined"
-                          startIcon={<ClearIcon />}
-                          onClick={handleClearSearch}
+                          startIcon={<FilterIcon />}
+                          onClick={handleResetFilters}
                           sx={{ mt: 2 }}
                         >
-                          {t('expenseItem.maintenance.clearSearch')}
+                          {t('common.reset')}
                         </Button>
                       </Box>
                     ) : canEdit ? (
