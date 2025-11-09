@@ -415,6 +415,8 @@ const ApprovalWorkflowManagement = () => {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
+                error={!formData.name.trim()}
+                helperText={!formData.name.trim() ? '流程名称为必填项' : ''}
               />
             </Grid>
             <Grid item xs={12}>
@@ -428,11 +430,11 @@ const ApprovalWorkflowManagement = () => {
               />
             </Grid>
             <Grid item xs={6}>
-              <FormControl fullWidth>
-                <InputLabel>类型</InputLabel>
+              <FormControl fullWidth required>
+                <InputLabel>类型 *</InputLabel>
                 <Select
                   value={formData.type}
-                  label="类型"
+                  label="类型 *"
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 >
                   <MenuItem value="travel">差旅</MenuItem>
@@ -503,7 +505,10 @@ const ApprovalWorkflowManagement = () => {
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">审批步骤</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="h6">审批步骤</Typography>
+                  <Chip label="必填" size="small" color="error" />
+                </Box>
                 <Button
                   size="small"
                   startIcon={<AddIcon />}
@@ -528,14 +533,17 @@ const ApprovalWorkflowManagement = () => {
                             label="步骤名称"
                             value={step.name}
                             onChange={(e) => handleStepChange(index, 'name', e.target.value)}
+                            required
+                            error={!step.name.trim()}
+                            helperText={!step.name.trim() ? '步骤名称为必填项' : ''}
                           />
                         </Grid>
                         <Grid item xs={6}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel>审批人类型</InputLabel>
+                          <FormControl fullWidth size="small" required>
+                            <InputLabel>审批人类型 *</InputLabel>
                             <Select
                               value={step.approverType}
-                              label="审批人类型"
+                              label="审批人类型 *"
                               onChange={(e) => handleStepChange(index, 'approverType', e.target.value)}
                             >
                               <MenuItem value="manager">直接上级</MenuItem>
@@ -598,8 +606,8 @@ const ApprovalWorkflowManagement = () => {
               </Stepper>
 
               {formData.steps.length === 0 && (
-                <Alert severity="info">
-                  请添加至少一个审批步骤
+                <Alert severity="warning">
+                  请添加至少一个审批步骤（必填）
                 </Alert>
               )}
             </Grid>
