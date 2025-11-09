@@ -282,60 +282,60 @@ const TravelDetail = () => {
         </Box>
       </Box>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         {/* 左侧主要内容 */}
         <Grid item xs={12} md={8}>
           {/* 基本信息 */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <DescriptionIcon color="primary" />
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DescriptionIcon color="primary" fontSize="small" />
               {t('travel.detail.basicInfo')}
             </Typography>
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ mb: 1.5 }} />
             
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
                     {t('travel.detail.applicant')}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body2">
                     {travel.employee?.firstName} {travel.employee?.lastName}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary">
                     {travel.employee?.email}
                   </Typography>
                 </Box>
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
                     {t('travel.detail.department')}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body2">
                     {travel.costOwingDepartment || travel.employee?.department || '-'}
                   </Typography>
                 </Box>
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
                     {t('travel.detail.travelType')}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body2">
                     {travel.tripType === 'international' ? t('travel.international') : t('travel.domestic')}
                   </Typography>
                 </Box>
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
                     {t('travel.detail.destination')}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body2">
                     {typeof travel.destination === 'string' 
                       ? travel.destination 
                       : (travel.destination?.city || travel.destination?.name || '-')}
@@ -344,25 +344,25 @@ const TravelDetail = () => {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
                     {t('travel.detail.travelDates')}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body2">
                     {formatDate(travel.startDate)} ~ {formatDate(travel.endDate)}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary">
                     {dayjs(travel.endDate).diff(dayjs(travel.startDate), 'days')} {t('travel.detail.days')}
                   </Typography>
                 </Box>
               </Grid>
 
-              <Grid item xs={12}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
                     {t('travel.detail.purpose')}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography variant="body2">
                     {travel.purpose || travel.tripDescription || '-'}
                   </Typography>
                 </Box>
@@ -370,11 +370,11 @@ const TravelDetail = () => {
 
               {travel.comment && (
                 <Grid item xs={12}>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  <Box sx={{ mb: 1 }}>
+                    <Typography variant="caption" color="text.secondary" display="block">
                       {t('travel.detail.comment')}
                     </Typography>
-                    <Typography variant="body1">
+                    <Typography variant="body2">
                       {travel.comment}
                     </Typography>
                   </Box>
@@ -384,47 +384,47 @@ const TravelDetail = () => {
           </Paper>
 
           {/* 行程信息 */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <FlightIcon color="primary" />
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FlightIcon color="primary" fontSize="small" />
               {t('travel.detail.itinerary')}
             </Typography>
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ mb: 1.5 }} />
 
             {/* 去程 */}
             {travel.outbound && (travel.outbound.departure || travel.outbound.destination) && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+              <Box sx={{ mb: 1.5 }}>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
                   {t('travel.detail.outbound')}
                 </Typography>
-                <Card variant="outlined" sx={{ p: 2 }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary">
+                <Card variant="outlined" sx={{ p: 1.5 }}>
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.date')}
                       </Typography>
                       <Typography variant="body2">
                         {formatDate(travel.outbound.date)}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary">
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.from')}
                       </Typography>
                       <Typography variant="body2">
                         {travel.outbound.departure || '-'}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary">
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.to')}
                       </Typography>
                       <Typography variant="body2">
                         {travel.outbound.destination || '-'}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary">
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.transportation')}
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -441,38 +441,38 @@ const TravelDetail = () => {
 
             {/* 返程 */}
             {travel.inbound && (travel.inbound.departure || travel.inbound.destination) && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+              <Box sx={{ mb: 1.5 }}>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
                   {t('travel.detail.inbound')}
                 </Typography>
-                <Card variant="outlined" sx={{ p: 2 }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary">
+                <Card variant="outlined" sx={{ p: 1.5 }}>
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.date')}
                       </Typography>
                       <Typography variant="body2">
                         {formatDate(travel.inbound.date)}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary">
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.from')}
                       </Typography>
                       <Typography variant="body2">
                         {travel.inbound.departure || '-'}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary">
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.to')}
                       </Typography>
                       <Typography variant="body2">
                         {travel.inbound.destination || '-'}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                      <Typography variant="caption" color="text.secondary">
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.transportation')}
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -490,41 +490,41 @@ const TravelDetail = () => {
             {/* 多程行程 */}
             {travel.multiCityRoutes && travel.multiCityRoutes.length > 0 && (
               <Box>
-                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
                   {t('travel.detail.multiCityRoutes')} ({travel.multiCityRoutes.length})
                 </Typography>
                 {travel.multiCityRoutes.map((route, index) => (
-                  <Card key={index} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                    <Typography variant="caption" color="primary" gutterBottom>
+                  <Card key={index} variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
+                    <Typography variant="caption" color="primary" display="block" gutterBottom>
                       {t('travel.detail.route')} {index + 1}
                     </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={3}>
-                        <Typography variant="caption" color="text.secondary">
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
                           {t('travel.detail.date')}
                         </Typography>
                         <Typography variant="body2">
                           {formatDate(route.date)}
                         </Typography>
                       </Grid>
-                      <Grid item xs={12} md={3}>
-                        <Typography variant="caption" color="text.secondary">
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
                           {t('travel.detail.from')}
                         </Typography>
                         <Typography variant="body2">
                           {route.departure || '-'}
                         </Typography>
                       </Grid>
-                      <Grid item xs={12} md={3}>
-                        <Typography variant="caption" color="text.secondary">
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
                           {t('travel.detail.to')}
                         </Typography>
                         <Typography variant="body2">
                           {route.destination || '-'}
                         </Typography>
                       </Grid>
-                      <Grid item xs={12} md={3}>
-                        <Typography variant="caption" color="text.secondary">
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary" display="block">
                           {t('travel.detail.transportation')}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -542,21 +542,21 @@ const TravelDetail = () => {
           </Paper>
 
           {/* 费用预算 */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <MoneyIcon color="primary" />
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <MoneyIcon color="primary" fontSize="small" />
               {t('travel.detail.budgetInfo')}
             </Typography>
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ mb: 1.5 }} />
 
-            <Grid container spacing={3}>
+            <Grid container spacing={1.5}>
               {/* 预算总览 */}
               <Grid item xs={12} md={4}>
-                <Card variant="outlined" sx={{ p: 2, bgcolor: 'primary.50' }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                <Card variant="outlined" sx={{ p: 1.5, bgcolor: 'primary.50' }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
                     {t('travel.detail.estimatedBudget')}
                   </Typography>
-                  <Typography variant="h5" color="primary">
+                  <Typography variant="h6" color="primary">
                     {formatCurrency(travel.estimatedBudget || 0)}
                   </Typography>
                 </Card>
@@ -564,11 +564,11 @@ const TravelDetail = () => {
 
               {travel.actualCost !== undefined && (
                 <Grid item xs={12} md={4}>
-                  <Card variant="outlined" sx={{ p: 2, bgcolor: 'success.50' }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  <Card variant="outlined" sx={{ p: 1.5, bgcolor: 'success.50' }}>
+                    <Typography variant="caption" color="text.secondary" display="block">
                       {t('travel.detail.actualCost')}
                     </Typography>
-                    <Typography variant="h5" color="success.main">
+                    <Typography variant="h6" color="success.main">
                       {formatCurrency(travel.actualCost || 0)}
                     </Typography>
                   </Card>
@@ -577,12 +577,12 @@ const TravelDetail = () => {
 
               {travel.actualCost !== undefined && (
                 <Grid item xs={12} md={4}>
-                  <Card variant="outlined" sx={{ p: 2, bgcolor: travel.actualCost <= travel.estimatedBudget ? 'success.50' : 'error.50' }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  <Card variant="outlined" sx={{ p: 1.5, bgcolor: travel.actualCost <= travel.estimatedBudget ? 'success.50' : 'error.50' }}>
+                    <Typography variant="caption" color="text.secondary" display="block">
                       {t('travel.detail.variance')}
                     </Typography>
                     <Typography 
-                      variant="h5" 
+                      variant="h6" 
                       color={travel.actualCost <= travel.estimatedBudget ? 'success.main' : 'error.main'}
                     >
                       {formatCurrency((travel.estimatedBudget || 0) - (travel.actualCost || 0))}
@@ -679,18 +679,18 @@ const TravelDetail = () => {
         {/* 右侧边栏 */}
         <Grid item xs={12} md={4}>
           {/* 审批信息 */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               {t('travel.detail.approvalHistory')}
             </Typography>
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ mb: 1.5 }} />
             
             {travel.approvals && travel.approvals.length > 0 ? (
               travel.approvals.map((approval, index) => (
-                <Card key={index} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                  <Grid container spacing={2}>
+                <Card key={index} variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
+                  <Grid container spacing={1}>
                     <Grid item xs={12}>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.approver')}
                       </Typography>
                       <Typography variant="body2" fontWeight={500}>
@@ -698,7 +698,7 @@ const TravelDetail = () => {
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.level')}
                       </Typography>
                       <Typography variant="body2">
@@ -706,7 +706,7 @@ const TravelDetail = () => {
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('common.status')}
                       </Typography>
                       <Chip
@@ -716,7 +716,7 @@ const TravelDetail = () => {
                       />
                     </Grid>
                     <Grid item xs={12}>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" display="block">
                         {t('travel.detail.approvalDate')}
                       </Typography>
                       <Typography variant="body2">
@@ -725,7 +725,7 @@ const TravelDetail = () => {
                     </Grid>
                     {approval.comments && (
                       <Grid item xs={12}>
-                        <Typography variant="subtitle2" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" display="block">
                           {t('travel.detail.comments')}
                         </Typography>
                         <Typography variant="body2">
@@ -737,7 +737,7 @@ const TravelDetail = () => {
                 </Card>
               ))
             ) : (
-              <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>
+              <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 1 }}>
                 {t('travel.detail.nA')}
               </Typography>
             )}
