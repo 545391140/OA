@@ -179,9 +179,34 @@ const ApprovalStatistics = () => {
     return `${(hours / 24).toFixed(1)}天`;
   };
 
-  const currentStats = type === 'travel' ? statistics.travel : 
-                       type === 'expense' ? statistics.expense :
-                       statistics.travel || statistics.expense;
+  // 根据type参数决定使用哪个统计数据
+  const currentStats = React.useMemo(() => {
+    if (type === 'travel') {
+      return statistics.travel;
+    } else if (type === 'expense') {
+      return statistics.expense;
+    } else {
+      // 合并travel和expense的数据
+      const travel = statistics.travel || {};
+      const expense = statistics.expense || {};
+      return {
+        pending: (travel.pending || 0) + (expense.pending || 0),
+        approved: (travel.approved || 0) + (expense.approved || 0),
+        rejected: (travel.rejected || 0) + (expense.rejected || 0),
+        total: (travel.total || 0) + (expense.total || 0),
+        totalAmount: (travel.totalAmount || 0) + (expense.totalAmount || 0),
+        avgAmount: ((travel.totalAmount || 0) + (expense.totalAmount || 0)) / 
+                   ((travel.total || 0) + (expense.total || 0) || 1),
+        avgApprovalTime: ((travel.avgApprovalTime || 0) * (travel.total || 0) + 
+                          (expense.avgApprovalTime || 0) * (expense.total || 0)) / 
+                         ((travel.total || 0) + (expense.total || 0) || 1),
+        approvalRate: ((travel.total || 0) + (expense.total || 0)) > 0
+          ? parseFloat((((travel.approved || 0) + (expense.approved || 0)) / 
+                        ((travel.total || 0) + (expense.total || 0))) * 100).toFixed(2)
+          : 0
+      };
+    }
+  }, [type, statistics]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>

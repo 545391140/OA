@@ -267,7 +267,7 @@ router.get('/history', protect, async (req, res) => {
 // @access  Private
 router.get('/statistics', protect, async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, type } = req.query;
 
     // 构建日期查询
     const dateQuery = {};
@@ -278,90 +278,192 @@ router.get('/statistics', protect, async (req, res) => {
       dateQuery.$lte = new Date(endDate);
     }
 
-    // 查询统计数据
-    const [travelStats, expenseStats] = await Promise.all([
-      Travel.aggregate([
-        {
-          $match: {
-            'approvals.approver': req.user.id,
-            ...(Object.keys(dateQuery).length > 0 && { 'approvals.approvedAt': dateQuery })
-          }
-        },
-        {
-          $unwind: '$approvals'
-        },
-        {
-          $match: {
-            'approvals.approver': req.user.id
-          }
-        },
-        {
-          $group: {
-            _id: '$approvals.status',
-            count: { $sum: 1 },
-            avgAmount: { $avg: '$estimatedBudget' }
-          }
-        }
-      ]),
-      Expense.aggregate([
-        {
-          $match: {
-            'approvals.approver': req.user.id,
-            ...(Object.keys(dateQuery).length > 0 && { 'approvals.approvedAt': dateQuery })
-          }
-        },
-        {
-          $unwind: '$approvals'
-        },
-        {
-          $match: {
-            'approvals.approver': req.user.id
-          }
-        },
-        {
-          $group: {
-            _id: '$approvals.status',
-            count: { $sum: 1 },
-            avgAmount: { $avg: '$totalAmount' }
-          }
-        }
-      ])
-    ]);
+    // 构建基础匹配条件
+    const baseMatch = {
+      'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+    };
+    
+    if (Object.keys(dateQuery).length > 0) {
+      baseMatch['approvals.createdAt'] = dateQuery;
+    }
 
-    // 格式化统计结果
-    const formatStats = (stats) => {
+    // 查询差旅统计数据
+    const getTravelStats = async () => {
+      const stats = await Travel.aggregate([
+        {
+          $match: baseMatch
+        },
+        {
+          $unwind: '$approvals'
+        },
+        {
+          $match: {
+            'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+          }
+        },
+        {
+          $group: {
+            _id: '$approvals.status',
+            count: { $sum: 1 },
+            totalAmount: { $sum: { $ifNull: ['$estimatedBudget', '$estimatedCost', 0] } },
+            avgAmount: { $avg: { $ifNull: ['$estimatedBudget', '$estimatedCost', 0] } },
+            totalApprovalTime: {
+              $sum: {
+                $cond: [
+                  { $and: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                  {
+                    $divide: [
+                      { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                      3600000 // Convert to hours
+                    ]
+                  },
+                  0
+                ]
+              }
+            },
+            completedCount: {
+              $sum: {
+                $cond: [
+                  { $in: ['$approvals.status', ['approved', 'rejected']] },
+                  1,
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ]);
+
       const result = {
         pending: 0,
         approved: 0,
         rejected: 0,
         total: 0,
-        avgAmount: 0
+        totalAmount: 0,
+        avgAmount: 0,
+        avgApprovalTime: 0,
+        approvalRate: 0
       };
 
       stats.forEach(stat => {
         result[stat._id] = stat.count;
         result.total += stat.count;
-        result.avgAmount += stat.avgAmount || 0;
+        result.totalAmount += stat.totalAmount || 0;
       });
 
-      result.avgAmount = result.avgAmount / (stats.length || 1);
-      result.approvalRate = result.total > 0 ? (result.approved / result.total * 100).toFixed(2) : 0;
+      const completedCount = stats.reduce((sum, stat) => {
+        return sum + (stat.completedCount || 0);
+      }, 0);
+
+      if (stats.length > 0) {
+        result.avgAmount = result.totalAmount / result.total;
+        const totalApprovalTime = stats.reduce((sum, stat) => sum + (stat.totalApprovalTime || 0), 0);
+        result.avgApprovalTime = completedCount > 0 ? totalApprovalTime / completedCount : 0;
+      }
+
+      result.approvalRate = result.total > 0 ? parseFloat(((result.approved / result.total) * 100).toFixed(2)) : 0;
 
       return result;
     };
 
+    // 查询费用统计数据
+    const getExpenseStats = async () => {
+      const stats = await Expense.aggregate([
+        {
+          $match: baseMatch
+        },
+        {
+          $unwind: '$approvals'
+        },
+        {
+          $match: {
+            'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+          }
+        },
+        {
+          $group: {
+            _id: '$approvals.status',
+            count: { $sum: 1 },
+            totalAmount: { $sum: { $ifNull: ['$totalAmount', '$amount', 0] } },
+            avgAmount: { $avg: { $ifNull: ['$totalAmount', '$amount', 0] } },
+            totalApprovalTime: {
+              $sum: {
+                $cond: [
+                  { $and: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                  {
+                    $divide: [
+                      { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                      3600000 // Convert to hours
+                    ]
+                  },
+                  0
+                ]
+              }
+            },
+            completedCount: {
+              $sum: {
+                $cond: [
+                  { $in: ['$approvals.status', ['approved', 'rejected']] },
+                  1,
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ]);
+
+      const result = {
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        total: 0,
+        totalAmount: 0,
+        avgAmount: 0,
+        avgApprovalTime: 0,
+        approvalRate: 0
+      };
+
+      stats.forEach(stat => {
+        result[stat._id] = stat.count;
+        result.total += stat.count;
+        result.totalAmount += stat.totalAmount || 0;
+      });
+
+      const completedCount = stats.reduce((sum, stat) => {
+        return sum + (stat.completedCount || 0);
+      }, 0);
+
+      if (stats.length > 0) {
+        result.avgAmount = result.totalAmount / result.total;
+        const totalApprovalTime = stats.reduce((sum, stat) => sum + (stat.totalApprovalTime || 0), 0);
+        result.avgApprovalTime = completedCount > 0 ? totalApprovalTime / completedCount : 0;
+      }
+
+      result.approvalRate = result.total > 0 ? parseFloat(((result.approved / result.total) * 100).toFixed(2)) : 0;
+
+      return result;
+    };
+
+    // 根据type参数决定查询哪些数据
+    const results = {};
+    if (!type || type === 'travel') {
+      results.travel = await getTravelStats();
+    }
+    if (!type || type === 'expense') {
+      results.expense = await getExpenseStats();
+    }
+
     res.json({
       success: true,
-      data: {
-        travel: formatStats(travelStats),
-        expense: formatStats(expenseStats)
-      }
+      data: results
     });
   } catch (error) {
     console.error('Get approval statistics error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      error: error.message
     });
   }
 });
@@ -382,10 +484,12 @@ router.get('/approver-workload', protect, async (req, res) => {
       dateQuery.$lte = new Date(endDate);
     }
 
-    // 聚合查询审批人工作量
-    const workload = await Travel.aggregate([
+    const matchStage = Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {};
+
+    // 聚合查询差旅审批人工作量
+    const travelWorkload = await Travel.aggregate([
       {
-        $match: Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {}
+        $match: matchStage
       },
       {
         $unwind: '$approvals'
@@ -418,7 +522,11 @@ router.get('/approver-workload', protect, async (req, res) => {
           totalApprovalTime: {
             $sum: {
               $cond: [
-                { $in: ['$approvals.status', ['approved', 'rejected']] },
+                { $and: [
+                  { $in: ['$approvals.status', ['approved', 'rejected']] },
+                  '$approvals.approvedAt',
+                  '$approvals.createdAt'
+                ]},
                 {
                   $divide: [
                     { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
@@ -428,37 +536,142 @@ router.get('/approver-workload', protect, async (req, res) => {
                 0
               ]
             }
-          }
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          approverName: 1,
-          pending: 1,
-          approved: 1,
-          rejected: 1,
-          total: 1,
-          approvalRate: {
-            $cond: [
-              { $gt: ['$total', 0] },
-              { $multiply: [{ $divide: ['$approved', '$total'] }, 100] },
-              0
-            ]
           },
-          avgApprovalTime: {
-            $cond: [
-              { $gt: [{ $add: ['$approved', '$rejected'] }, 0] },
-              { $divide: ['$totalApprovalTime', { $add: ['$approved', '$rejected'] }] },
-              0
-            ]
+          completedCount: {
+            $sum: {
+              $cond: [
+                { $in: ['$approvals.status', ['approved', 'rejected']] },
+                1,
+                0
+              ]
+            }
           }
         }
-      },
-      {
-        $sort: { total: -1 }
       }
     ]);
+
+    // 聚合查询费用审批人工作量
+    const expenseWorkload = await Expense.aggregate([
+      {
+        $match: matchStage
+      },
+      {
+        $unwind: '$approvals'
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'approvals.approver',
+          foreignField: '_id',
+          as: 'approverInfo'
+        }
+      },
+      {
+        $unwind: '$approverInfo'
+      },
+      {
+        $group: {
+          _id: '$approvals.approver',
+          approverName: { $first: { $concat: ['$approverInfo.firstName', ' ', '$approverInfo.lastName'] } },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$approvals.status', 'pending'] }, 1, 0] }
+          },
+          approved: {
+            $sum: { $cond: [{ $eq: ['$approvals.status', 'approved'] }, 1, 0] }
+          },
+          rejected: {
+            $sum: { $cond: [{ $eq: ['$approvals.status', 'rejected'] }, 1, 0] }
+          },
+          total: { $sum: 1 },
+          totalApprovalTime: {
+            $sum: {
+              $cond: [
+                { $and: [
+                  { $in: ['$approvals.status', ['approved', 'rejected']] },
+                  '$approvals.approvedAt',
+                  '$approvals.createdAt'
+                ]},
+                {
+                  $divide: [
+                    { $subtract: ['$approvals.approvedAt', '$approvals.createdAt'] },
+                    3600000 // Convert to hours
+                  ]
+                },
+                0
+              ]
+            }
+          },
+          completedCount: {
+            $sum: {
+              $cond: [
+                { $in: ['$approvals.status', ['approved', 'rejected']] },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    // 合并差旅和费用数据
+    const workloadMap = {};
+    
+    travelWorkload.forEach(item => {
+      const key = String(item._id);
+      if (!workloadMap[key]) {
+        workloadMap[key] = {
+          _id: item._id,
+          approverName: item.approverName,
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          total: 0,
+          totalApprovalTime: 0,
+          completedCount: 0
+        };
+      }
+      workloadMap[key].pending += item.pending;
+      workloadMap[key].approved += item.approved;
+      workloadMap[key].rejected += item.rejected;
+      workloadMap[key].total += item.total;
+      workloadMap[key].totalApprovalTime += item.totalApprovalTime;
+      workloadMap[key].completedCount += item.completedCount;
+    });
+
+    expenseWorkload.forEach(item => {
+      const key = String(item._id);
+      if (!workloadMap[key]) {
+        workloadMap[key] = {
+          _id: item._id,
+          approverName: item.approverName,
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          total: 0,
+          totalApprovalTime: 0,
+          completedCount: 0
+        };
+      }
+      workloadMap[key].pending += item.pending;
+      workloadMap[key].approved += item.approved;
+      workloadMap[key].rejected += item.rejected;
+      workloadMap[key].total += item.total;
+      workloadMap[key].totalApprovalTime += item.totalApprovalTime;
+      workloadMap[key].completedCount += item.completedCount;
+    });
+
+    // 转换为数组并计算最终指标
+    const workload = Object.values(workloadMap).map(item => ({
+      _id: item._id,
+      approverName: item.approverName,
+      pending: item.pending,
+      approved: item.approved,
+      rejected: item.rejected,
+      total: item.total,
+      approvalRate: item.total > 0 ? parseFloat(((item.approved / item.total) * 100).toFixed(2)) : 0,
+      avgApprovalTime: item.completedCount > 0 ? parseFloat((item.totalApprovalTime / item.completedCount).toFixed(2)) : 0
+    })).sort((a, b) => b.total - a.total);
 
     res.json({
       success: true,
@@ -494,87 +707,209 @@ router.get('/trend', protect, async (req, res) => {
       ? { createdAt: dateQuery }
       : {};
 
-    // 聚合查询趋势数据
-    const trendData = await Travel.aggregate([
-      {
-        $match: matchStage
-      },
-      {
-        $unwind: '$approvals'
-      },
-      {
-        $group: {
-          _id: {
-            date: {
-              $dateToString: {
-                format: '%Y-%m-%d',
-                date: '$createdAt'
+    // 获取差旅趋势数据
+    const getTravelTrend = async () => {
+      return await Travel.aggregate([
+        {
+          $match: matchStage
+        },
+        {
+          $unwind: '$approvals'
+        },
+        {
+          $match: {
+            'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+          }
+        },
+        {
+          $group: {
+            _id: {
+              date: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: '$approvals.createdAt'
+                }
+              },
+              status: '$approvals.status'
+            },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $group: {
+            _id: '$_id.date',
+            data: {
+              $push: {
+                status: '$_id.status',
+                count: '$count'
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            date: '$_id',
+            pending: {
+              $sum: {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$data',
+                      cond: { $eq: ['$$this.status', 'pending'] }
+                    }
+                  },
+                  in: '$$this.count'
+                }
               }
             },
-            status: '$approvals.status'
-          },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $group: {
-          _id: '$_id.date',
-          data: {
-            $push: {
-              status: '$_id.status',
-              count: '$count'
-            }
-          }
-        }
-      },
-      {
-        $project: {
-          date: '$_id',
-          pending: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$data',
-                    cond: { $eq: ['$$this.status', 'pending'] }
-                  }
-                },
-                in: '$$this.count'
+            approved: {
+              $sum: {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$data',
+                      cond: { $eq: ['$$this.status', 'approved'] }
+                    }
+                  },
+                  in: '$$this.count'
+                }
               }
-            }
-          },
-          approved: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$data',
-                    cond: { $eq: ['$$this.status', 'approved'] }
-                  }
-                },
-                in: '$$this.count'
-              }
-            }
-          },
-          rejected: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$data',
-                    cond: { $eq: ['$$this.status', 'rejected'] }
-                  }
-                },
-                in: '$$this.count'
+            },
+            rejected: {
+              $sum: {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$data',
+                      cond: { $eq: ['$$this.status', 'rejected'] }
+                    }
+                  },
+                  in: '$$this.count'
+                }
               }
             }
           }
+        },
+        {
+          $sort: { date: 1 }
         }
-      },
-      {
-        $sort: { date: 1 }
-      }
-    ]);
+      ]);
+    };
+
+    // 获取费用趋势数据
+    const getExpenseTrend = async () => {
+      return await Expense.aggregate([
+        {
+          $match: matchStage
+        },
+        {
+          $unwind: '$approvals'
+        },
+        {
+          $match: {
+            'approvals.approver': mongoose.Types.ObjectId(req.user.id)
+          }
+        },
+        {
+          $group: {
+            _id: {
+              date: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: '$approvals.createdAt'
+                }
+              },
+              status: '$approvals.status'
+            },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $group: {
+            _id: '$_id.date',
+            data: {
+              $push: {
+                status: '$_id.status',
+                count: '$count'
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            date: '$_id',
+            pending: {
+              $sum: {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$data',
+                      cond: { $eq: ['$$this.status', 'pending'] }
+                    }
+                  },
+                  in: '$$this.count'
+                }
+              }
+            },
+            approved: {
+              $sum: {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$data',
+                      cond: { $eq: ['$$this.status', 'approved'] }
+                    }
+                  },
+                  in: '$$this.count'
+                }
+              }
+            },
+            rejected: {
+              $sum: {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: '$data',
+                      cond: { $eq: ['$$this.status', 'rejected'] }
+                    }
+                  },
+                  in: '$$this.count'
+                }
+              }
+            }
+          }
+        },
+        {
+          $sort: { date: 1 }
+        }
+      ]);
+    };
+
+    // 根据type参数决定查询哪些数据
+    let trendData = [];
+    if (!type || type === 'all') {
+      // 查询所有类型的数据并合并
+      const [travelTrend, expenseTrend] = await Promise.all([
+        getTravelTrend(),
+        getExpenseTrend()
+      ]);
+      
+      // 合并数据
+      const trendMap = {};
+      [...travelTrend, ...expenseTrend].forEach(item => {
+        if (!trendMap[item.date]) {
+          trendMap[item.date] = { date: item.date, pending: 0, approved: 0, rejected: 0 };
+        }
+        trendMap[item.date].pending += item.pending || 0;
+        trendMap[item.date].approved += item.approved || 0;
+        trendMap[item.date].rejected += item.rejected || 0;
+      });
+      trendData = Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date));
+    } else if (type === 'travel') {
+      trendData = await getTravelTrend();
+    } else if (type === 'expense') {
+      trendData = await getExpenseTrend();
+    }
 
     res.json({
       success: true,
