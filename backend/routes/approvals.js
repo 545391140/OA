@@ -376,6 +376,8 @@ router.get('/statistics', protect, async (req, res) => {
         }
       ]);
 
+      console.log('Aggregation expense stats result:', JSON.stringify(stats, null, 2));
+
       const result = {
         pending: 0,
         approved: 0,
@@ -404,6 +406,8 @@ router.get('/statistics', protect, async (req, res) => {
       }
 
       result.approvalRate = result.total > 0 ? parseFloat(((result.approved / result.total) * 100).toFixed(2)) : 0;
+
+      console.log('Final expense stats result:', JSON.stringify(result, null, 2));
 
       return result;
     };
