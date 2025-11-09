@@ -4,6 +4,7 @@ const Travel = require('../models/Travel');
 const Expense = require('../models/Expense');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -49,7 +50,22 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.put('/travel/:id', protect, async (req, res) => {
   try {
-    const { action, comments } = req.body;
+    const { action, status, comments } = req.body;
+    
+    // 支持两种参数格式：action ('approve'/'reject') 或 status ('approved'/'rejected')
+    let approvalAction;
+    if (action) {
+      approvalAction = action; // 'approve' 或 'reject'
+    } else if (status) {
+      // 将 status 转换为 action
+      approvalAction = status === 'approved' ? 'approve' : 'reject';
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameter: action or status'
+      });
+    }
+    
     const travel = await Travel.findById(req.params.id);
 
     if (!travel) {
@@ -72,7 +88,7 @@ router.put('/travel/:id', protect, async (req, res) => {
     }
 
     // Update approval status
-    travel.approvals[approvalIndex].status = action === 'approve' ? 'approved' : 'rejected';
+    travel.approvals[approvalIndex].status = approvalAction === 'approve' ? 'approved' : 'rejected';
     travel.approvals[approvalIndex].approvedAt = new Date();
     if (comments) {
       travel.approvals[approvalIndex].comments = comments;
@@ -83,12 +99,60 @@ router.put('/travel/:id', protect, async (req, res) => {
       approval.status === 'approved' || approval.status === 'rejected'
     );
 
+    const wasPending = travel.approvals[approvalIndex].status === 'pending';
+    const isApproved = approvalAction === 'approve';
+    const isRejected = approvalAction === 'reject';
+
     if (allApproved) {
       const hasRejected = travel.approvals.some(approval => approval.status === 'rejected');
       travel.status = hasRejected ? 'rejected' : 'approved';
     }
 
     await travel.save();
+
+    // 发送通知给申请人
+    try {
+      const travelPopulated = await Travel.findById(travel._id)
+        .populate('employee', 'firstName lastName email');
+      
+      if (travelPopulated && travelPopulated.employee) {
+        if (allApproved) {
+          // 所有审批完成，发送最终结果通知
+          if (hasRejected) {
+            await notificationService.notifyApprovalRejected({
+              requester: travelPopulated.employee,
+              requestType: 'travel',
+              requestId: travel._id,
+              requestTitle: travel.title || travel.travelNumber || '差旅申请',
+              approver: {
+                _id: req.user.id,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName
+              },
+              comments: comments || '无'
+            });
+          } else {
+            await notificationService.notifyApprovalApproved({
+              requester: travelPopulated.employee,
+              requestType: 'travel',
+              requestId: travel._id,
+              requestTitle: travel.title || travel.travelNumber || '差旅申请',
+              approver: {
+                _id: req.user.id,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName
+              }
+            });
+          }
+        } else if (wasPending) {
+          // 部分审批完成，发送中间状态通知（可选）
+          // 这里可以根据业务需求决定是否发送中间状态通知
+        }
+      }
+    } catch (notifyError) {
+      console.error('Failed to send approval notification:', notifyError);
+      // 通知失败不影响审批流程
+    }
 
     res.json({
       success: true,
@@ -108,7 +172,22 @@ router.put('/travel/:id', protect, async (req, res) => {
 // @access  Private
 router.put('/expense/:id', protect, async (req, res) => {
   try {
-    const { action, comments } = req.body;
+    const { action, status, comments } = req.body;
+    
+    // 支持两种参数格式：action ('approve'/'reject') 或 status ('approved'/'rejected')
+    let approvalAction;
+    if (action) {
+      approvalAction = action; // 'approve' 或 'reject'
+    } else if (status) {
+      // 将 status 转换为 action
+      approvalAction = status === 'approved' ? 'approve' : 'reject';
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameter: action or status'
+      });
+    }
+    
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
@@ -131,7 +210,7 @@ router.put('/expense/:id', protect, async (req, res) => {
     }
 
     // Update approval status
-    expense.approvals[approvalIndex].status = action === 'approve' ? 'approved' : 'rejected';
+    expense.approvals[approvalIndex].status = approvalAction === 'approve' ? 'approved' : 'rejected';
     expense.approvals[approvalIndex].approvedAt = new Date();
     if (comments) {
       expense.approvals[approvalIndex].comments = comments;
@@ -142,12 +221,61 @@ router.put('/expense/:id', protect, async (req, res) => {
       approval.status === 'approved' || approval.status === 'rejected'
     );
 
+    const wasPending = expense.approvals[approvalIndex].status === 'pending';
+    const isApproved = approvalAction === 'approve';
+    const isRejected = approvalAction === 'reject';
+
     if (allApproved) {
       const hasRejected = expense.approvals.some(approval => approval.status === 'rejected');
       expense.status = hasRejected ? 'rejected' : 'approved';
     }
 
     await expense.save();
+
+    // 发送通知给申请人
+    try {
+      const expensePopulated = await Expense.findById(expense._id)
+        .populate('employee', 'firstName lastName email');
+      
+      if (expensePopulated && expensePopulated.employee) {
+        if (allApproved) {
+          // 所有审批完成，发送最终结果通知
+          const hasRejected = expense.approvals.some(approval => approval.status === 'rejected');
+          if (hasRejected) {
+            await notificationService.notifyApprovalRejected({
+              requester: expensePopulated.employee,
+              requestType: 'expense',
+              requestId: expense._id,
+              requestTitle: expense.title || '费用申请',
+              approver: {
+                _id: req.user.id,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName
+              },
+              comments: comments || '无'
+            });
+          } else {
+            await notificationService.notifyApprovalApproved({
+              requester: expensePopulated.employee,
+              requestType: 'expense',
+              requestId: expense._id,
+              requestTitle: expense.title || '费用申请',
+              approver: {
+                _id: req.user.id,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName
+              }
+            });
+          }
+        } else if (wasPending) {
+          // 部分审批完成，发送中间状态通知（可选）
+          // 这里可以根据业务需求决定是否发送中间状态通知
+        }
+      }
+    } catch (notifyError) {
+      console.error('Failed to send approval notification:', notifyError);
+      // 通知失败不影响审批流程
+    }
 
     res.json({
       success: true,

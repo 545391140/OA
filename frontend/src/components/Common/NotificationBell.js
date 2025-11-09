@@ -61,9 +61,11 @@ const NotificationBell = () => {
   };
 
   // 获取通知列表
-  const fetchNotifications = async (pageNum = 1) => {
+  const fetchNotifications = async (pageNum = 1, silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const response = await apiClient.get('/notifications', {
         params: { page: pageNum, limit: 10 }
       });
@@ -72,6 +74,8 @@ const NotificationBell = () => {
         const newNotifications = response.data.notifications || [];
         if (pageNum === 1) {
           setNotifications(newNotifications);
+          // 同时更新未读数量
+          fetchUnreadCount();
         } else {
           setNotifications(prev => [...prev, ...newNotifications]);
         }
@@ -80,23 +84,43 @@ const NotificationBell = () => {
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
-  // 初始化和定时刷新
+  // 初始化和定时刷新未读数量
   useEffect(() => {
     fetchUnreadCount();
     
-    // 每30秒刷新一次未读数量
-    const interval = setInterval(fetchUnreadCount, 30000);
+    // 每10秒刷新一次未读数量（缩短间隔以更快响应新通知）
+    const interval = setInterval(fetchUnreadCount, 10000);
     
     return () => clearInterval(interval);
   }, []);
 
+  // 当通知列表打开时，定期刷新通知列表
+  useEffect(() => {
+    if (!anchorEl) return; // 如果通知列表未打开，不刷新
+
+    // 立即刷新一次（静默模式，不显示loading）
+    fetchNotifications(1, true);
+    
+    // 每5秒刷新一次通知列表（仅在打开时，静默模式）
+    const interval = setInterval(() => {
+      fetchNotifications(1, true);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorEl]);
+
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget);
     setPage(1);
+    // 注意：fetchNotifications 会在 useEffect 中自动调用，这里可以省略
+    // 但如果需要立即显示，可以保留
     fetchNotifications(1);
   };
 

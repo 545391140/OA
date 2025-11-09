@@ -24,7 +24,14 @@ class NotificationService {
           emailContent = rendered.email;
           pushContent = rendered.push;
         } catch (error) {
-          console.warn(`Template ${templateCode} not found, using provided content`);
+          console.warn(`Template ${templateCode} not found, using provided content or default`);
+          // 如果模板不存在，使用默认内容
+          if (!finalTitle && type === 'approval_request') {
+            finalTitle = variables?.requestType ? `${variables.requestType}审批请求` : '审批请求';
+            finalContent = variables?.requesterName && variables?.requestTitle
+              ? `${variables.requesterName}提交了${variables.requestType}申请"${variables.requestTitle}"，等待您的审批`
+              : '您有新的审批请求';
+          }
         }
       } else if (type) {
         // 尝试根据类型查找模板
@@ -36,11 +43,26 @@ class NotificationService {
           emailContent = rendered.email || content;
           pushContent = rendered.push || content;
         } catch (error) {
-          // 模板不存在，使用提供的标题和内容
+          // 模板不存在，使用提供的标题和内容或默认内容
+          if (!finalTitle && type === 'approval_request') {
+            finalTitle = variables?.requestType ? `${variables.requestType}审批请求` : '审批请求';
+            finalContent = variables?.requesterName && variables?.requestTitle
+              ? `${variables.requesterName}提交了${variables.requestType}申请"${variables.requestTitle}"，等待您的审批`
+              : '您有新的审批请求';
+          }
         }
       }
 
+      // 确保标题和内容不为空
+      if (!finalTitle) {
+        finalTitle = title || '系统通知';
+      }
+      if (!finalContent) {
+        finalContent = content || '您有一条新通知';
+      }
+
       // 创建站内通知
+      console.log(`Creating notification: recipient=${recipient}, type=${type}, title=${finalTitle}`);
       const notification = await Notification.create({
         recipient,
         sender,
@@ -50,6 +72,7 @@ class NotificationService {
         relatedData,
         priority
       });
+      console.log(`Notification created successfully: ${notification._id}`);
 
       // 获取用户设置，检查通知偏好
       const userSettings = await Settings.getUserSettings(recipient);
@@ -108,33 +131,70 @@ class NotificationService {
    * 发送审批请求通知（使用模板）
    */
   async notifyApprovalRequest({ approvers, requestType, requestId, requestTitle, requester }) {
+    const mongoose = require('mongoose');
     const requesterId = requester._id || requester;
     const requesterName = requester.firstName ? `${requester.firstName} ${requester.lastName}` : '用户';
     
+    // 确保 approvers 是数组且包含有效的审批人ID
+    if (!approvers || !Array.isArray(approvers) || approvers.length === 0) {
+      console.warn('No approvers provided for approval request notification');
+      return [];
+    }
+
+    // 过滤并转换审批人ID为ObjectId
+    const approverIds = approvers
+      .map(approverId => {
+        if (!approverId) return null;
+        // 如果是对象，取_id；如果是字符串，直接使用
+        const id = approverId._id || approverId;
+        // 确保是有效的ObjectId格式
+        if (mongoose.Types.ObjectId.isValid(id)) {
+          return id;
+        }
+        return null;
+      })
+      .filter(id => id !== null);
+
+    if (approverIds.length === 0) {
+      console.warn('No valid approver IDs found for approval request notification');
+      return [];
+    }
+
+    console.log(`Sending approval request notifications to ${approverIds.length} approvers`);
+    
     const notifications = await Promise.all(
-      approvers.map(approverId => 
-        this.createNotification({
-          recipient: approverId._id || approverId,
-          sender: requesterId,
-          type: 'approval_request',
-          templateCode: 'APPROVAL_REQUEST',
-          variables: {
-            requesterName: requesterName,
-            requestType: requestType === 'travel' ? '差旅' : '费用',
-            requestTitle: requestTitle,
-            url: `/${requestType}/${requestId}`
-          },
-          relatedData: {
-            type: requestType,
-            id: requestId,
-            url: `/${requestType}/${requestId}`
-          },
-          priority: 'high'
-        })
-      )
+      approverIds.map(async (approverId) => {
+        try {
+          return await this.createNotification({
+            recipient: approverId,
+            sender: requesterId,
+            type: 'approval_request',
+            templateCode: 'APPROVAL_REQUEST',
+            variables: {
+              requesterName: requesterName,
+              requestType: requestType === 'travel' ? '差旅' : '费用',
+              requestTitle: requestTitle || '申请',
+              url: `/${requestType}/${requestId}`
+            },
+            relatedData: {
+              type: requestType,
+              id: requestId,
+              url: `/${requestType}/${requestId}`
+            },
+            priority: 'high'
+          });
+        } catch (error) {
+          console.error(`Failed to create notification for approver ${approverId}:`, error);
+          return null;
+        }
+      })
     );
 
-    return notifications;
+    // 过滤掉创建失败的通知
+    const successfulNotifications = notifications.filter(n => n !== null);
+    console.log(`Successfully created ${successfulNotifications.length} approval request notifications`);
+
+    return successfulNotifications;
   }
 
   /**
