@@ -564,7 +564,12 @@
       "rejectSuccess": "Rejected",
       "approvalError": "Approval failed",
       "confirmApprove": "Confirm Approval",
-      "confirmReject": "Confirm Rejection"
+      "confirmReject": "Confirm Rejection",
+      "totalBudget": "Total",
+      "budgetInfo": "Budget Information",
+      "outbound": "Outbound",
+      "inbound": "Inbound",
+      "multiCity": "Multi-City"
     }
   },
   "travelStandard": {

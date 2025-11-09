@@ -567,7 +567,12 @@
       "rejectSuccess": "거부되었습니다",
       "approvalError": "승인 실패",
       "confirmApprove": "승인 확인",
-      "confirmReject": "거부 확인"
+      "confirmReject": "거부 확인",
+      "totalBudget": "총액",
+      "budgetInfo": "예산 정보",
+      "outbound": "출발",
+      "inbound": "귀국",
+      "multiCity": "다구간"
     }
   },
   "travelStandard": {

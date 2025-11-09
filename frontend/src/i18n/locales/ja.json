@@ -532,7 +532,12 @@
       "rejectSuccess": "却下されました",
       "approvalError": "承認に失敗しました",
       "confirmApprove": "承認を確認",
-      "confirmReject": "却下を確認"
+      "confirmReject": "却下を確認",
+      "totalBudget": "合計",
+      "budgetInfo": "予算情報",
+      "outbound": "往路",
+      "inbound": "復路",
+      "multiCity": "複数都市"
     }
   },
   "travelStandard": {

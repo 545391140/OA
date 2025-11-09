@@ -568,11 +568,11 @@ const TravelDetail = () => {
             <Divider sx={{ mb: 1.5 }} />
 
             <Grid container spacing={1.5}>
-              {/* 预算总览 */}
-              <Grid item xs={12} md={4}>
+              {/* 总额 */}
+              <Grid item xs={6} md={3}>
                 <Card variant="outlined" sx={{ p: 1.5, bgcolor: 'primary.50' }}>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    {t('travel.detail.estimatedBudget')}
+                    {t('travel.detail.totalBudget')}
                   </Typography>
                   <Typography variant="h6" color="primary">
                     {formatCurrency(travel.estimatedBudget || 0)}
@@ -580,30 +580,60 @@ const TravelDetail = () => {
                 </Card>
               </Grid>
 
-              {travel.actualCost !== undefined && (
-                <Grid item xs={12} md={4}>
-                  <Card variant="outlined" sx={{ p: 1.5, bgcolor: 'success.50' }}>
+              {/* 去程预算 */}
+              {travel.outboundBudget && Object.keys(travel.outboundBudget).length > 0 && (
+                <Grid item xs={6} md={3}>
+                  <Card variant="outlined" sx={{ p: 1.5, bgcolor: 'info.50' }}>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      {t('travel.detail.actualCost')}
+                      {t('travel.detail.outbound')}
                     </Typography>
-                    <Typography variant="h6" color="success.main">
-                      {formatCurrency(travel.actualCost || 0)}
+                    <Typography variant="h6" color="info.main">
+                      {formatCurrency(
+                        Object.values(travel.outboundBudget).reduce((sum, item) => {
+                          const amount = typeof item === 'object' ? (item.subtotal || 0) : (typeof item === 'number' ? item : 0);
+                          return sum + amount;
+                        }, 0)
+                      )}
                     </Typography>
                   </Card>
                 </Grid>
               )}
 
-              {travel.actualCost !== undefined && (
-                <Grid item xs={12} md={4}>
-                  <Card variant="outlined" sx={{ p: 1.5, bgcolor: travel.actualCost <= travel.estimatedBudget ? 'success.50' : 'error.50' }}>
+              {/* 返程预算 */}
+              {travel.inboundBudget && Object.keys(travel.inboundBudget).length > 0 && (
+                <Grid item xs={6} md={3}>
+                  <Card variant="outlined" sx={{ p: 1.5, bgcolor: 'success.50' }}>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      {t('travel.detail.variance')}
+                      {t('travel.detail.inbound')}
                     </Typography>
-                    <Typography 
-                      variant="h6" 
-                      color={travel.actualCost <= travel.estimatedBudget ? 'success.main' : 'error.main'}
-                    >
-                      {formatCurrency((travel.estimatedBudget || 0) - (travel.actualCost || 0))}
+                    <Typography variant="h6" color="success.main">
+                      {formatCurrency(
+                        Object.values(travel.inboundBudget).reduce((sum, item) => {
+                          const amount = typeof item === 'object' ? (item.subtotal || 0) : (typeof item === 'number' ? item : 0);
+                          return sum + amount;
+                        }, 0)
+                      )}
+                    </Typography>
+                  </Card>
+                </Grid>
+              )}
+
+              {/* 多程预算 */}
+              {travel.multiCityRoutesBudget && travel.multiCityRoutesBudget.length > 0 && (
+                <Grid item xs={6} md={3}>
+                  <Card variant="outlined" sx={{ p: 1.5, bgcolor: 'warning.50' }}>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {t('travel.detail.multiCity')} ({travel.multiCityRoutesBudget.length})
+                    </Typography>
+                    <Typography variant="h6" color="warning.main">
+                      {formatCurrency(
+                        travel.multiCityRoutesBudget.reduce((total, budget) => {
+                          return total + Object.values(budget).reduce((sum, item) => {
+                            const amount = typeof item === 'object' ? (item.subtotal || 0) : (typeof item === 'number' ? item : 0);
+                            return sum + amount;
+                          }, 0);
+                        }, 0)
+                      )}
                     </Typography>
                   </Card>
                 </Grid>
