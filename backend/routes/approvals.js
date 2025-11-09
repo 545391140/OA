@@ -171,14 +171,17 @@ router.get('/history', protect, async (req, res) => {
     const approverIdString = String(approverId);
 
     // Get travel approvals history
+    // 返回包含完整approvals数组的申请对象，让前端自己过滤
     const travelHistory = await Travel.find({
       'approvals.approver': { $in: [approverId, approverIdString] },
       'approvals.status': { $in: ['approved', 'rejected'] }
     })
       .populate('employee', 'firstName lastName email')
-      .select('title travelNumber status estimatedCost currency startDate endDate destination createdAt approvals employee')
+      .populate('approvals.approver', 'firstName lastName email position')
+      .select('title travelNumber status estimatedBudget estimatedCost currency startDate endDate destination outbound inbound multiCityRoutes createdAt approvals employee')
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(50)
+      .lean();
 
     // Get expense approvals history
     const expenseHistory = await Expense.find({
@@ -187,41 +190,22 @@ router.get('/history', protect, async (req, res) => {
     })
       .populate('employee', 'firstName lastName email')
       .populate('travel', 'title destination')
-      .select('title amount currency status date createdAt approvals employee travel')
+      .populate('approvals.approver', 'firstName lastName email position')
+      .select('title expenseNumber totalAmount amount currency expenseDate date createdAt approvals employee travel')
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(50)
+      .lean();
 
-    // Transform data to include approval details
-    const transformHistory = (items, type) => {
-      return items.flatMap(item => {
-        return item.approvals
-          .filter(approval => 
-            (String(approval.approver) === approverIdString || String(approval.approver) === String(approverId)) &&
-            (approval.status === 'approved' || approval.status === 'rejected')
-          )
-          .map(approval => ({
-            id: item._id,
-            type,
-            title: item.title,
-            number: item.travelNumber || item.expenseNumber,
-            status: approval.status,
-            approvedAt: approval.approvedAt,
-            comments: approval.comments,
-            amount: item.estimatedCost || item.amount,
-            currency: item.currency,
-            date: item.startDate || item.date,
-            createdAt: item.createdAt,
-            employee: item.employee,
-            travel: item.travel
-          }));
-      }).sort((a, b) => new Date(b.approvedAt) - new Date(a.approvedAt));
-    };
+    console.log('=== Approval History API ===');
+    console.log('Approver ID:', approverId);
+    console.log('Travel history count:', travelHistory.length);
+    console.log('Expense history count:', expenseHistory.length);
 
     res.json({
       success: true,
       data: {
-        travels: transformHistory(travelHistory, 'travel'),
-        expenses: transformHistory(expenseHistory, 'expense')
+        travels: travelHistory,
+        expenses: expenseHistory
       }
     });
   } catch (error) {

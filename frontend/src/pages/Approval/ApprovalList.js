@@ -227,15 +227,37 @@ const ApprovalList = () => {
             params: { limit: 100 } // 获取最近100条审批历史
           });
           
+          console.log('=== Approval History Response ===');
+          console.log('Response:', historyResponse.data);
+          
           if (historyResponse.data && historyResponse.data.success) {
             const { travels = [], expenses = [] } = historyResponse.data.data;
+            
+            console.log('Travels count:', travels.length);
+            console.log('Expenses count:', expenses.length);
+            console.log('Current user ID:', user.id);
             
             // 转换差旅申请历史数据格式
             const historyTravelItems = travels.map(travel => {
               // 找到当前用户审批的记录
+              // 注意：使用lean()后，_id是字符串，approver可能是ObjectId或字符串
               const userApproval = travel.approvals?.find(
-                a => String(a.approver?._id || a.approver) === String(user.id) && 
-                     (a.status === 'approved' || a.status === 'rejected')
+                a => {
+                  const approverId = a.approver?._id || a.approver;
+                  const approverIdStr = approverId ? String(approverId) : null;
+                  const userIdStr = String(user.id);
+                  const matches = approverIdStr === userIdStr && 
+                                 (a.status === 'approved' || a.status === 'rejected');
+                  if (matches) {
+                    console.log('Found matching approval:', {
+                      travelId: travel._id,
+                      approverId: approverIdStr,
+                      userId: userIdStr,
+                      status: a.status
+                    });
+                  }
+                  return matches;
+                }
               );
               
               if (!userApproval) return null;
@@ -305,8 +327,13 @@ const ApprovalList = () => {
             const historyExpenseItems = expenses.map(expense => {
               // 找到当前用户审批的记录
               const userApproval = expense.approvals?.find(
-                a => String(a.approver?._id || a.approver) === String(user.id) && 
-                     (a.status === 'approved' || a.status === 'rejected')
+                a => {
+                  const approverId = a.approver?._id || a.approver;
+                  const approverIdStr = approverId ? String(approverId) : null;
+                  const userIdStr = String(user.id);
+                  return approverIdStr === userIdStr && 
+                         (a.status === 'approved' || a.status === 'rejected');
+                }
               );
               
               if (!userApproval) return null;
@@ -328,10 +355,18 @@ const ApprovalList = () => {
               };
             }).filter(item => item !== null);
             
-            setApprovalHistory([...historyTravelItems, ...historyExpenseItems]);
+            const allHistoryItems = [...historyTravelItems, ...historyExpenseItems];
+            console.log('Total history items:', allHistoryItems.length);
+            console.log('Travel history items:', historyTravelItems.length);
+            console.log('Expense history items:', historyExpenseItems.length);
+            setApprovalHistory(allHistoryItems);
+          } else {
+            console.warn('History API response not successful:', historyResponse.data);
+            setApprovalHistory([]);
           }
         } catch (historyError) {
           console.error('Failed to fetch approval history:', historyError);
+          console.error('Error details:', historyError.response?.data);
           // 不显示错误通知，因为审批历史不是必需的
           setApprovalHistory([]);
         }
