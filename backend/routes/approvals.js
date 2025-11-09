@@ -717,6 +717,16 @@ router.get('/trend', protect, async (req, res) => {
       ? { createdAt: dateQuery }
       : {};
 
+    // 确保req.user.id正确转换为ObjectId
+    let approverId;
+    try {
+      approverId = mongoose.Types.ObjectId.isValid(req.user.id) 
+        ? mongoose.Types.ObjectId(req.user.id)
+        : req.user.id;
+    } catch (error) {
+      approverId = req.user.id;
+    }
+
     // 获取差旅趋势数据
     const getTravelTrend = async () => {
       return await Travel.aggregate([
