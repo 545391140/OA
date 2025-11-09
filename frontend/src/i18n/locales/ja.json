@@ -850,8 +850,20 @@
     "recentExpenses": "最近の経費",
     "pendingApprovals": "承認待ち",
     "monthlySpending": "月次支出",
+    "monthlyTrend": "月次支出トレンド",
     "travelStats": "出張統計",
-    "expenseStats": "経費統計"
+    "expenseStats": "経費統計",
+    "categoryBreakdown": "経費カテゴリー内訳",
+    "totalTravelRequests": "総出張申請数",
+    "approvedRequests": "承認済み申請",
+    "vsLastMonth": "前月比",
+    "amount": "金額",
+    "percentage": "パーセンテージ",
+    "noData": "データがありません",
+    "noRecentTravel": "最近の出張申請がありません",
+    "noRecentExpenses": "最近の経費記録がありません",
+    "loadError": "ダッシュボードデータの読み込みに失敗しました",
+    "refreshSuccess": "データが更新されました"
   },
   "reports": {
     "title": "レポート",

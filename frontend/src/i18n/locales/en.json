@@ -882,8 +882,20 @@
     "recentExpenses": "Recent Expenses",
     "pendingApprovals": "Pending Approvals",
     "monthlySpending": "Monthly Spending",
+    "monthlyTrend": "Monthly Spending Trend",
     "travelStats": "Travel Statistics",
-    "expenseStats": "Expense Statistics"
+    "expenseStats": "Expense Statistics",
+    "categoryBreakdown": "Expense Category Breakdown",
+    "totalTravelRequests": "Total Travel Requests",
+    "approvedRequests": "Approved Requests",
+    "vsLastMonth": "vs Last Month",
+    "amount": "Amount",
+    "percentage": "Percentage",
+    "noData": "No data available",
+    "noRecentTravel": "No recent travel requests",
+    "noRecentExpenses": "No recent expense records",
+    "loadError": "Failed to load dashboard data",
+    "refreshSuccess": "Data refreshed"
   },
   "reports": {
     "title": "Reports",

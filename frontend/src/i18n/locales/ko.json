@@ -885,8 +885,20 @@
     "recentExpenses": "최근 비용",
     "pendingApprovals": "승인 대기",
     "monthlySpending": "월간 지출",
+    "monthlyTrend": "월간 지출 추세",
     "travelStats": "출장 통계",
-    "expenseStats": "비용 통계"
+    "expenseStats": "비용 통계",
+    "categoryBreakdown": "비용 카테고리 분석",
+    "totalTravelRequests": "총 출장 신청",
+    "approvedRequests": "승인된 신청",
+    "vsLastMonth": "전월 대비",
+    "amount": "금액",
+    "percentage": "백분율",
+    "noData": "데이터가 없습니다",
+    "noRecentTravel": "최근 출장 신청이 없습니다",
+    "noRecentExpenses": "최근 비용 기록이 없습니다",
+    "loadError": "대시보드 데이터 로드 실패",
+    "refreshSuccess": "데이터가 새로고침되었습니다"
   },
   "reports": {
     "title": "보고서",

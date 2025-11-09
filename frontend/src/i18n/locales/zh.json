@@ -908,10 +908,20 @@
     "recentExpenses": "最近的费用",
     "pendingApprovals": "待审批",
     "monthlySpending": "月度支出",
+    "monthlyTrend": "月度支出趋势",
     "travelStats": "差旅统计",
     "expenseStats": "费用统计",
+    "categoryBreakdown": "费用类别分布",
     "totalTravelRequests": "总差旅申请",
-    "approvedRequests": "已批准申请"
+    "approvedRequests": "已批准申请",
+    "vsLastMonth": "相比上月",
+    "amount": "金额",
+    "percentage": "百分比",
+    "noData": "暂无数据",
+    "noRecentTravel": "暂无最近的差旅申请",
+    "noRecentExpenses": "暂无最近的费用记录",
+    "loadError": "加载Dashboard数据失败",
+    "refreshSuccess": "数据已刷新"
   },
   "reports": {
     "title": "报告",
