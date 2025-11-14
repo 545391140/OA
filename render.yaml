@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: travel-expense-backend
+    env: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: MONGODB_URI
+        sync: false  # 需要手动配置
+      - key: JWT_SECRET
+        sync: false  # 需要手动配置
+    healthCheckPath: /api/health
+
+  - type: web
+    name: travel-expense-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://travel-expense-backend.onrender.com
+

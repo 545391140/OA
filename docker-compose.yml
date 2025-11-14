@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # MongoDB 数据库
+  mongodb:
+    image: mongo:7
+    container_name: travel-expense-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: travel_expense
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - travel-expense-network
+
+  # 后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travel-expense-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/travel_expense?authSource=admin
+      - JWT_SECRET=your-jwt-secret-change-in-production
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+    networks:
+      - travel-expense-network
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  # 前端服务（可选，如果使用 Nginx）
+  nginx:
+    image: nginx:alpine
+    container_name: travel-expense-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/build:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - travel-expense-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  travel-expense-network:
+    driver: bridge
+
