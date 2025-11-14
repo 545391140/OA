@@ -71,3 +71,4 @@ console.log('   6. "AI解析的结构化数据: ..."');
 console.log('\n如果看到 "Mistral API Key 未配置"，说明环境变量未正确加载。');
 
 
+
