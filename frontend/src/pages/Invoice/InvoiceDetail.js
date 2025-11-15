@@ -335,9 +335,10 @@ const InvoiceDetail = () => {
         </Box>
 
         <Grid container spacing={3}>
-          {/* Left Column - File Preview */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2 }}>
+          {/* Left Column - File Preview and Related Info */}
+          <Grid item xs={12} lg={5}>
+            {/* File Preview */}
+            <Paper sx={{ p: 2, mb: 2 }}>
               <Typography variant="h6" gutterBottom>
                 发票文件
               </Typography>
@@ -349,7 +350,7 @@ const InvoiceDetail = () => {
                   alt="Invoice"
                   sx={{
                     width: '100%',
-                    maxHeight: 600,
+                    maxHeight: 500,
                     objectFit: 'contain',
                     borderRadius: 2,
                     border: 1,
@@ -364,7 +365,8 @@ const InvoiceDetail = () => {
                     borderRadius: 2,
                     p: 4,
                     textAlign: 'center',
-                    bgcolor: 'grey.50'
+                    bgcolor: 'grey.50',
+                    minHeight: 300
                   }}
                 >
                   {invoice.file?.mimeType?.includes('pdf') ? (
@@ -376,135 +378,55 @@ const InvoiceDetail = () => {
                     {invoice.file?.originalName}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {(invoice.file?.size / 1024 / 1024).toFixed(2)} MB
+                    {invoice.file?.size ? `${(invoice.file.size / 1024 / 1024).toFixed(2)} MB` : '-'}
                   </Typography>
                 </Box>
               )}
             </Paper>
-          </Grid>
 
-          {/* Right Column - Invoice Information */}
-          <Grid item xs={12} md={6}>
-            {/* Basic Information */}
+            {/* File Information */}
             <Paper sx={{ p: 2, mb: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="h6">
-                  基本信息
-                </Typography>
-                {invoice.ocrData?.extracted && (
-                  <Chip
-                    icon={<OCRIcon />}
-                    label="已自动识别"
-                    color="info"
-                    size="small"
-                  />
-                )}
-              </Box>
+              <Typography variant="h6" gutterBottom>
+                文件信息
+              </Typography>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">发票号</Typography>
-                    {invoice.ocrData?.extracted && invoice.invoiceNumber && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
+                    <Typography variant="body2" color="text.secondary">文件名</Typography>
                   </Box>
-                  <Typography variant="body1" fontWeight={500}>
-                    {invoice.invoiceNumber || '-'}
+                  <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                    {invoice.file?.originalName || '-'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">发票日期</Typography>
-                    {invoice.ocrData?.extracted && invoice.invoiceDate && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
+                    <Typography variant="body2" color="text.secondary">文件大小</Typography>
                   </Box>
-                  <Typography variant="body1">
-                    {invoice.invoiceDate
-                      ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD')
-                      : '-'}
+                  <Typography variant="body2">
+                    {invoice.file?.size ? `${(invoice.file.size / 1024 / 1024).toFixed(2)} MB` : '-'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">金额</Typography>
-                    {invoice.ocrData?.extracted && invoice.amount && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
+                    <Typography variant="body2" color="text.secondary">文件类型</Typography>
                   </Box>
-                  <Typography variant="body1" fontWeight={600}>
-                    {invoice.amount
-                      ? `${invoice.currency || 'CNY'} ${invoice.amount.toFixed(2)}`
-                      : '-'}
-                  </Typography>
+                  <Typography variant="body2">{invoice.file?.mimeType || '-'}</Typography>
                 </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">分类</Typography>
-                  </Box>
-                  <Chip label={getCategoryLabel(invoice.category)} size="small" />
-                </Grid>
-              </Grid>
-            </Paper>
-
-            {/* Vendor Information */}
-            {invoice.vendor?.name && (
-              <Paper sx={{ p: 2, mb: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="h6">
-                    商户信息
-                  </Typography>
-                  {invoice.ocrData?.extracted && invoice.vendor?.name && (
-                    <Chip
-                      icon={<OCRIcon />}
-                      label="已自动识别"
-                      color="info"
-                      size="small"
-                    />
-                  )}
-                </Box>
-                <Divider sx={{ mb: 2 }} />
-                <Grid container spacing={2}>
+                {invoice.file?.uploadedAt && (
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <BusinessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">商户名称</Typography>
-                      {invoice.ocrData?.extracted && invoice.vendor?.name && (
-                        <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                      )}
+                      <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">上传时间</Typography>
                     </Box>
-                    <Typography variant="body1">{invoice.vendor.name}</Typography>
+                    <Typography variant="body2">
+                      {dayjs(invoice.file.uploadedAt).format('YYYY-MM-DD HH:mm:ss')}
+                    </Typography>
                   </Grid>
-                  {invoice.vendor.taxId && (
-                    <Grid item xs={12}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">税号</Typography>
-                        {invoice.ocrData?.extracted && invoice.vendor?.taxId && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
-                      </Box>
-                      <Typography variant="body1">{invoice.vendor.taxId}</Typography>
-                    </Grid>
-                  )}
-                  {invoice.vendor.address && (
-                    <Grid item xs={12}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">地址</Typography>
-                        {invoice.ocrData?.extracted && invoice.vendor?.address && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
-                      </Box>
-                      <Typography variant="body1">{invoice.vendor.address}</Typography>
-                    </Grid>
-                  )}
-                </Grid>
-              </Paper>
-            )}
+                )}
+              </Grid>
+            </Paper>
 
             {/* Related Information */}
             {(invoice.relatedExpense || invoice.relatedTravel) && (
@@ -538,6 +460,501 @@ const InvoiceDetail = () => {
               </Paper>
             )}
 
+            {/* Tags */}
+            {invoice.tags && invoice.tags.length > 0 && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  标签
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {invoice.tags.map((tag, index) => (
+                    <Chip key={index} label={tag} size="small" variant="outlined" />
+                  ))}
+                </Box>
+              </Paper>
+            )}
+
+            {/* System Information */}
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                系统信息
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Grid container spacing={2}>
+                {invoice.uploadedBy && typeof invoice.uploadedBy === 'object' && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary">上传人</Typography>
+                    </Box>
+                    <Typography variant="body2">
+                      {invoice.uploadedBy.firstName} {invoice.uploadedBy.lastName}
+                    </Typography>
+                  </Grid>
+                )}
+                {invoice.createdAt && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">创建时间</Typography>
+                    </Box>
+                    <Typography variant="body2">
+                      {dayjs(invoice.createdAt).format('YYYY-MM-DD HH:mm:ss')}
+                    </Typography>
+                  </Grid>
+                )}
+                {invoice.updatedAt && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">更新时间</Typography>
+                    </Box>
+                    <Typography variant="body2">
+                      {dayjs(invoice.updatedAt).format('YYYY-MM-DD HH:mm:ss')}
+                    </Typography>
+                  </Grid>
+                )}
+                {invoice.verifiedBy && typeof invoice.verifiedBy === 'object' && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary">审核人</Typography>
+                    </Box>
+                    <Typography variant="body2">
+                      {invoice.verifiedBy.firstName} {invoice.verifiedBy.lastName}
+                    </Typography>
+                  </Grid>
+                )}
+                {invoice.verifiedAt && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">审核时间</Typography>
+                    </Box>
+                    <Typography variant="body2">
+                      {dayjs(invoice.verifiedAt).format('YYYY-MM-DD HH:mm:ss')}
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
+          </Grid>
+
+          {/* Right Column - Invoice Information */}
+          <Grid item xs={12} lg={7}>
+            {/* Basic Information */}
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6">
+                  基本信息
+                </Typography>
+                {invoice.ocrData?.extracted && (
+                  <Chip
+                    icon={<OCRIcon />}
+                    label="已自动识别"
+                    color="info"
+                    size="small"
+                  />
+                )}
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">发票号</Typography>
+                    {invoice.ocrData?.extracted && invoice.invoiceNumber && (
+                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                    )}
+                  </Box>
+                  <Typography variant="body1" fontWeight={500}>
+                    {invoice.invoiceNumber || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">发票类型</Typography>
+                    {invoice.ocrData?.extracted && invoice.invoiceType && (
+                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                    )}
+                  </Box>
+                  <Typography variant="body1">
+                    {invoice.invoiceType || '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">发票日期</Typography>
+                    {invoice.ocrData?.extracted && invoice.invoiceDate && (
+                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                    )}
+                  </Box>
+                  <Typography variant="body1">
+                    {invoice.invoiceDate
+                      ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD')
+                      : '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">分类</Typography>
+                  </Box>
+                  <Chip label={getCategoryLabel(invoice.category)} size="small" />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">合计金额</Typography>
+                    {invoice.ocrData?.extracted && invoice.amount && (
+                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                    )}
+                  </Box>
+                  <Typography variant="body1" fontWeight={600}>
+                    {invoice.amount
+                      ? `${invoice.currency || 'CNY'} ${invoice.amount.toFixed(2)}`
+                      : '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">税额</Typography>
+                    {invoice.ocrData?.extracted && invoice.taxAmount && (
+                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                    )}
+                  </Box>
+                  <Typography variant="body1">
+                    {invoice.taxAmount !== undefined && invoice.taxAmount !== null
+                      ? `${invoice.currency || 'CNY'} ${invoice.taxAmount.toFixed(2)}`
+                      : '-'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">价税合计（小写）</Typography>
+                    {invoice.ocrData?.extracted && invoice.totalAmount && (
+                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                    )}
+                  </Box>
+                  <Typography variant="body1" fontWeight={600} color="primary">
+                    {invoice.totalAmount
+                      ? `${invoice.currency || 'CNY'} ${invoice.totalAmount.toFixed(2)}`
+                      : '-'}
+                  </Typography>
+                </Grid>
+                {invoice.totalAmountInWords && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">价税合计（大写）</Typography>
+                    </Box>
+                    <Typography variant="body1" fontWeight={500}>
+                      {invoice.totalAmountInWords}
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
+
+            {/* Vendor Information */}
+            {(invoice.vendor?.name || invoice.vendor?.taxId || invoice.vendor?.address || invoice.vendor?.phone) && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="h6">
+                    销售方信息
+                  </Typography>
+                  {invoice.ocrData?.extracted && invoice.vendor?.name && (
+                    <Chip
+                      icon={<OCRIcon />}
+                      label="已自动识别"
+                      color="info"
+                      size="small"
+                    />
+                  )}
+                </Box>
+                <Divider sx={{ mb: 2 }} />
+                <Grid container spacing={2}>
+                  {invoice.vendor.name && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <BusinessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary">销售方名称</Typography>
+                        {invoice.ocrData?.extracted && invoice.vendor?.name && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.vendor.name}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.vendor.taxId && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">销售方税号</Typography>
+                        {invoice.ocrData?.extracted && invoice.vendor?.taxId && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.vendor.taxId}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.vendor.phone && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">联系电话</Typography>
+                        {invoice.ocrData?.extracted && invoice.vendor?.phone && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.vendor.phone}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.vendor.address && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">地址</Typography>
+                        {invoice.ocrData?.extracted && invoice.vendor?.address && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.vendor.address}</Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              </Paper>
+            )}
+
+            {/* Buyer Information */}
+            {(invoice.buyer?.name || invoice.buyer?.taxId || invoice.buyer?.address || invoice.buyer?.phone) && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="h6">
+                    购买方信息
+                  </Typography>
+                  {invoice.ocrData?.extracted && invoice.buyer?.name && (
+                    <Chip
+                      icon={<OCRIcon />}
+                      label="已自动识别"
+                      color="info"
+                      size="small"
+                    />
+                  )}
+                </Box>
+                <Divider sx={{ mb: 2 }} />
+                <Grid container spacing={2}>
+                  {invoice.buyer.name && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <BusinessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary">购买方名称</Typography>
+                        {invoice.ocrData?.extracted && invoice.buyer?.name && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.buyer.name}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.buyer.taxId && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">购买方税号</Typography>
+                        {invoice.ocrData?.extracted && invoice.buyer?.taxId && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.buyer.taxId}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.buyer.phone && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">联系电话</Typography>
+                        {invoice.ocrData?.extracted && invoice.buyer?.phone && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.buyer.phone}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.buyer.address && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">地址</Typography>
+                        {invoice.ocrData?.extracted && invoice.buyer?.address && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.buyer.address}</Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              </Paper>
+            )}
+
+            {/* Invoice Items */}
+            {invoice.items && invoice.items.length > 0 && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  发票项目明细
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>项目名称</TableCell>
+                        <TableCell align="right">单价</TableCell>
+                        <TableCell align="right">数量</TableCell>
+                        <TableCell align="right">金额</TableCell>
+                        <TableCell align="center">税率</TableCell>
+                        <TableCell align="right">税额</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {invoice.items.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.name || '-'}</TableCell>
+                          <TableCell align="right">
+                            {item.unitPrice !== undefined && item.unitPrice !== null
+                              ? `${invoice.currency || 'CNY'} ${item.unitPrice.toFixed(2)}`
+                              : '-'}
+                          </TableCell>
+                          <TableCell align="right">{item.quantity || '-'}</TableCell>
+                          <TableCell align="right">
+                            {item.amount !== undefined && item.amount !== null
+                              ? `${invoice.currency || 'CNY'} ${item.amount.toFixed(2)}`
+                              : '-'}
+                          </TableCell>
+                          <TableCell align="center">{item.taxRate || '-'}</TableCell>
+                          <TableCell align="right">
+                            {item.taxAmount !== undefined && item.taxAmount !== null
+                              ? `${invoice.currency || 'CNY'} ${item.taxAmount.toFixed(2)}`
+                              : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            )}
+
+            {/* Issuer Information */}
+            {invoice.issuer && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  开票信息
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">开票人</Typography>
+                      {invoice.ocrData?.extracted && invoice.issuer && (
+                        <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                      )}
+                    </Box>
+                    <Typography variant="body1">{invoice.issuer}</Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+            )}
+
+            {/* Traveler Information */}
+            {(invoice.traveler?.name || invoice.traveler?.departure || invoice.traveler?.destination || invoice.traveler?.idNumber) && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  出行人信息
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Grid container spacing={2}>
+                  {invoice.traveler.name && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">出行人姓名</Typography>
+                        {invoice.ocrData?.extracted && invoice.traveler?.name && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.traveler.name}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.traveler.idNumber && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">身份证号</Typography>
+                        {invoice.ocrData?.extracted && invoice.traveler?.idNumber && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.traveler.idNumber}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.traveler.travelDate && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary">出行日期</Typography>
+                        {invoice.ocrData?.extracted && invoice.traveler?.travelDate && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">
+                        {dayjs(invoice.traveler.travelDate).format('YYYY-MM-DD')}
+                      </Typography>
+                    </Grid>
+                  )}
+                  {invoice.traveler.departure && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">出发地</Typography>
+                        {invoice.ocrData?.extracted && invoice.traveler?.departure && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.traveler.departure}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.traveler.destination && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">到达地</Typography>
+                        {invoice.ocrData?.extracted && invoice.traveler?.destination && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.traveler.destination}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.traveler.class && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">舱位/座位</Typography>
+                        {invoice.ocrData?.extracted && invoice.traveler?.class && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.traveler.class}</Typography>
+                    </Grid>
+                  )}
+                  {invoice.traveler.vehicleType && (
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">交通工具</Typography>
+                        {invoice.ocrData?.extracted && invoice.traveler?.vehicleType && (
+                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        )}
+                      </Box>
+                      <Typography variant="body1">{invoice.traveler.vehicleType}</Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              </Paper>
+            )}
+
             {/* Notes */}
             {invoice.notes && (
               <Paper sx={{ p: 2 }}>
@@ -545,7 +962,7 @@ const InvoiceDetail = () => {
                   备注
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
-                <Typography variant="body2">{invoice.notes}</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{invoice.notes}</Typography>
               </Paper>
             )}
           </Grid>

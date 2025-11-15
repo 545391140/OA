@@ -400,24 +400,24 @@ const Dashboard = () => {
                   </ListItemIcon>
                   <ListItemText
                       primary={
-                        <Box component="div">
+                        <React.Fragment>
                           <Typography variant="body1" component="span" fontWeight={500}>
                             {travel.travelNumber || travel._id?.slice(-8) || '-'}
                           </Typography>
                           <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 2 }}>
                             {travel.employee?.firstName} {travel.employee?.lastName}
                           </Typography>
-                        </Box>
+                        </React.Fragment>
                       }
                       secondary={
-                        <Box component="div" sx={{ mt: 0.5 }}>
+                        <React.Fragment>
                           <Typography variant="body2" component="span">
                             {travel.destination || t('dashboard.noDestination')}
                           </Typography>
                           <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 2 }}>
                             {formatDate(travel.startDate)} - {formatDate(travel.endDate)}
                           </Typography>
-                        </Box>
+                        </React.Fragment>
                       }
                   />
                   <Chip

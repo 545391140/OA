@@ -46,6 +46,7 @@ import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import { amountToChinese } from '../../utils/amountToChinese';
 
 const InvoiceUpload = () => {
   const { t } = useTranslation();
@@ -84,10 +85,24 @@ const InvoiceUpload = () => {
 
   const handleChange = (field) => (e) => {
     const value = e.target.value;
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+      
+      // 当价税合计（小写）变化时，自动计算大写金额
+      if (field === 'totalAmount') {
+        const amount = parseFloat(value);
+        if (!isNaN(amount) && amount >= 0) {
+          updated.totalAmountInWords = amountToChinese(amount);
+        } else {
+          updated.totalAmountInWords = '';
+        }
+      }
+      
+      return updated;
+    });
     
     // 清除该字段的错误
     if (errors[field]) {
@@ -181,7 +196,16 @@ const InvoiceUpload = () => {
           setFormData(prev => ({ ...prev, taxAmount: recognizedData.taxAmount.toString() }));
         }
         if (recognizedData?.totalAmount && isEmpty(formData.totalAmount)) {
-          setFormData(prev => ({ ...prev, totalAmount: recognizedData.totalAmount.toString() }));
+          const totalAmount = recognizedData.totalAmount.toString();
+          setFormData(prev => {
+            const updated = { ...prev, totalAmount };
+            // 自动计算大写金额
+            const amount = parseFloat(totalAmount);
+            if (!isNaN(amount) && amount >= 0) {
+              updated.totalAmountInWords = amountToChinese(amount);
+            }
+            return updated;
+          });
         }
         if (recognizedData?.vendorName && isEmpty(formData.vendorName)) {
           setFormData(prev => ({ ...prev, vendorName: recognizedData.vendorName }));
@@ -204,9 +228,8 @@ const InvoiceUpload = () => {
         if (recognizedData?.issuer && isEmpty(formData.issuer)) {
           setFormData(prev => ({ ...prev, issuer: recognizedData.issuer }));
         }
-        if (recognizedData?.totalAmountInWords && isEmpty(formData.totalAmountInWords)) {
-          setFormData(prev => ({ ...prev, totalAmountInWords: recognizedData.totalAmountInWords }));
-        }
+        // 不自动填充 totalAmountInWords，由前端根据 totalAmount 自动计算
+        // 如果识别到了 totalAmount，会自动触发大写金额的计算
         
         showNotification('发票信息已自动识别并填充', 'success');
       } else {
@@ -215,7 +238,8 @@ const InvoiceUpload = () => {
     } catch (err) {
       console.error('OCR recognize error:', err);
       // OCR失败不影响文件选择，只显示警告
-      showNotification('自动识别失败，您可以手动填写', 'warning');
+      const errorMessage = err.response?.data?.message || err.message || 'OCR服务暂时不可用';
+      showNotification(`自动识别失败: ${errorMessage}，您可以手动填写`, 'warning');
     } finally {
       setOcrRecognizing(false);
     }
@@ -254,7 +278,16 @@ const InvoiceUpload = () => {
       setFormData(prev => ({ ...prev, taxAmount: recognized.taxAmount.toString() }));
     }
     if (recognized.totalAmount && isEmpty(formData.totalAmount)) {
-      setFormData(prev => ({ ...prev, totalAmount: recognized.totalAmount.toString() }));
+      const totalAmount = recognized.totalAmount.toString();
+      setFormData(prev => {
+        const updated = { ...prev, totalAmount };
+        // 自动计算大写金额
+        const amount = parseFloat(totalAmount);
+        if (!isNaN(amount) && amount >= 0) {
+          updated.totalAmountInWords = amountToChinese(amount);
+        }
+        return updated;
+      });
     }
     if (recognized.vendorName && isEmpty(formData.vendorName)) {
       setFormData(prev => ({ ...prev, vendorName: recognized.vendorName }));
@@ -277,9 +310,8 @@ const InvoiceUpload = () => {
     if (recognized.issuer && isEmpty(formData.issuer)) {
       setFormData(prev => ({ ...prev, issuer: recognized.issuer }));
     }
-    if (recognized.totalAmountInWords && isEmpty(formData.totalAmountInWords)) {
-      setFormData(prev => ({ ...prev, totalAmountInWords: recognized.totalAmountInWords }));
-    }
+    // 不自动填充 totalAmountInWords，由前端根据 totalAmount 自动计算
+    // 如果识别到了 totalAmount，会自动触发大写金额的计算
 
     setShowOcrDialog(false);
     showNotification('OCR识别结果已应用到表单', 'success');
@@ -788,14 +820,17 @@ const InvoiceUpload = () => {
                   label="价税合计（大写）"
                   value={formData.totalAmountInWords}
                   onChange={handleChange('totalAmountInWords')}
-                  placeholder="如：武拾陆圆整"
+                  placeholder="根据价税合计（小写）自动生成"
                   InputProps={{
-                    endAdornment: ocrResult?.recognizedData?.totalAmountInWords ? (
-                      <InputAdornment position="end">
-                        <Chip label="OCR" size="small" color="info" sx={{ height: 20, fontSize: '0.65rem' }} />
-                      </InputAdornment>
-                    ) : undefined
+                    readOnly: true,
+                    sx: {
+                      backgroundColor: 'action.disabledBackground',
+                      '& .MuiInputBase-input': {
+                        cursor: 'default'
+                      }
+                    }
                   }}
+                  helperText="根据价税合计（小写）自动生成，无需手动输入"
                 />
               </Grid>
             </Grid>

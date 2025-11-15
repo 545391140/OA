@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+// 确保在加载配置前加载环境变量
+require('dotenv').config();
 const config = require('../config');
 
 // 导入 Mistral AI
@@ -148,6 +150,7 @@ class OCRService {
 
   /**
    * 清理OCR返回的markdown数据，移除无用的表格和重复内容
+   * 优化：减少过度清理，保留重要信息（如税号、地址、电话等）
    * @param {string} textContent - OCR识别的markdown文本
    * @returns {string} 清理后的文本
    */
@@ -178,25 +181,37 @@ class OCRService {
       
       // 检测表格行
       if (inTable && line.startsWith('|')) {
-        // 检查是否是空行（只包含空单元格）
+        // 检查是否是空行（只包含空单元格的行）
         const cells = line.split('|').map(c => c.trim()).filter(c => c);
-        // 如果单元格都是空的或者只包含很少的字符，认为是空行
-        const isEmptyRow = cells.length === 0 || cells.every(c => c.length <= 2);
+        // 优化：只过滤完全空的行，保留包含任何内容的行（即使是单个字符）
+        // 这样可以保留短税号、编号等重要信息
+        const isEmptyRow = cells.length === 0 || cells.every(c => c.length === 0);
         
         if (isEmptyRow) {
           emptyTableRowCount++;
-          // 如果连续空行超过3行，跳过后续空行
-          if (emptyTableRowCount > 3) {
+          // 如果连续空行超过5行（放宽限制），跳过后续空行
+          if (emptyTableRowCount > 5) {
             continue;
           }
         } else {
           emptyTableRowCount = 0;
         }
         
-        // 如果表格行只包含"电话"、"电话号"、"机器编号"、"备案号"等无用信息，跳过
-        const cellText = cells.join(' ').toLowerCase();
-        if (cellText.match(/^(电话|电话号|机器编号|备案号|电话编号)\s*$/)) {
-          continue;
+        // 优化：不再跳过包含"电话"、"机器编号"等的行，因为这些信息可能包含重要数据
+        // 只跳过完全无意义的纯标签行（没有任何值的行）
+        // 例如："| 电话 | 电话号 |" 这样的行会被保留，因为可能包含实际电话号码
+        // 但如果整行只有标签没有值，则跳过
+        if (cells.length > 0) {
+          const hasValue = cells.some(cell => {
+            // 检查单元格是否包含实际数据（数字、字母、中文等）
+            const hasContent = /[\d\w\u4e00-\u9fa5]/.test(cell);
+            // 检查是否只是纯标签（如"电话"、"机器编号"等）
+            const isLabelOnly = /^(电话|电话号|机器编号|备案号|电话编号|地址|名称|税号|纳税人识别号|统一社会信用代码)$/i.test(cell);
+            return hasContent && !isLabelOnly;
+          });
+          
+          // 如果行中有实际数据，保留；如果只是标签行，也保留（可能下一行有数据）
+          // 完全跳过的情况：整行都是空单元格或只有无意义的标签
         }
       } else {
         inTable = false;
@@ -211,12 +226,12 @@ class OCRService {
     
     cleaned = filteredLines.join('\n');
     
-    // 移除重复的空行
-    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+    // 移除重复的空行（保留最多2个连续空行）
+    cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n');
     
     // 不限制文本长度，提取全部文本用于解析
     // 注意：Mistral Chat API支持较长的上下文，可以处理完整文本
-    // 如果遇到token限制，API会返回错误，我们可以在错误处理中处理
+    // 如果遇到token限制，API会返回错误，我们会在错误处理中处理
     
     return cleaned.trim();
   }
@@ -359,12 +374,20 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
       console.log(`- 发送文本长度: ${cleanedText.length} 字符`);
       console.log(`- 使用模型: mistral-small-latest`);
       console.log(`- 文本将完整发送（不截断）`);
+      console.log(`- Temperature: 0.2 (提高识别能力)`);
+      console.log(`- Max Tokens: 6000 (确保完整响应)`);
       console.log('========================================');
+      
+      // 估算 token 数量（粗略估算：1 token ≈ 4 字符）
+      const estimatedTokens = Math.ceil(cleanedText.length / 4);
+      const maxTokens = Math.min(6000, Math.max(2000, estimatedTokens + 2000)); // 确保有足够空间返回完整 JSON
       
       const result = await mistralClient.chat.complete({
         model: 'mistral-small-latest',
         messages: messages,
-        temperature: 0.1,
+        temperature: 0.2, // 提高 temperature 以增强识别复杂格式的能力
+        topP: 0.9, // 添加 top_p 参数控制多样性
+        maxTokens: maxTokens, // 设置足够的 max_tokens 确保完整响应
         responseFormat: { type: 'json_object' }, // 强制返回JSON格式
         // 注意：如果文本过长，API可能会返回错误，我们会在catch中处理
       });
@@ -1085,10 +1108,20 @@ ${textContent || '这是一张发票，请尝试识别其中的信息。'}`
       // 调用 Mistral Chat API
       // 使用 response_format 强制返回 JSON 格式
       console.log('正在使用 Mistral Chat API 识别发票...');
+      console.log(`- 文本长度: ${textContent.length} 字符`);
+      console.log(`- Temperature: 0.2 (提高识别能力)`);
+      console.log(`- Max Tokens: 6000 (确保完整响应)`);
+      
+      // 估算 token 数量（粗略估算：1 token ≈ 4 字符）
+      const estimatedTokens = Math.ceil(textContent.length / 4);
+      const maxTokens = Math.min(6000, Math.max(2000, estimatedTokens + 2000)); // 确保有足够空间返回完整 JSON
+      
       const result = await mistralClient.chat.complete({
         model: 'mistral-small-latest',
         messages: messages,
-        temperature: 0.1,
+        temperature: 0.2, // 提高 temperature 以增强识别复杂格式的能力
+        topP: 0.9, // 添加 top_p 参数控制多样性
+        maxTokens: maxTokens, // 设置足够的 max_tokens 确保完整响应
         responseFormat: { type: 'json_object' }, // 强制返回JSON格式
       });
 

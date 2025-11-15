@@ -120,6 +120,25 @@ const theme = createTheme({
   },
 });
 
+// 抑制浏览器扩展导致的运行时错误（这些错误不影响应用功能）
+if (typeof window !== 'undefined') {
+  const originalError = window.console.error;
+  window.console.error = function(...args) {
+    // 过滤掉浏览器扩展相关的错误
+    const errorMessage = args.join(' ');
+    if (
+      errorMessage.includes('runtime.lastError') ||
+      errorMessage.includes('message channel closed') ||
+      errorMessage.includes('Extension context invalidated')
+    ) {
+      // 静默忽略这些来自浏览器扩展的错误
+      return;
+    }
+    // 其他错误正常输出
+    originalError.apply(console, args);
+  };
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>

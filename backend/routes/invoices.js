@@ -162,12 +162,48 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
 
     const filePath = path.resolve(__dirname, '..', req.file.path);
 
+    // 检查 OCR 服务是否可用
+    if (!ocrService || typeof ocrService.recognizeInvoice !== 'function') {
+      // 删除临时文件
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (unlinkError) {
+        console.error('Delete temp file error:', unlinkError);
+      }
+      
+      return res.status(503).json({
+        success: false,
+        message: 'OCR服务不可用，请检查后端配置'
+      });
+    }
+
     // 执行OCR识别（根据文件类型选择不同的识别方法）
     let ocrResult;
-    if (req.file.mimetype.startsWith('image/')) {
-      ocrResult = await ocrService.recognizeInvoice(filePath);
-    } else if (req.file.mimetype === 'application/pdf') {
-      ocrResult = await ocrService.recognizePDFInvoice(filePath);
+    try {
+      if (req.file.mimetype.startsWith('image/')) {
+        ocrResult = await ocrService.recognizeInvoice(filePath);
+      } else if (req.file.mimetype === 'application/pdf') {
+        ocrResult = await ocrService.recognizePDFInvoice(filePath);
+      } else {
+        throw new Error('不支持的文件类型');
+      }
+    } catch (ocrError) {
+      console.error('OCR service error:', ocrError);
+      // 删除临时文件
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (unlinkError) {
+        console.error('Delete temp file error:', unlinkError);
+      }
+      
+      return res.status(500).json({
+        success: false,
+        message: `OCR识别失败: ${ocrError.message || '未知错误'}`
+      });
     }
 
     // 删除临时文件
@@ -179,42 +215,61 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       console.error('Delete temp file error:', unlinkError);
     }
 
-    if (ocrResult.success) {
+    if (ocrResult && ocrResult.success) {
       res.json({
         success: true,
         message: 'OCR识别成功',
         data: {
           ocrData: {
             extracted: true,
-            confidence: ocrResult.confidence,
-            rawData: ocrResult.rawData,
+            confidence: ocrResult.confidence || 0,
+            rawData: ocrResult.rawData || {},
             extractedAt: new Date()
           },
-          recognizedData: ocrResult.invoiceData,
-          text: ocrResult.text
+          recognizedData: ocrResult.invoiceData || {},
+          text: ocrResult.text || ''
         }
       });
     } else {
+      const errorMessage = ocrResult?.error || 'OCR识别失败，请检查配置或重试';
       res.status(500).json({
         success: false,
-        message: 'OCR识别失败: ' + ocrResult.error
+        message: errorMessage,
+        error: ocrResult?.error || 'Unknown error'
       });
     }
   } catch (error) {
     console.error('OCR recognize error:', error);
+    console.error('Error stack:', error.stack);
     
     // 删除临时文件
     if (req.file && req.file.path) {
       try {
-        fs.unlinkSync(req.file.path);
+        const filePath = path.resolve(__dirname, '..', req.file.path);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       } catch (unlinkError) {
         console.error('Delete file error:', unlinkError);
       }
     }
     
+    // 提供更详细的错误信息
+    let errorMessage = 'OCR识别失败';
+    if (error.message) {
+      errorMessage += ': ' + error.message;
+    }
+    
+    // 检查是否是配置问题
+    if (error.message && error.message.includes('MISTRAL_API_KEY')) {
+      errorMessage += '。请配置 MISTRAL_API_KEY 环境变量';
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'OCR识别失败: ' + error.message
+      message: errorMessage,
+      error: error.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -231,11 +286,59 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       });
     }
 
+    // 确保文件名正确编码（处理中文文件名）
+    let originalName = req.file.originalname;
+    try {
+      // 如果文件名包含URL编码，先解码
+      if (originalName.includes('%')) {
+        try {
+          originalName = decodeURIComponent(originalName);
+        } catch (e) {
+          // URL解码失败，继续其他方法
+        }
+      }
+      
+      // 检测是否是 UTF-8 被误解释为 Latin1 的情况
+      const hasLatin1Pattern = /[à-ÿ]/g.test(originalName) || /[æ-ÿ]/g.test(originalName);
+      
+      if (hasLatin1Pattern) {
+        try {
+          // 尝试将 Latin1 字节重新解释为 UTF-8
+          const fixed = Buffer.from(originalName, 'latin1').toString('utf-8');
+          
+          // 验证修复后的字符串是否包含有效的中文字符
+          if (/[\u4e00-\u9fa5]/.test(fixed)) {
+            console.log('文件名编码修复:', originalName, '->', fixed);
+            originalName = fixed;
+          }
+        } catch (e) {
+          // 修复失败，继续其他方法
+        }
+      }
+      
+      // 如果文件名已经包含中文字符，说明编码正确
+      if (!/[\u4e00-\u9fa5]/.test(originalName)) {
+        // 尝试从 latin1 转换到 utf-8
+        try {
+          const converted = Buffer.from(originalName, 'latin1').toString('utf-8');
+          if (/[\u4e00-\u9fa5]/.test(converted)) {
+            originalName = converted;
+          }
+        } catch (e) {
+          // 转换失败，使用原文件名
+        }
+      }
+    } catch (error) {
+      console.error('文件名编码处理失败:', error);
+      console.error('原始文件名:', originalName);
+      // 如果处理失败，使用原文件名
+    }
+
     const invoiceData = {
       uploadedBy: req.user.id,
       file: {
         filename: req.file.filename,
-        originalName: req.file.originalname,
+        originalName: originalName,
         path: req.file.path,
         size: req.file.size,
         mimeType: req.file.mimetype
