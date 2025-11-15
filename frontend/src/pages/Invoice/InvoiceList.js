@@ -104,12 +104,12 @@ const InvoiceList = () => {
         setInvoices(response.data.data || []);
         setTotalPages(response.data.pages || 1);
       } else {
-        throw new Error(response.data?.message || '获取发票列表失败');
+        throw new Error(response.data?.message || t('invoice.list.fetchError'));
       }
     } catch (err) {
       console.error('Fetch invoices error:', err);
-      setError(err.response?.data?.message || err.message || '获取发票列表失败');
-      showNotification('获取发票列表失败', 'error');
+      setError(err.response?.data?.message || err.message || t('invoice.list.fetchError'));
+      showNotification(t('invoice.list.fetchError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -135,11 +135,11 @@ const InvoiceList = () => {
   const confirmDelete = async () => {
     try {
       await apiClient.delete(`/invoices/${deleteDialog.invoice._id}`);
-      showNotification('发票删除成功', 'success');
+      showNotification(t('invoice.list.deleteSuccess'), 'success');
       fetchInvoices();
     } catch (err) {
       console.error('Delete invoice error:', err);
-      const errorMsg = err.response?.data?.message || '删除发票失败';
+      const errorMsg = err.response?.data?.message || t('invoice.list.deleteError');
       showNotification(errorMsg, 'error');
     } finally {
       setDeleteDialog({ open: false, invoice: null });
@@ -164,10 +164,10 @@ const InvoiceList = () => {
       link.click();
       link.remove();
       
-      showNotification('文件下载成功', 'success');
+      showNotification(t('invoice.list.downloadSuccess'), 'success');
     } catch (err) {
       console.error('Download error:', err);
-      showNotification('文件下载失败', 'error');
+      showNotification(t('invoice.list.downloadError'), 'error');
     }
   };
 
@@ -193,24 +193,24 @@ const InvoiceList = () => {
 
   const getStatusLabel = (status) => {
     const labels = {
-      pending: '待审核',
-      verified: '已审核',
-      linked: '已关联',
-      archived: '已归档'
+      pending: t('invoice.list.statuses.pending'),
+      verified: t('invoice.list.statuses.verified'),
+      linked: t('invoice.list.statuses.linked'),
+      archived: t('invoice.list.statuses.archived')
     };
     return labels[status] || status;
   };
 
   const getCategoryLabel = (category) => {
     const labels = {
-      transportation: '交通',
-      accommodation: '住宿',
-      meals: '餐饮',
-      entertainment: '娱乐',
-      communication: '通讯',
-      office_supplies: '办公用品',
-      training: '培训',
-      other: '其他'
+      transportation: t('invoice.list.categories.transportation'),
+      accommodation: t('invoice.list.categories.accommodation'),
+      meals: t('invoice.list.categories.meals'),
+      entertainment: t('invoice.list.categories.entertainment'),
+      communication: t('invoice.list.categories.communication'),
+      office_supplies: t('invoice.list.categories.office_supplies'),
+      training: t('invoice.list.categories.training'),
+      other: t('invoice.list.categories.other')
     };
     return labels[category] || category;
   };
@@ -223,7 +223,7 @@ const InvoiceList = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <PdfIcon sx={{ fontSize: 32, color: 'primary.main' }} />
             <Typography variant="h4" fontWeight={600}>
-              发票夹
+              {t('invoice.list.title')}
             </Typography>
           </Box>
           <Button
@@ -232,7 +232,7 @@ const InvoiceList = () => {
             onClick={() => navigate('/invoices/upload')}
             sx={{ borderRadius: 2 }}
           >
-            上传发票
+            {t('invoice.list.uploadInvoice')}
           </Button>
         </Box>
 
@@ -242,7 +242,7 @@ const InvoiceList = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                placeholder="搜索发票号、商户名称..."
+                placeholder={t('invoice.list.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -257,37 +257,37 @@ const InvoiceList = () => {
             </Grid>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>状态</InputLabel>
+                <InputLabel>{t('invoice.list.status')}</InputLabel>
                 <Select
                   value={statusFilter}
-                  label="状态"
+                  label={t('invoice.list.status')}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <MenuItem value="all">全部</MenuItem>
-                  <MenuItem value="pending">待审核</MenuItem>
-                  <MenuItem value="verified">已审核</MenuItem>
-                  <MenuItem value="linked">已关联</MenuItem>
-                  <MenuItem value="archived">已归档</MenuItem>
+                  <MenuItem value="all">{t('invoice.list.all')}</MenuItem>
+                  <MenuItem value="pending">{t('invoice.list.statuses.pending')}</MenuItem>
+                  <MenuItem value="verified">{t('invoice.list.statuses.verified')}</MenuItem>
+                  <MenuItem value="linked">{t('invoice.list.statuses.linked')}</MenuItem>
+                  <MenuItem value="archived">{t('invoice.list.statuses.archived')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>分类</InputLabel>
+                <InputLabel>{t('invoice.list.category')}</InputLabel>
                 <Select
                   value={categoryFilter}
-                  label="分类"
+                  label={t('invoice.list.category')}
                   onChange={(e) => setCategoryFilter(e.target.value)}
                 >
-                  <MenuItem value="all">全部</MenuItem>
-                  <MenuItem value="transportation">交通</MenuItem>
-                  <MenuItem value="accommodation">住宿</MenuItem>
-                  <MenuItem value="meals">餐饮</MenuItem>
-                  <MenuItem value="entertainment">娱乐</MenuItem>
-                  <MenuItem value="communication">通讯</MenuItem>
-                  <MenuItem value="office_supplies">办公用品</MenuItem>
-                  <MenuItem value="training">培训</MenuItem>
-                  <MenuItem value="other">其他</MenuItem>
+                  <MenuItem value="all">{t('invoice.list.all')}</MenuItem>
+                  <MenuItem value="transportation">{t('invoice.list.categories.transportation')}</MenuItem>
+                  <MenuItem value="accommodation">{t('invoice.list.categories.accommodation')}</MenuItem>
+                  <MenuItem value="meals">{t('invoice.list.categories.meals')}</MenuItem>
+                  <MenuItem value="entertainment">{t('invoice.list.categories.entertainment')}</MenuItem>
+                  <MenuItem value="communication">{t('invoice.list.categories.communication')}</MenuItem>
+                  <MenuItem value="office_supplies">{t('invoice.list.categories.office_supplies')}</MenuItem>
+                  <MenuItem value="training">{t('invoice.list.categories.training')}</MenuItem>
+                  <MenuItem value="other">{t('invoice.list.categories.other')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -299,7 +299,7 @@ const InvoiceList = () => {
                   onClick={handleSearch}
                   sx={{ flex: 1 }}
                 >
-                  搜索
+                  {t('common.search')}
                 </Button>
                 <Button
                   variant="outlined"
@@ -307,7 +307,7 @@ const InvoiceList = () => {
                   onClick={handleReset}
                   sx={{ flex: 1 }}
                 >
-                  重置
+                  {t('common.refresh')}
                 </Button>
               </Box>
             </Grid>
@@ -327,23 +327,23 @@ const InvoiceList = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>预览</TableCell>
-                <TableCell>发票号</TableCell>
-                <TableCell>商户名称</TableCell>
-                <TableCell>金额</TableCell>
-                <TableCell>发票日期</TableCell>
-                <TableCell>分类</TableCell>
-                <TableCell>状态</TableCell>
-                <TableCell>关联</TableCell>
-                <TableCell>上传时间</TableCell>
-                <TableCell align="right">操作</TableCell>
+                <TableCell>{t('invoice.list.columns.preview')}</TableCell>
+                <TableCell>{t('invoice.list.columns.invoiceNumber')}</TableCell>
+                <TableCell>{t('invoice.list.columns.vendorName')}</TableCell>
+                <TableCell>{t('invoice.list.columns.amount')}</TableCell>
+                <TableCell>{t('invoice.list.columns.invoiceDate')}</TableCell>
+                <TableCell>{t('invoice.list.columns.category')}</TableCell>
+                <TableCell>{t('invoice.list.columns.status')}</TableCell>
+                <TableCell>{t('invoice.list.columns.link')}</TableCell>
+                <TableCell>{t('invoice.list.columns.uploadTime')}</TableCell>
+                <TableCell align="right">{t('invoice.list.columns.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {invoices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                    {loading ? <CircularProgress /> : '暂无发票数据'}
+                    {loading ? <CircularProgress /> : t('invoice.list.noData')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -395,14 +395,14 @@ const InvoiceList = () => {
                       {invoice.relatedExpense ? (
                         <Chip
                           icon={<LinkIcon />}
-                          label="费用"
+                          label={t('invoice.list.expense')}
                           size="small"
                           color="info"
                         />
                       ) : invoice.relatedTravel ? (
                         <Chip
                           icon={<LinkIcon />}
-                          label="差旅"
+                          label={t('invoice.list.travel')}
                           size="small"
                           color="info"
                         />
@@ -415,7 +415,7 @@ const InvoiceList = () => {
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                        <Tooltip title="查看">
+                        <Tooltip title={t('invoice.list.view')}>
                           <IconButton
                             size="small"
                             onClick={() => handleView(invoice)}
@@ -424,7 +424,7 @@ const InvoiceList = () => {
                             <VisibilityIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="下载">
+                        <Tooltip title={t('invoice.list.download')}>
                           <IconButton
                             size="small"
                             onClick={() => handleDownload(invoice)}
@@ -433,7 +433,7 @@ const InvoiceList = () => {
                             <DownloadIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="删除">
+                        <Tooltip title={t('invoice.list.delete')}>
                           <IconButton
                             size="small"
                             onClick={() => handleDelete(invoice)}
@@ -465,16 +465,16 @@ const InvoiceList = () => {
 
         {/* Delete Dialog */}
         <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, invoice: null })}>
-          <DialogTitle>确认删除</DialogTitle>
+          <DialogTitle>{t('invoice.list.confirmDelete')}</DialogTitle>
           <DialogContent>
             <Typography>
-              确定要删除发票 <strong>{deleteDialog.invoice?.invoiceNumber || deleteDialog.invoice?.file?.originalName}</strong> 吗？
+              {t('invoice.list.deleteMessage')} <strong>{deleteDialog.invoice?.invoiceNumber || deleteDialog.invoice?.file?.originalName}</strong>?
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteDialog({ open: false, invoice: null })}>取消</Button>
+            <Button onClick={() => setDeleteDialog({ open: false, invoice: null })}>{t('common.cancel')}</Button>
             <Button onClick={confirmDelete} color="error" variant="contained">
-              删除
+              {t('invoice.list.delete')}
             </Button>
           </DialogActions>
         </Dialog>

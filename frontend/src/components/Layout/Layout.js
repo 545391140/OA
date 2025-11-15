@@ -119,7 +119,7 @@ const Layout = () => {
     { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard', key: 'dashboard' },
     { text: t('navigation.travel'), icon: <TravelIcon />, path: '/travel', key: 'travel' },
     { text: t('navigation.expenses'), icon: <ExpenseIcon />, path: '/expenses', key: 'expenses' },
-    { text: '发票夹', icon: <InvoiceIcon />, path: '/invoices', key: 'invoices' },
+    { text: t('invoice.title'), icon: <InvoiceIcon />, path: '/invoices', key: 'invoices' },
     { text: t('navigation.approvals'), icon: <ApprovalIcon />, path: '/approvals', key: 'approvals' },
     { text: t('navigation.reports'), icon: <ReportIcon />, path: '/reports', key: 'reports' },
     { text: t('navigation.travelStandardQuery'), icon: <QueryBuilderIcon />, path: '/travel-standards/query', key: 'travelStandardQuery' },

@@ -231,15 +231,15 @@ const InvoiceUpload = () => {
         // 不自动填充 totalAmountInWords，由前端根据 totalAmount 自动计算
         // 如果识别到了 totalAmount，会自动触发大写金额的计算
         
-        showNotification('发票信息已自动识别并填充', 'success');
+        showNotification(t('invoice.upload.autoRecognitionSuccess'), 'success');
       } else {
-        showNotification('OCR识别失败，您可以手动填写', 'warning');
+        showNotification(t('invoice.upload.ocrFailed'), 'warning');
       }
     } catch (err) {
       console.error('OCR recognize error:', err);
       // OCR失败不影响文件选择，只显示警告
       const errorMessage = err.response?.data?.message || err.message || 'OCR服务暂时不可用';
-      showNotification(`自动识别失败: ${errorMessage}，您可以手动填写`, 'warning');
+      showNotification(`${t('invoice.upload.autoRecognitionFailed')}: ${errorMessage}，${t('invoice.upload.manualFillHint')}`, 'warning');
     } finally {
       setOcrRecognizing(false);
     }
@@ -314,14 +314,14 @@ const InvoiceUpload = () => {
     // 如果识别到了 totalAmount，会自动触发大写金额的计算
 
     setShowOcrDialog(false);
-    showNotification('OCR识别结果已应用到表单', 'success');
+    showNotification(t('invoice.upload.ocrApplied'), 'success');
   };
 
   const validateForm = () => {
     const newErrors = {};
 
     if (!file) {
-      newErrors.file = '请选择要上传的文件';
+      newErrors.file = t('invoice.upload.fileRequired');
     }
 
     setErrors(newErrors);
@@ -375,19 +375,19 @@ const InvoiceUpload = () => {
         
         // 检查是否有 OCR 识别结果
         if (uploadedInvoice.ocrData?.extracted) {
-          showNotification('发票上传成功，已自动识别发票信息', 'success');
+          showNotification(t('invoice.upload.uploadSuccessWithOcr'), 'success');
         } else {
-          showNotification('发票上传成功', 'success');
+          showNotification(t('invoice.upload.uploadSuccess'), 'success');
         }
         
         // 跳转到详情页（识别结果会在详情页显示）
         navigate(`/invoices/${uploadedInvoice._id}`);
       } else {
-        throw new Error(response.data?.message || '上传失败');
+        throw new Error(response.data?.message || t('invoice.upload.uploadFailed'));
       }
     } catch (err) {
       console.error('Upload error:', err);
-      const errorMsg = err.response?.data?.message || err.message || '发票上传失败';
+      const errorMsg = err.response?.data?.message || err.message || t('invoice.upload.uploadFailed');
       showNotification(errorMsg, 'error');
       setErrors({ submit: errorMsg });
     } finally {
@@ -412,7 +412,7 @@ const InvoiceUpload = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" fontWeight={600}>
-            上传发票
+            {t('invoice.upload.title')}
           </Typography>
         </Box>
 
@@ -427,7 +427,7 @@ const InvoiceUpload = () => {
             {/* File Upload */}
             <Box sx={{ mb: 4 }}>
               <Typography variant="h6" gutterBottom>
-                选择文件
+                {t('invoice.upload.selectFile')}
               </Typography>
               {!file ? (
                 <Box
@@ -454,10 +454,10 @@ const InvoiceUpload = () => {
                   />
                   <UploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
                   <Typography variant="body1" gutterBottom>
-                    点击选择文件或拖拽文件到此处
+                    {t('invoice.upload.clickOrDrag')}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    支持格式：JPG, PNG, GIF, WEBP, PDF（最大10MB）
+                    {t('invoice.upload.supportedFormats')}
                   </Typography>
                 </Box>
               ) : (
@@ -516,7 +516,7 @@ const InvoiceUpload = () => {
                     <CircularProgress size={20} />
                   )}
                   <Typography variant="body2" color="text.secondary">
-                    {ocrRecognizing ? '正在自动识别发票信息...' : ocrResult ? '已自动识别，可点击查看详情' : '已选择图片，正在识别...'}
+                    {ocrRecognizing ? t('invoice.upload.recognizing') : ocrResult ? t('invoice.upload.recognizedClickToView') : t('invoice.upload.selecting')}
                   </Typography>
                   {ocrResult && !ocrRecognizing && (
                     <Button
@@ -525,7 +525,7 @@ const InvoiceUpload = () => {
                       startIcon={<OCRIcon />}
                       onClick={() => setShowOcrDialog(true)}
                     >
-                      查看识别结果
+                      {t('invoice.upload.viewOcrResult')}
                     </Button>
                   )}
                 </Box>
@@ -534,13 +534,13 @@ const InvoiceUpload = () => {
 
             {/* Basic Information */}
             <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-              基本信息
+              {t('invoice.upload.basicInfo')}
             </Typography>
             <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="发票号"
+                  label={t('invoice.upload.invoiceNumber')}
                   value={formData.invoiceNumber}
                   onChange={handleChange('invoiceNumber')}
                   InputProps={{
@@ -555,7 +555,7 @@ const InvoiceUpload = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="发票日期（开票日期）"
+                  label={t('invoice.upload.invoiceDate')}
                   type="date"
                   value={formData.invoiceDate}
                   onChange={handleChange('invoiceDate')}
@@ -572,10 +572,10 @@ const InvoiceUpload = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="发票类型"
+                  label={t('invoice.upload.invoiceType')}
                   value={formData.invoiceType}
                   onChange={handleChange('invoiceType')}
-                  placeholder="如：电子发票(普通发票)"
+                  placeholder={t('invoice.upload.invoiceTypePlaceholder')}
                   InputProps={{
                     endAdornment: ocrResult?.recognizedData?.invoiceType ? (
                       <InputAdornment position="end">
@@ -587,10 +587,10 @@ const InvoiceUpload = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>货币</InputLabel>
+                  <InputLabel>{t('invoice.upload.currency')}</InputLabel>
                   <Select
                     value={formData.currency}
-                    label="货币"
+                    label={t('invoice.upload.currency')}
                     onChange={handleChange('currency')}
                   >
                     <MenuItem value="CNY">CNY</MenuItem>
@@ -603,20 +603,20 @@ const InvoiceUpload = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>分类</InputLabel>
+                  <InputLabel>{t('invoice.upload.category')}</InputLabel>
                   <Select
                     value={formData.category}
-                    label="分类"
+                    label={t('invoice.upload.category')}
                     onChange={handleChange('category')}
                   >
-                    <MenuItem value="transportation">交通</MenuItem>
-                    <MenuItem value="accommodation">住宿</MenuItem>
-                    <MenuItem value="meals">餐饮</MenuItem>
-                    <MenuItem value="entertainment">娱乐</MenuItem>
-                    <MenuItem value="communication">通讯</MenuItem>
-                    <MenuItem value="office_supplies">办公用品</MenuItem>
-                    <MenuItem value="training">培训</MenuItem>
-                    <MenuItem value="other">其他</MenuItem>
+                    <MenuItem value="transportation">{t('invoice.list.categories.transportation')}</MenuItem>
+                    <MenuItem value="accommodation">{t('invoice.list.categories.accommodation')}</MenuItem>
+                    <MenuItem value="meals">{t('invoice.list.categories.meals')}</MenuItem>
+                    <MenuItem value="entertainment">{t('invoice.list.categories.entertainment')}</MenuItem>
+                    <MenuItem value="communication">{t('invoice.list.categories.communication')}</MenuItem>
+                    <MenuItem value="office_supplies">{t('invoice.list.categories.officeSupplies')}</MenuItem>
+                    <MenuItem value="training">{t('invoice.list.categories.training')}</MenuItem>
+                    <MenuItem value="other">{t('invoice.list.categories.other')}</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -624,16 +624,16 @@ const InvoiceUpload = () => {
 
             {/* 购买方信息 */}
             <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-              购买方信息
+              {t('invoice.upload.buyerInfo')}
             </Typography>
             <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="购买方名称"
+                  label={t('invoice.upload.buyerName')}
                   value={formData.buyerName}
                   onChange={handleChange('buyerName')}
-                  placeholder="如：刘旨践(个人)"
+                  placeholder={t('invoice.upload.buyerNamePlaceholder')}
                   InputProps={{
                     endAdornment: ocrResult?.recognizedData?.buyerName ? (
                       <InputAdornment position="end">
@@ -646,7 +646,7 @@ const InvoiceUpload = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="购买方税号/统一社会信用代码"
+                  label={t('invoice.upload.buyerTaxId')}
                   value={formData.buyerTaxId}
                   onChange={handleChange('buyerTaxId')}
                   InputProps={{
@@ -662,16 +662,16 @@ const InvoiceUpload = () => {
 
             {/* Vendor Information */}
             <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-              销售方信息（商户信息）
+              {t('invoice.upload.vendorInfo')}
             </Typography>
             <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="销售方名称"
+                  label={t('invoice.upload.vendorName')}
                   value={formData.vendorName}
                   onChange={handleChange('vendorName')}
-                  placeholder="如：北京滴滴出行科技有限公司"
+                  placeholder={t('invoice.upload.vendorNamePlaceholder')}
                   InputProps={{
                     endAdornment: ocrResult?.recognizedData?.vendorName ? (
                       <InputAdornment position="end">
@@ -684,10 +684,10 @@ const InvoiceUpload = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="统一社会信用代码/税号"
+                  label={t('invoice.upload.vendorTaxId')}
                   value={formData.vendorTaxId}
                   onChange={handleChange('vendorTaxId')}
-                  placeholder="如：91110108MA01G0FB09"
+                  placeholder={t('invoice.upload.vendorTaxIdPlaceholder')}
                   InputProps={{
                     endAdornment: ocrResult?.recognizedData?.vendorTaxId ? (
                       <InputAdornment position="end">
@@ -700,7 +700,7 @@ const InvoiceUpload = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="商户地址"
+                  label={t('invoice.upload.vendorAddress')}
                   value={formData.vendorAddress}
                   onChange={handleChange('vendorAddress')}
                   multiline
@@ -721,11 +721,11 @@ const InvoiceUpload = () => {
               <>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                   <Typography variant="h6">
-                    项目明细
+                    {t('invoice.upload.items')}
                   </Typography>
                   {ocrResult?.recognizedData?.items && ocrResult.recognizedData.items.length > 0 && (
                     <Chip 
-                      label={`✓ OCR已识别 ${ocrResult.recognizedData.items.length} 项`} 
+                      label={`✓ ${t('invoice.upload.ocrRecognized')} ${ocrResult.recognizedData.items.length} ${t('invoice.upload.itemsRecognized')}`} 
                       size="small" 
                       color="info"
                       icon={<OCRIcon />}
@@ -736,12 +736,12 @@ const InvoiceUpload = () => {
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>项目名称</TableCell>
-                        <TableCell align="right">单价</TableCell>
-                        <TableCell align="right">数量</TableCell>
-                        <TableCell align="right">金额</TableCell>
-                        <TableCell align="center">税率</TableCell>
-                        <TableCell align="right">税额</TableCell>
+                        <TableCell>{t('invoice.detail.itemName')}</TableCell>
+                        <TableCell align="right">{t('invoice.detail.unitPrice')}</TableCell>
+                        <TableCell align="right">{t('invoice.detail.quantity')}</TableCell>
+                        <TableCell align="right">{t('invoice.detail.amount')}</TableCell>
+                        <TableCell align="center">{t('invoice.detail.taxRate')}</TableCell>
+                        <TableCell align="right">{t('invoice.detail.taxAmount')}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -763,13 +763,13 @@ const InvoiceUpload = () => {
 
             {/* 金额信息 */}
             <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-              金额信息
+              {t('invoice.upload.amountInfo')}
             </Typography>
             <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="合计金额"
+                  label={t('invoice.upload.amount')}
                   type="number"
                   value={formData.amount}
                   onChange={handleChange('amount')}
@@ -785,7 +785,7 @@ const InvoiceUpload = () => {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="税额合计"
+                  label={t('invoice.upload.taxAmount')}
                   type="number"
                   value={formData.taxAmount}
                   onChange={handleChange('taxAmount')}
@@ -801,7 +801,7 @@ const InvoiceUpload = () => {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="价税合计（小写）"
+                  label={t('invoice.upload.totalAmount')}
                   type="number"
                   value={formData.totalAmount}
                   onChange={handleChange('totalAmount')}
@@ -817,10 +817,10 @@ const InvoiceUpload = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="价税合计（大写）"
+                  label={t('invoice.upload.totalAmountInWords')}
                   value={formData.totalAmountInWords}
                   onChange={handleChange('totalAmountInWords')}
-                  placeholder="根据价税合计（小写）自动生成"
+                  placeholder={t('invoice.upload.autoGenerated')}
                   InputProps={{
                     readOnly: true,
                     sx: {
@@ -830,7 +830,7 @@ const InvoiceUpload = () => {
                       }
                     }
                   }}
-                  helperText="根据价税合计（小写）自动生成，无需手动输入"
+                  helperText={t('invoice.upload.autoGenerated')}
                 />
               </Grid>
             </Grid>
@@ -840,10 +840,10 @@ const InvoiceUpload = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="开票人"
+                  label={t('invoice.upload.issuer')}
                   value={formData.issuer}
                   onChange={handleChange('issuer')}
-                  placeholder="如：于秋红"
+                  placeholder={t('invoice.upload.issuerPlaceholder')}
                   InputProps={{
                     endAdornment: ocrResult?.recognizedData?.issuer ? (
                       <InputAdornment position="end">
@@ -858,7 +858,7 @@ const InvoiceUpload = () => {
             {/* Notes */}
             <TextField
               fullWidth
-              label="备注"
+              label={t('invoice.upload.notes')}
               value={formData.notes}
               onChange={handleChange('notes')}
               multiline
@@ -873,7 +873,7 @@ const InvoiceUpload = () => {
                 onClick={() => navigate('/invoices')}
                 disabled={uploading}
               >
-                取消
+                {t('invoice.upload.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -881,7 +881,7 @@ const InvoiceUpload = () => {
                 startIcon={<UploadIcon />}
                 disabled={uploading || !file}
               >
-                {uploading ? '上传中...' : '上传发票'}
+                {uploading ? t('invoice.upload.uploading') : t('invoice.upload.uploadInvoice')}
               </Button>
             </Box>
 
@@ -897,10 +897,10 @@ const InvoiceUpload = () => {
           fullWidth
         >
           <DialogTitle>
-            OCR识别结果
+            {t('invoice.upload.ocrResult')}
             {ocrResult?.ocrData?.confidence && (
               <Chip 
-                label={`置信度: ${Math.round(ocrResult.ocrData.confidence)}%`}
+                label={`${t('invoice.upload.confidence')}: ${Math.round(ocrResult.ocrData.confidence)}%`}
                 color={ocrResult.ocrData.confidence > 80 ? 'success' : 'warning'}
                 size="small"
                 sx={{ ml: 2 }}
@@ -911,7 +911,7 @@ const InvoiceUpload = () => {
             {ocrResult?.recognizedData && (
               <Box>
                 <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
-                  识别到的信息：
+                  {t('invoice.upload.recognizedInfo')}:
                 </Typography>
                 <List>
                   {ocrResult.recognizedData.invoiceNumber && (
@@ -920,7 +920,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="发票号"
+                        primary={t('invoice.upload.invoiceNumber')}
                         secondary={ocrResult.recognizedData.invoiceNumber}
                       />
                     </ListItem>
@@ -931,7 +931,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="发票日期"
+                        primary={t('invoice.upload.invoiceDate')}
                         secondary={ocrResult.recognizedData.invoiceDate}
                       />
                     </ListItem>
@@ -942,7 +942,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="金额"
+                        primary={t('invoice.upload.amount')}
                         secondary={`${ocrResult.recognizedData.amount}`}
                       />
                     </ListItem>
@@ -953,7 +953,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="商户名称"
+                        primary={t('invoice.upload.vendorName')}
                         secondary={ocrResult.recognizedData.vendorName}
                       />
                     </ListItem>
@@ -964,7 +964,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="税号"
+                        primary={t('invoice.upload.vendorTaxId')}
                         secondary={ocrResult.recognizedData.vendorTaxId}
                       />
                     </ListItem>
@@ -975,7 +975,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="商户地址"
+                        primary={t('invoice.upload.vendorAddress')}
                         secondary={ocrResult.recognizedData.vendorAddress}
                       />
                     </ListItem>
@@ -986,7 +986,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="购买方名称"
+                        primary={t('invoice.upload.buyerName')}
                         secondary={ocrResult.recognizedData.buyerName}
                       />
                     </ListItem>
@@ -997,7 +997,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="购买方税号"
+                        primary={t('invoice.upload.buyerTaxId')}
                         secondary={ocrResult.recognizedData.buyerTaxId}
                       />
                     </ListItem>
@@ -1008,8 +1008,8 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="项目明细"
-                        secondary={`已识别 ${ocrResult.recognizedData.items.length} 项`}
+                        primary={t('invoice.upload.items')}
+                        secondary={`${t('invoice.upload.ocrRecognized')} ${ocrResult.recognizedData.items.length} ${t('invoice.upload.itemsRecognized')}`}
                       />
                     </ListItem>
                   )}
@@ -1019,7 +1019,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="开票人"
+                        primary={t('invoice.upload.issuer')}
                         secondary={ocrResult.recognizedData.issuer}
                       />
                     </ListItem>
@@ -1030,7 +1030,7 @@ const InvoiceUpload = () => {
                         <CheckCircleIcon color="success" />
                       </ListItemIcon>
                       <ListItemText 
-                        primary="价税合计（大写）"
+                        primary={t('invoice.upload.totalAmountInWords')}
                         secondary={ocrResult.recognizedData.totalAmountInWords}
                       />
                     </ListItem>
@@ -1039,7 +1039,7 @@ const InvoiceUpload = () => {
                 {ocrResult.text && (
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="subtitle2" gutterBottom>
-                      识别文本：
+                      {t('invoice.upload.recognizedText')}:
                     </Typography>
                     <Paper sx={{ p: 2, bgcolor: 'grey.50', maxHeight: 200, overflow: 'auto' }}>
                       <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
@@ -1053,7 +1053,7 @@ const InvoiceUpload = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setShowOcrDialog(false)}>
-              关闭
+              {t('invoice.upload.close')}
             </Button>
             <Button 
               onClick={() => {
@@ -1063,7 +1063,7 @@ const InvoiceUpload = () => {
               variant="contained" 
               color="primary"
             >
-              应用到表单
+              {t('invoice.upload.applyToForm')}
             </Button>
           </DialogActions>
         </Dialog>

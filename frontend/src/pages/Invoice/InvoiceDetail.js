@@ -103,12 +103,12 @@ const InvoiceDetail = () => {
           loadFilePreview(invoiceData._id);
         }
       } else {
-        throw new Error(response.data?.message || '获取发票详情失败');
+        throw new Error(response.data?.message || t('invoice.detail.fetchError'));
       }
     } catch (err) {
       console.error('Fetch invoice error:', err);
-      setError(err.response?.data?.message || err.message || '获取发票详情失败');
-      showNotification('获取发票详情失败', 'error');
+      setError(err.response?.data?.message || err.message || t('invoice.detail.fetchError'));
+      showNotification(t('invoice.detail.fetchError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -140,21 +140,21 @@ const InvoiceDetail = () => {
       link.click();
       link.remove();
       
-      showNotification('文件下载成功', 'success');
+      showNotification(t('invoice.detail.downloadSuccess'), 'success');
     } catch (err) {
       console.error('Download error:', err);
-      showNotification('文件下载失败', 'error');
+      showNotification(t('invoice.detail.downloadError'), 'error');
     }
   };
 
   const handleDelete = async () => {
     try {
       await apiClient.delete(`/invoices/${id}`);
-      showNotification('发票删除成功', 'success');
+      showNotification(t('invoice.detail.deleteSuccess'), 'success');
       navigate('/invoices');
     } catch (err) {
       console.error('Delete error:', err);
-      showNotification('删除发票失败', 'error');
+      showNotification(t('invoice.detail.deleteError'), 'error');
     }
   };
 
@@ -218,11 +218,11 @@ const InvoiceDetail = () => {
           notes: updatedInvoice.notes || ''
         });
         setEditDialogOpen(false);
-        showNotification('发票更新成功', 'success');
+        showNotification(t('invoice.detail.updateSuccess'), 'success');
       }
     } catch (err) {
       console.error('Update error:', err);
-      showNotification('更新发票失败', 'error');
+      showNotification(t('invoice.detail.updateError'), 'error');
     }
   };
 
@@ -238,24 +238,24 @@ const InvoiceDetail = () => {
 
   const getStatusLabel = (status) => {
     const labels = {
-      pending: '待审核',
-      verified: '已审核',
-      linked: '已关联',
-      archived: '已归档'
+      pending: t('invoice.list.statuses.pending'),
+      verified: t('invoice.list.statuses.verified'),
+      linked: t('invoice.list.statuses.linked'),
+      archived: t('invoice.list.statuses.archived')
     };
     return labels[status] || status;
   };
 
   const getCategoryLabel = (category) => {
     const labels = {
-      transportation: '交通',
-      accommodation: '住宿',
-      meals: '餐饮',
-      entertainment: '娱乐',
-      communication: '通讯',
-      office_supplies: '办公用品',
-      training: '培训',
-      other: '其他'
+      transportation: t('invoice.list.categories.transportation'),
+      accommodation: t('invoice.list.categories.accommodation'),
+      meals: t('invoice.list.categories.meals'),
+      entertainment: t('invoice.list.categories.entertainment'),
+      communication: t('invoice.list.categories.communication'),
+      office_supplies: t('invoice.list.categories.office_supplies'),
+      training: t('invoice.list.categories.training'),
+      other: t('invoice.list.categories.other')
     };
     return labels[category] || category;
   };
@@ -274,9 +274,9 @@ const InvoiceDetail = () => {
     return (
       <Container maxWidth="lg">
         <Box sx={{ py: 3 }}>
-          <Alert severity="error">{error || '发票不存在'}</Alert>
+          <Alert severity="error">{error || t('invoice.detail.notFound')}</Alert>
           <Button sx={{ mt: 2 }} onClick={() => navigate('/invoices')}>
-            返回列表
+            {t('invoice.detail.returnToList')}
           </Button>
         </Box>
       </Container>
@@ -292,13 +292,13 @@ const InvoiceDetail = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" fontWeight={600}>
-            发票详情
+            {t('invoice.detail.title')}
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           {invoice.ocrData?.extracted && (
             <Chip
               icon={<OCRIcon />}
-              label={`OCR识别 (${Math.round(invoice.ocrData.confidence || 0)}%)`}
+              label={`${t('invoice.detail.ocrRecognition')} (${Math.round(invoice.ocrData.confidence || 0)}%)`}
               color="info"
               sx={{ mr: 2 }}
             />
@@ -314,7 +314,7 @@ const InvoiceDetail = () => {
             onClick={handleDownload}
             sx={{ mr: 1 }}
           >
-            下载
+            {t('invoice.detail.download')}
           </Button>
           <Button
             variant="outlined"
@@ -322,7 +322,7 @@ const InvoiceDetail = () => {
             onClick={() => setEditDialogOpen(true)}
             sx={{ mr: 1 }}
           >
-            编辑
+            {t('invoice.detail.edit')}
           </Button>
           <Button
             variant="outlined"
@@ -330,7 +330,7 @@ const InvoiceDetail = () => {
             startIcon={<DeleteIcon />}
             onClick={() => setDeleteDialogOpen(true)}
           >
-            删除
+            {t('invoice.detail.delete')}
           </Button>
         </Box>
 
@@ -340,7 +340,7 @@ const InvoiceDetail = () => {
             {/* File Preview */}
             <Paper sx={{ p: 2, mb: 2 }}>
               <Typography variant="h6" gutterBottom>
-                发票文件
+                {t('invoice.detail.file')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               {filePreview ? (
@@ -387,14 +387,14 @@ const InvoiceDetail = () => {
             {/* File Information */}
             <Paper sx={{ p: 2, mb: 2 }}>
               <Typography variant="h6" gutterBottom>
-                文件信息
+                {t('invoice.detail.fileInfo')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">文件名</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.fileName')}</Typography>
                   </Box>
                   <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
                     {invoice.file?.originalName || '-'}
@@ -402,7 +402,7 @@ const InvoiceDetail = () => {
                 </Grid>
                 <Grid item xs={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">文件大小</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.fileSize')}</Typography>
                   </Box>
                   <Typography variant="body2">
                     {invoice.file?.size ? `${(invoice.file.size / 1024 / 1024).toFixed(2)} MB` : '-'}
@@ -410,7 +410,7 @@ const InvoiceDetail = () => {
                 </Grid>
                 <Grid item xs={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">文件类型</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.fileType')}</Typography>
                   </Box>
                   <Typography variant="body2">{invoice.file?.mimeType || '-'}</Typography>
                 </Grid>
@@ -418,7 +418,7 @@ const InvoiceDetail = () => {
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">上传时间</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('invoice.detail.uploadTime')}</Typography>
                     </Box>
                     <Typography variant="body2">
                       {dayjs(invoice.file.uploadedAt).format('YYYY-MM-DD HH:mm:ss')}
@@ -432,14 +432,14 @@ const InvoiceDetail = () => {
             {(invoice.relatedExpense || invoice.relatedTravel) && (
               <Paper sx={{ p: 2, mb: 2 }}>
                 <Typography variant="h6" gutterBottom>
-                  关联信息
+                  {t('invoice.detail.relatedInfo')}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 {invoice.relatedExpense && (
                   <Box sx={{ mb: 1 }}>
                     <Chip
                       icon={<LinkIcon />}
-                      label={`费用: ${invoice.relatedExpense.title || invoice.relatedExpense._id}`}
+                      label={`${t('invoice.list.expense')}: ${invoice.relatedExpense.title || invoice.relatedExpense._id}`}
                       color="info"
                       onClick={() => navigate(`/expenses/${invoice.relatedExpense._id}`)}
                       sx={{ cursor: 'pointer' }}
@@ -450,7 +450,7 @@ const InvoiceDetail = () => {
                   <Box>
                     <Chip
                       icon={<LinkIcon />}
-                      label={`差旅: ${invoice.relatedTravel.title || invoice.relatedTravel._id}`}
+                      label={`${t('invoice.list.travel')}: ${invoice.relatedTravel.title || invoice.relatedTravel._id}`}
                       color="info"
                       onClick={() => navigate(`/travel/${invoice.relatedTravel._id}`)}
                       sx={{ cursor: 'pointer' }}
@@ -464,7 +464,7 @@ const InvoiceDetail = () => {
             {invoice.tags && invoice.tags.length > 0 && (
               <Paper sx={{ p: 2, mb: 2 }}>
                 <Typography variant="h6" gutterBottom>
-                  标签
+                  {t('invoice.detail.tags')}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -478,14 +478,14 @@ const InvoiceDetail = () => {
             {/* System Information */}
             <Paper sx={{ p: 2 }}>
               <Typography variant="h6" gutterBottom>
-                系统信息
+                {t('invoice.detail.systemInfo')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
                 {invoice.uploadedBy && typeof invoice.uploadedBy === 'object' && (
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">上传人</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('invoice.detail.uploader')}</Typography>
                     </Box>
                     <Typography variant="body2">
                       {invoice.uploadedBy.firstName} {invoice.uploadedBy.lastName}
@@ -496,7 +496,7 @@ const InvoiceDetail = () => {
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">创建时间</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('invoice.detail.createTime')}</Typography>
                     </Box>
                     <Typography variant="body2">
                       {dayjs(invoice.createdAt).format('YYYY-MM-DD HH:mm:ss')}
@@ -507,7 +507,7 @@ const InvoiceDetail = () => {
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">更新时间</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('invoice.detail.updateTime')}</Typography>
                     </Box>
                     <Typography variant="body2">
                       {dayjs(invoice.updatedAt).format('YYYY-MM-DD HH:mm:ss')}
@@ -517,7 +517,7 @@ const InvoiceDetail = () => {
                 {invoice.verifiedBy && typeof invoice.verifiedBy === 'object' && (
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">审核人</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('invoice.detail.verifier')}</Typography>
                     </Box>
                     <Typography variant="body2">
                       {invoice.verifiedBy.firstName} {invoice.verifiedBy.lastName}
@@ -528,7 +528,7 @@ const InvoiceDetail = () => {
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">审核时间</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('invoice.detail.verifyTime')}</Typography>
                     </Box>
                     <Typography variant="body2">
                       {dayjs(invoice.verifiedAt).format('YYYY-MM-DD HH:mm:ss')}
@@ -545,12 +545,12 @@ const InvoiceDetail = () => {
             <Paper sx={{ p: 2, mb: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="h6">
-                  基本信息
+                  {t('invoice.detail.basicInfo')}
                 </Typography>
                 {invoice.ocrData?.extracted && (
                   <Chip
                     icon={<OCRIcon />}
-                    label="已自动识别"
+                    label={t('invoice.detail.autoRecognized')}
                     color="info"
                     size="small"
                   />
@@ -561,7 +561,7 @@ const InvoiceDetail = () => {
                 <Grid item xs={12} md={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">发票号</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.invoiceNumber')}</Typography>
                     {invoice.ocrData?.extracted && invoice.invoiceNumber && (
                       <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                     )}
@@ -573,7 +573,7 @@ const InvoiceDetail = () => {
                 <Grid item xs={12} md={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">发票类型</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.invoiceType')}</Typography>
                     {invoice.ocrData?.extracted && invoice.invoiceType && (
                       <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                     )}
@@ -585,7 +585,7 @@ const InvoiceDetail = () => {
                 <Grid item xs={12} md={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">发票日期</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.invoiceDate')}</Typography>
                     {invoice.ocrData?.extracted && invoice.invoiceDate && (
                       <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                     )}
@@ -599,14 +599,14 @@ const InvoiceDetail = () => {
                 <Grid item xs={12} md={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">分类</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.category')}</Typography>
                   </Box>
                   <Chip label={getCategoryLabel(invoice.category)} size="small" />
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">合计金额</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.amount')}</Typography>
                     {invoice.ocrData?.extracted && invoice.amount && (
                       <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                     )}
@@ -620,7 +620,7 @@ const InvoiceDetail = () => {
                 <Grid item xs={12} md={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">税额</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.taxAmount')}</Typography>
                     {invoice.ocrData?.extracted && invoice.taxAmount && (
                       <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                     )}
@@ -634,7 +634,7 @@ const InvoiceDetail = () => {
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary">价税合计（小写）</Typography>
+                    <Typography variant="body2" color="text.secondary">{t('invoice.detail.totalAmount')}</Typography>
                     {invoice.ocrData?.extracted && invoice.totalAmount && (
                       <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                     )}
@@ -649,7 +649,7 @@ const InvoiceDetail = () => {
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">价税合计（大写）</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('invoice.detail.totalAmountInWords')}</Typography>
                     </Box>
                     <Typography variant="body1" fontWeight={500}>
                       {invoice.totalAmountInWords}
@@ -664,12 +664,12 @@ const InvoiceDetail = () => {
               <Paper sx={{ p: 2, mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="h6">
-                    销售方信息
+                    {t('invoice.detail.vendorInfo')}
                   </Typography>
                   {invoice.ocrData?.extracted && invoice.vendor?.name && (
                     <Chip
                       icon={<OCRIcon />}
-                      label="已自动识别"
+                      label={t('invoice.detail.autoRecognized')}
                       color="info"
                       size="small"
                     />
@@ -681,7 +681,7 @@ const InvoiceDetail = () => {
                     <Grid item xs={12}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <BusinessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">销售方名称</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.vendorName')}</Typography>
                         {invoice.ocrData?.extracted && invoice.vendor?.name && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -692,7 +692,7 @@ const InvoiceDetail = () => {
                   {invoice.vendor.taxId && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">销售方税号</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.vendorTaxId')}</Typography>
                         {invoice.ocrData?.extracted && invoice.vendor?.taxId && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -703,7 +703,7 @@ const InvoiceDetail = () => {
                   {invoice.vendor.phone && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">联系电话</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.vendorPhone')}</Typography>
                         {invoice.ocrData?.extracted && invoice.vendor?.phone && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -714,7 +714,7 @@ const InvoiceDetail = () => {
                   {invoice.vendor.address && (
                     <Grid item xs={12}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">地址</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.vendorAddress')}</Typography>
                         {invoice.ocrData?.extracted && invoice.vendor?.address && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -731,12 +731,12 @@ const InvoiceDetail = () => {
               <Paper sx={{ p: 2, mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="h6">
-                    购买方信息
+                    {t('invoice.detail.buyerInfo')}
                   </Typography>
                   {invoice.ocrData?.extracted && invoice.buyer?.name && (
                     <Chip
                       icon={<OCRIcon />}
-                      label="已自动识别"
+                      label={t('invoice.detail.autoRecognized')}
                       color="info"
                       size="small"
                     />
@@ -748,7 +748,7 @@ const InvoiceDetail = () => {
                     <Grid item xs={12}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <BusinessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">购买方名称</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.buyerName')}</Typography>
                         {invoice.ocrData?.extracted && invoice.buyer?.name && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -759,7 +759,7 @@ const InvoiceDetail = () => {
                   {invoice.buyer.taxId && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">购买方税号</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.buyerTaxId')}</Typography>
                         {invoice.ocrData?.extracted && invoice.buyer?.taxId && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -770,7 +770,7 @@ const InvoiceDetail = () => {
                   {invoice.buyer.phone && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">联系电话</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.buyerPhone')}</Typography>
                         {invoice.ocrData?.extracted && invoice.buyer?.phone && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -781,7 +781,7 @@ const InvoiceDetail = () => {
                   {invoice.buyer.address && (
                     <Grid item xs={12}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">地址</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.buyerAddress')}</Typography>
                         {invoice.ocrData?.extracted && invoice.buyer?.address && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -797,19 +797,19 @@ const InvoiceDetail = () => {
             {invoice.items && invoice.items.length > 0 && (
               <Paper sx={{ p: 2, mb: 2 }}>
                 <Typography variant="h6" gutterBottom>
-                  发票项目明细
+                  {t('invoice.detail.items')}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <TableContainer>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>项目名称</TableCell>
-                        <TableCell align="right">单价</TableCell>
-                        <TableCell align="right">数量</TableCell>
-                        <TableCell align="right">金额</TableCell>
-                        <TableCell align="center">税率</TableCell>
-                        <TableCell align="right">税额</TableCell>
+                        <TableCell>{t('invoice.detail.itemName')}</TableCell>
+                        <TableCell align="right">{t('invoice.detail.unitPrice')}</TableCell>
+                        <TableCell align="right">{t('invoice.detail.quantity')}</TableCell>
+                        <TableCell align="right">{t('invoice.detail.amount')}</TableCell>
+                        <TableCell align="center">{t('invoice.detail.taxRate')}</TableCell>
+                        <TableCell align="right">{t('invoice.detail.taxAmount')}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -845,14 +845,14 @@ const InvoiceDetail = () => {
             {invoice.issuer && (
               <Paper sx={{ p: 2, mb: 2 }}>
                 <Typography variant="h6" gutterBottom>
-                  开票信息
+                  {t('invoice.detail.issuerInfo')}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">开票人</Typography>
+                      <Typography variant="body2" color="text.secondary">{t('invoice.detail.issuer')}</Typography>
                       {invoice.ocrData?.extracted && invoice.issuer && (
                         <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                       )}
@@ -867,14 +867,14 @@ const InvoiceDetail = () => {
             {(invoice.traveler?.name || invoice.traveler?.departure || invoice.traveler?.destination || invoice.traveler?.idNumber) && (
               <Paper sx={{ p: 2, mb: 2 }}>
                 <Typography variant="h6" gutterBottom>
-                  出行人信息
+                  {t('invoice.detail.travelerInfo')}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <Grid container spacing={2}>
                   {invoice.traveler.name && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">出行人姓名</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.travelerName')}</Typography>
                         {invoice.ocrData?.extracted && invoice.traveler?.name && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -885,7 +885,7 @@ const InvoiceDetail = () => {
                   {invoice.traveler.idNumber && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">身份证号</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.idNumber')}</Typography>
                         {invoice.ocrData?.extracted && invoice.traveler?.idNumber && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -897,7 +897,7 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">出行日期</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.travelDate')}</Typography>
                         {invoice.ocrData?.extracted && invoice.traveler?.travelDate && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -910,7 +910,7 @@ const InvoiceDetail = () => {
                   {invoice.traveler.departure && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">出发地</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.departure')}</Typography>
                         {invoice.ocrData?.extracted && invoice.traveler?.departure && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -921,7 +921,7 @@ const InvoiceDetail = () => {
                   {invoice.traveler.destination && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">到达地</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.destination')}</Typography>
                         {invoice.ocrData?.extracted && invoice.traveler?.destination && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -932,7 +932,7 @@ const InvoiceDetail = () => {
                   {invoice.traveler.class && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">舱位/座位</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.seatClass')}</Typography>
                         {invoice.ocrData?.extracted && invoice.traveler?.class && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -943,7 +943,7 @@ const InvoiceDetail = () => {
                   {invoice.traveler.vehicleType && (
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">交通工具</Typography>
+                        <Typography variant="body2" color="text.secondary">{t('invoice.detail.vehicleType')}</Typography>
                         {invoice.ocrData?.extracted && invoice.traveler?.vehicleType && (
                           <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
                         )}
@@ -959,7 +959,7 @@ const InvoiceDetail = () => {
             {invoice.notes && (
               <Paper sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>
-                  备注
+                  {t('invoice.detail.notes')}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{invoice.notes}</Typography>
@@ -971,11 +971,11 @@ const InvoiceDetail = () => {
         {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>
-            编辑发票
+            {t('invoice.detail.editInvoice')}
             {invoice?.ocrData?.extracted && (
               <Chip
                 icon={<OCRIcon />}
-                label={`OCR识别 (置信度: ${Math.round(invoice.ocrData.confidence || 0)}%)`}
+                label={`${t('invoice.detail.ocrRecognition')} (${t('invoice.detail.confidence')}: ${Math.round(invoice.ocrData.confidence || 0)}%)`}
                 color="info"
                 size="small"
                 sx={{ ml: 2 }}
@@ -993,10 +993,10 @@ const InvoiceDetail = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                       <OCRIcon color="primary" />
                       <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                        OCR识别详细信息
+                        {t('invoice.detail.ocrDetailInfo')}
                       </Typography>
                       <Chip 
-                        label={`置信度: ${Math.round(invoice.ocrData.confidence || 0)}%`} 
+                        label={`${t('invoice.detail.confidence')}: ${Math.round(invoice.ocrData.confidence || 0)}%`} 
                         size="small" 
                         color="info"
                       />
@@ -1026,7 +1026,7 @@ const InvoiceDetail = () => {
                       if (!markdownContent) {
                         return (
                           <Typography variant="body2" color="text.secondary">
-                            暂无OCR识别内容
+                            {t('invoice.detail.noOcrContent')}
                           </Typography>
                         );
                       }
@@ -1206,39 +1206,39 @@ const InvoiceDetail = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="发票号"
+                  label={t('invoice.detail.invoiceNumber')}
                   value={formData.invoiceNumber || ''}
                   onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                  helperText={invoice?.ocrData?.extracted && invoice.invoiceNumber ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.invoiceNumber ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="发票日期"
+                  label={t('invoice.detail.invoiceDate')}
                   type="date"
                   value={formData.invoiceDate ? dayjs(formData.invoiceDate).format('YYYY-MM-DD') : ''}
                   onChange={(e) => setFormData({ ...formData, invoiceDate: e.target.value })}
                   InputLabelProps={{ shrink: true }}
-                  helperText={invoice?.ocrData?.extracted && invoice.invoiceDate ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.invoiceDate ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="发票类型"
+                  label={t('invoice.detail.invoiceType')}
                   value={formData.invoiceType || ''}
                   onChange={(e) => setFormData({ ...formData, invoiceType: e.target.value })}
-                  placeholder="如：电子发票(普通发票)"
-                  helperText={invoice?.ocrData?.extracted && invoice.invoiceType ? '已通过OCR自动识别' : ''}
+                  placeholder={t('invoice.detail.invoiceTypePlaceholder')}
+                  helperText={invoice?.ocrData?.extracted && invoice.invoiceType ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>货币</InputLabel>
+                  <InputLabel>{t('invoice.detail.currency')}</InputLabel>
                   <Select
                     value={formData.currency || 'CNY'}
-                    label="货币"
+                    label={t('invoice.detail.currency')}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                   >
                     <MenuItem value="CNY">CNY</MenuItem>
@@ -1252,116 +1252,116 @@ const InvoiceDetail = () => {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="合计金额"
+                  label={t('invoice.detail.amount')}
                   type="number"
                   value={formData.amount || ''}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  helperText={invoice?.ocrData?.extracted && invoice.amount ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.amount ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="税额合计"
+                  label={t('invoice.detail.taxAmount')}
                   type="number"
                   value={formData.taxAmount || ''}
                   onChange={(e) => setFormData({ ...formData, taxAmount: e.target.value })}
-                  helperText={invoice?.ocrData?.extracted && invoice.taxAmount ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.taxAmount ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="价税合计（小写）"
+                  label={t('invoice.detail.totalAmount')}
                   type="number"
                   value={formData.totalAmount || ''}
                   onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                  helperText={invoice?.ocrData?.extracted && invoice.totalAmount ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.totalAmount ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel>分类</InputLabel>
+                  <InputLabel>{t('invoice.detail.category')}</InputLabel>
                   <Select
                     value={formData.category || 'other'}
-                    label="分类"
+                    label={t('invoice.detail.category')}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   >
-                    <MenuItem value="transportation">交通</MenuItem>
-                    <MenuItem value="accommodation">住宿</MenuItem>
-                    <MenuItem value="meals">餐饮</MenuItem>
-                    <MenuItem value="entertainment">娱乐</MenuItem>
-                    <MenuItem value="communication">通讯</MenuItem>
-                    <MenuItem value="office_supplies">办公用品</MenuItem>
-                    <MenuItem value="training">培训</MenuItem>
-                    <MenuItem value="other">其他</MenuItem>
+                    <MenuItem value="transportation">{t('invoice.list.categories.transportation')}</MenuItem>
+                    <MenuItem value="accommodation">{t('invoice.list.categories.accommodation')}</MenuItem>
+                    <MenuItem value="meals">{t('invoice.list.categories.meals')}</MenuItem>
+                    <MenuItem value="entertainment">{t('invoice.list.categories.entertainment')}</MenuItem>
+                    <MenuItem value="communication">{t('invoice.list.categories.communication')}</MenuItem>
+                    <MenuItem value="office_supplies">{t('invoice.list.categories.officeSupplies')}</MenuItem>
+                    <MenuItem value="training">{t('invoice.list.categories.training')}</MenuItem>
+                    <MenuItem value="other">{t('invoice.list.categories.other')}</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="商户名称"
+                  label={t('invoice.detail.vendorName')}
                   value={formData.vendor?.name || ''}
                   onChange={(e) => setFormData({ 
                     ...formData, 
                     vendor: { ...formData.vendor, name: e.target.value }
                   })}
-                  helperText={invoice?.ocrData?.extracted && invoice.vendor?.name ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.vendor?.name ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="税号"
+                  label={t('invoice.detail.vendorTaxId')}
                   value={formData.vendor?.taxId || ''}
                   onChange={(e) => setFormData({ 
                     ...formData, 
                     vendor: { ...formData.vendor, taxId: e.target.value }
                   })}
-                  helperText={invoice?.ocrData?.extracted && invoice.vendor?.taxId ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.vendor?.taxId ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="商户地址"
+                  label={t('invoice.detail.vendorAddress')}
                   value={formData.vendor?.address || ''}
                   onChange={(e) => setFormData({ 
                     ...formData, 
                     vendor: { ...formData.vendor, address: e.target.value }
                   })}
-                  helperText={invoice?.ocrData?.extracted && invoice.vendor?.address ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.vendor?.address ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
 
               {/* 购买方信息 */}
               <Grid item xs={12}>
                 <Divider sx={{ my: 1 }} />
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>购买方信息</Typography>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>{t('invoice.detail.buyerInfo')}</Typography>
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="购买方名称"
+                  label={t('invoice.detail.buyerName')}
                   value={formData.buyer?.name || ''}
                   onChange={(e) => setFormData({ 
                     ...formData, 
                     buyer: { ...formData.buyer, name: e.target.value }
                   })}
-                  helperText={invoice?.ocrData?.extracted && invoice.buyer?.name ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.buyer?.name ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="购买方税号"
+                  label={t('invoice.detail.buyerTaxId')}
                   value={formData.buyer?.taxId || ''}
                   onChange={(e) => setFormData({ 
                     ...formData, 
                     buyer: { ...formData.buyer, taxId: e.target.value }
                   })}
-                  helperText={invoice?.ocrData?.extracted && invoice.buyer?.taxId ? '已通过OCR自动识别' : ''}
+                  helperText={invoice?.ocrData?.extracted && invoice.buyer?.taxId ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
 
@@ -1370,19 +1370,19 @@ const InvoiceDetail = () => {
                 <>
                   <Grid item xs={12}>
                     <Divider sx={{ my: 1 }} />
-                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>发票项目明细</Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>{t('invoice.detail.items')}</Typography>
                   </Grid>
                   <Grid item xs={12}>
                     <TableContainer component={Paper} variant="outlined">
                       <Table size="small">
                         <TableHead>
                           <TableRow>
-                            <TableCell>项目名称</TableCell>
-                            <TableCell align="right">单价</TableCell>
-                            <TableCell align="right">数量</TableCell>
-                            <TableCell align="right">金额</TableCell>
-                            <TableCell align="center">税率</TableCell>
-                            <TableCell align="right">税额</TableCell>
+                            <TableCell>{t('invoice.detail.itemName')}</TableCell>
+                            <TableCell align="right">{t('invoice.detail.unitPrice')}</TableCell>
+                            <TableCell align="right">{t('invoice.detail.quantity')}</TableCell>
+                            <TableCell align="right">{t('invoice.detail.amount')}</TableCell>
+                            <TableCell align="center">{t('invoice.detail.taxRate')}</TableCell>
+                            <TableCell align="right">{t('invoice.detail.taxAmount')}</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -1412,10 +1412,10 @@ const InvoiceDetail = () => {
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="开票人"
+                      label={t('invoice.detail.issuer')}
                       value={formData.issuer || ''}
                       onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
-                      helperText={invoice?.ocrData?.extracted && invoice.issuer ? '已通过OCR自动识别' : ''}
+                      helperText={invoice?.ocrData?.extracted && invoice.issuer ? t('invoice.detail.autoRecognized') : ''}
                     />
                   </Grid>
                 </>
@@ -1426,54 +1426,54 @@ const InvoiceDetail = () => {
                 <>
                   <Grid item xs={12}>
                     <Divider sx={{ my: 1 }} />
-                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>出行人信息</Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>{t('invoice.detail.travelerInfo')}</Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="出行人姓名"
+                      label={t('invoice.detail.travelerName')}
                       value={formData.traveler?.name || ''}
                       onChange={(e) => setFormData({ 
                         ...formData, 
                         traveler: { ...formData.traveler, name: e.target.value }
                       })}
-                      helperText={invoice?.ocrData?.extracted && invoice.traveler?.name ? '已通过OCR自动识别' : ''}
+                      helperText={invoice?.ocrData?.extracted && invoice.traveler?.name ? t('invoice.detail.autoRecognized') : ''}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="身份证号"
+                      label={t('invoice.detail.idNumber')}
                       value={formData.traveler?.idNumber || ''}
                       onChange={(e) => setFormData({ 
                         ...formData, 
                         traveler: { ...formData.traveler, idNumber: e.target.value }
                       })}
-                      helperText={invoice?.ocrData?.extracted && invoice.traveler?.idNumber ? '已通过OCR自动识别' : ''}
+                      helperText={invoice?.ocrData?.extracted && invoice.traveler?.idNumber ? t('invoice.detail.autoRecognized') : ''}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="出发地"
+                      label={t('invoice.detail.departure')}
                       value={formData.traveler?.departure || ''}
                       onChange={(e) => setFormData({ 
                         ...formData, 
                         traveler: { ...formData.traveler, departure: e.target.value }
                       })}
-                      helperText={invoice?.ocrData?.extracted && invoice.traveler?.departure ? '已通过OCR自动识别' : ''}
+                      helperText={invoice?.ocrData?.extracted && invoice.traveler?.departure ? t('invoice.detail.autoRecognized') : ''}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="到达地"
+                      label={t('invoice.detail.destination')}
                       value={formData.traveler?.destination || ''}
                       onChange={(e) => setFormData({ 
                         ...formData, 
                         traveler: { ...formData.traveler, destination: e.target.value }
                       })}
-                      helperText={invoice?.ocrData?.extracted && invoice.traveler?.destination ? '已通过OCR自动识别' : ''}
+                      helperText={invoice?.ocrData?.extracted && invoice.traveler?.destination ? t('invoice.detail.autoRecognized') : ''}
                     />
                   </Grid>
                 </>
@@ -1488,10 +1488,10 @@ const InvoiceDetail = () => {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="价税合计（大写）"
+                      label={t('invoice.detail.totalAmountInWords')}
                       value={formData.totalAmountInWords || ''}
                       onChange={(e) => setFormData({ ...formData, totalAmountInWords: e.target.value })}
-                      helperText={invoice?.ocrData?.extracted && invoice.totalAmountInWords ? '已通过OCR自动识别' : ''}
+                      helperText={invoice?.ocrData?.extracted && invoice.totalAmountInWords ? t('invoice.detail.autoRecognized') : ''}
                     />
                   </Grid>
                 </>
@@ -1503,7 +1503,7 @@ const InvoiceDetail = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="备注"
+                  label={t('invoice.detail.notes')}
                   value={formData.notes || ''}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   multiline
@@ -1513,25 +1513,25 @@ const InvoiceDetail = () => {
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setEditDialogOpen(false)}>取消</Button>
+            <Button onClick={() => setEditDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleUpdate} variant="contained">
-              保存
+              {t('common.save')}
             </Button>
           </DialogActions>
         </Dialog>
 
         {/* Delete Dialog */}
         <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-          <DialogTitle>确认删除</DialogTitle>
+          <DialogTitle>{t('invoice.detail.confirmDelete')}</DialogTitle>
           <DialogContent>
             <Typography>
-              确定要删除发票 <strong>{invoice.invoiceNumber || invoice.file?.originalName}</strong> 吗？
+              {t('invoice.detail.deleteMessage')} <strong>{invoice.invoiceNumber || invoice.file?.originalName}</strong>?
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteDialogOpen(false)}>取消</Button>
+            <Button onClick={() => setDeleteDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleDelete} color="error" variant="contained">
-              删除
+              {t('common.delete')}
             </Button>
           </DialogActions>
         </Dialog>
