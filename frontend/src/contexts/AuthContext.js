@@ -216,13 +216,43 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Check if user has a specific permission
+  const hasPermission = (permission) => {
+    // Admin role (case-insensitive) has all permissions
+    if (state.user?.role && state.user.role.toUpperCase() === 'ADMIN') {
+      return true;
+    }
+    
+    // Check if user has the permission
+    return state.user?.permissions?.includes(permission) || false;
+  };
+
+  // Check if user has any of the specified permissions
+  const hasAnyPermission = (permissions) => {
+    if (!Array.isArray(permissions)) {
+      return hasPermission(permissions);
+    }
+    return permissions.some(permission => hasPermission(permission));
+  };
+
+  // Check if user has all of the specified permissions
+  const hasAllPermissions = (permissions) => {
+    if (!Array.isArray(permissions)) {
+      return hasPermission(permissions);
+    }
+    return permissions.every(permission => hasPermission(permission));
+  };
+
   const value = {
     ...state,
     login,
     register,
     logout,
     updatePreferences,
-    changePassword
+    changePassword,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions
   };
 
   return (

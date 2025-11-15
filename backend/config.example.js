@@ -23,5 +23,8 @@ module.exports = {
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS || 900000, // 15 minutes
-  RATE_LIMIT_MAX_REQUESTS: process.env.RATE_LIMIT_MAX_REQUESTS || 100
+  RATE_LIMIT_MAX_REQUESTS: process.env.RATE_LIMIT_MAX_REQUESTS || 100,
+
+  // Mistral AI Configuration
+  MISTRAL_API_KEY: process.env.MISTRAL_API_KEY || ''
 };

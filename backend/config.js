@@ -5,7 +5,7 @@ module.exports = {
   NODE_ENV: process.env.NODE_ENV || 'development',
 
   // Database
-  MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/travel-expense-system',
+  MONGODB_URI: process.env.MONGODB_URI || 'mongodb+srv://liuzhijiansun:BE12mjA8imCd4vBp@cluster0.tzxphum.mongodb.net/travel-expense-system?retryWrites=true&w=majority',
 
   // JWT Secret
   JWT_SECRET: process.env.JWT_SECRET || 'your-super-secret-jwt-key-here',
@@ -23,5 +23,8 @@ module.exports = {
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: process.env.RATE_LIMIT_WINDOW_MS || 900000, // 15 minutes
-  RATE_LIMIT_MAX_REQUESTS: process.env.RATE_LIMIT_MAX_REQUESTS || 100
+  RATE_LIMIT_MAX_REQUESTS: process.env.RATE_LIMIT_MAX_REQUESTS || 100,
+
+  // Mistral AI Configuration
+  MISTRAL_API_KEY: process.env.MISTRAL_API_KEY || ''
 };

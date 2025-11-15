@@ -21,6 +21,7 @@ import {
   TextField,
   InputAdornment,
   FormControl,
+  FormLabel,
   InputLabel,
   Select,
   MenuItem,
@@ -51,12 +52,13 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import PermissionSelector from '../../components/Common/PermissionSelector';
 
 const RoleManagement = () => {
   const { t, i18n } = useTranslation();
   const { showNotification } = useNotification();
   const { user } = useAuth();
-  const canEdit = user?.role === 'admin';
+  const canEdit = user?.role && user.role.toUpperCase() === 'ADMIN';
 
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -487,19 +489,14 @@ const RoleManagement = () => {
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label={t('role.permissions')}
-                  value={formData.permissions.join(', ')}
-                  onChange={(e) => {
-                    const permissions = e.target.value
-                      .split(',')
-                      .map(p => p.trim())
-                      .filter(p => p);
-                    setFormData({ ...formData, permissions });
-                  }}
-                  helperText={t('role.permissionsHint')}
-                />
+                <FormControl fullWidth>
+                  <FormLabel sx={{ mb: 1 }}>{t('role.permissions')}</FormLabel>
+                  <PermissionSelector
+                    selectedPermissions={formData.permissions}
+                    onChange={(permissions) => setFormData({ ...formData, permissions })}
+                    disabled={saving}
+                  />
+                </FormControl>
               </Grid>
             </Grid>
           </DialogContent>

@@ -2,8 +2,27 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
 const Role = require('../models/Role');
+const { PERMISSION_GROUPS } = require('../config/permissions');
 
 const router = express.Router();
+
+// @desc    Get all available permissions
+// @route   GET /api/roles/permissions
+// @access  Private (Admin only)
+router.get('/permissions', protect, authorize('admin'), async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: PERMISSION_GROUPS
+    });
+  } catch (error) {
+    console.error('Get permissions error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+});
 
 // @desc    Get all roles
 // @route   GET /api/roles

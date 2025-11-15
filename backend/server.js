@@ -33,6 +33,7 @@ const notificationTemplateRoutes = require('./routes/notificationTemplates');
 const pushNotificationRoutes = require('./routes/pushNotifications');
 const approvalWorkflowRoutes = require('./routes/approvalWorkflows');
 const settingsRoutes = require('./routes/settings');
+const invoiceRoutes = require('./routes/invoices');
 
 // Connect to database
 connectDB();
@@ -152,6 +153,7 @@ app.use('/api/notification-templates', notificationTemplateRoutes);
 app.use('/api/push', pushNotificationRoutes);
 app.use('/api/approval-workflows', approvalWorkflowRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 // Serve frontend static files (if deployed together)
 if (frontendExists) {

@@ -534,8 +534,8 @@ const RegionSelector = ({
                           sx={{ height: 20, fontSize: '0.75rem' }}
                         />
                       )}
-                      {/* 城市类型显示风险等级 */}
-                      {location.type === 'city' && location.riskLevel && (
+                      {/* 城市类型显示风险等级（低风险不显示，显示在右侧） */}
+                      {location.type === 'city' && location.riskLevel && location.riskLevel !== 'low' && (
                         <Chip
                           label={`风险${getRiskLevelLabel(location.riskLevel)}`}
                           size="small"
@@ -544,6 +544,7 @@ const RegionSelector = ({
                             height: 20, 
                             fontSize: '0.7rem',
                             fontWeight: 600,
+                            marginLeft: 'auto',
                             ...(location.riskLevel === 'high' || location.riskLevel === 'very_high' ? {
                               animation: `${pulse} 2s infinite`
                             } : {})

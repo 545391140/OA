@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
+const config = require('../config');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const Position = require('../models/Position');
@@ -10,12 +11,12 @@ const router = express.Router();
 
 // Generate JWT Token
 const generateToken = (id) => {
-  const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+  const secret = process.env.JWT_SECRET || config.JWT_SECRET;
   if (!process.env.JWT_SECRET) {
     console.warn('⚠️  WARNING: JWT_SECRET not set, using default. This is insecure for production!');
   }
   return jwt.sign({ id }, secret, {
-    expiresIn: process.env.JWT_EXPIRE || '7d',
+    expiresIn: process.env.JWT_EXPIRE || config.JWT_EXPIRE,
   });
 };
 
@@ -155,6 +156,15 @@ router.post('/login', [
     user.lastLogin = new Date();
     await user.save();
 
+    // Get user permissions from role
+    let permissions = [];
+    if (user.role) {
+      const role = await Role.findOne({ code: user.role, isActive: true });
+      if (role) {
+        permissions = role.permissions || [];
+      }
+    }
+
     const token = generateToken(user._id);
 
     res.json({
@@ -168,6 +178,7 @@ router.post('/login', [
         lastName: user.lastName,
         email: user.email,
         role: user.role,
+        permissions: permissions,
         department: user.department,
         position: user.position,
         preferences: user.preferences,
@@ -210,6 +221,7 @@ router.get('/me', protect, async (req, res) => {
       // 获取角色和岗位的详细信息
       let roleInfo = null;
       let positionInfo = null;
+      let permissions = [];
       
       if (user.role) {
         const role = await Role.findOne({ code: user.role, isActive: true });
@@ -219,6 +231,8 @@ router.get('/me', protect, async (req, res) => {
             name: role.name,
             nameEn: role.nameEn
           };
+          // 获取角色的权限
+          permissions = role.permissions || [];
         }
       }
       
@@ -244,6 +258,7 @@ router.get('/me', protect, async (req, res) => {
           email: user.email,
           role: user.role,
           roleInfo: roleInfo,
+          permissions: permissions,
           department: user.department,
           position: user.position,
           positionInfo: positionInfo,

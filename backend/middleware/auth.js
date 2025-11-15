@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const config = require('../config');
 const User = require('../models/User');
 
 // Protect routes
@@ -78,7 +79,8 @@ const protect = async (req, res, next) => {
       }
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key-here');
+      const secret = process.env.JWT_SECRET || config.JWT_SECRET;
+      const decoded = jwt.verify(token, secret);
 
       // Get user from the token
       req.user = await User.findById(decoded.id).select('-password');
@@ -111,7 +113,15 @@ const protect = async (req, res, next) => {
 // Grant access to specific roles
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    const userRole = req.user.role ? req.user.role.toUpperCase() : '';
+    const allowedRoles = roles.map(r => r.toUpperCase());
+    
+    // Admin role has access to everything
+    if (userRole === 'ADMIN') {
+      return next();
+    }
+    
+    if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: `User role ${req.user.role} is not authorized to access this route`

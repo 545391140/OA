@@ -36,13 +36,15 @@ import {
   Security as SecurityIcon,
   Work as WorkIcon,
   People as PeopleIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  PictureAsPdf as InvoiceIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { updateHtmlLang } from '../../utils/htmlLangUpdater';
 import GlobalSearch from '../Common/GlobalSearch';
 import NotificationBell from '../Common/NotificationBell';
+import { MENU_PERMISSIONS } from '../../config/permissions';
 
 const drawerWidth = 240;
 
@@ -117,6 +119,7 @@ const Layout = () => {
     { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard', key: 'dashboard' },
     { text: t('navigation.travel'), icon: <TravelIcon />, path: '/travel', key: 'travel' },
     { text: t('navigation.expenses'), icon: <ExpenseIcon />, path: '/expenses', key: 'expenses' },
+    { text: '发票夹', icon: <InvoiceIcon />, path: '/invoices', key: 'invoices' },
     { text: t('navigation.approvals'), icon: <ApprovalIcon />, path: '/approvals', key: 'approvals' },
     { text: t('navigation.reports'), icon: <ReportIcon />, path: '/reports', key: 'reports' },
     { text: t('navigation.travelStandardQuery'), icon: <QueryBuilderIcon />, path: '/travel-standards/query', key: 'travelStandardQuery' },
@@ -140,12 +143,31 @@ const Layout = () => {
     { text: t('navigation.settings'), icon: <SettingsIcon />, path: '/settings', key: 'settings' },
   ], [t, i18n.language]);
 
-  // Filter menu items based on user role, with settings at the bottom
-  const filteredMenuItems = useMemo(() => [
-    ...menuItems,
-    ...(user?.role === 'admin' ? adminMenuItems : []),
-    ...settingsMenuItem
-  ], [menuItems, adminMenuItems, settingsMenuItem, user?.role]);
+  // Check if user has permission for a menu item
+  const hasPermission = (menuPath) => {
+    // Admin role (case-insensitive) has all permissions
+    if (user?.role && user.role.toUpperCase() === 'ADMIN') {
+      return true;
+    }
+    
+    // Check if user has the required permission
+    const requiredPermission = MENU_PERMISSIONS[menuPath];
+    if (!requiredPermission) {
+      return true; // If no permission required, allow access
+    }
+    
+    return user?.permissions?.includes(requiredPermission) || false;
+  };
+
+  // Filter menu items based on user permissions, with settings at the bottom
+  const filteredMenuItems = useMemo(() => {
+    const filtered = [
+      ...menuItems.filter(item => hasPermission(item.path)),
+      ...adminMenuItems.filter(item => hasPermission(item.path)),
+      ...settingsMenuItem.filter(item => hasPermission(item.path))
+    ];
+    return filtered;
+  }, [menuItems, adminMenuItems, settingsMenuItem, user?.permissions, user?.role]);
 
   // 根据当前路由获取对应的标题
   const getPageTitle = () => {

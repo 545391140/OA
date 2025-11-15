@@ -8,6 +8,7 @@
 
 const mongoose = require('mongoose');
 require('dotenv').config();
+const config = require('../config');
 const User = require('../models/User');
 
 // 默认管理员用户配置
@@ -17,7 +18,7 @@ const DEFAULT_ADMIN = {
   lastName: 'User',
   email: 'admin@company.com',
   password: 'admin123456', // 生产环境应该修改为强密码
-  role: 'admin',
+  role: 'ADMIN', // 使用ADMIN角色代码（大写）
   department: 'IT',
   position: 'System Administrator',
   isActive: true
@@ -25,9 +26,9 @@ const DEFAULT_ADMIN = {
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/travel-expense-system'
-    );
+    const mongoUri = process.env.MONGODB_URI || config.MONGODB_URI || 'mongodb://localhost:27017/travel-expense-system';
+    console.log(`🔌 Attempting to connect to MongoDB...`);
+    const conn = await mongoose.connect(mongoUri);
     console.log(`📦 MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error('❌ Database connection error:', error.message);

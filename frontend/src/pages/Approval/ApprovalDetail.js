@@ -55,9 +55,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+import { numberToChinese } from '../../utils/numberToChinese';
 
 const ApprovalDetail = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const { id, type } = useParams(); // type: 'travel' or 'expense'
@@ -766,6 +767,10 @@ const ApprovalDetail = () => {
                   const isPending = approval.status === 'pending';
                   const isApproved = approval.status === 'approved';
                   const isRejected = approval.status === 'rejected';
+                  // 确保审批级别有效：如果 approval.level 不存在或为0，使用 index + 1
+                  const approvalLevel = (approval.level && approval.level > 0) ? approval.level : (index + 1);
+                  // 如果是中文，将数字转换为中文数字
+                  const displayLevel = i18n.language === 'zh' ? numberToChinese(approvalLevel) : approvalLevel;
 
                   return (
                     <Box
@@ -862,7 +867,7 @@ const ApprovalDetail = () => {
                           />
                           <Chip
                             icon={<LabelIcon sx={{ fontSize: 14 }} />}
-                            label={t('travel.detail.levelNumber', { level: approval.level })}
+                            label={t('travel.detail.levelNumber', { level: displayLevel })}
                             variant="outlined"
                             size="small"
                             sx={{ fontSize: '0.75rem' }}
