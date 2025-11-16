@@ -65,7 +65,6 @@ const InvoiceDetail = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formData, setFormData] = useState({});
   const [filePreview, setFilePreview] = useState(null);
-  const [showOcrInfo, setShowOcrInfo] = useState(false);
 
   useEffect(() => {
     fetchInvoiceDetail();
@@ -295,14 +294,6 @@ const InvoiceDetail = () => {
             {t('invoice.detail.title')}
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
-          {invoice.ocrData?.extracted && (
-            <Chip
-              icon={<OCRIcon />}
-              label={`${t('invoice.detail.ocrRecognition')} (${Math.round(invoice.ocrData.confidence || 0)}%)`}
-              color="info"
-              sx={{ mr: 2 }}
-            />
-          )}
           <Chip
             label={getStatusLabel(invoice.status)}
             color={getStatusColor(invoice.status)}
@@ -547,10 +538,10 @@ const InvoiceDetail = () => {
                 <Typography variant="h6">
                   {t('invoice.detail.basicInfo')}
                 </Typography>
-                {invoice.ocrData?.extracted && (
+                {invoice.ocrData?.extracted && (invoice.invoiceNumber || invoice.invoiceDate || invoice.amount || invoice.totalAmount) && (
                   <Chip
                     icon={<OCRIcon />}
-                    label={t('invoice.detail.autoRecognized')}
+                    label="OCR"
                     color="info"
                     size="small"
                   />
@@ -562,9 +553,6 @@ const InvoiceDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">{t('invoice.detail.invoiceNumber')}</Typography>
-                    {invoice.ocrData?.extracted && invoice.invoiceNumber && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
                   </Box>
                   <Typography variant="body1" fontWeight={500}>
                     {invoice.invoiceNumber || '-'}
@@ -574,9 +562,6 @@ const InvoiceDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">{t('invoice.detail.invoiceType')}</Typography>
-                    {invoice.ocrData?.extracted && invoice.invoiceType && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
                   </Box>
                   <Typography variant="body1">
                     {invoice.invoiceType || '-'}
@@ -586,9 +571,6 @@ const InvoiceDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">{t('invoice.detail.invoiceDate')}</Typography>
-                    {invoice.ocrData?.extracted && invoice.invoiceDate && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
                   </Box>
                   <Typography variant="body1">
                     {invoice.invoiceDate
@@ -607,9 +589,6 @@ const InvoiceDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">{t('invoice.detail.amount')}</Typography>
-                    {invoice.ocrData?.extracted && invoice.amount && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
                   </Box>
                   <Typography variant="body1" fontWeight={600}>
                     {invoice.amount
@@ -621,9 +600,6 @@ const InvoiceDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">{t('invoice.detail.taxAmount')}</Typography>
-                    {invoice.ocrData?.extracted && invoice.taxAmount && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
                   </Box>
                   <Typography variant="body1">
                     {invoice.taxAmount !== undefined && invoice.taxAmount !== null
@@ -635,9 +611,6 @@ const InvoiceDetail = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <MoneyIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">{t('invoice.detail.totalAmount')}</Typography>
-                    {invoice.ocrData?.extracted && invoice.totalAmount && (
-                      <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    )}
                   </Box>
                   <Typography variant="body1" fontWeight={600} color="primary">
                     {invoice.totalAmount
@@ -669,7 +642,7 @@ const InvoiceDetail = () => {
                   {invoice.ocrData?.extracted && invoice.vendor?.name && (
                     <Chip
                       icon={<OCRIcon />}
-                      label={t('invoice.detail.autoRecognized')}
+                      label="OCR"
                       color="info"
                       size="small"
                     />
@@ -682,9 +655,6 @@ const InvoiceDetail = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <BusinessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.vendorName')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.vendor?.name && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.vendor.name}</Typography>
                     </Grid>
@@ -693,9 +663,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.vendorTaxId')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.vendor?.taxId && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.vendor.taxId}</Typography>
                     </Grid>
@@ -704,9 +671,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.vendorPhone')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.vendor?.phone && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.vendor.phone}</Typography>
                     </Grid>
@@ -715,9 +679,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.vendorAddress')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.vendor?.address && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.vendor.address}</Typography>
                     </Grid>
@@ -736,7 +697,7 @@ const InvoiceDetail = () => {
                   {invoice.ocrData?.extracted && invoice.buyer?.name && (
                     <Chip
                       icon={<OCRIcon />}
-                      label={t('invoice.detail.autoRecognized')}
+                      label="OCR"
                       color="info"
                       size="small"
                     />
@@ -749,9 +710,6 @@ const InvoiceDetail = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <BusinessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.buyerName')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.buyer?.name && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.buyer.name}</Typography>
                     </Grid>
@@ -760,9 +718,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.buyerTaxId')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.buyer?.taxId && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.buyer.taxId}</Typography>
                     </Grid>
@@ -771,9 +726,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.buyerPhone')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.buyer?.phone && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.buyer.phone}</Typography>
                     </Grid>
@@ -782,9 +734,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.buyerAddress')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.buyer?.address && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.buyer.address}</Typography>
                     </Grid>
@@ -796,9 +745,19 @@ const InvoiceDetail = () => {
             {/* Invoice Items */}
             {invoice.items && invoice.items.length > 0 && (
               <Paper sx={{ p: 2, mb: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  {t('invoice.detail.items')}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="h6">
+                    {t('invoice.detail.items')}
+                  </Typography>
+                  {invoice.ocrData?.extracted && invoice.items && invoice.items.length > 0 && (
+                    <Chip
+                      icon={<OCRIcon />}
+                      label="OCR"
+                      color="info"
+                      size="small"
+                    />
+                  )}
+                </Box>
                 <Divider sx={{ mb: 2 }} />
                 <TableContainer>
                   <Table size="small">
@@ -844,18 +803,25 @@ const InvoiceDetail = () => {
             {/* Issuer Information */}
             {invoice.issuer && (
               <Paper sx={{ p: 2, mb: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  {t('invoice.detail.issuerInfo')}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="h6">
+                    {t('invoice.detail.issuerInfo')}
+                  </Typography>
+                  {invoice.ocrData?.extracted && invoice.issuer && (
+                    <Chip
+                      icon={<OCRIcon />}
+                      label="OCR"
+                      color="info"
+                      size="small"
+                    />
+                  )}
+                </Box>
                 <Divider sx={{ mb: 2 }} />
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <DescriptionIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                       <Typography variant="body2" color="text.secondary">{t('invoice.detail.issuer')}</Typography>
-                      {invoice.ocrData?.extracted && invoice.issuer && (
-                        <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                      )}
                     </Box>
                     <Typography variant="body1">{invoice.issuer}</Typography>
                   </Grid>
@@ -875,9 +841,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.travelerName')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.traveler?.name && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.traveler.name}</Typography>
                     </Grid>
@@ -886,9 +849,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.idNumber')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.traveler?.idNumber && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.traveler.idNumber}</Typography>
                     </Grid>
@@ -898,9 +858,6 @@ const InvoiceDetail = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <CalendarIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.travelDate')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.traveler?.travelDate && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">
                         {dayjs(invoice.traveler.travelDate).format('YYYY-MM-DD')}
@@ -911,9 +868,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.departure')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.traveler?.departure && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.traveler.departure}</Typography>
                     </Grid>
@@ -922,9 +876,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.destination')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.traveler?.destination && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.traveler.destination}</Typography>
                     </Grid>
@@ -933,9 +884,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.seatClass')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.traveler?.class && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.traveler.class}</Typography>
                     </Grid>
@@ -944,9 +892,6 @@ const InvoiceDetail = () => {
                     <Grid item xs={12} md={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <Typography variant="body2" color="text.secondary">{t('invoice.detail.vehicleType')}</Typography>
-                        {invoice.ocrData?.extracted && invoice.traveler?.vehicleType && (
-                          <Chip label="OCR" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />
-                        )}
                       </Box>
                       <Typography variant="body1">{invoice.traveler.vehicleType}</Typography>
                     </Grid>
@@ -972,21 +917,10 @@ const InvoiceDetail = () => {
         <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>
             {t('invoice.detail.editInvoice')}
-            {invoice?.ocrData?.extracted && (
-              <Chip
-                icon={<OCRIcon />}
-                label={`${t('invoice.detail.ocrRecognition')} (${t('invoice.detail.confidence')}: ${Math.round(invoice.ocrData.confidence || 0)}%)`}
-                color="info"
-                size="small"
-                sx={{ ml: 2 }}
-                onClick={() => setShowOcrInfo(!showOcrInfo)}
-                style={{ cursor: 'pointer' }}
-              />
-            )}
           </DialogTitle>
           <DialogContent>
             {/* OCR识别详细信息展示 */}
-            {invoice?.ocrData?.extracted && showOcrInfo && (
+            {false && invoice?.ocrData?.extracted && (
               <Box sx={{ mb: 2 }}>
                 <Accordion defaultExpanded>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -1209,7 +1143,6 @@ const InvoiceDetail = () => {
                   label={t('invoice.detail.invoiceNumber')}
                   value={formData.invoiceNumber || ''}
                   onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-                  helperText={invoice?.ocrData?.extracted && invoice.invoiceNumber ? t('invoice.detail.autoRecognized') : ''}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
