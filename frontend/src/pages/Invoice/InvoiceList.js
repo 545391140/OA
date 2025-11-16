@@ -327,16 +327,16 @@ const InvoiceList = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>{t('invoice.list.columns.preview')}</TableCell>
-                <TableCell>{t('invoice.list.columns.invoiceNumber')}</TableCell>
-                <TableCell>{t('invoice.list.columns.vendorName')}</TableCell>
-                <TableCell>{t('invoice.list.columns.amount')}</TableCell>
-                <TableCell>{t('invoice.list.columns.invoiceDate')}</TableCell>
-                <TableCell>{t('invoice.list.columns.category')}</TableCell>
-                <TableCell>{t('invoice.list.columns.status')}</TableCell>
-                <TableCell>{t('invoice.list.columns.link')}</TableCell>
-                <TableCell>{t('invoice.list.columns.uploadTime')}</TableCell>
-                <TableCell align="right">{t('invoice.list.columns.actions')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.preview')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.invoiceNumber')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.vendorName')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.amount')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.invoiceDate')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.category')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.status')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.link')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.uploadTime')}</TableCell>
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -363,7 +363,7 @@ const InvoiceList = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>{invoice.vendor?.name || '-'}</TableCell>
-                    <TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
                       {invoice.amount ? (
                         <Typography variant="body2" fontWeight={600}>
                           {invoice.currency || 'CNY'} {invoice.amount.toFixed(2)}
@@ -372,7 +372,7 @@ const InvoiceList = () => {
                         '-'
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
                       {invoice.invoiceDate
                         ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD')
                         : '-'}
@@ -410,7 +410,7 @@ const InvoiceList = () => {
                         '-'
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
                       {dayjs(invoice.createdAt).format('YYYY-MM-DD HH:mm')}
                     </TableCell>
                     <TableCell align="right">
