@@ -76,36 +76,37 @@ else
     echo -e "${GREEN}✅ 前端已构建${NC}"
 fi
 
-# 4. 使用rsync完整同步文件到服务器
+# 4. 使用rsync增量同步文件到服务器（只上传修改的文件）
 echo ""
-echo -e "${YELLOW}[步骤 4/6] 完整上传文件到服务器...${NC}"
-echo "   这可能需要几分钟，请耐心等待..."
+echo -e "${YELLOW}[步骤 4/6] 增量上传修改的文件到服务器...${NC}"
+echo "   只会上传已修改的文件，这通常很快..."
+echo -e "${BLUE}   ⚠️  保护服务器上传文件：uploads/ 不会被覆盖${NC}"
+echo -e "${BLUE}   ✅ 配置文件会同步更新：.env*, config.js${NC}"
 
-# 创建服务器目录
-$SSH_CMD "$SERVER_USER@$SERVER_HOST" "mkdir -p $DEPLOY_PATH && rm -rf $DEPLOY_PATH/* 2>/dev/null || true"
+# 创建服务器目录（不删除现有文件）
+$SSH_CMD "$SERVER_USER@$SERVER_HOST" "mkdir -p $DEPLOY_PATH/backend $DEPLOY_PATH/frontend"
 
-# 上传后端文件（排除不需要的文件）
-echo "   上传后端文件..."
+# 上传后端文件（只同步修改的文件，保护上传文件目录）
+echo "   同步后端文件（增量，包含配置文件）..."
 rsync -avz --progress \
     -e "$RSYNC_SSH" \
     --exclude='node_modules' \
     --exclude='*.log' \
-    --exclude='.env*' \
-    --exclude='uploads/*' \
+    --exclude='uploads/' \
+    --exclude='uploads/**' \
     --exclude='.git' \
     --exclude='.DS_Store' \
     --exclude='*.swp' \
     backend/ "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/backend/"
 
-# 上传前端文件（包含build目录）
-echo "   上传前端文件..."
+# 上传前端文件（只同步修改的文件，包含build目录和配置文件）
+echo "   同步前端文件（增量，包含配置文件）..."
 rsync -avz --progress \
     -e "$RSYNC_SSH" \
     --exclude='node_modules' \
     --exclude='.git' \
     --exclude='*.log' \
     --exclude='.DS_Store' \
-    --exclude='.env*' \
     --exclude='src' \
     --include='build/**' \
     --include='public/**' \
@@ -113,24 +114,18 @@ rsync -avz --progress \
     --include='package-lock.json' \
     frontend/ "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/frontend/"
 
-# 上传根目录文件
-echo "   上传配置文件..."
+# 上传根目录文件（只同步修改的文件）
+echo "   同步配置文件（增量）..."
 if [ -f "package.json" ]; then
-    rsync -avz -e "$RSYNC_SSH" package.json "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
+    rsync -avz --update -e "$RSYNC_SSH" package.json "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
 fi
 
-# 上传部署脚本
-if [ -f "deploy-on-server.sh" ]; then
-    rsync -avz -e "$RSYNC_SSH" deploy-on-server.sh "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/"
-    $SSH_CMD "$SERVER_USER@$SERVER_HOST" "chmod +x $DEPLOY_PATH/deploy-on-server.sh"
-fi
 
-echo -e "${GREEN}✅ 文件上传完成${NC}"
+echo -e "${GREEN}✅ 增量文件同步完成${NC}"
 
-# 5. 在服务器上安装依赖和部署
+# 5. 在服务器上安装依赖和部署（仅在需要时）
 echo ""
-echo -e "${YELLOW}[步骤 5/6] 在服务器上安装依赖和部署...${NC}"
-echo "   这可能需要较长时间，请耐心等待..."
+echo -e "${YELLOW}[步骤 5/6] 检查并安装依赖（仅在需要时）...${NC}"
 
 $SSH_CMD "$SERVER_USER@$SERVER_HOST" << 'ENDSSH'
 cd /home/ec2-user/travel
@@ -139,43 +134,57 @@ cd /home/ec2-user/travel
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-# 确保使用 Node.js 18
-nvm use 18 2>/dev/null || nvm install 18 && nvm use 18
+# 确保使用 Node.js 20.16.0
+nvm use 20.16.0 2>/dev/null || (nvm install 20.16.0 && nvm use 20.16.0)
 
-# 安装前端依赖（如果需要）
+# 检查前端依赖（仅在 package.json 更新时安装）
 cd frontend
-if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules/.package-lock.json" ]; then
-    echo "安装前端依赖..."
+if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules/.package-lock.json" ] || [ "package-lock.json" -nt "node_modules/.package-lock.json" ]; then
+    echo "检测到前端依赖变化，安装依赖..."
     npm install --production 2>&1 | tail -20
+else
+    echo "✅ 前端依赖无需更新"
 fi
 
-# 如果build目录存在，移动构建文件到正确位置
+# 如果build目录存在，移动构建文件到正确位置（仅在build目录更新时）
 if [ -d "build" ]; then
-    echo "移动构建文件..."
-    [ -f "index.html" ] && [ ! -f "index.html.bak" ] && mv index.html index.html.bak 2>/dev/null || true
-    [ -d "static" ] && [ ! -d "static.bak" ] && mv static static.bak 2>/dev/null || true
-    cp -r build/* . 2>/dev/null || true
+    # 检查是否需要更新构建文件
+    NEED_UPDATE=false
+    if [ ! -f "index.html" ] || [ "build/index.html" -nt "index.html" ]; then
+        NEED_UPDATE=true
+    fi
     
-    if [ -f "index.html" ] && [ -d "static" ]; then
-        echo "✅ 构建文件已就位"
+    if [ "$NEED_UPDATE" = true ]; then
+        echo "更新构建文件..."
+        [ -f "index.html" ] && [ ! -f "index.html.bak" ] && mv index.html index.html.bak 2>/dev/null || true
+        [ -d "static" ] && [ ! -d "static.bak" ] && mv static static.bak 2>/dev/null || true
+        cp -r build/* . 2>/dev/null || true
+        
+        if [ -f "index.html" ] && [ -d "static" ]; then
+            echo "✅ 构建文件已更新"
+        else
+            echo "⚠️  警告: 构建文件可能不完整"
+        fi
     else
-        echo "⚠️  警告: 构建文件可能不完整"
+        echo "✅ 构建文件无需更新"
     fi
 fi
 cd ..
 
-# 安装后端依赖
+# 检查后端依赖（仅在 package.json 更新时安装）
 cd backend
-if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules/.package-lock.json" ]; then
-    echo "安装后端依赖..."
+if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules/.package-lock.json" ] || [ "package-lock.json" -nt "node_modules/.package-lock.json" ]; then
+    echo "检测到后端依赖变化，安装依赖..."
     npm install --production 2>&1 | tail -20
+else
+    echo "✅ 后端依赖无需更新"
 fi
 cd ..
 
-echo "✅ 依赖安装完成"
+echo "✅ 依赖检查完成"
 ENDSSH
 
-echo -e "${GREEN}✅ 依赖安装完成${NC}"
+echo -e "${GREEN}✅ 依赖检查完成${NC}"
 
 # 6. 启动服务
 echo ""
@@ -216,7 +225,7 @@ echo -e "${YELLOW}验证部署...${NC}"
 sleep 3
 
 # 检查健康检查
-HEALTH=$(ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" 'curl -s http://localhost:3000/health 2>&1' || echo "failed")
+HEALTH=$(ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" 'curl -s http://localhost:3001/health 2>&1' || echo "failed")
 if echo "$HEALTH" | grep -q "status"; then
     echo -e "${GREEN}✅ 健康检查通过${NC}"
 else
@@ -247,14 +256,25 @@ echo "$FILES_CHECK"
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}🎉 完整部署完成！${NC}"
+echo -e "${GREEN}🎉 增量部署完成！${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "📝 部署信息："
 echo "   - 服务器: $SERVER_USER@$SERVER_HOST"
 echo "   - 路径: $DEPLOY_PATH"
-echo "   - 访问地址: http://$SERVER_HOST:3000"
-echo "   - 健康检查: http://$SERVER_HOST:3000/health"
+echo "   - 部署模式: 增量同步（只上传修改的文件）"
+echo "   - 访问地址: http://$SERVER_HOST:3001"
+echo "   - 健康检查: http://$SERVER_HOST:3001/health"
+echo ""
+echo "💡 提示："
+echo "   - 此脚本使用增量同步，只会上传已修改的文件"
+echo "   - 依赖安装仅在 package.json 更新时执行"
+echo "   - 构建文件仅在 build 目录更新时复制"
+echo "   - ✅ 配置文件会同步更新（如果本地有修改）："
+echo "     • backend/.env* (环境变量)"
+echo "     • backend/config.js (服务器配置)"
+echo "   - 🔒 服务器上传文件受保护，不会被覆盖："
+echo "     • backend/uploads/ (用户上传的文件)"
 echo ""
 echo "🔍 查看服务状态："
 echo "   ssh -i $SSH_KEY $SERVER_USER@$SERVER_HOST 'ps aux | grep node'"

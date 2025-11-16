@@ -337,3 +337,4 @@ if (req.file.mimetype === 'application/pdf') {
 **快速优化**：
 - ✅ 推荐条件转换方案（简单实现）
 
+

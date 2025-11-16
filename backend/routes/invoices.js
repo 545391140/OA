@@ -762,83 +762,105 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
           // 如果OCR识别到信息，自动填充（仅在用户未手动填写时）
           if (ocrResult.invoiceData) {
+            console.log('开始赋值 OCR 识别数据，识别到的字段:', Object.keys(ocrResult.invoiceData));
+            
             // 基本信息
-            if (!invoice.invoiceNumber && ocrResult.invoiceData.invoiceNumber) {
+            if (ocrResult.invoiceData.invoiceNumber && (!invoice.invoiceNumber || invoice.invoiceNumber.trim() === '')) {
               invoice.invoiceNumber = ocrResult.invoiceData.invoiceNumber;
+              console.log('✓ 赋值 invoiceNumber:', invoice.invoiceNumber);
             }
-            if (!invoice.invoiceDate && ocrResult.invoiceData.invoiceDate) {
+            if (ocrResult.invoiceData.invoiceDate && !invoice.invoiceDate) {
               invoice.invoiceDate = new Date(ocrResult.invoiceData.invoiceDate);
+              console.log('✓ 赋值 invoiceDate:', invoice.invoiceDate);
             }
-            if (!invoice.invoiceType && ocrResult.invoiceData.invoiceType) {
+            if (ocrResult.invoiceData.invoiceType && (!invoice.invoiceType || invoice.invoiceType.trim() === '')) {
               invoice.invoiceType = ocrResult.invoiceData.invoiceType;
+              console.log('✓ 赋值 invoiceType:', invoice.invoiceType);
             }
-            if (!invoice.amount && ocrResult.invoiceData.amount) {
-              invoice.amount = ocrResult.invoiceData.amount;
+            if (ocrResult.invoiceData.amount !== undefined && ocrResult.invoiceData.amount !== null && (!invoice.amount || invoice.amount === 0)) {
+              invoice.amount = parseFloat(ocrResult.invoiceData.amount);
+              console.log('✓ 赋值 amount:', invoice.amount);
             }
-            if (!invoice.taxAmount && ocrResult.invoiceData.taxAmount) {
-              invoice.taxAmount = ocrResult.invoiceData.taxAmount;
+            if (ocrResult.invoiceData.taxAmount !== undefined && ocrResult.invoiceData.taxAmount !== null && (!invoice.taxAmount || invoice.taxAmount === 0)) {
+              invoice.taxAmount = parseFloat(ocrResult.invoiceData.taxAmount);
+              console.log('✓ 赋值 taxAmount:', invoice.taxAmount);
             }
-            if (!invoice.totalAmount && ocrResult.invoiceData.totalAmount) {
-              invoice.totalAmount = ocrResult.invoiceData.totalAmount;
+            if (ocrResult.invoiceData.totalAmount !== undefined && ocrResult.invoiceData.totalAmount !== null && (!invoice.totalAmount || invoice.totalAmount === 0)) {
+              invoice.totalAmount = parseFloat(ocrResult.invoiceData.totalAmount);
+              console.log('✓ 赋值 totalAmount:', invoice.totalAmount);
             }
             
             // 销售方（商户）信息
-            if (!invoice.vendor?.name && ocrResult.invoiceData.vendorName) {
+            if (ocrResult.invoiceData.vendorName && (!invoice.vendor?.name || invoice.vendor.name.trim() === '')) {
               invoice.vendor = invoice.vendor || {};
               invoice.vendor.name = ocrResult.invoiceData.vendorName;
+              console.log('✓ 赋值 vendor.name:', invoice.vendor.name);
             }
-            if (!invoice.vendor?.taxId && ocrResult.invoiceData.vendorTaxId) {
+            if (ocrResult.invoiceData.vendorTaxId && (!invoice.vendor?.taxId || invoice.vendor.taxId.trim() === '')) {
               invoice.vendor = invoice.vendor || {};
               invoice.vendor.taxId = ocrResult.invoiceData.vendorTaxId;
+              console.log('✓ 赋值 vendor.taxId:', invoice.vendor.taxId);
             }
-            if (!invoice.vendor?.address && ocrResult.invoiceData.vendorAddress) {
+            if (ocrResult.invoiceData.vendorAddress && (!invoice.vendor?.address || invoice.vendor.address.trim() === '')) {
               invoice.vendor = invoice.vendor || {};
               invoice.vendor.address = ocrResult.invoiceData.vendorAddress;
+              console.log('✓ 赋值 vendor.address:', invoice.vendor.address);
             }
             
             // 购买方信息
             if (ocrResult.invoiceData.buyerName || ocrResult.invoiceData.buyerTaxId) {
               invoice.buyer = invoice.buyer || {};
-              if (!invoice.buyer.name && ocrResult.invoiceData.buyerName) {
+              if (ocrResult.invoiceData.buyerName && (!invoice.buyer.name || invoice.buyer.name.trim() === '')) {
                 invoice.buyer.name = ocrResult.invoiceData.buyerName;
+                console.log('✓ 赋值 buyer.name:', invoice.buyer.name);
               }
-              if (!invoice.buyer.taxId && ocrResult.invoiceData.buyerTaxId) {
+              if (ocrResult.invoiceData.buyerTaxId && (!invoice.buyer.taxId || invoice.buyer.taxId.trim() === '')) {
                 invoice.buyer.taxId = ocrResult.invoiceData.buyerTaxId;
+                console.log('✓ 赋值 buyer.taxId:', invoice.buyer.taxId);
               }
             }
             
             // 发票项目明细
-            if (ocrResult.invoiceData.items && ocrResult.invoiceData.items.length > 0) {
+            if (ocrResult.invoiceData.items && Array.isArray(ocrResult.invoiceData.items) && ocrResult.invoiceData.items.length > 0) {
               invoice.items = ocrResult.invoiceData.items;
+              console.log('✓ 赋值 items，数量:', invoice.items.length);
             }
             
             // 开票人
-            if (!invoice.issuer && ocrResult.invoiceData.issuer) {
+            if (ocrResult.invoiceData.issuer && (!invoice.issuer || invoice.issuer.trim() === '')) {
               invoice.issuer = ocrResult.invoiceData.issuer;
+              console.log('✓ 赋值 issuer:', invoice.issuer);
             }
             
             // 出行人信息
             if (ocrResult.invoiceData.travelerName || ocrResult.invoiceData.travelerIdNumber || 
                 ocrResult.invoiceData.departure || ocrResult.invoiceData.destination) {
               invoice.traveler = invoice.traveler || {};
-              if (!invoice.traveler.name && ocrResult.invoiceData.travelerName) {
+              if (ocrResult.invoiceData.travelerName && (!invoice.traveler.name || invoice.traveler.name.trim() === '')) {
                 invoice.traveler.name = ocrResult.invoiceData.travelerName;
+                console.log('✓ 赋值 traveler.name:', invoice.traveler.name);
               }
-              if (!invoice.traveler.idNumber && ocrResult.invoiceData.travelerIdNumber) {
+              if (ocrResult.invoiceData.travelerIdNumber && (!invoice.traveler.idNumber || invoice.traveler.idNumber.trim() === '')) {
                 invoice.traveler.idNumber = ocrResult.invoiceData.travelerIdNumber;
+                console.log('✓ 赋值 traveler.idNumber:', invoice.traveler.idNumber);
               }
-              if (!invoice.traveler.departure && ocrResult.invoiceData.departure) {
+              if (ocrResult.invoiceData.departure && (!invoice.traveler.departure || invoice.traveler.departure.trim() === '')) {
                 invoice.traveler.departure = ocrResult.invoiceData.departure;
+                console.log('✓ 赋值 traveler.departure:', invoice.traveler.departure);
               }
-              if (!invoice.traveler.destination && ocrResult.invoiceData.destination) {
+              if (ocrResult.invoiceData.destination && (!invoice.traveler.destination || invoice.traveler.destination.trim() === '')) {
                 invoice.traveler.destination = ocrResult.invoiceData.destination;
+                console.log('✓ 赋值 traveler.destination:', invoice.traveler.destination);
               }
             }
             
             // 价税合计（大写）
-            if (!invoice.totalAmountInWords && ocrResult.invoiceData.totalAmountInWords) {
+            if (ocrResult.invoiceData.totalAmountInWords && (!invoice.totalAmountInWords || invoice.totalAmountInWords.trim() === '')) {
               invoice.totalAmountInWords = ocrResult.invoiceData.totalAmountInWords;
+              console.log('✓ 赋值 totalAmountInWords:', invoice.totalAmountInWords);
             }
+            
+            console.log('OCR 数据赋值完成');
           }
 
           await invoice.save();

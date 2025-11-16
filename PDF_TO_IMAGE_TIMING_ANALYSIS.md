@@ -272,3 +272,4 @@ async recognizeInvoiceWithMistral(filePath, fileType = 'image') {
 2. **Mistral 路径不需要转换，性能更好**
 3. **转换是同步阻塞操作，影响并发性能**
 
+

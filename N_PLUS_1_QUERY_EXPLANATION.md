@@ -273,3 +273,4 @@ const invoices = await Invoice.find(query)
 4. **使用 lean() 减少内存开销**
 5. **对于复杂查询，考虑使用聚合管道（Aggregation Pipeline）**
 
+

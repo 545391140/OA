@@ -1265,5 +1265,9 @@ class OCRService {
   }
 }
 
-module.exports = new OCRService();
+const ocrServiceInstance = new OCRService();
+// 导出客户端以便外部检查
+ocrServiceInstance.mistralClient = mistralClient;
+ocrServiceInstance.dashscopeClient = dashscopeClient;
+module.exports = ocrServiceInstance;
 

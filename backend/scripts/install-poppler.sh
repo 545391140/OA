@@ -110,3 +110,4 @@ echo "然后运行: source ~/.zshrc"
 echo ""
 
 
+
