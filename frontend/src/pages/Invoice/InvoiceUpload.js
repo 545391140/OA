@@ -837,25 +837,19 @@ const InvoiceUpload = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>{t('invoice.upload.currency')}</InputLabel>
-                  <Select
-                    value={formData.currency}
-                    label={t('invoice.upload.currency')}
-                    onChange={handleChange('currency')}
-                    endAdornment={ocrResult?.recognizedData?.currency ? (
-                      <InputAdornment position="end" sx={{ mr: 1 }}>
-                        <CheckCircleIcon color="success" fontSize="small" />
+                <TextField
+                  fullWidth
+                  label={t('invoice.upload.currency')}
+                  value={formData.currency}
+                  onChange={handleChange('currency')}
+                  InputProps={{
+                    endAdornment: ocrResult?.recognizedData?.currency ? (
+                      <InputAdornment position="end">
+                        <Chip label="OCR" size="small" color="info" sx={{ height: 20, fontSize: '0.65rem' }} />
                       </InputAdornment>
-                    ) : null}
-                  >
-                    <MenuItem value="CNY">CNY</MenuItem>
-                    <MenuItem value="USD">USD</MenuItem>
-                    <MenuItem value="JPY">JPY</MenuItem>
-                    <MenuItem value="KRW">KRW</MenuItem>
-                    <MenuItem value="EUR">EUR</MenuItem>
-                  </Select>
-                </FormControl>
+                    ) : undefined
+                  }}
+                />
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>

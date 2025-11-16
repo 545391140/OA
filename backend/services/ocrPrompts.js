@@ -8,7 +8,7 @@
 // 注意：Mistral OCR API 目前不支持自定义提示词，会自动返回 markdown 格式
 // 阿里云 DashScope OCR 支持自定义提示词，使用此提示词确保提取所有信息
 // ============================================
-const OCR_PROMPT = `请识别这张发票图片中的所有文字内容，并以 markdown 格式输出。`;
+const OCR_PROMPT = `请识别这张发票图片中的所有文字内容，以左上为原点，再到右上，如此顺序。并以 markdown 格式输出。`;
 
 // ============================================
 // AI 分析系统提示词（用于解析 OCR markdown 文本为 JSON）
@@ -95,7 +95,7 @@ const AI_ANALYSIS_SYSTEM_PROMPT = `你是一个专业的发票识别助手。请
 - 金额/amount：查找"合计金额"、"金额合计"、"Subtotal"、"Amount"、"Net Amount"（不含税）
 - 税额/taxAmount：查找"税额合计"、"税额"、"Tax Amount"、"VAT"、"Tax"（如果显示"免税"、"Tax Exempt"、"***"则为0）
 - 价税合计/totalAmount：查找"价税合计"、"总计"、"Total Amount"、"Total"、"Grand Total"（含税总金额）
-- 货币/currency：查找货币类型，如"CNY"、"USD"、"EUR"、"JPY"等，
+- 货币/currency：查找货币类型，可以是货币代码（如"CNY"、"USD"、"EUR"、"JPY"）或货币名称（如"人民币"、"美元"等），
 
 **其他字段：**
 - 开票人/issuer：查找"开票人"、"Issuer"、"Issued By"等
@@ -236,7 +236,7 @@ const MISTRAL_CHAT_SYSTEM_PROMPT = `你是一个专业的发票识别助手。�
 - 金额/amount：查找"合计金额"、"金额合计"、"Subtotal"、"Amount"、"Net Amount"（不含税）
 - 税额/taxAmount：查找"税额合计"、"税额"、"Tax Amount"、"VAT"、"Tax"（如果显示"免税"、"Tax Exempt"、"***"则为0）
 - 价税合计/totalAmount：查找"价税合计"、"总计"、"Total Amount"、"Total"、"Grand Total"（含税总金额）
-- 货币/currency：查找货币类型，如"CNY"、"USD"、"EUR"、"JPY"等，默认为"CNY"
+- 货币/currency：查找货币类型，可以是货币代码（如"CNY"、"USD"、"EUR"、"JPY"）或货币名称（如"人民币"、"美元"等），默认为"CNY"
 
 **其他字段：**
 - 开票人/issuer：查找"开票人"、"Issuer"、"Issued By"等

@@ -27,7 +27,7 @@ const InvoiceSchema = new mongoose.Schema({
   },
   currency: {
     type: String,
-    enum: ['USD', 'CNY', 'JPY', 'KRW', 'EUR'],
+    trim: true,
     default: 'CNY'
   },
   taxAmount: {
