@@ -64,11 +64,14 @@ router.get('/', protect, async (req, res) => {
     // 分页
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    // 列表页只需要展示字段，排除大字段以提升性能
+    // 排除的字段：ocrData（OCR数据，rawData可能很大）、items（明细数组）、traveler（出行人信息）、buyer（购买方信息）
+    // 列表页需要的字段：_id, invoiceNumber, invoiceDate, amount, currency, category, status, createdAt, file, vendor.name, relatedExpense, relatedTravel
     const invoices = await Invoice.find(query)
-      .populate('uploadedBy', 'firstName lastName email')
-      .populate('relatedExpense', 'title amount')
-      .populate('relatedTravel', 'title destination')
-      .populate('verifiedBy', 'firstName lastName')
+      .select('_id invoiceNumber invoiceDate amount currency category status createdAt file vendor.name relatedExpense relatedTravel')
+      .populate('relatedExpense', 'title') // 列表页只需要 title，不需要 amount
+      .populate('relatedTravel', 'title') // 列表页只需要 title，不需要 destination
+      .lean() // 返回普通对象而非 Mongoose 文档，减少内存占用和序列化开销
       .sort(sortOptions)
       .skip(skip)
       .limit(parseInt(limit));
