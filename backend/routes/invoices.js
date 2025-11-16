@@ -246,13 +246,14 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       });
     }
 
-    // 删除临时文件
+    // OCR识别完成后，删除上传的文件
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        console.log('OCR识别完成，已删除上传文件:', filePath);
       }
     } catch (unlinkError) {
-      console.error('Delete temp file error:', unlinkError);
+      console.error('删除上传文件失败:', unlinkError.message);
     }
 
     if (ocrResult && ocrResult.success) {
@@ -648,8 +649,31 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
           console.error('保存OCR错误信息失败:', saveError.message);
         }
       }
+      
+      // OCR识别完成后，删除上传的文件
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log('OCR识别完成，已删除上传文件:', filePath);
+        }
+      } catch (unlinkError) {
+        console.error('删除上传文件失败:', unlinkError.message);
+      }
     } else {
       console.log('非图片文件，跳过OCR识别，文件类型:', req.file.mimetype);
+      
+      // 非图片文件也删除上传的文件（识别完成后）
+      try {
+        const filePath = path.isAbsolute(req.file.path) 
+          ? req.file.path 
+          : path.resolve(__dirname, '..', req.file.path);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log('已删除上传文件:', filePath);
+        }
+      } catch (unlinkError) {
+        console.error('删除上传文件失败:', unlinkError.message);
+      }
     }
 
     // 重新查询发票以获取完整数据（包括OCR识别后的字段）

@@ -1666,18 +1666,14 @@ class OCRService {
       console.log(`      - 项目明细: ${invoiceData.items ? invoiceData.items.length : 0} 项`);
       console.log('════════════════════════════════════════════════════════════════');
 
-      // 保留 PDF 转换的图片文件，不自动清理
-      // 注释掉自动清理逻辑，以便后续查看和调试
-      // if (tempImagePath && fs.existsSync(tempImagePath)) {
-      //   try {
-      //     fs.unlinkSync(tempImagePath);
-      //     console.log('✓ 已清理临时图片文件:', tempImagePath);
-      //   } catch (cleanupError) {
-      //     console.warn('清理临时文件失败:', cleanupError.message);
-      //   }
-      // }
-      if (tempImagePath) {
-        console.log('📁 PDF 转换的图片文件已保留:', tempImagePath);
+      // OCR识别完成后，删除PDF转换的临时图片文件
+      if (tempImagePath && fs.existsSync(tempImagePath)) {
+        try {
+          fs.unlinkSync(tempImagePath);
+          console.log('✓ OCR识别完成，已删除PDF转换的临时图片文件:', tempImagePath);
+        } catch (cleanupError) {
+          console.warn('⚠️  删除临时图片文件失败:', cleanupError.message);
+        }
       }
 
       return {
@@ -1704,18 +1700,14 @@ class OCRService {
       }
       console.error('========================================');
       
-      // 保留 PDF 转换的图片文件，不自动清理（即使出错也保留以便调试）
-      // 注释掉自动清理逻辑，以便后续查看和调试
-      // if (tempImagePath && fs.existsSync(tempImagePath)) {
-      //   try {
-      //     fs.unlinkSync(tempImagePath);
-      //     console.log('✓ 已清理临时图片文件:', tempImagePath);
-      //   } catch (cleanupError) {
-      //     console.warn('清理临时文件失败:', cleanupError.message);
-      //   }
-      // }
-      if (tempImagePath) {
-        console.log('📁 PDF 转换的图片文件已保留（错误情况下）:', tempImagePath);
+      // OCR识别失败时，也删除PDF转换的临时图片文件
+      if (tempImagePath && fs.existsSync(tempImagePath)) {
+        try {
+          fs.unlinkSync(tempImagePath);
+          console.log('✓ OCR识别失败，已删除PDF转换的临时图片文件:', tempImagePath);
+        } catch (cleanupError) {
+          console.warn('⚠️  删除临时图片文件失败:', cleanupError.message);
+        }
       }
       
       return {
