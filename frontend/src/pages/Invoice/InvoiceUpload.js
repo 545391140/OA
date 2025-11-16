@@ -559,7 +559,7 @@ const InvoiceUpload = () => {
 
           if (response.data && response.data.success) {
             showNotification(t('invoice.upload.updateSuccess'), 'success');
-            navigate(`/invoices/${editInvoiceId}`);
+            navigate('/invoices');
           } else {
             throw new Error(response.data?.message || t('invoice.upload.updateFailed'));
           }
@@ -569,7 +569,7 @@ const InvoiceUpload = () => {
 
           if (response.data && response.data.success) {
             showNotification(t('invoice.upload.updateSuccess'), 'success');
-            navigate(`/invoices/${editInvoiceId}`);
+            navigate('/invoices');
           } else {
             throw new Error(response.data?.message || t('invoice.upload.updateFailed'));
           }
@@ -619,8 +619,8 @@ const InvoiceUpload = () => {
             showNotification(t('invoice.upload.uploadSuccess'), 'success');
           }
           
-          // 跳转到详情页（识别结果会在详情页显示）
-          navigate(`/invoices/${uploadedInvoice._id}`);
+          // 跳转到列表页
+          navigate('/invoices');
         } else {
           throw new Error(response.data?.message || t('invoice.upload.uploadFailed'));
         }

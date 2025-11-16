@@ -274,7 +274,18 @@ const InvoiceDetail = () => {
       <Container maxWidth="lg">
         <Box sx={{ py: 3 }}>
           <Alert severity="error">{error || t('invoice.detail.notFound')}</Alert>
-          <Button sx={{ mt: 2 }} onClick={() => navigate('/invoices')}>
+          <Button 
+            sx={{ 
+              mt: 2,
+              borderRadius: 1.5,
+              px: 3,
+              py: 1,
+              textTransform: 'none',
+              fontWeight: 500,
+            }} 
+            variant="contained"
+            onClick={() => navigate('/invoices')}
+          >
             {t('invoice.detail.returnToList')}
           </Button>
         </Box>
@@ -287,7 +298,15 @@ const InvoiceDetail = () => {
       <Box sx={{ py: 3 }}>
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <IconButton onClick={() => navigate('/invoices')}>
+          <IconButton 
+            onClick={() => navigate('/invoices')}
+            sx={{
+              borderRadius: 1.5,
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" fontWeight={600}>
@@ -297,21 +316,40 @@ const InvoiceDetail = () => {
           <Chip
             label={getStatusLabel(invoice.status)}
             color={getStatusColor(invoice.status)}
-            sx={{ mr: 2 }}
+            sx={{ 
+              mr: 2,
+              fontWeight: 500,
+              fontSize: '0.875rem',
+              height: 32,
+            }}
           />
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
             onClick={handleDownload}
-            sx={{ mr: 1 }}
+            sx={{ 
+              mr: 1,
+              borderRadius: 1.5,
+              px: 2.5,
+              py: 1,
+              textTransform: 'none',
+              fontWeight: 500,
+            }}
           >
             {t('invoice.detail.download')}
           </Button>
           <Button
-            variant="outlined"
+            variant="contained"
             startIcon={<EditIcon />}
             onClick={() => navigate(`/invoices/upload?edit=${id}&hideUpload=true`)}
-            sx={{ mr: 1 }}
+            sx={{ 
+              mr: 1,
+              borderRadius: 1.5,
+              px: 2.5,
+              py: 1,
+              textTransform: 'none',
+              fontWeight: 500,
+            }}
           >
             {t('invoice.detail.edit')}
           </Button>
@@ -320,6 +358,13 @@ const InvoiceDetail = () => {
             color="error"
             startIcon={<DeleteIcon />}
             onClick={() => setDeleteDialogOpen(true)}
+            sx={{
+              borderRadius: 1.5,
+              px: 2.5,
+              py: 1,
+              textTransform: 'none',
+              fontWeight: 500,
+            }}
           >
             {t('invoice.detail.delete')}
           </Button>
@@ -1446,8 +1491,28 @@ const InvoiceDetail = () => {
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setEditDialogOpen(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleUpdate} variant="contained">
+            <Button 
+              onClick={() => setEditDialogOpen(false)}
+              variant="outlined"
+              sx={{
+                borderRadius: 1.5,
+                px: 3,
+                textTransform: 'none',
+                fontWeight: 500,
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button 
+              onClick={handleUpdate} 
+              variant="contained"
+              sx={{
+                borderRadius: 1.5,
+                px: 3,
+                textTransform: 'none',
+                fontWeight: 500,
+              }}
+            >
               {t('common.save')}
             </Button>
           </DialogActions>
@@ -1462,8 +1527,29 @@ const InvoiceDetail = () => {
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteDialogOpen(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleDelete} color="error" variant="contained">
+            <Button 
+              onClick={() => setDeleteDialogOpen(false)}
+              variant="outlined"
+              sx={{
+                borderRadius: 1.5,
+                px: 3,
+                textTransform: 'none',
+                fontWeight: 500,
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button 
+              onClick={handleDelete} 
+              color="error" 
+              variant="contained"
+              sx={{
+                borderRadius: 1.5,
+                px: 3,
+                textTransform: 'none',
+                fontWeight: 500,
+              }}
+            >
               {t('common.delete')}
             </Button>
           </DialogActions>
