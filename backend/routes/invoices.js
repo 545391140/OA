@@ -67,14 +67,66 @@ router.get('/', protect, async (req, res) => {
     // 列表页只需要展示字段，排除大字段以提升性能
     // 排除的字段：ocrData（OCR数据，rawData可能很大）、items（明细数组）、traveler（出行人信息）、buyer（购买方信息）
     // 列表页需要的字段：_id, invoiceNumber, invoiceDate, amount, currency, category, status, createdAt, file, vendor.name, relatedExpense, relatedTravel
+    
+    // 优化：按照 Mongoose Populate 的工作原理，先查询主数据，再批量查询关联数据
+    // 这样可以更精确地控制查询，减少不必要的查询
     const invoices = await Invoice.find(query)
       .select('_id invoiceNumber invoiceDate amount currency category status createdAt file vendor.name relatedExpense relatedTravel')
-      .populate('relatedExpense', 'title') // 列表页只需要 title，不需要 amount
-      .populate('relatedTravel', 'title') // 列表页只需要 title，不需要 destination
       .lean() // 返回普通对象而非 Mongoose 文档，减少内存占用和序列化开销
       .sort(sortOptions)
       .skip(skip)
       .limit(parseInt(limit));
+
+    // 按照 Mongoose Populate 的工作原理：收集所有需要 populate 的 ID，然后批量查询
+    // 步骤 1：收集所有唯一的 relatedExpense 和 relatedTravel ID
+    const expenseIds = [...new Set(
+      invoices
+        .map(i => i.relatedExpense)
+        .filter(Boolean) // 过滤掉 null/undefined
+        .map(id => id.toString ? id.toString() : id) // 确保是字符串格式
+    )];
+    
+    const travelIds = [...new Set(
+      invoices
+        .map(i => i.relatedTravel)
+        .filter(Boolean) // 过滤掉 null/undefined
+        .map(id => id.toString ? id.toString() : id) // 确保是字符串格式
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [expenses, travels] = await Promise.all([
+      // 只有当有 expenseIds 时才查询
+      expenseIds.length > 0 
+        ? Expense.find({ _id: { $in: expenseIds } })
+            .select('_id title')
+            .lean()
+        : Promise.resolve([]),
+      // 只有当有 travelIds 时才查询
+      travelIds.length > 0
+        ? Travel.find({ _id: { $in: travelIds } })
+            .select('_id title')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表（提升查找性能）
+    const expenseMap = new Map(expenses.map(e => [e._id.toString(), e]));
+    const travelMap = new Map(travels.map(t => [t._id.toString(), t]));
+
+    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
+    invoices.forEach(invoice => {
+      // Populate relatedExpense
+      if (invoice.relatedExpense) {
+        const expenseId = invoice.relatedExpense.toString ? invoice.relatedExpense.toString() : invoice.relatedExpense;
+        invoice.relatedExpense = expenseMap.get(expenseId) || null;
+      }
+      
+      // Populate relatedTravel
+      if (invoice.relatedTravel) {
+        const travelId = invoice.relatedTravel.toString ? invoice.relatedTravel.toString() : invoice.relatedTravel;
+        invoice.relatedTravel = travelMap.get(travelId) || null;
+      }
+    });
 
     const total = await Invoice.countDocuments(query);
 
