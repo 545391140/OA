@@ -32,7 +32,7 @@ cd "$DEPLOY_PATH"
 chmod -R 755 backend frontend 2>/dev/null || true
 
 # 0. 检查并安装 Node.js 和 npm
-echo -e "${YELLOW}[步骤 0/5] 检查 Node.js 环境...${NC}"
+echo -e "${YELLOW}[步骤 0/6] 检查 Node.js 环境...${NC}"
 
 if ! command -v node &> /dev/null; then
     echo "   Node.js 未安装，开始安装..."
@@ -108,8 +108,8 @@ fi
 
 echo ""
 
-# 1. 安装前端依赖
-echo -e "${YELLOW}[步骤 1/5] 安装前端依赖...${NC}"
+# 1. 安装前端依赖（检查是否已安装）
+echo -e "${YELLOW}[步骤 1/6] 安装前端依赖...${NC}"
 cd frontend
 
 if [ ! -f "package.json" ]; then
@@ -117,35 +117,45 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-echo "   正在安装依赖（这可能需要几分钟）..."
-echo "   📦 开始 npm install..."
-# 使用后台进程显示进度点，让用户知道脚本还在运行
-(
-    while true; do
-        echo -n "."
-        sleep 2
-    done
-) &
-PROGRESS_PID=$!
+# 检查 node_modules 是否存在
+if [ -d "node_modules" ] && [ -f "package-lock.json" ]; then
+    echo -e "${GREEN}   ✅ 检测到已安装的前端依赖${NC}"
+    echo "   跳过安装步骤..."
+    echo -e "${GREEN}✅ 前端依赖已存在${NC}"
+else
+    echo "   未找到依赖，开始安装..."
+    echo "   📦 清理旧的依赖（如果存在）..."
+    rm -rf node_modules package-lock.json 2>/dev/null || true
 
-# 执行npm install，显示警告和错误，隐藏正常进度信息
-npm install --progress=false --loglevel=warn 2>&1
-NPM_EXIT_CODE=$?
+    echo "   📦 开始 npm install..."
+    # 使用后台进程显示进度点，让用户知道脚本还在运行
+    (
+        while true; do
+            echo -n "."
+            sleep 2
+        done
+    ) &
+    PROGRESS_PID=$!
 
-# 停止进度指示器
-kill $PROGRESS_PID 2>/dev/null || true
-echo ""  # 换行
+    # 执行npm install，显示警告和错误，隐藏正常进度信息
+    npm install --progress=false --loglevel=warn 2>&1
+    NPM_EXIT_CODE=$?
 
-if [ $NPM_EXIT_CODE -ne 0 ]; then
-    echo -e "${RED}❌ 前端依赖安装失败 (退出代码: $NPM_EXIT_CODE)${NC}"
-    exit 1
+    # 停止进度指示器
+    kill $PROGRESS_PID 2>/dev/null || true
+    echo ""  # 换行
+
+    if [ $NPM_EXIT_CODE -ne 0 ]; then
+        echo -e "${RED}❌ 前端依赖安装失败 (退出代码: $NPM_EXIT_CODE)${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✅ 前端依赖安装完成${NC}"
 fi
-
-echo -e "${GREEN}✅ 前端依赖安装完成${NC}"
 
 # 2. 构建前端（如果build目录不存在）
 echo ""
-echo -e "${YELLOW}[步骤 2/5] 检查前端构建...${NC}"
+echo -e "${YELLOW}[步骤 2/6] 检查前端构建...${NC}"
 
 if [ -d "build" ] && [ -f "build/index.html" ]; then
     echo -e "${GREEN}✅ 检测到已构建的前端文件（可能是从本地上传的）${NC}"
@@ -182,20 +192,26 @@ if [ -d "build" ]; then
         mv index.html index.html.bak 2>/dev/null || true
         echo "   ✅ 已备份旧的 index.html"
     fi
-    if [ -d "static" ] && [ ! -d "build/static" ]; then
+    if [ -d "static" ] && [ ! -d "static.bak" ]; then
         mv static static.bak 2>/dev/null || true
         echo "   ✅ 已备份旧的 static 目录"
     fi
     
     # 复制构建文件内容到 frontend 根目录
-    cp -r build/* . 2>/dev/null || true
+    cp -r build/* . 2>/dev/null || {
+        echo -e "${RED}   ❌ 复制构建文件失败${NC}"
+        exit 1
+    }
     
     # 验证 index.html 是否存在
-    if [ -f "index.html" ]; then
+    if [ -f "index.html" ] && [ -d "static" ]; then
         echo -e "${GREEN}   ✅ 构建文件已移动到正确位置${NC}"
     else
-        echo -e "${YELLOW}   ⚠️  警告: index.html 未找到，请检查构建输出${NC}"
+        echo -e "${RED}   ❌ 错误: 构建文件不完整${NC}"
+        exit 1
     fi
+else
+    echo -e "${YELLOW}   ⚠️  警告: build 目录不存在，跳过移动步骤${NC}"
 fi
 
 cd ..
@@ -222,9 +238,25 @@ if [ -f /etc/redhat-release ]; then
         echo -e "${GREEN}   ✅ Poppler 已安装${NC}"
     fi
     
-    # 安装其他可能需要的依赖
-    echo "   安装其他系统依赖..."
-    sudo yum install -y gcc-c++ make cmake 2>/dev/null || sudo dnf install -y gcc-c++ make cmake 2>/dev/null || true
+    # 安装其他可能需要的依赖（检查是否已安装）
+    echo "   检查其他系统依赖..."
+    MISSING_DEPS=""
+    if ! command -v g++ &> /dev/null && ! command -v gcc &> /dev/null; then
+        MISSING_DEPS="$MISSING_DEPS gcc-c++"
+    fi
+    if ! command -v make &> /dev/null; then
+        MISSING_DEPS="$MISSING_DEPS make"
+    fi
+    if ! command -v cmake &> /dev/null; then
+        MISSING_DEPS="$MISSING_DEPS cmake"
+    fi
+    
+    if [ -n "$MISSING_DEPS" ]; then
+        echo "   安装缺失的依赖: $MISSING_DEPS..."
+        sudo yum install -y $MISSING_DEPS 2>/dev/null || sudo dnf install -y $MISSING_DEPS 2>/dev/null || true
+    else
+        echo -e "${GREEN}   ✅ 所有系统依赖已安装${NC}"
+    fi
     
 elif [ -f /etc/debian_version ]; then
     # Debian/Ubuntu
@@ -243,9 +275,22 @@ elif [ -f /etc/debian_version ]; then
         echo -e "${GREEN}   ✅ Poppler 已安装${NC}"
     fi
     
-    # 安装其他可能需要的依赖
-    echo "   安装其他系统依赖..."
-    sudo apt-get install -y build-essential cmake 2>/dev/null || true
+    # 安装其他可能需要的依赖（检查是否已安装）
+    echo "   检查其他系统依赖..."
+    MISSING_DEPS=""
+    if ! command -v g++ &> /dev/null && ! command -v gcc &> /dev/null; then
+        MISSING_DEPS="$MISSING_DEPS build-essential"
+    fi
+    if ! command -v cmake &> /dev/null; then
+        MISSING_DEPS="$MISSING_DEPS cmake"
+    fi
+    
+    if [ -n "$MISSING_DEPS" ]; then
+        echo "   安装缺失的依赖: $MISSING_DEPS..."
+        sudo apt-get install -y $MISSING_DEPS 2>/dev/null || true
+    else
+        echo -e "${GREEN}   ✅ 所有系统依赖已安装${NC}"
+    fi
 else
     echo -e "${YELLOW}   ⚠️  无法识别操作系统类型，跳过系统依赖安装${NC}"
     echo "   请手动安装 poppler-utils"
@@ -320,7 +365,7 @@ fi
 
 echo -e "${GREEN}✅ 环境变量检查完成${NC}"
 
-# 5. 安装后端依赖
+# 5. 安装后端依赖（检查是否已安装）
 echo ""
 echo -e "${YELLOW}[步骤 5/6] 安装后端依赖...${NC}"
 cd backend
@@ -330,31 +375,41 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-echo "   正在安装生产环境依赖（这可能需要几分钟）..."
-echo "   📦 开始 npm install --production..."
-# 使用后台进程显示进度点
-(
-    while true; do
-        echo -n "."
-        sleep 2
-    done
-) &
-PROGRESS_PID=$!
+# 检查 node_modules 是否存在
+if [ -d "node_modules" ] && [ -f "package-lock.json" ]; then
+    echo -e "${GREEN}   ✅ 检测到已安装的后端依赖${NC}"
+    echo "   跳过安装步骤..."
+    echo -e "${GREEN}✅ 后端依赖已存在${NC}"
+else
+    echo "   未找到依赖，开始安装..."
+    echo "   📦 清理旧的依赖（如果存在）..."
+    rm -rf node_modules package-lock.json 2>/dev/null || true
 
-# 执行npm install，显示警告和错误
-npm install --production --progress=false --loglevel=warn 2>&1
-NPM_EXIT_CODE=$?
+    echo "   📦 开始 npm install --production..."
+    # 使用后台进程显示进度点
+    (
+        while true; do
+            echo -n "."
+            sleep 2
+        done
+    ) &
+    PROGRESS_PID=$!
 
-# 停止进度指示器
-kill $PROGRESS_PID 2>/dev/null || true
-echo ""  # 换行
+    # 执行npm install，显示警告和错误
+    npm install --production --progress=false --loglevel=warn 2>&1
+    NPM_EXIT_CODE=$?
 
-if [ $NPM_EXIT_CODE -ne 0 ]; then
-    echo -e "${RED}❌ 后端依赖安装失败 (退出代码: $NPM_EXIT_CODE)${NC}"
-    exit 1
+    # 停止进度指示器
+    kill $PROGRESS_PID 2>/dev/null || true
+    echo ""  # 换行
+
+    if [ $NPM_EXIT_CODE -ne 0 ]; then
+        echo -e "${RED}❌ 后端依赖安装失败 (退出代码: $NPM_EXIT_CODE)${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✅ 后端依赖安装完成${NC}"
 fi
-
-echo -e "${GREEN}✅ 后端依赖安装完成${NC}"
 cd ..
 
 # 6. 重启服务
@@ -433,5 +488,4 @@ echo "🔧 配置 API Key："
 echo "   nano $ENV_FILE        # 编辑环境变量文件"
 echo "   # 设置 MISTRAL_API_KEY=your-actual-api-key"
 echo ""
-
 
