@@ -1572,6 +1572,7 @@
     },
     "detail": {
       "title": "Invoice Detail",
+      "preview": "Preview",
       "download": "Download",
       "edit": "Edit",
       "delete": "Delete",
@@ -1644,7 +1645,9 @@
       "confirmDelete": "Confirm Delete",
       "deleteMessage": "Are you sure you want to delete invoice",
       "invoiceTypePlaceholder": "e.g.: Electronic Invoice (Regular Invoice)",
-      "currency": "Currency"
+      "currency": "Currency",
+      "noPreview": "Unable to preview this file",
+      "loadingPreview": "Loading preview..."
     },
     "upload": {
       "title": "Upload Invoice",

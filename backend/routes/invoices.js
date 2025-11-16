@@ -147,6 +147,111 @@ router.get('/', protect, async (req, res) => {
   }
 });
 
+// @desc    Get invoice PDF preview (first page as image)
+// @route   GET /api/invoices/:id/preview
+// @access  Private
+router.get('/:id/preview', protect, async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id);
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: '发票不存在'
+      });
+    }
+
+    // 检查权限
+    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: '无权访问此文件'
+      });
+    }
+
+    // 只处理PDF文件
+    if (!invoice.file.mimeType.includes('pdf')) {
+      return res.status(400).json({
+        success: false,
+        message: '只有PDF文件可以生成预览图'
+      });
+    }
+
+    const filePath = path.resolve(__dirname, '..', invoice.file.path);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: '文件不存在'
+      });
+    }
+
+    // 使用OCR服务将PDF第一页转换为图片
+    const previewImagePath = await ocrService.convertPDFToImage(filePath, 1);
+
+    if (!fs.existsSync(previewImagePath)) {
+      return res.status(500).json({
+        success: false,
+        message: 'PDF预览图生成失败'
+      });
+    }
+
+    // 返回图片文件
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `inline; filename="preview.png"`);
+    res.sendFile(previewImagePath);
+  } catch (error) {
+    console.error('Get invoice preview error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '获取预览图失败'
+    });
+  }
+});
+
+// @desc    Get invoice file
+// @route   GET /api/invoices/:id/file
+// @access  Private
+router.get('/:id/file', protect, async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id);
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: '发票不存在'
+      });
+    }
+
+    // 检查权限
+    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: '无权访问此文件'
+      });
+    }
+
+    const filePath = path.resolve(__dirname, '..', invoice.file.path);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: '文件不存在'
+      });
+    }
+
+    res.setHeader('Content-Type', invoice.file.mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(invoice.file.originalName)}"`);
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Get invoice file error:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取文件失败'
+    });
+  }
+});
+
 // @desc    Get single invoice
 // @route   GET /api/invoices/:id
 // @access  Private
@@ -1071,48 +1176,6 @@ router.delete('/:id', protect, async (req, res) => {
   }
 });
 
-// @desc    Get invoice file
-// @route   GET /api/invoices/:id/file
-// @access  Private
-router.get('/:id/file', protect, async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id);
-
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: '发票不存在'
-      });
-    }
-
-    // 检查权限
-    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: '无权访问此文件'
-      });
-    }
-
-    const filePath = path.resolve(__dirname, '..', invoice.file.path);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        message: '文件不存在'
-      });
-    }
-
-    res.setHeader('Content-Type', invoice.file.mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(invoice.file.originalName)}"`);
-    res.sendFile(filePath);
-  } catch (error) {
-    console.error('Get invoice file error:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取文件失败'
-    });
-  }
-});
 
 // @desc    Link invoice to expense or travel
 // @route   POST /api/invoices/:id/link

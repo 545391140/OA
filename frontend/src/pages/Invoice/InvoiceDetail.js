@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -63,12 +63,44 @@ const InvoiceDetail = () => {
   const [error, setError] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [formData, setFormData] = useState({});
   const [filePreview, setFilePreview] = useState(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState(null);
+  // 使用ref保存blob URL，确保清理时能访问到最新的值
+  const previewBlobUrlRef = useRef(null);
+  const filePreviewRef = useRef(null);
 
   useEffect(() => {
     fetchInvoiceDetail();
   }, [id]);
+
+  // 当id变化时，清理旧的blob URL
+  useEffect(() => {
+    return () => {
+      // 清理旧的blob URL（使用ref确保访问到最新值）
+      if (previewBlobUrlRef.current) {
+        window.URL.revokeObjectURL(previewBlobUrlRef.current);
+        previewBlobUrlRef.current = null;
+      }
+      if (filePreviewRef.current) {
+        window.URL.revokeObjectURL(filePreviewRef.current);
+        filePreviewRef.current = null;
+      }
+    };
+  }, [id]); // 只在id变化时清理
+
+  // 组件卸载时清理blob URL
+  useEffect(() => {
+    return () => {
+      if (previewBlobUrlRef.current) {
+        window.URL.revokeObjectURL(previewBlobUrlRef.current);
+      }
+      if (filePreviewRef.current) {
+        window.URL.revokeObjectURL(filePreviewRef.current);
+      }
+    };
+  }, []);
 
   const fetchInvoiceDetail = async () => {
     try {
@@ -97,9 +129,10 @@ const InvoiceDetail = () => {
           notes: invoiceData.notes || ''
         });
         
-        // 如果是图片，加载预览
-        if (invoiceData.file?.mimeType?.startsWith('image/')) {
-          loadFilePreview(invoiceData._id);
+        // 加载文件预览（图片和PDF都加载）
+        // 只有在文件存在且有路径时才加载预览
+        if (invoiceData.file && invoiceData.file.path) {
+          loadFilePreview(invoiceData._id, invoiceData.file.mimeType);
         }
       } else {
         throw new Error(response.data?.message || t('invoice.detail.fetchError'));
@@ -113,15 +146,61 @@ const InvoiceDetail = () => {
     }
   };
 
-  const loadFilePreview = async (invoiceId) => {
+  const loadFilePreview = async (invoiceId, mimeTypeOverride = null) => {
+    // 检查发票ID是否存在
+    if (!invoiceId) {
+      console.warn('Cannot load preview: invoiceId is missing');
+      return;
+    }
+    
+    // 检查invoice是否已加载（如果已加载，检查文件路径）
+    if (invoice && (!invoice.file || !invoice.file.path)) {
+      console.warn('Cannot load preview: invoice file data missing');
+      return;
+    }
+
     try {
-      const response = await apiClient.get(`/invoices/${invoiceId}/file`, {
+      // 根据文件类型选择不同的API端点
+      const mimeType = mimeTypeOverride || invoice?.file?.mimeType || 'image/jpeg';
+      const isPDF = mimeType.includes('pdf');
+      const apiEndpoint = isPDF ? `/invoices/${invoiceId}/preview` : `/invoices/${invoiceId}/file`;
+      
+      const response = await apiClient.get(apiEndpoint, {
         responseType: 'blob'
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      
+      // 检查响应状态
+      if (response.status !== 200) {
+        throw new Error(`Failed to load file: ${response.status}`);
+      }
+      
+      // 获取文件的MIME类型
+      // PDF预览返回的是PNG图片，所以统一使用image/png
+      const blobMimeType = isPDF ? 'image/png' : (response.headers['content-type'] || mimeType || 'image/jpeg');
+      
+      // 创建Blob时指定正确的MIME类型
+      const blob = new Blob([response.data], { type: blobMimeType });
+      const url = window.URL.createObjectURL(blob);
+      
+      // 清理旧的blob URL（如果存在）
+      if (previewBlobUrlRef.current) {
+        window.URL.revokeObjectURL(previewBlobUrlRef.current);
+      }
+      if (filePreviewRef.current) {
+        window.URL.revokeObjectURL(filePreviewRef.current);
+      }
+      
+      // 保存新的blob URL
+      previewBlobUrlRef.current = url;
+      filePreviewRef.current = url;
       setFilePreview(url);
+      // 同时保存blob URL用于预览对话框
+      setPreviewBlobUrl(url);
     } catch (err) {
       console.error('Load preview error:', err);
+      // 加载失败时，确保 filePreview 为 null，显示占位符
+      setFilePreview(null);
+      setPreviewBlobUrl(null);
     }
   };
 
@@ -144,6 +223,21 @@ const InvoiceDetail = () => {
       console.error('Download error:', err);
       showNotification(t('invoice.detail.downloadError'), 'error');
     }
+  };
+
+  const handlePreview = async () => {
+    // 检查文件是否存在
+    if (!invoice?.file || !invoice.file.path) {
+      showNotification(t('invoice.detail.noPreview'), 'warning');
+      return;
+    }
+
+    // 如果还没有加载预览，先加载
+    if (!previewBlobUrl && invoice?.file) {
+      await loadFilePreview(invoice._id, invoice.file.mimeType);
+      // 如果加载失败，previewBlobUrl 仍为 null，对话框会显示"无法预览"
+    }
+    setPreviewDialogOpen(true);
   };
 
   const handleDelete = async () => {
@@ -325,6 +419,21 @@ const InvoiceDetail = () => {
           />
           <Button
             variant="outlined"
+            startIcon={<VisibilityIcon />}
+            onClick={handlePreview}
+            sx={{ 
+              mr: 1,
+              borderRadius: 1.5,
+              px: 2.5,
+              py: 1,
+              textTransform: 'none',
+              fontWeight: 500,
+            }}
+          >
+            {t('invoice.detail.preview')}
+          </Button>
+          <Button
+            variant="outlined"
             startIcon={<DownloadIcon />}
             onClick={handleDownload}
             sx={{ 
@@ -381,18 +490,39 @@ const InvoiceDetail = () => {
               <Divider sx={{ mb: 2 }} />
               {filePreview ? (
                 <Box
-                  component="img"
-                  src={filePreview}
-                  alt="Invoice"
                   sx={{
                     width: '100%',
-                    maxHeight: 500,
-                    objectFit: 'contain',
+                    minHeight: 200,
+                    maxHeight: 250,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     borderRadius: 2,
                     border: 1,
-                    borderColor: 'divider'
+                    borderColor: 'divider',
+                    overflow: 'hidden',
+                    bgcolor: 'grey.50'
                   }}
-                />
+                >
+                  <Box
+                    component="img"
+                    src={filePreview}
+                    alt="Invoice"
+                    onClick={handlePreview}
+                    sx={{
+                      width: '100%',
+                      height: 'auto',
+                      maxHeight: 250,
+                      objectFit: 'contain',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s',
+                      '&:hover': {
+                        transform: 'scale(1.02)',
+                        boxShadow: 2
+                      }
+                    }}
+                  />
+                </Box>
               ) : (
                 <Box
                   sx={{
@@ -402,7 +532,11 @@ const InvoiceDetail = () => {
                     p: 4,
                     textAlign: 'center',
                     bgcolor: 'grey.50',
-                    minHeight: 300
+                    minHeight: 200,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
                   {invoice.file?.mimeType?.includes('pdf') ? (
@@ -1553,6 +1687,105 @@ const InvoiceDetail = () => {
               {t('common.delete')}
             </Button>
           </DialogActions>
+        </Dialog>
+
+        {/* Preview Dialog */}
+        <Dialog 
+          open={previewDialogOpen} 
+          onClose={() => setPreviewDialogOpen(false)}
+          maxWidth="lg"
+          fullWidth
+          PaperProps={{
+            sx: {
+              maxHeight: '90vh',
+              height: '90vh'
+            }
+          }}
+        >
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              {t('invoice.detail.preview')} - {invoice?.file?.originalName || ''}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownload}
+                sx={{
+                  borderRadius: 1.5,
+                  textTransform: 'none',
+                  fontWeight: 500,
+                }}
+              >
+                {t('invoice.detail.download')}
+              </Button>
+              <IconButton
+                onClick={() => setPreviewDialogOpen(false)}
+                sx={{
+                  borderRadius: 1.5,
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent sx={{ p: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'grey.100' }}>
+            {invoice?.file?.mimeType?.includes('pdf') ? (
+              previewBlobUrl ? (
+                <Box
+                  component="iframe"
+                  src={previewBlobUrl}
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    minHeight: '70vh',
+                    border: 'none'
+                  }}
+                />
+              ) : (
+                <Box sx={{ p: 4, textAlign: 'center' }}>
+                  <LinearProgress sx={{ mb: 2 }} />
+                  <Typography variant="body1" color="text.secondary">
+                    {t('invoice.detail.loadingPreview')}
+                  </Typography>
+                </Box>
+              )
+            ) : previewBlobUrl ? (
+              <Box
+                component="img"
+                src={previewBlobUrl}
+                alt={invoice?.file?.originalName || 'Invoice Preview'}
+                sx={{
+                  maxWidth: '100%',
+                  maxHeight: '80vh',
+                  objectFit: 'contain',
+                  cursor: 'zoom-out'
+                }}
+                onClick={() => setPreviewDialogOpen(false)}
+              />
+            ) : filePreview ? (
+              <Box
+                component="img"
+                src={filePreview}
+                alt={invoice?.file?.originalName || 'Invoice Preview'}
+                sx={{
+                  maxWidth: '100%',
+                  maxHeight: '80vh',
+                  objectFit: 'contain',
+                  cursor: 'zoom-out'
+                }}
+                onClick={() => setPreviewDialogOpen(false)}
+              />
+            ) : (
+              <Box sx={{ p: 4, textAlign: 'center' }}>
+                <ImageIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary">
+                  {t('invoice.detail.noPreview')}
+                </Typography>
+              </Box>
+            )}
+          </DialogContent>
         </Dialog>
       </Box>
     </Container>
