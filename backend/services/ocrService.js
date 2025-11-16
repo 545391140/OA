@@ -95,79 +95,32 @@ class OCRService {
   // ============================================
 
   /**
-   * 验证税号格式是否正确
-   * @param {string} taxId - 税号
-   * @returns {boolean} 格式是否正确
-   */
-  isValidTaxId(taxId) {
-    if (!taxId || typeof taxId !== 'string') {
-      return false;
-    }
-    
-    const trimmed = taxId.trim();
-    
-    // 空字符串不算有效
-    if (trimmed === '') {
-      return false;
-    }
-    
-    // 中国税号格式：
-    // - 统一社会信用代码：18位（字母+数字，第一位必须是字母或数字）
-    // - 纳税人识别号：15位或18位（数字或字母数字组合）
-    // - 长度通常在15-18位之间
-    // - 不能全是相同字符（如"000000000000000000"）
-    // - 不能包含特殊字符（除了字母和数字）
-    
-    // 检查长度（15-18位）
-    if (trimmed.length < 15 || trimmed.length > 18) {
-      return false;
-    }
-    
-    // 检查是否只包含字母和数字
-    if (!/^[A-Za-z0-9]+$/.test(trimmed)) {
-      return false;
-    }
-    
-    // 检查是否全是相同字符（如"000000000000000000"或"AAAAAAAAAAAAAAAAAA"）
-    const firstChar = trimmed[0];
-    if (trimmed.split('').every(char => char === firstChar)) {
-      return false;
-    }
-    
-    // 检查是否全是数字0（无效税号）
-    if (/^0+$/.test(trimmed)) {
-      return false;
-    }
-    
-    return true;
-  }
-
-  /**
    * 检查识别结果是否完整
    * @param {Object} invoiceData - 识别出的发票数据
-   * @returns {Object} { isComplete: boolean, missingFields: Array<string>, invalidFields: Array<string> }
+   * @returns {Object} { isComplete: boolean, missingFields: Array<string> }
    */
   isRecognitionComplete(invoiceData) {
     if (!invoiceData || typeof invoiceData !== 'object') {
-      return { isComplete: false, missingFields: ['所有字段'], invalidFields: [] };
+      return { isComplete: false, missingFields: ['所有字段'] };
     }
 
     // 定义关键字段（必须存在的字段）
-    // 增加关键字段：发票号码、发票日期、销售方名称、购买方名称、金额
+    // 增加关键字段：发票号码、发票日期、销售方名称、购买方名称、金额、税号
     const criticalFields = [
       'invoiceNumber',    // 发票号码（必填）
       'invoiceDate',      // 发票日期（必填）
       'vendorName',       // 销售方名称
+      'vendorTaxId',      // 销售方税号（必填）
       'buyerName',        // 购买方名称
+      'buyerTaxId',       // 购买方税号（必填）
       'totalAmount'       // 价税合计
     ];
 
-    // 必填字段：发票号码和发票日期必须存在
-    const requiredFields = ['invoiceNumber', 'invoiceDate'];
+    // 必填字段：发票号码、发票日期、销售方税号、购买方税号必须存在
+    const requiredFields = ['invoiceNumber', 'invoiceDate', 'vendorTaxId', 'buyerTaxId'];
     
     // 检查关键字段是否存在且不为空
     const missingFields = [];
-    const invalidFields = [];
     let validFieldCount = 0;
     
     for (const field of criticalFields) {
@@ -189,28 +142,8 @@ class OCRService {
              (typeof value === 'number' && (isNaN(value) || value === 0));
     });
 
-    // 验证税号格式（如果存在税号）
-    if (invoiceData.vendorTaxId && !this.isValidTaxId(invoiceData.vendorTaxId)) {
-      invalidFields.push('vendorTaxId');
-      console.log(`⚠️  销售方税号格式错误: "${invoiceData.vendorTaxId}"`);
-    }
-    
-    if (invoiceData.buyerTaxId && !this.isValidTaxId(invoiceData.buyerTaxId)) {
-      invalidFields.push('buyerTaxId');
-      console.log(`⚠️  购买方税号格式错误: "${invoiceData.buyerTaxId}"`);
-    }
-
-    // 如果税号格式错误，也认为识别不完整，需要fallback到阿里云OCR
-    if (invalidFields.length > 0) {
-      console.log(`⚠️  识别不完整：税号格式错误 (${invalidFields.join(', ')})`);
-      console.log(`   已识别 ${validFieldCount}/${criticalFields.length} 个关键字段`);
-      console.log(`   缺失字段: ${missingFields.join(', ')}`);
-      return { 
-        isComplete: false, 
-        missingFields: missingFields,
-        invalidFields: invalidFields
-      };
-    }
+    // 税号验证：只检查是否存在，不检查格式
+    // 如果税号不存在，会在 requiredFields 检查中被检测到，触发阿里云OCR fallback
 
     // 如果必填字段缺失，直接返回不完整
     if (missingRequiredFields.length > 0) {
@@ -219,20 +152,18 @@ class OCRService {
       console.log(`   缺失字段: ${missingFields.join(', ')}`);
       return { 
         isComplete: false, 
-        missingFields: missingRequiredFields,
-        invalidFields: invalidFields
+        missingFields: missingRequiredFields
       };
     }
 
-    // 如果必填字段都存在，要求至少有 4 个关键字段有值，才认为识别完整
-    // 例如：发票号码 + 发票日期 + 销售方名称 + 金额 = 4个字段
-    const requiredFieldCount = 4;
+    // 如果必填字段都存在，要求至少有 5 个关键字段有值，才认为识别完整
+    // 例如：发票号码 + 发票日期 + 销售方名称 + 销售方税号 + 金额 = 5个字段
+    const requiredFieldCount = 5;
     if (validFieldCount >= requiredFieldCount) {
       console.log(`✓ 识别结果完整，已识别 ${validFieldCount}/${criticalFields.length} 个关键字段`);
       return { 
         isComplete: true, 
-        missingFields: [],
-        invalidFields: []
+        missingFields: []
       };
     }
 
@@ -240,8 +171,7 @@ class OCRService {
     console.log(`   缺失字段: ${missingFields.join(', ')}`);
     return { 
       isComplete: false, 
-      missingFields: missingFields,
-      invalidFields: []
+      missingFields: missingFields
     };
   }
 
@@ -454,7 +384,7 @@ class OCRService {
         
         // 检查识别结果是否完整
         if (mistralResult.success && mistralResult.invoiceData) {
-          const { isComplete, missingFields, invalidFields } = this.isRecognitionComplete(mistralResult.invoiceData);
+          const { isComplete, missingFields } = this.isRecognitionComplete(mistralResult.invoiceData);
           
           if (isComplete) {
             console.log('\n╔════════════════════════════════════════════════════════════════╗');
@@ -474,9 +404,6 @@ class OCRService {
             console.log('\n╔════════════════════════════════════════════════════════════════╗');
             console.log('║  ⚠️  Mistral AI 识别不完整 - 切换到阿里云 OCR                  ║');
             console.log('╚════════════════════════════════════════════════════════════════╝');
-            if (invalidFields && invalidFields.length > 0) {
-              console.log(`📋 税号格式错误: ${invalidFields.join(', ')}`);
-            }
             if (missingFields && missingFields.length > 0) {
               console.log(`📋 缺失字段: ${missingFields.join(', ')}`);
             }
@@ -753,7 +680,7 @@ class OCRService {
         
         // 检查识别结果是否完整
         if (mistralResult.success && mistralResult.invoiceData) {
-          const { isComplete, missingFields, invalidFields } = this.isRecognitionComplete(mistralResult.invoiceData);
+          const { isComplete, missingFields } = this.isRecognitionComplete(mistralResult.invoiceData);
           
           if (isComplete) {
             console.log('✓ Mistral AI 识别完整，直接返回结果');
@@ -761,10 +688,7 @@ class OCRService {
             // 数据已经过完整流程处理：OCR提取 → AI解析 → 字段映射 → 数据标准化
             return mistralResult;
           } else {
-            const reason = invalidFields.length > 0 
-              ? `税号格式错误: ${invalidFields.join(', ')}` 
-              : `缺失字段: ${missingFields.join(', ')}`;
-            console.log(`⚠ Mistral AI 识别不完整，${reason}`);
+            console.log(`⚠ Mistral AI 识别不完整，缺失字段: ${missingFields.join(', ')}`);
             console.log('尝试使用阿里云 OCR 作为补充');
           }
         } else {
