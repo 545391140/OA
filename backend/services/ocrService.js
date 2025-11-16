@@ -490,9 +490,10 @@ class OCRService {
    * 识别PDF发票（使用 Mistral AI OCR，如果识别不全则使用阿里云 OCR）
    * @param {string} pdfPath - PDF文件路径
    * @param {number} pageNumber - 页码（默认第1页，暂未使用，Mistral OCR会处理所有页面）
+   * @param {string} preConvertedImagePath - 提前转换好的图片路径（可选，如果提供则 fallback 时直接使用）
    * @returns {Promise<Object>} 识别结果
    */
-  async recognizePDFInvoice(pdfPath, pageNumber = 1) {
+  async recognizePDFInvoice(pdfPath, pageNumber = 1, preConvertedImagePath = null) {
     
     // 检查是否配置了至少一个 OCR 服务
     if (!mistralClient && !dashscopeClient) {
@@ -506,7 +507,7 @@ class OCRService {
       };
     }
     
-    // 首先尝试使用 Mistral AI OCR
+    // 首先尝试使用 Mistral AI OCR（使用原 PDF，不需要转换后的图片）
     if (mistralClient) {
       try {
         const mistralResult = await this.recognizeInvoiceWithMistral(pdfPath, 'pdf');
@@ -527,9 +528,10 @@ class OCRService {
     }
     
     // 如果 Mistral 识别不全或失败，使用阿里云 OCR
+    // 如果提供了提前转换的图片路径，直接使用，否则在函数内部转换
     if (dashscopeClient) {
       try {
-        const dashscopeResult = await this.recognizeInvoiceWithDashScope(pdfPath, 'pdf');
+        const dashscopeResult = await this.recognizeInvoiceWithDashScope(pdfPath, 'pdf', preConvertedImagePath);
         
         if (dashscopeResult.success) {
           // 数据已经过完整流程处理：OCR提取 → AI解析 → 字段映射 → 数据标准化
@@ -1077,9 +1079,10 @@ class OCRService {
    * 使用阿里云 DashScope OCR 识别发票（图片或PDF）
    * @param {string} filePath - 文件路径
    * @param {string} fileType - 文件类型 ('image' 或 'pdf')
+   * @param {string} preConvertedImagePath - 提前转换好的图片路径（可选，如果提供则直接使用，不进行转换）
    * @returns {Promise<Object>} 识别结果
    */
-  async recognizeInvoiceWithDashScope(filePath, fileType = 'image') {
+  async recognizeInvoiceWithDashScope(filePath, fileType = 'image', preConvertedImagePath = null) {
     try {
       
       if (!dashscopeClient) {
@@ -1101,22 +1104,31 @@ class OCRService {
         throw new Error(`文件不存在: ${absolutePath}`);
           }
 
-      // 如果是 PDF，先转换为图片
+      // 如果是 PDF，先转换为图片（如果提供了提前转换的图片，直接使用）
       let imagePath = absolutePath;
       let tempImagePath = null; // 用于标记临时文件，需要在函数结束时清理
       
       if (fileType === 'pdf') {
-        try {
-          imagePath = await this.convertPDFToImage(absolutePath, 1);
-          tempImagePath = imagePath; // 标记为临时文件，后续需要删除
-        } catch (convertError) {
-          return {
-            success: false,
-            error: `PDF 转图片失败: ${convertError.message}`,
-            text: '',
-            confidence: 0,
-            invoiceData: {}
-          };
+        // 如果提供了提前转换的图片路径，直接使用
+        if (preConvertedImagePath && fs.existsSync(preConvertedImagePath)) {
+          console.log('使用提前转换的图片:', preConvertedImagePath);
+          imagePath = preConvertedImagePath;
+          // 注意：提前转换的图片由调用者管理，这里不标记为临时文件
+        } else {
+          // 如果没有提前转换，则在这里转换
+          try {
+            console.log('PDF 转图片（fallback 时转换）...');
+            imagePath = await this.convertPDFToImage(absolutePath, 1);
+            tempImagePath = imagePath; // 标记为临时文件，后续需要删除
+          } catch (convertError) {
+            return {
+              success: false,
+              error: `PDF 转图片失败: ${convertError.message}`,
+              text: '',
+              confidence: 0,
+              invoiceData: {}
+            };
+          }
         }
       }
 

@@ -197,6 +197,9 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
   console.log('文件:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : '无文件');
   console.log('========================================');
   
+  // 提前转换的图片路径（用于 PDF 文件）
+  let convertedImagePath = null;
+  
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -248,6 +251,19 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       });
     }
 
+    // 优化：如果是 PDF，提前转换为图片（这样 fallback 到阿里云时就不需要再转换了）
+    if (req.file.mimetype === 'application/pdf') {
+      try {
+        console.log('PDF 文件，提前转换为图片...');
+        convertedImagePath = await ocrService.convertPDFToImage(filePath, 1);
+        console.log('PDF 转换完成，图片路径:', convertedImagePath);
+      } catch (convertError) {
+        console.warn('PDF 提前转换失败，将在 fallback 时转换:', convertError.message);
+        // 转换失败不影响主流程，fallback 时会再次尝试转换
+        convertedImagePath = null;
+      }
+    }
+
     // 执行OCR识别（根据文件类型选择不同的识别方法）
     let ocrResult;
     try {
@@ -260,7 +276,8 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
         ocrResult = await ocrService.recognizeInvoice(filePath);
       } else if (req.file.mimetype === 'application/pdf') {
         console.log('调用 recognizePDFInvoice 方法...');
-        ocrResult = await ocrService.recognizePDFInvoice(filePath);
+        // 传入转换后的图片路径（如果已转换）
+        ocrResult = await ocrService.recognizePDFInvoice(filePath, 1, convertedImagePath);
       } else {
         throw new Error('不支持的文件类型');
       }
@@ -284,10 +301,14 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       console.error('Error stack:', ocrError.stack);
       console.error('========================================');
       
-      // 删除临时文件
+      // 删除临时文件（包括上传的文件和转换后的图片）
       try {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
+        }
+        // 删除提前转换的图片文件（如果存在）
+        if (convertedImagePath && fs.existsSync(convertedImagePath)) {
+          fs.unlinkSync(convertedImagePath);
         }
       } catch (unlinkError) {
         console.error('Delete temp file error:', unlinkError);
@@ -301,14 +322,19 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       });
     }
 
-    // OCR识别完成后，删除上传的文件
+    // OCR识别完成后，删除上传的文件和转换后的图片（如果存在）
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         console.log('OCR识别完成，已删除上传文件:', filePath);
       }
+      // 删除提前转换的图片文件（如果存在）
+      if (convertedImagePath && fs.existsSync(convertedImagePath)) {
+        fs.unlinkSync(convertedImagePath);
+        console.log('OCR识别完成，已删除转换后的图片:', convertedImagePath);
+      }
     } catch (unlinkError) {
-      console.error('删除上传文件失败:', unlinkError.message);
+      console.error('删除文件失败:', unlinkError.message);
     }
 
     if (ocrResult && ocrResult.success) {
@@ -362,13 +388,18 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
     } : 'No file');
     console.error('========================================');
     
-    // 删除临时文件
+    // 删除临时文件（包括上传的文件和转换后的图片）
     if (req.file && req.file.path) {
       try {
         const filePath = path.resolve(__dirname, '..', req.file.path);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
           console.log('已删除临时文件:', filePath);
+        }
+        // 删除提前转换的图片文件（如果存在）
+        if (convertedImagePath && fs.existsSync(convertedImagePath)) {
+          fs.unlinkSync(convertedImagePath);
+          console.log('已删除转换后的图片:', convertedImagePath);
         }
       } catch (unlinkError) {
         console.error('Delete file error:', unlinkError);
