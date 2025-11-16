@@ -144,3 +144,5 @@ NotificationTemplateSchema.methods.render = function(variables = {}) {
 
 module.exports = mongoose.model('NotificationTemplate', NotificationTemplateSchema);
 
+
+

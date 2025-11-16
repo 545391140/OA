@@ -1540,6 +1540,7 @@
         "entertainment": "Entertainment",
         "communication": "Communication",
         "office_supplies": "Office Supplies",
+        "officeSupplies": "Office Supplies",
         "training": "Training",
         "other": "Other"
       },

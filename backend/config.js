@@ -26,5 +26,8 @@ module.exports = {
   RATE_LIMIT_MAX_REQUESTS: process.env.RATE_LIMIT_MAX_REQUESTS || 100,
 
   // Mistral AI Configuration
-  MISTRAL_API_KEY: process.env.MISTRAL_API_KEY || ''
+  MISTRAL_API_KEY: process.env.MISTRAL_API_KEY || '',
+  
+  // Alibaba Cloud DashScope (阿里云百炼) Configuration
+  DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY || ''
 };

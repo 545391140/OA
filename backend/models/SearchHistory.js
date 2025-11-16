@@ -95,3 +95,5 @@ SearchHistorySchema.statics.getPopularSearches = async function({ limit = 10, da
 
 module.exports = mongoose.model('SearchHistory', SearchHistorySchema);
 
+
+

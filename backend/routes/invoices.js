@@ -136,6 +136,12 @@ router.get('/:id', protect, async (req, res) => {
 // @access  Private
 // NOTE: This route must be defined BEFORE /:id routes to avoid route conflicts
 router.post('/recognize-image', protect, upload.single('file'), async (req, res) => {
+  console.log('========================================');
+  console.log('收到 OCR 识别请求');
+  console.log('用户:', req.user ? req.user.email : '未登录');
+  console.log('文件:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : '无文件');
+  console.log('========================================');
+  
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -179,18 +185,50 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       });
     }
 
+    // 检查文件是否存在
+    if (!fs.existsSync(filePath)) {
+      return res.status(400).json({
+        success: false,
+        message: `文件不存在: ${filePath}`
+      });
+    }
+
     // 执行OCR识别（根据文件类型选择不同的识别方法）
     let ocrResult;
     try {
+      console.log('开始OCR识别，文件类型:', req.file.mimetype);
+      console.log('文件路径:', filePath);
+      console.log('文件大小:', req.file.size, 'bytes');
+      
       if (req.file.mimetype.startsWith('image/')) {
+        console.log('调用 recognizeInvoice 方法...');
         ocrResult = await ocrService.recognizeInvoice(filePath);
       } else if (req.file.mimetype === 'application/pdf') {
+        console.log('调用 recognizePDFInvoice 方法...');
         ocrResult = await ocrService.recognizePDFInvoice(filePath);
       } else {
         throw new Error('不支持的文件类型');
       }
+      
+      console.log('OCR识别完成，结果:', {
+        success: ocrResult?.success,
+        hasData: !!ocrResult?.invoiceData,
+        error: ocrResult?.error,
+        hasText: !!ocrResult?.text,
+        textLength: ocrResult?.text ? ocrResult.text.length : 0
+      });
+      
+      // 确保 ocrResult 存在
+      if (!ocrResult) {
+        throw new Error('OCR识别返回空结果');
+      }
     } catch (ocrError) {
+      console.error('========================================');
       console.error('OCR service error:', ocrError);
+      console.error('Error message:', ocrError.message);
+      console.error('Error stack:', ocrError.stack);
+      console.error('========================================');
+      
       // 删除临时文件
       try {
         if (fs.existsSync(filePath)) {
@@ -202,7 +240,9 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       
       return res.status(500).json({
         success: false,
-        message: `OCR识别失败: ${ocrError.message || '未知错误'}`
+        message: `OCR识别失败: ${ocrError.message || '未知错误'}`,
+        error: ocrError.message || 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? ocrError.stack : undefined
       });
     }
 
@@ -216,7 +256,8 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
     }
 
     if (ocrResult && ocrResult.success) {
-      res.json({
+      try {
+        const responseData = {
         success: true,
         message: 'OCR识别成功',
         data: {
@@ -224,14 +265,27 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
             extracted: true,
             confidence: ocrResult.confidence || 0,
             rawData: ocrResult.rawData || {},
-            extractedAt: new Date()
+              extractedAt: new Date().toISOString()
           },
           recognizedData: ocrResult.invoiceData || {},
           text: ocrResult.text || ''
         }
+        };
+        
+        console.log('准备返回成功响应，数据大小:', JSON.stringify(responseData).length, 'bytes');
+        res.json(responseData);
+      } catch (responseError) {
+        console.error('响应序列化错误:', responseError);
+        console.error('错误堆栈:', responseError.stack);
+        res.status(500).json({
+          success: false,
+          message: '响应序列化失败: ' + responseError.message,
+          error: responseError.message
       });
+      }
     } else {
       const errorMessage = ocrResult?.error || 'OCR识别失败，请检查配置或重试';
+      console.log('OCR识别失败，返回错误响应:', errorMessage);
       res.status(500).json({
         success: false,
         message: errorMessage,
@@ -239,8 +293,18 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       });
     }
   } catch (error) {
-    console.error('OCR recognize error:', error);
+    console.error('========================================');
+    console.error('OCR recognize route error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
+    console.error('Request file:', req.file ? {
+      filename: req.file.filename,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    } : 'No file');
+    console.error('========================================');
     
     // 删除临时文件
     if (req.file && req.file.path) {
@@ -248,6 +312,7 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
         const filePath = path.resolve(__dirname, '..', req.file.path);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
+          console.log('已删除临时文件:', filePath);
         }
       } catch (unlinkError) {
         console.error('Delete file error:', unlinkError);
@@ -265,10 +330,18 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       errorMessage += '。请配置 MISTRAL_API_KEY 环境变量';
     }
     
+    // 检查是否是文件问题
+    if (error.code === 'ENOENT') {
+      errorMessage = '文件不存在或无法访问';
+    } else if (error.code === 'EACCES') {
+      errorMessage = '文件访问权限不足';
+    }
+    
     res.status(500).json({
       success: false,
       message: errorMessage,
       error: error.message || 'Unknown error',
+      errorCode: error.code,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }

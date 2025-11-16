@@ -223,7 +223,19 @@ const InvoiceUpload = () => {
           setFormData(prev => ({ ...prev, buyerTaxId: recognizedData.buyerTaxId }));
         }
         if (recognizedData?.items && recognizedData.items.length > 0 && (!formData.items || formData.items.length === 0)) {
-          setFormData(prev => ({ ...prev, items: recognizedData.items }));
+          // 确保 items 中的数字字段被转换为数字类型
+          const normalizedItems = recognizedData.items.map(item => ({
+            ...item,
+            unitPrice: item.unitPrice ? parseFloat(item.unitPrice) || 0 : 0,
+            quantity: item.quantity ? parseFloat(item.quantity) || 0 : 0,
+            amount: item.amount ? parseFloat(item.amount) || 0 : 0,
+            taxAmount: item.taxAmount !== undefined && item.taxAmount !== null 
+              ? (typeof item.taxAmount === 'string' && (item.taxAmount.includes('免税') || item.taxAmount.includes('***'))
+                  ? 0 
+                  : parseFloat(item.taxAmount) || 0)
+              : 0
+          }));
+          setFormData(prev => ({ ...prev, items: normalizedItems }));
         }
         if (recognizedData?.issuer && isEmpty(formData.issuer)) {
           setFormData(prev => ({ ...prev, issuer: recognizedData.issuer }));
@@ -237,9 +249,40 @@ const InvoiceUpload = () => {
       }
     } catch (err) {
       console.error('OCR recognize error:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        code: err.code,
+        config: {
+          url: err.config?.url,
+          method: err.config?.method,
+          timeout: err.config?.timeout
+        }
+      });
+      
       // OCR失败不影响文件选择，只显示警告
-      const errorMessage = err.response?.data?.message || err.message || 'OCR服务暂时不可用';
-      showNotification(`${t('invoice.upload.autoRecognitionFailed')}: ${errorMessage}，${t('invoice.upload.manualFillHint')}`, 'warning');
+      let errorMessage = 'OCR服务暂时不可用';
+      
+      if (err.response) {
+        // 服务器返回了响应
+        errorMessage = err.response.data?.message || err.response.statusText || `服务器错误 (${err.response.status})`;
+      } else if (err.request) {
+        // 请求已发送但没有收到响应
+        if (err.code === 'ECONNABORTED') {
+          errorMessage = 'OCR识别超时，请稍后重试或手动填写';
+        } else if (err.code === 'ERR_NETWORK') {
+          errorMessage = '网络连接失败，请检查网络连接';
+        } else {
+          errorMessage = '无法连接到服务器，请检查后端服务是否运行';
+        }
+      } else {
+        // 请求配置错误
+        errorMessage = err.message || 'OCR请求配置错误';
+      }
+      
+      showNotification(`${t('invoice.upload.autoRecognitionFailed')}: ${errorMessage}。${t('invoice.upload.manualFillHint')}`, 'warning');
     } finally {
       setOcrRecognizing(false);
     }
@@ -289,6 +332,10 @@ const InvoiceUpload = () => {
         return updated;
       });
     }
+    // 货币字段：如果OCR识别到了货币类型，自动填写（覆盖默认值）
+    if (recognized.currency) {
+      setFormData(prev => ({ ...prev, currency: recognized.currency }));
+    }
     if (recognized.vendorName && isEmpty(formData.vendorName)) {
       setFormData(prev => ({ ...prev, vendorName: recognized.vendorName }));
     }
@@ -305,7 +352,19 @@ const InvoiceUpload = () => {
       setFormData(prev => ({ ...prev, buyerTaxId: recognized.buyerTaxId }));
     }
     if (recognized.items && recognized.items.length > 0 && (!formData.items || formData.items.length === 0)) {
-      setFormData(prev => ({ ...prev, items: recognized.items }));
+      // 确保 items 中的数字字段被转换为数字类型
+      const normalizedItems = recognized.items.map(item => ({
+        ...item,
+        unitPrice: item.unitPrice ? parseFloat(item.unitPrice) || 0 : 0,
+        quantity: item.quantity ? parseFloat(item.quantity) || 0 : 0,
+        amount: item.amount ? parseFloat(item.amount) || 0 : 0,
+        taxAmount: item.taxAmount !== undefined && item.taxAmount !== null 
+          ? (typeof item.taxAmount === 'string' && (item.taxAmount.includes('免税') || item.taxAmount.includes('***'))
+              ? 0 
+              : parseFloat(item.taxAmount) || 0)
+          : 0
+      }));
+      setFormData(prev => ({ ...prev, items: normalizedItems }));
     }
     if (recognized.issuer && isEmpty(formData.issuer)) {
       setFormData(prev => ({ ...prev, issuer: recognized.issuer }));
@@ -592,6 +651,11 @@ const InvoiceUpload = () => {
                     value={formData.currency}
                     label={t('invoice.upload.currency')}
                     onChange={handleChange('currency')}
+                    endAdornment={ocrResult?.recognizedData?.currency ? (
+                      <InputAdornment position="end" sx={{ mr: 1 }}>
+                        <CheckCircleIcon color="success" fontSize="small" />
+                      </InputAdornment>
+                    ) : null}
                   >
                     <MenuItem value="CNY">CNY</MenuItem>
                     <MenuItem value="USD">USD</MenuItem>
@@ -748,11 +812,23 @@ const InvoiceUpload = () => {
                       {formData.items.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>{item.name || '-'}</TableCell>
-                          <TableCell align="right">{item.unitPrice ? `¥${item.unitPrice.toFixed(2)}` : '-'}</TableCell>
-                          <TableCell align="right">{item.quantity || '-'}</TableCell>
-                          <TableCell align="right">{item.amount ? `¥${item.amount.toFixed(2)}` : '-'}</TableCell>
+                          <TableCell align="right">
+                            {item.unitPrice !== undefined && item.unitPrice !== null
+                              ? `¥${(typeof item.unitPrice === 'number' ? item.unitPrice : parseFloat(item.unitPrice) || 0).toFixed(2)}`
+                              : '-'}
+                          </TableCell>
+                          <TableCell align="right">{item.quantity !== undefined && item.quantity !== null ? item.quantity : '-'}</TableCell>
+                          <TableCell align="right">
+                            {item.amount !== undefined && item.amount !== null
+                              ? `¥${(typeof item.amount === 'number' ? item.amount : parseFloat(item.amount) || 0).toFixed(2)}`
+                              : '-'}
+                          </TableCell>
                           <TableCell align="center">{item.taxRate || '-'}</TableCell>
-                          <TableCell align="right">{item.taxAmount ? `¥${item.taxAmount.toFixed(2)}` : '-'}</TableCell>
+                          <TableCell align="right">
+                            {item.taxAmount !== undefined && item.taxAmount !== null 
+                              ? `¥${(typeof item.taxAmount === 'number' ? item.taxAmount : parseFloat(item.taxAmount) || 0).toFixed(2)}`
+                              : '-'}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -999,6 +1075,17 @@ const InvoiceUpload = () => {
                       <ListItemText 
                         primary={t('invoice.upload.buyerTaxId')}
                         secondary={ocrResult.recognizedData.buyerTaxId}
+                      />
+                    </ListItem>
+                  )}
+                  {ocrResult?.recognizedData?.currency && (
+                    <ListItem>
+                      <ListItemIcon>
+                        <CheckCircleIcon color="success" />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={t('invoice.upload.currency')}
+                        secondary={ocrResult.recognizedData.currency}
                       />
                     </ListItem>
                   )}

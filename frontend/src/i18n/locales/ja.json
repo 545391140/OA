@@ -1269,6 +1269,7 @@
         "entertainment": "娯楽費",
         "communication": "通信費",
         "office_supplies": "事務用品",
+        "officeSupplies": "事務用品",
         "training": "研修費",
         "other": "その他"
       },

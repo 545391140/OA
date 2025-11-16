@@ -1,8 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 // 确保在加载配置前加载环境变量
-require('dotenv').config();
+// 注意：必须从 backend 目录加载 .env
+const dotenv = require('dotenv');
+const envPath = path.join(__dirname, '..', '.env');
+dotenv.config({ path: envPath });
+
 const config = require('../config');
+// 导入统一的提示词配置
+const {
+  OCR_PROMPT,
+  AI_ANALYSIS_SYSTEM_PROMPT,
+  AI_ANALYSIS_USER_PROMPT_TEMPLATE,
+  MISTRAL_CHAT_SYSTEM_PROMPT,
+  MISTRAL_CHAT_USER_PROMPT_TEMPLATE,
+} = require('./ocrPrompts');
 
 // 导入 Mistral AI
 let Mistral;
@@ -43,88 +55,277 @@ try {
   mistralClient = null;
 }
 
-// 导入pdfjs-dist（Node.js环境）
-let pdfjsLib;
+// 导入阿里云 DashScope (使用 OpenAI SDK 兼容模式)
+let OpenAI;
+let dashscopeClient;
 try {
-  // 为Node.js环境提供DOMMatrix polyfill（pdfjs-dist 5.x需要）
-  if (typeof global !== 'undefined' && !global.DOMMatrix) {
-    // 提供完整的DOMMatrix polyfill
-    global.DOMMatrix = class DOMMatrix {
-      constructor(init) {
-        this.a = 1; this.b = 0; this.c = 0; this.d = 1; this.e = 0; this.f = 0;
-        if (init) {
-          if (typeof init === 'string') {
-            const m = init.match(/matrix\(([^)]+)\)/);
-            if (m) {
-              const values = m[1].split(',').map(v => parseFloat(v.trim()));
-              if (values.length >= 6) {
-                this.a = values[0]; this.b = values[1];
-                this.c = values[2]; this.d = values[3];
-                this.e = values[4]; this.f = values[5];
-              }
-            }
-          } else if (Array.isArray(init) && init.length >= 6) {
-            this.a = init[0]; this.b = init[1];
-            this.c = init[2]; this.d = init[3];
-            this.e = init[4]; this.f = init[5];
-          }
-        }
-      }
-      multiply(other) {
-        return new DOMMatrix([
-          this.a * other.a + this.c * other.b,
-          this.b * other.a + this.d * other.b,
-          this.a * other.c + this.c * other.d,
-          this.b * other.c + this.d * other.d,
-          this.a * other.e + this.c * other.f + this.e,
-          this.b * other.e + this.d * other.f + this.f
-        ]);
-      }
-      translate(x, y) {
-        return this.multiply(new DOMMatrix([1, 0, 0, 1, x, y]));
-      }
-      scale(x, y) {
-        return this.multiply(new DOMMatrix([x, 0, 0, y || x, 0, 0]));
-      }
-    };
-    console.log('DOMMatrix polyfill已设置');
+  console.log('========================================');
+  console.log('初始化阿里云 DashScope 客户端...');
+  console.log('检查 openai 包...');
+  OpenAI = require('openai');
+  console.log('✓ openai 包加载成功');
+  
+  console.log('检查 DASHSCOPE_API_KEY 配置...');
+  console.log('config.DASHSCOPE_API_KEY:', config.DASHSCOPE_API_KEY ? `已配置 (${config.DASHSCOPE_API_KEY.substring(0, 10)}...)` : '未配置');
+  console.log('process.env.DASHSCOPE_API_KEY:', process.env.DASHSCOPE_API_KEY ? `已设置 (${process.env.DASHSCOPE_API_KEY.substring(0, 10)}...)` : '未设置');
+  
+  if (config.DASHSCOPE_API_KEY) {
+    dashscopeClient = new OpenAI({
+      apiKey: config.DASHSCOPE_API_KEY,
+      baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    });
+    console.log('✓ 阿里云 DashScope 客户端初始化成功');
+  } else {
+    console.log('⚠ DashScope API Key 未配置，将无法使用阿里云 OCR fallback');
+    console.log('提示: 请在环境变量中设置 DASHSCOPE_API_KEY 或在 config.js 中配置');
   }
-
-  // 尝试导入pdfjs-dist
-  // pdfjs-dist 5.x版本在Node.js中需要DOMMatrix polyfill
-  try {
-    // 直接导入（需要polyfill）
-    pdfjsLib = require('pdfjs-dist');
-    if (typeof pdfjsLib.getDocument === 'function') {
-      console.log('pdfjs-dist导入成功，版本:', pdfjsLib.version || 'unknown');
-    } else {
-      throw new Error('getDocument method not found');
-    }
-  } catch (e1) {
-    console.error('pdfjs-dist导入失败:', e1.message);
-    pdfjsLib = null;
-  }
+  console.log('========================================');
 } catch (e) {
-  console.error('pdfjs-dist初始化失败:', e.message);
-  pdfjsLib = null;
+  console.error('========================================');
+  console.error('✗ 阿里云 DashScope 初始化失败:', e.message);
+  console.error('错误堆栈:', e.stack);
+  console.error('提示: 请确保已安装 openai 包: npm install openai');
+  console.error('========================================');
+  dashscopeClient = null;
 }
 
 class OCRService {
+  // ============================================
+  // 数据验证和完整性检查
+  // ============================================
+
   /**
-   * 识别发票图片（仅使用 Mistral AI OCR）
+   * 检查识别结果是否完整
+   * @param {Object} invoiceData - 识别出的发票数据
+   * @returns {Object} { isComplete: boolean, missingFields: Array<string> }
+   */
+  isRecognitionComplete(invoiceData) {
+    if (!invoiceData || typeof invoiceData !== 'object') {
+      return { isComplete: false, missingFields: ['所有字段'] };
+    }
+
+    // 定义关键字段（必须存在的字段）
+    // 增加关键字段：发票号码、发票日期、销售方名称、购买方名称、金额
+    const criticalFields = [
+      'invoiceNumber',    // 发票号码（必填）
+      'invoiceDate',      // 发票日期（必填）
+      'vendorName',       // 销售方名称
+      'buyerName',        // 购买方名称
+      'totalAmount'       // 价税合计
+    ];
+
+    // 必填字段：发票号码和发票日期必须存在
+    const requiredFields = ['invoiceNumber', 'invoiceDate'];
+    
+    // 检查关键字段是否存在且不为空
+    const missingFields = [];
+    let validFieldCount = 0;
+    
+    for (const field of criticalFields) {
+      const value = invoiceData[field];
+      if (value && 
+          !((typeof value === 'string' && value.trim() === '') ||
+            (typeof value === 'number' && (isNaN(value) || value === 0)))) {
+        validFieldCount++;
+      } else {
+        missingFields.push(field);
+      }
+    }
+
+    // 检查必填字段是否缺失
+    const missingRequiredFields = requiredFields.filter(field => {
+      const value = invoiceData[field];
+      return !value || 
+             (typeof value === 'string' && value.trim() === '') ||
+             (typeof value === 'number' && (isNaN(value) || value === 0));
+    });
+
+    // 如果必填字段缺失，直接返回不完整
+    if (missingRequiredFields.length > 0) {
+      console.log(`⚠️  识别不完整：必填字段缺失 (${missingRequiredFields.join(', ')})`);
+      console.log(`   已识别 ${validFieldCount}/${criticalFields.length} 个关键字段`);
+      console.log(`   缺失字段: ${missingFields.join(', ')}`);
+      return { isComplete: false, missingFields };
+    }
+
+    // 如果必填字段都存在，要求至少有 4 个关键字段有值，才认为识别完整
+    // 例如：发票号码 + 发票日期 + 销售方名称 + 金额 = 4个字段
+    const requiredFieldCount = 4;
+    if (validFieldCount >= requiredFieldCount) {
+      console.log(`✓ 识别结果完整，已识别 ${validFieldCount}/${criticalFields.length} 个关键字段`);
+      return { isComplete: true, missingFields: [] };
+    }
+
+    console.log(`⚠️  识别不完整，只识别了 ${validFieldCount}/${criticalFields.length} 个关键字段（需要至少 ${requiredFieldCount} 个）`);
+    console.log(`   缺失字段: ${missingFields.join(', ')}`);
+    return { isComplete: false, missingFields };
+  }
+
+  /**
+   * 清理和标准化发票数据
+   * @param {Object} invoiceData - 原始发票数据
+   * @returns {Object} 清理后的发票数据
+   */
+  normalizeInvoiceData(invoiceData) {
+    if (!invoiceData || typeof invoiceData !== 'object') {
+      return {};
+    }
+
+    const normalized = { ...invoiceData };
+
+    // 1. 日期格式标准化 (YYYY-MM-DD)
+    if (normalized.invoiceDate && typeof normalized.invoiceDate === 'string') {
+      const dateFormats = [
+        /(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/,  // YYYY-MM-DD 或 YYYY/MM/DD
+        /(\d{4})年(\d{1,2})月(\d{1,2})日/,      // YYYY年MM月DD日
+        /(\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/   // YY-MM-DD (假设20XX年)
+      ];
+
+      for (const pattern of dateFormats) {
+        const match = normalized.invoiceDate.match(pattern);
+        if (match) {
+          let year = match[1];
+          const month = match[2].padStart(2, '0');
+          const day = match[3].padStart(2, '0');
+          
+          // 处理两位年份
+          if (year.length === 2) {
+            year = '20' + year;
+      }
+          
+          normalized.invoiceDate = `${year}-${month}-${day}`;
+          break;
+        }
+      }
+  }
+
+    // 2. 金额字段类型转换和清理
+    const amountFields = ['amount', 'taxAmount', 'totalAmount'];
+    for (const field of amountFields) {
+      if (normalized[field] !== undefined && normalized[field] !== null) {
+        if (typeof normalized[field] === 'string') {
+          // 处理免税标识
+          if (field === 'taxAmount' && 
+              (normalized[field].includes('免税') || 
+               normalized[field].includes('***') ||
+               normalized[field].includes('Tax Exempt'))) {
+            normalized[field] = 0;
+    } else {
+            normalized[field] = parseFloat(normalized[field].replace(/[^\d.]/g, '')) || 0;
+          }
+        } else if (typeof normalized[field] === 'number') {
+          normalized[field] = isNaN(normalized[field]) ? 0 : normalized[field];
+        }
+      }
+    }
+
+    // 3. 字符串字段清理（去除首尾空格）
+    const stringFields = [
+      'invoiceNumber', 'invoiceCode', 'invoiceType', 'currency',
+      'vendorName', 'vendorTaxId', 'vendorAddress',
+      'buyerName', 'buyerTaxId', 'buyerAddress',
+      'issuer', 'totalAmountInWords'
+    ];
+    for (const field of stringFields) {
+      if (normalized[field] && typeof normalized[field] === 'string') {
+        normalized[field] = normalized[field].trim();
+    }
+    }
+
+    // 4. 空值处理（null 转为空字符串）
+    Object.keys(normalized).forEach(key => {
+      if (normalized[key] === null) {
+        normalized[key] = '';
+      }
+    });
+
+    return normalized;
+  }
+
+  /**
+   * 字段映射：将不同格式的字段名映射到标准字段名
+   * @param {Object} invoiceData - 原始发票数据
+   * @returns {Object} 映射后的发票数据
+   */
+  mapFieldNames(invoiceData) {
+    if (!invoiceData || typeof invoiceData !== 'object') {
+      return {};
+    }
+
+    const mapped = { ...invoiceData };
+
+    // 销售方字段映射
+    const vendorNameMappings = ['Seller', 'Vendor', 'Merchant', 'Seller Name'];
+    for (const key of vendorNameMappings) {
+      if (mapped[key] && !mapped.vendorName) {
+        mapped.vendorName = mapped[key];
+        delete mapped[key];
+      }
+    }
+
+    // 购买方字段映射
+    const buyerNameMappings = ['Buyer', 'Purchaser', 'Customer', 'Buyer Name'];
+    for (const key of buyerNameMappings) {
+      if (mapped[key] && !mapped.buyerName) {
+        mapped.buyerName = mapped[key];
+        delete mapped[key];
+  }
+    }
+
+    // 税号字段映射
+    if (mapped['Seller Tax ID'] && !mapped.vendorTaxId) {
+      mapped.vendorTaxId = mapped['Seller Tax ID'];
+      delete mapped['Seller Tax ID'];
+    }
+    if (mapped['Vendor Tax ID'] && !mapped.vendorTaxId) {
+      mapped.vendorTaxId = mapped['Vendor Tax ID'];
+      delete mapped['Vendor Tax ID'];
+    }
+    if (mapped['Buyer Tax ID'] && !mapped.buyerTaxId) {
+      mapped.buyerTaxId = mapped['Buyer Tax ID'];
+      delete mapped['Buyer Tax ID'];
+    }
+
+    // 地址字段映射
+    if (mapped['Seller Address'] && !mapped.vendorAddress) {
+      mapped.vendorAddress = mapped['Seller Address'];
+      delete mapped['Seller Address'];
+    }
+    if (mapped['Vendor Address'] && !mapped.vendorAddress) {
+      mapped.vendorAddress = mapped['Vendor Address'];
+      delete mapped['Vendor Address'];
+}
+    if (mapped['Buyer Address'] && !mapped.buyerAddress) {
+      mapped.buyerAddress = mapped['Buyer Address'];
+      delete mapped['Buyer Address'];
+    }
+
+    return mapped;
+  }
+
+  // ============================================
+  // OCR 识别入口方法
+  // ============================================
+
+  /**
+   * 识别发票图片（使用 Mistral AI OCR，如果识别不全则使用阿里云 OCR）
    * @param {string} imagePath - 图片路径
    * @returns {Promise<Object>} 识别结果
    */
   async recognizeInvoice(imagePath) {
-    console.log('========================================');
-    console.log('recognizeInvoice 被调用');
-    console.log('图片路径:', imagePath);
-    console.log('mistralClient 状态:', mistralClient ? '已初始化' : '未初始化');
-    console.log('config.MISTRAL_API_KEY 状态:', config.MISTRAL_API_KEY ? `已配置 (${config.MISTRAL_API_KEY.substring(0, 10)}...)` : '未配置');
+    console.log('\n');
+    console.log('╔════════════════════════════════════════════════════════════════╗');
+    console.log('║               📄 发票识别流程开始                              ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+    console.log(`📁 文件路径: ${imagePath}`);
+    console.log(`📅 识别时间: ${new Date().toLocaleString('zh-CN')}`);
+    console.log(`🔧 Mistral AI: ${mistralClient ? '✅ 已初始化' : '❌ 未初始化'}`);
+    console.log(`🔧 阿里云 DashScope: ${dashscopeClient ? '✅ 已初始化' : '❌ 未初始化'}`);
+    console.log('════════════════════════════════════════════════════════════════');
     
-    // 检查是否配置了 Mistral AI
-    if (!mistralClient) {
-      const errorMsg = 'Mistral AI 未配置，请设置 MISTRAL_API_KEY 环境变量';
+    // 检查是否配置了至少一个 OCR 服务
+    if (!mistralClient && !dashscopeClient) {
+      const errorMsg = 'OCR 服务未配置，请设置 MISTRAL_API_KEY 或 DASHSCOPE_API_KEY 环境变量';
       console.error('OCR失败:', errorMsg);
       console.log('========================================');
       return {
@@ -136,21 +337,112 @@ class OCRService {
       };
     }
     
-    console.log('使用 Mistral AI 识别发票图片');
-    console.log('========================================');
-    return await this.recognizeInvoiceWithMistral(imagePath, 'image');
+    // 首先尝试使用 Mistral AI OCR
+    if (mistralClient) {
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 🔵 第一步: 使用 Mistral AI OCR 识别发票                      │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      try {
+        const mistralResult = await this.recognizeInvoiceWithMistral(imagePath, 'image');
+        
+        // 检查识别结果是否完整
+        if (mistralResult.success && mistralResult.invoiceData) {
+          const { isComplete, missingFields } = this.isRecognitionComplete(mistralResult.invoiceData);
+          
+          if (isComplete) {
+            console.log('\n╔════════════════════════════════════════════════════════════════╗');
+            console.log('║  ✅ Mistral AI 识别成功 - 识别结果完整                          ║');
+            console.log('╚════════════════════════════════════════════════════════════════╝');
+            console.log('📊 识别结果摘要:');
+            console.log(`   - 发票号码: ${mistralResult.invoiceData.invoiceNumber || '(未识别)'}`);
+            console.log(`   - 发票日期: ${mistralResult.invoiceData.invoiceDate || '(未识别)'}`);
+            console.log(`   - 销售方: ${mistralResult.invoiceData.vendorName || '(未识别)'}`);
+            console.log(`   - 购买方: ${mistralResult.invoiceData.buyerName || '(未识别)'}`);
+            console.log(`   - 价税合计: ${mistralResult.invoiceData.totalAmount || '(未识别)'}`);
+            console.log(`   - OCR文本长度: ${mistralResult.text?.length || 0} 字符`);
+            console.log('════════════════════════════════════════════════════════════════\n');
+            // 数据已经过完整流程处理：OCR提取 → AI解析 → 字段映射 → 数据标准化
+            return mistralResult;
+          } else {
+            console.log('\n╔════════════════════════════════════════════════════════════════╗');
+            console.log('║  ⚠️  Mistral AI 识别不完整 - 切换到阿里云 OCR                  ║');
+            console.log('╚════════════════════════════════════════════════════════════════╝');
+            console.log(`📋 缺失字段: ${missingFields.join(', ')}`);
+            console.log('🔄 流转: Mistral AI → 阿里云 DashScope OCR');
+            console.log('════════════════════════════════════════════════════════════════');
+          }
+        } else {
+          console.log('\n╔════════════════════════════════════════════════════════════════╗');
+          console.log('║  ❌ Mistral AI 识别失败 - 切换到阿里云 OCR                      ║');
+          console.log('╚════════════════════════════════════════════════════════════════╝');
+          console.log('🔄 流转: Mistral AI → 阿里云 DashScope OCR');
+          console.log('════════════════════════════════════════════════════════════════');
+        }
+      } catch (error) {
+        console.log('\n╔════════════════════════════════════════════════════════════════╗');
+        console.log('║  ❌ Mistral AI 识别出错 - 切换到阿里云 OCR                        ║');
+        console.log('╚════════════════════════════════════════════════════════════════╝');
+        console.error(`错误信息: ${error.message}`);
+        console.log('🔄 流转: Mistral AI → 阿里云 DashScope OCR');
+        console.log('════════════════════════════════════════════════════════════════');
+      }
+    }
+    
+    // 如果 Mistral 识别不全或失败，使用阿里云 OCR
+    if (dashscopeClient) {
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 🟢 第二步: 使用阿里云 DashScope OCR 识别发票                  │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      try {
+        const dashscopeResult = await this.recognizeInvoiceWithDashScope(imagePath, 'image');
+        
+        if (dashscopeResult.success) {
+          console.log('\n╔════════════════════════════════════════════════════════════════╗');
+          console.log('║  ✅ 阿里云 DashScope OCR 识别成功                                ║');
+          console.log('╚════════════════════════════════════════════════════════════════╝');
+          console.log('📊 识别结果摘要:');
+          console.log(`   - 发票号码: ${dashscopeResult.invoiceData.invoiceNumber || '(未识别)'}`);
+          console.log(`   - 发票日期: ${dashscopeResult.invoiceData.invoiceDate || '(未识别)'}`);
+          console.log(`   - 销售方: ${dashscopeResult.invoiceData.vendorName || '(未识别)'}`);
+          console.log(`   - 购买方: ${dashscopeResult.invoiceData.buyerName || '(未识别)'}`);
+          console.log(`   - 价税合计: ${dashscopeResult.invoiceData.totalAmount || '(未识别)'}`);
+          console.log(`   - OCR文本长度: ${dashscopeResult.text?.length || 0} 字符`);
+          console.log('════════════════════════════════════════════════════════════════\n');
+          // 数据已经过完整流程处理：OCR提取 → AI解析 → 字段映射 → 数据标准化
+          return dashscopeResult;
+        } else {
+          console.log('\n╔════════════════════════════════════════════════════════════════╗');
+          console.log('║  ❌ 阿里云 DashScope OCR 识别失败                                ║');
+          console.log('╚════════════════════════════════════════════════════════════════╝');
+        }
+      } catch (error) {
+        console.log('\n╔════════════════════════════════════════════════════════════════╗');
+        console.log('║  ❌ 阿里云 DashScope OCR 识别出错                                ║');
+        console.log('╚════════════════════════════════════════════════════════════════╝');
+        console.error(`错误信息: ${error.message}`);
+      }
+    }
+    
+    // 如果都失败了，返回错误
+    console.log('\n╔════════════════════════════════════════════════════════════════╗');
+    console.log('║  ❌ 所有 OCR 服务都识别失败                                      ║');
+    console.log('╚════════════════════════════════════════════════════════════════╝');
+    console.log('════════════════════════════════════════════════════════════════\n');
+    return {
+      success: false,
+      error: '所有 OCR 服务都识别失败',
+      text: '',
+      confidence: 0,
+      invoiceData: {}
+    };
   }
 
 
-  /**
-   * [已删除] 正则表达式解析方法
-   * 此方法已被移除，现在仅使用AI解析方案
-   * 如需解析发票数据，请使用 parseInvoiceDataWithAI() 方法
-   */
+  
 
   /**
    * 清理OCR返回的markdown数据，移除无用的表格和重复内容
-   * 优化：减少过度清理，保留重要信息（如税号、地址、电话等）
+   * 优化：尽可能保留所有信息，只做最小限度的清理
    * @param {string} textContent - OCR识别的markdown文本
    * @returns {string} 清理后的文本
    */
@@ -159,79 +451,45 @@ class OCRService {
     
     let cleaned = textContent;
     
-    // 移除图片引用
+    // 1. 移除图片引用（不影响文本内容）
     cleaned = cleaned.replace(/!\[.*?\]\(.*?\)/g, '');
     
-    // 移除空表格行（只包含空单元格的行）
+    // 2. 最小限度清理：只移除完全无意义的空行和重复空行
     const lines = cleaned.split('\n');
     const filteredLines = [];
-    let inTable = false;
-    let emptyTableRowCount = 0;
+    let emptyLineCount = 0;
     
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const line = lines[i];
+      const trimmedLine = line.trim();
       
-      // 检测表格开始
-      if (line.startsWith('|') && line.includes('---')) {
-        inTable = true;
-        emptyTableRowCount = 0;
-        // 跳过表格分隔符
-        continue;
-      }
-      
-      // 检测表格行
-      if (inTable && line.startsWith('|')) {
-        // 检查是否是空行（只包含空单元格的行）
-        const cells = line.split('|').map(c => c.trim()).filter(c => c);
-        // 优化：只过滤完全空的行，保留包含任何内容的行（即使是单个字符）
-        // 这样可以保留短税号、编号等重要信息
-        const isEmptyRow = cells.length === 0 || cells.every(c => c.length === 0);
-        
-        if (isEmptyRow) {
-          emptyTableRowCount++;
-          // 如果连续空行超过5行（放宽限制），跳过后续空行
-          if (emptyTableRowCount > 5) {
-            continue;
-          }
+      // 保留所有非空行
+      if (trimmedLine.length > 0) {
+        filteredLines.push(line);
+        emptyLineCount = 0;
         } else {
-          emptyTableRowCount = 0;
+        // 只保留最多2个连续空行（用于保持段落结构）
+        emptyLineCount++;
+        if (emptyLineCount <= 2) {
+          filteredLines.push(line);
         }
-        
-        // 优化：不再跳过包含"电话"、"机器编号"等的行，因为这些信息可能包含重要数据
-        // 只跳过完全无意义的纯标签行（没有任何值的行）
-        // 例如："| 电话 | 电话号 |" 这样的行会被保留，因为可能包含实际电话号码
-        // 但如果整行只有标签没有值，则跳过
-        if (cells.length > 0) {
-          const hasValue = cells.some(cell => {
-            // 检查单元格是否包含实际数据（数字、字母、中文等）
-            const hasContent = /[\d\w\u4e00-\u9fa5]/.test(cell);
-            // 检查是否只是纯标签（如"电话"、"机器编号"等）
-            const isLabelOnly = /^(电话|电话号|机器编号|备案号|电话编号|地址|名称|税号|纳税人识别号|统一社会信用代码)$/i.test(cell);
-            return hasContent && !isLabelOnly;
-          });
-          
-          // 如果行中有实际数据，保留；如果只是标签行，也保留（可能下一行有数据）
-          // 完全跳过的情况：整行都是空单元格或只有无意义的标签
-        }
-      } else {
-        inTable = false;
-        emptyTableRowCount = 0;
-      }
-      
-      // 保留非空行
-      if (line.length > 0) {
-        filteredLines.push(lines[i]);
       }
     }
     
     cleaned = filteredLines.join('\n');
     
-    // 移除重复的空行（保留最多2个连续空行）
-    cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n');
+    // 3. 移除过多的连续空行（保留最多3个连续空行，用于分隔大段落）
+    cleaned = cleaned.replace(/\n{5,}/g, '\n\n\n\n');
     
-    // 不限制文本长度，提取全部文本用于解析
+    // 4. 保留所有文本内容，不截断
     // 注意：Mistral Chat API支持较长的上下文，可以处理完整文本
     // 如果遇到token限制，API会返回错误，我们会在错误处理中处理
+    
+    console.log('文本清理完成：');
+    console.log(`- 原始长度: ${textContent.length} 字符`);
+    console.log(`- 清理后长度: ${cleaned.length} 字符`);
+    console.log(`- 保留比例: ${((cleaned.length / textContent.length) * 100).toFixed(1)}%`);
+    console.log('- 清理策略：最小限度清理，保留所有可见信息');
     
     return cleaned.trim();
   }
@@ -262,108 +520,15 @@ class OCRService {
       console.log(cleanedText.substring(Math.max(0, cleanedText.length - 800)));
       console.log('========================================');
       console.log('✓ 已清理文本格式，将完整发送给AI解析（不截断）');
-      // 构建提示词（包含所有字段，特别是购买方税号）
-      // 重要：要求只返回纯JSON格式，不要markdown格式，不要代码块标记
-      const systemPrompt = `你是一个专业的发票识别助手。请从提供的发票文本中提取以下信息，并以纯JSON格式返回（不要使用markdown代码块，直接返回JSON对象）：
-
-{
-  "invoiceNumber": "发票号码（发票号码字段的值，如：19599492）",
-  "invoiceCode": "发票代码（发票代码字段的值，如：035022100211）",
-  "invoiceDate": "发票日期/开票日期（格式：YYYY-MM-DD，如：2022-07-12）",
-  "invoiceType": "发票类型（如：增值税普通发票、电子发票(普通发票)等）",
-  "amount": 合计金额/金额合计（数字，不含货币符号，不含税金额）,
-  "taxAmount": 税额合计/税额（数字，不含货币符号，如果免税则为0）,
-  "totalAmount": 价税合计/总计（数字，不含货币符号，含税总金额）,
-  "currency": "货币类型（如：CNY, USD等，默认CNY）",
-  "vendorName": "销售方名称（销售方/开票方名称，如：厦门滴滴出行科技有限公司）",
-  "vendorTaxId": "销售方税号（销售方纳税人识别号/统一社会信用代码，如：91350203MA32T53J0X）",
-  "vendorAddress": "销售方地址（销售方地址、电话信息）",
-  "buyerName": "购买方名称（购买方/买方名称，如：北京星网锐捷网络技术有限公司）",
-  "buyerTaxId": "购买方税号（购买方纳税人识别号/统一社会信用代码，如：91110108668444162H）",
-  "issuer": "开票人（开票人字段的值）",
-  "totalAmountInWords": "价税合计大写（如：叁拾捌圆捌角肆分）",
-  "items": [
-    {
-      "name": "项目名称（货物或应税劳务、服务名称）",
-      "unitPrice": 单价（数字）,
-      "quantity": 数量（数字）,
-      "amount": 金额（数字，该项的金额）,
-      "taxRate": "税率（如：3%、免税等）",
-      "taxAmount": 税额（数字，如果免税则为0）
-    }
-  ]
-}
-
-字段识别说明（支持中文和英文发票）：
-
-**通用字段：**
-- 发票号码/invoiceNumber：查找"发票号码"、"发票号"、"Invoice Number"、"Invoice No."后的数字
-- 发票代码/invoiceCode：查找"发票代码"、"Invoice Code"后的数字
-- 开票日期/invoiceDate：查找"开票日期"、"发票日期"、"Issue Date"、"Date"后的日期，转换为YYYY-MM-DD格式
-- 发票类型/invoiceType：查找"发票类型"、"Invoice Type"、"Type"等
-
-**销售方/卖方信息（Seller/Vendor/Merchant）：**
-- 销售方名称/vendorName：**必须仔细查找**以下关键词后的公司名称：
-  - "销售方"、"开票方"、"销货方"、"开票单位"、"销售单位"
-  - "Seller"、"Vendor"、"Merchant"、"From"、"Issuer"
-  - 如果看到"名称:"、"Name:"等标签，查找其后的公司名称
-  - 注意：销售方信息可能在发票的顶部、底部或右侧，请仔细查找整个文本
-- 销售方税号/vendorTaxId：查找销售方信息区域中的：
-  - "纳税人识别号"、"统一社会信用代码"、"税号"、"Tax ID"、"Tax Number"、"EIN"、"VAT Number"
-  - 通常是一个18位或15位的字母数字组合
-- 销售方地址/vendorAddress：查找销售方信息区域中的"地址"、"Address"、"Location"等
-
-**购买方/买方信息（Buyer/Purchaser/Customer）：**
-- 购买方名称/buyerName：**必须仔细查找**以下关键词后的公司名称：
-  - "购买方"、"买方"、"购货方"、"购买单位"、"付款单位"
-  - "Buyer"、"Purchaser"、"Customer"、"To"、"Bill To"
-  - 如果看到"名称:"、"Name:"等标签，查找其后的公司名称
-  - 注意：购买方信息可能在发票的顶部、底部或左侧，请仔细查找整个文本
-- 购买方税号/buyerTaxId：查找购买方信息区域中的：
-  - "纳税人识别号"、"统一社会信用代码"、"税号"、"Tax ID"、"Tax Number"、"EIN"、"VAT Number"
-  - 通常是一个18位或15位的字母数字组合
-
-**金额信息：**
-- 金额/amount：查找"合计金额"、"金额合计"、"Subtotal"、"Amount"、"Net Amount"（不含税）
-- 税额/taxAmount：查找"税额合计"、"税额"、"Tax Amount"、"VAT"、"Tax"（如果显示"免税"、"Tax Exempt"、"***"则为0）
-- 价税合计/totalAmount：查找"价税合计"、"总计"、"Total Amount"、"Total"、"Grand Total"（含税总金额）
-- 货币/currency：查找货币类型，如"CNY"、"USD"、"EUR"、"JPY"等，默认为"CNY"
-
-**其他字段：**
-- 开票人/issuer：查找"开票人"、"Issuer"、"Issued By"等
-- 价税合计大写/totalAmountInWords：查找"价税合计大写"、"Amount in Words"等
-- 项目明细/items：从表格中提取所有项目行，包括名称、单价、数量、金额、税率、税额
-
-**重要要求：**
-1. 只返回纯JSON对象，不要使用markdown代码块（不要用\`\`\`json包裹）
-2. 不要添加任何解释文字或说明
-3. 如果某个字段无法识别，请返回 null 或空字符串
-4. **无论发票是中文还是英文，都必须使用上述JSON字段名返回（vendorName, buyerName等），不要使用Seller, Buyer等英文字段名**
-5. **特别注意：销售方和购买方信息是发票的核心信息，必须仔细查找整个文本，不要遗漏**
-6. 仔细区分"销售方/Seller"和"购买方/Buyer"，不要混淆
-7. 如果文本中有"购买方信息"或"销售方信息"这样的标题，其下的内容就是对应的信息
-8. 日期格式必须转换为YYYY-MM-DD格式
-9. 金额字段必须是数字类型，不要包含货币符号
-10. 忽略markdown表格中的无用数据，只提取真实的发票信息
-11. 对于国外发票，确保字段映射正确：Seller → vendorName, Buyer → buyerName`;
-
+      // 使用统一的提示词配置
       const messages = [
         {
           role: 'system',
-          content: systemPrompt
+          content: AI_ANALYSIS_SYSTEM_PROMPT
         },
         {
           role: 'user',
-          content: `请从以下发票文本中提取信息（已清理无用表格数据，请仔细识别真实发票信息）：
-
-**特别注意：**
-1. 必须仔细查找销售方（开票方）和购买方（买方）的完整信息，包括名称和税号
-2. 销售方和购买方信息可能在文本的不同位置，请完整扫描整个文本
-3. 如果看到"购买方信息"、"销售方信息"等标题，其下的内容就是对应的信息
-4. 查找"名称:"、"统一社会信用代码"、"纳税人识别号"等标签后的值
-
-发票文本：
-${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
+          content: AI_ANALYSIS_USER_PROMPT_TEMPLATE(cleanedText)
         }
       ];
 
@@ -404,12 +569,6 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
         } else {
           invoiceData = JSON.parse(aiResponse);
         }
-        // 清理null值，转换为空字符串
-        Object.keys(invoiceData).forEach(key => {
-          if (invoiceData[key] === null) {
-            invoiceData[key] = '';
-          }
-        });
       } catch (parseError) {
         console.error('解析 AI 响应失败:', parseError);
         console.error('AI响应内容:', aiResponse.substring(0, 500));
@@ -418,140 +577,9 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
         return {};
       }
 
-      // 清理和验证数据
+      // 返回 AI 解析的原始数据，不进行字段映射和数据标准化
+      // 字段映射和数据标准化将在调用此方法后进行
       console.log('AI解析的原始数据:', JSON.stringify(invoiceData, null, 2));
-      
-      // 字段映射：确保英文字段名正确映射到标准字段名（兼容国外发票）
-      // 如果AI返回了Seller/Buyer等字段，映射到vendorName/buyerName
-      if (invoiceData.Seller && !invoiceData.vendorName) {
-        invoiceData.vendorName = invoiceData.Seller;
-        delete invoiceData.Seller;
-      }
-      if (invoiceData.Vendor && !invoiceData.vendorName) {
-        invoiceData.vendorName = invoiceData.Vendor;
-        delete invoiceData.Vendor;
-      }
-      if (invoiceData.Merchant && !invoiceData.vendorName) {
-        invoiceData.vendorName = invoiceData.Merchant;
-        delete invoiceData.Merchant;
-      }
-      if (invoiceData['Seller Name'] && !invoiceData.vendorName) {
-        invoiceData.vendorName = invoiceData['Seller Name'];
-        delete invoiceData['Seller Name'];
-      }
-      
-      if (invoiceData.Buyer && !invoiceData.buyerName) {
-        invoiceData.buyerName = invoiceData.Buyer;
-        delete invoiceData.Buyer;
-      }
-      if (invoiceData.Purchaser && !invoiceData.buyerName) {
-        invoiceData.buyerName = invoiceData.Purchaser;
-        delete invoiceData.Purchaser;
-      }
-      if (invoiceData.Customer && !invoiceData.buyerName) {
-        invoiceData.buyerName = invoiceData.Customer;
-        delete invoiceData.Customer;
-      }
-      if (invoiceData['Buyer Name'] && !invoiceData.buyerName) {
-        invoiceData.buyerName = invoiceData['Buyer Name'];
-        delete invoiceData['Buyer Name'];
-      }
-      
-      // 税号字段映射
-      if (invoiceData['Seller Tax ID'] && !invoiceData.vendorTaxId) {
-        invoiceData.vendorTaxId = invoiceData['Seller Tax ID'];
-        delete invoiceData['Seller Tax ID'];
-      }
-      if (invoiceData['Vendor Tax ID'] && !invoiceData.vendorTaxId) {
-        invoiceData.vendorTaxId = invoiceData['Vendor Tax ID'];
-        delete invoiceData['Vendor Tax ID'];
-      }
-      if (invoiceData['Buyer Tax ID'] && !invoiceData.buyerTaxId) {
-        invoiceData.buyerTaxId = invoiceData['Buyer Tax ID'];
-        delete invoiceData['Buyer Tax ID'];
-      }
-      
-      // 地址字段映射
-      if (invoiceData['Seller Address'] && !invoiceData.vendorAddress) {
-        invoiceData.vendorAddress = invoiceData['Seller Address'];
-        delete invoiceData['Seller Address'];
-      }
-      if (invoiceData['Vendor Address'] && !invoiceData.vendorAddress) {
-        invoiceData.vendorAddress = invoiceData['Vendor Address'];
-        delete invoiceData['Vendor Address'];
-      }
-      
-      console.log('字段映射后的数据:', JSON.stringify(invoiceData, null, 2));
-      
-      // 日期解析：支持多种格式
-      if (invoiceData.invoiceDate && typeof invoiceData.invoiceDate === 'string') {
-        // 支持格式：YYYY-MM-DD, YYYY/MM/DD, YYYY年MM月DD日, YYYY.MM.DD
-        let dateStr = invoiceData.invoiceDate.trim();
-        const datePatterns = [
-          /(\d{4})[年\/\-\.](\d{1,2})[月\/\-\.](\d{1,2})[日]?/,  // 2022年07月12日 或 2022/07/12
-          /(\d{4})(\d{2})(\d{2})/,  // 20220712
-        ];
-        
-        for (const pattern of datePatterns) {
-          const match = dateStr.match(pattern);
-          if (match) {
-            const year = match[1];
-            const month = match[2].padStart(2, '0');
-            const day = match[3].padStart(2, '0');
-            invoiceData.invoiceDate = `${year}-${month}-${day}`;
-            console.log('日期解析成功:', invoiceData.invoiceDate);
-            break;
-          }
-        }
-      }
-
-      // 金额解析
-      if (invoiceData.amount !== undefined && invoiceData.amount !== null) {
-        if (typeof invoiceData.amount === 'string') {
-          invoiceData.amount = parseFloat(invoiceData.amount.replace(/[^\d.]/g, '')) || 0;
-        }
-        console.log('金额解析:', invoiceData.amount);
-      }
-
-      if (invoiceData.taxAmount !== undefined && invoiceData.taxAmount !== null) {
-        if (typeof invoiceData.taxAmount === 'string') {
-          // 如果显示"免税"或"***"，则设为0
-          if (invoiceData.taxAmount.includes('免税') || invoiceData.taxAmount.includes('***')) {
-            invoiceData.taxAmount = 0;
-          } else {
-            invoiceData.taxAmount = parseFloat(invoiceData.taxAmount.replace(/[^\d.]/g, '')) || 0;
-          }
-        }
-        console.log('税额解析:', invoiceData.taxAmount);
-      }
-
-      if (invoiceData.totalAmount !== undefined && invoiceData.totalAmount !== null) {
-        if (typeof invoiceData.totalAmount === 'string') {
-          invoiceData.totalAmount = parseFloat(invoiceData.totalAmount.replace(/[^\d.]/g, '')) || 0;
-        }
-        console.log('价税合计解析:', invoiceData.totalAmount);
-      }
-
-      // 验证销售方和购买方信息
-      console.log('========================================');
-      console.log('销售方信息识别结果:');
-      console.log(`- 名称: ${invoiceData.vendorName || '(未识别)'}`);
-      console.log(`- 税号: ${invoiceData.vendorTaxId || '(未识别)'}`);
-      console.log(`- 地址: ${invoiceData.vendorAddress || '(未识别)'}`);
-      if (!invoiceData.vendorName && !invoiceData.vendorTaxId) {
-        console.warn('⚠ 警告：未识别到销售方信息，请检查OCR文本是否包含销售方信息');
-      }
-      
-      console.log('购买方信息识别结果:');
-      console.log(`- 名称: ${invoiceData.buyerName || '(未识别)'}`);
-      console.log(`- 税号: ${invoiceData.buyerTaxId || '(未识别)'}`);
-      if (!invoiceData.buyerName && !invoiceData.buyerTaxId) {
-        console.warn('⚠ 警告：未识别到购买方信息，请检查OCR文本是否包含购买方信息');
-      }
-      
-      console.log('项目明细数量:', invoiceData.items ? invoiceData.items.length : 0);
-      console.log('========================================');
-
       return invoiceData;
     } catch (error) {
       console.error('========================================');
@@ -575,107 +603,7 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
   }
 
   /**
-   * 将PDF转换为图片（使用pdfjs-dist和sharp）
-   * @param {string} pdfPath - PDF文件路径
-   * @param {number} pageNumber - 页码（从1开始，默认第1页）
-   * @returns {Promise<string>} 转换后的图片路径
-   */
-  async convertPDFToImage(pdfPath, pageNumber = 1) {
-    try {
-      console.log('开始转换PDF为图片:', pdfPath, '页码:', pageNumber);
-      
-      // 读取PDF文件
-      const pdfData = fs.readFileSync(pdfPath);
-      
-      // 加载PDF文档
-      const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-      const pdfDocument = await loadingTask.promise;
-      
-      // 获取指定页面
-      const page = await pdfDocument.getPage(pageNumber - 1);
-      
-      // 设置渲染参数（提高分辨率以获得更好的OCR效果）
-      const viewport = page.getViewport({ scale: 2.0 });
-      const width = Math.floor(viewport.width);
-      const height = Math.floor(viewport.height);
-      
-      // 使用pdfjs-dist的render方法获取图像数据
-      const renderContext = {
-        viewport: viewport,
-        intent: 'display'
-      };
-      
-      // 渲染页面为图像数据
-      const renderTask = page.render(renderContext);
-      await renderTask.promise;
-      
-      // 获取页面操作符列表（用于提取文本和图像）
-      // 由于pdfjs-dist在Node.js环境中渲染比较复杂，我们使用另一种方法
-      // 直接使用pdf-poppler（如果可用）或提示用户
-      
-      // 临时方案：使用pdf-poppler（需要系统安装poppler）
-      // 如果pdf-poppler不可用，返回错误提示
-      try {
-        const pdfPoppler = require('pdf-poppler');
-        const outputDir = path.dirname(pdfPath);
-        const outputFilename = path.basename(pdfPath, path.extname(pdfPath)) + `_page${pageNumber}.png`;
-        const outputPath = path.join(outputDir, outputFilename);
-        
-        const options = {
-          format: 'png',
-          out_dir: outputDir,
-          out_prefix: path.basename(pdfPath, path.extname(pdfPath)),
-          page: pageNumber
-        };
-        
-        await pdfPoppler.convert(pdfPath, options);
-        
-        // pdf-poppler会生成带页码的文件名
-        const generatedPath = path.join(outputDir, `${options.out_prefix}-${pageNumber}.png`);
-        if (fs.existsSync(generatedPath)) {
-          console.log('PDF转换成功（使用pdf-poppler），输出路径:', generatedPath);
-          return generatedPath;
-        }
-      } catch (popplerError) {
-        console.log('pdf-poppler不可用，尝试使用pdfjs-dist的文本提取方法');
-        // 如果pdf-poppler不可用，尝试提取PDF中的文本内容
-        const textContent = await page.getTextContent();
-        const text = textContent.items.map(item => item.str).join(' ');
-        
-        // 如果PDF包含文本层，直接返回文本
-        if (text.trim().length > 0) {
-          console.log('PDF包含文本层，直接提取文本');
-          // 将文本保存到临时文件
-          const tempTextPath = pdfPath.replace('.pdf', '_temp.txt');
-          fs.writeFileSync(tempTextPath, text);
-          
-          // 注意：此方法仅用于PDF转图片，不进行数据解析
-          // 数据解析应由调用方使用 parseInvoiceDataWithAI 方法
-          console.warn('PDF文本层提取完成，但未进行数据解析（已移除正则表达式解析降级方案）');
-          
-          return {
-            success: true,
-            text: text,
-            confidence: 100, // PDF文本层提取的置信度是100%
-            invoiceData: {}, // 返回空数据，需要调用方使用AI解析
-            rawData: {
-              text: text,
-              words: [],
-              lines: text.split('\n')
-            }
-          };
-        }
-      }
-      
-      throw new Error('PDF转换失败，请确保已安装poppler工具或PDF包含文本层');
-    } catch (error) {
-      console.error('PDF转换错误:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 识别PDF发票（仅使用 Mistral AI OCR）
+   * 识别PDF发票（使用 Mistral AI OCR，如果识别不全则使用阿里云 OCR）
    * @param {string} pdfPath - PDF文件路径
    * @param {number} pageNumber - 页码（默认第1页，暂未使用，Mistral OCR会处理所有页面）
    * @returns {Promise<Object>} 识别结果
@@ -686,11 +614,13 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
     console.log('PDF路径:', pdfPath);
     console.log('页码:', pageNumber);
     console.log('mistralClient 状态:', mistralClient ? '已初始化' : '未初始化');
+    console.log('dashscopeClient 状态:', dashscopeClient ? '已初始化' : '未初始化');
     console.log('config.MISTRAL_API_KEY 状态:', config.MISTRAL_API_KEY ? `已配置 (${config.MISTRAL_API_KEY.substring(0, 10)}...)` : '未配置');
+    console.log('config.DASHSCOPE_API_KEY 状态:', config.DASHSCOPE_API_KEY ? `已配置 (${config.DASHSCOPE_API_KEY.substring(0, 10)}...)` : '未配置');
     
-    // 检查是否配置了 Mistral AI
-    if (!mistralClient) {
-      const errorMsg = 'Mistral AI 未配置，请设置 MISTRAL_API_KEY 环境变量';
+    // 检查是否配置了至少一个 OCR 服务
+    if (!mistralClient && !dashscopeClient) {
+      const errorMsg = 'OCR 服务未配置，请设置 MISTRAL_API_KEY 或 DASHSCOPE_API_KEY 环境变量';
       console.error('OCR失败:', errorMsg);
       console.log('========================================');
       return {
@@ -702,9 +632,64 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
       };
     }
     
-    console.log('使用 Mistral AI 识别 PDF 发票');
+    // 首先尝试使用 Mistral AI OCR
+    if (mistralClient) {
+      console.log('第一步: 使用 Mistral AI 识别 PDF 发票');
     console.log('========================================');
-    return await this.recognizeInvoiceWithMistral(pdfPath, 'pdf');
+      try {
+        const mistralResult = await this.recognizeInvoiceWithMistral(pdfPath, 'pdf');
+        
+        // 检查识别结果是否完整
+        if (mistralResult.success && mistralResult.invoiceData) {
+          const { isComplete, missingFields } = this.isRecognitionComplete(mistralResult.invoiceData);
+          
+          if (isComplete) {
+            console.log('✓ Mistral AI 识别完整，直接返回结果');
+            console.log('========================================');
+            // 数据已经过完整流程处理：OCR提取 → AI解析 → 字段映射 → 数据标准化
+            return mistralResult;
+          } else {
+            console.log(`⚠ Mistral AI 识别不完整，缺失字段: ${missingFields.join(', ')}`);
+            console.log('尝试使用阿里云 OCR 作为补充');
+          }
+        } else {
+          console.log('⚠ Mistral AI 识别失败，尝试使用阿里云 OCR');
+        }
+      } catch (error) {
+        console.error('Mistral AI 识别出错:', error.message);
+        console.log('尝试使用阿里云 OCR 作为备选');
+      }
+    }
+    
+    // 如果 Mistral 识别不全或失败，使用阿里云 OCR
+    if (dashscopeClient) {
+      console.log('第二步: 使用阿里云 DashScope OCR 识别 PDF 发票');
+      console.log('========================================');
+      try {
+        const dashscopeResult = await this.recognizeInvoiceWithDashScope(pdfPath, 'pdf');
+        
+        if (dashscopeResult.success) {
+          console.log('✓ 阿里云 OCR 识别完成');
+          console.log('========================================');
+          // 数据已经过完整流程处理：OCR提取 → AI解析 → 字段映射 → 数据标准化
+          return dashscopeResult;
+        } else {
+          console.error('✗ 阿里云 OCR 识别失败');
+        }
+      } catch (error) {
+        console.error('阿里云 OCR 识别出错:', error.message);
+      }
+    }
+    
+    // 如果都失败了，返回错误
+    console.log('========================================');
+    return {
+      success: false,
+      error: '所有 OCR 服务都识别失败',
+      text: '',
+      confidence: 0,
+      invoiceData: {}
+    };
   }
 
   /**
@@ -800,13 +785,17 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
 
       // 调用 Mistral OCR API
       // 使用结构化输出，通过Chat API解析OCR提取的文本
-      console.log('正在使用 Mistral OCR API 识别发票...');
+      // Mistral OCR API 会自动提取所有可见文字并返回 markdown 格式
+      // 注意：Mistral OCR API 目前不支持自定义提示词，但会自动按照通用 OCR 要求提取所有信息
+      console.log('正在使用 Mistral OCR API 识别发票（将提取所有可见文字，返回 markdown 格式）...');
       console.log('请求参数:', {
         model: 'mistral-ocr-2505',
         documentType: documentParam.type,
         hasDocumentUrl: !!documentParam.documentUrl,
         hasImageUrl: !!documentParam.imageUrl
       });
+      console.log('注意：Mistral OCR API 会自动识别图片/PDF中的所有文字，包括小字、印章、边角信息等');
+      console.log('OCR 识别要求（通用）：完整提取所有可见文字，返回 markdown 格式，不遗漏任何信息');
       
       const ocrStartTime = Date.now();
       const result = await mistralClient.ocr.process({
@@ -814,15 +803,10 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
         document: documentParam,
       });
       const ocrDuration = Date.now() - ocrStartTime;
-      console.log(`Mistral OCR API 调用耗时: ${ocrDuration}ms`);
-      console.log('Mistral OCR API 响应类型:', typeof result);
-      console.log('Mistral OCR API 响应键:', Object.keys(result || {}));
-      console.log('Mistral OCR API 响应摘要:', {
-        hasPages: !!(result?.pages),
-        pagesCount: result?.pages?.length || 0,
-        model: result?.model,
-        hasUsageInfo: !!result?.usage_info
-      });
+      console.log(`\n  ⏱️  调用耗时: ${ocrDuration}ms`);
+      console.log(`  📄 处理页数: ${result?.pages?.length || 0}`);
+      console.log(`  ✅ OCR 调用成功`);
+      console.log('════════════════════════════════════════════════════════════════');
 
       // 解析 OCR 结果
       // 根据 API 文档：响应格式为 { pages: [{ index, markdown, images, dimensions }], model, usage_info }
@@ -845,15 +829,16 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
         // 输出OCR识别的原始文本统计信息（完整提取，不截断）
         if (textContent && textContent.length > 0) {
           console.log('========================================');
-          console.log('OCR识别的原始文本统计:');
+          console.log('OCR识别的原始markdown文本统计:');
           console.log(`- 总字符数: ${textContent.length}`);
           console.log(`- 总行数: ${textContent.split('\n').length}`);
-          console.log(`- 前500字符预览:`);
-          console.log(textContent.substring(0, 500));
-          console.log(`- 后500字符预览:`);
-          console.log(textContent.substring(Math.max(0, textContent.length - 500)));
+          console.log(`- 表格数量: ${(textContent.match(/\|/g) || []).length / 2} (估算)`);
+          console.log(`- 前800字符预览:`);
+          console.log(textContent.substring(0, 800));
+          console.log(`- 后800字符预览:`);
+          console.log(textContent.substring(Math.max(0, textContent.length - 800)));
           console.log('========================================');
-          console.log('✓ OCR已提取全部文本，将完整发送给AI解析');
+          console.log('✓ OCR已提取全部markdown文本，将完整发送给AI解析（不截断，保留所有信息）');
         }
         
         // 记录使用信息（如果有）
@@ -876,13 +861,30 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
         }
       }
 
-      // 使用Chat API将OCR文本解析为结构化JSON数据
+      // ============================================
+      // 执行流程：OCR提取 → AI解析 → 字段映射 → 数据标准化
+      // ============================================
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 📋 数据处理流程开始                                          │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      
+      // 步骤1: OCR提取（已完成，textContent 为 markdown 文本）
+      console.log('\n  [1/4] 🔍 OCR提取');
+      console.log(`      ✅ 使用服务: Mistral OCR API (mistral-ocr-2505)`);
+      console.log(`      📝 OCR文本长度: ${textContent.length} 字符`);
+      console.log(`      📄 输出格式: Markdown`);
+      
+      // 步骤2: AI解析（将 markdown 文本解析为结构化 JSON）
       if (textContent && textContent.trim().length > 0) {
         try {
+          console.log('\n  [2/4] 🤖 AI解析');
+          console.log(`      ✅ 使用服务: Mistral AI Chat API (mistral-small-latest)`);
+          console.log(`      📥 输入: Markdown 文本 (${textContent.length} 字符)`);
           invoiceData = await this.parseInvoiceDataWithAI(textContent);
-          console.log('AI解析的结构化数据:', JSON.stringify(invoiceData, null, 2));
+          console.log(`      📤 输出: JSON 结构化数据`);
+          console.log(`      📊 识别字段数: ${Object.keys(invoiceData).length} 个`);
         } catch (aiError) {
-          console.error('AI解析失败:', aiError.message);
+          console.error(`      ❌ AI解析失败: ${aiError.message}`);
           // AI解析失败，使用空数据
           invoiceData = {};
         }
@@ -891,17 +893,46 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
         invoiceData = {};
       }
 
-      // 清理和验证数据
-      if (invoiceData.invoiceDate && typeof invoiceData.invoiceDate === 'string') {
-        const dateMatch = invoiceData.invoiceDate.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-        if (dateMatch) {
-          invoiceData.invoiceDate = `${dateMatch[1]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[3].padStart(2, '0')}`;
-        }
+      // 步骤3: 字段映射（将不同格式的字段名映射到标准字段名）
+      console.log('\n  [3/4] 🔄 字段映射');
+      const beforeMapping = Object.keys(invoiceData).length;
+      invoiceData = this.mapFieldNames(invoiceData);
+      const afterMapping = Object.keys(invoiceData).length;
+      console.log(`      📋 映射前字段数: ${beforeMapping}`);
+      console.log(`      📋 映射后字段数: ${afterMapping}`);
+      
+      // 步骤4: 数据标准化（日期格式、金额类型、字符串清理等）
+      console.log('\n  [4/4] ✨ 数据标准化');
+      invoiceData = this.normalizeInvoiceData(invoiceData);
+      console.log(`      ✅ 日期格式: YYYY-MM-DD`);
+      console.log(`      ✅ 金额类型: 数字`);
+      console.log(`      ✅ 字符串: 已清理空格`);
+      
+      // 验证销售方和购买方信息
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 📊 识别结果验证                                              │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      console.log('  📦 销售方信息:');
+      console.log(`      - 名称: ${invoiceData.vendorName || '❌ 未识别'}`);
+      console.log(`      - 税号: ${invoiceData.vendorTaxId || '❌ 未识别'}`);
+      console.log(`      - 地址: ${invoiceData.vendorAddress || '❌ 未识别'}`);
+      if (!invoiceData.vendorName && !invoiceData.vendorTaxId) {
+        console.warn('      ⚠️  警告：未识别到销售方信息');
       }
-
-      if (invoiceData.amount && typeof invoiceData.amount === 'string') {
-        invoiceData.amount = parseFloat(invoiceData.amount.replace(/[^\d.]/g, ''));
+      
+      console.log('\n  📦 购买方信息:');
+      console.log(`      - 名称: ${invoiceData.buyerName || '❌ 未识别'}`);
+      console.log(`      - 税号: ${invoiceData.buyerTaxId || '❌ 未识别'}`);
+      if (!invoiceData.buyerName && !invoiceData.buyerTaxId) {
+        console.warn('      ⚠️  警告：未识别到购买方信息');
       }
+      
+      console.log('\n  📋 其他信息:');
+      console.log(`      - 发票号码: ${invoiceData.invoiceNumber || '❌ 未识别'}`);
+      console.log(`      - 发票日期: ${invoiceData.invoiceDate || '❌ 未识别'}`);
+      console.log(`      - 价税合计: ${invoiceData.totalAmount || '❌ 未识别'}`);
+      console.log(`      - 项目明细: ${invoiceData.items ? invoiceData.items.length : 0} 项`);
+      console.log('════════════════════════════════════════════════════════════════');
 
       return {
         success: true,
@@ -986,9 +1017,11 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
       }
 
       // 调用 Mistral OCR API 提取文本
+      // 注意：Mistral OCR API 目前不支持自定义提示词，但会自动按照通用 OCR 要求提取所有信息
       console.log('调用 Mistral OCR API 提取文本...');
+      console.log('OCR 识别要求（通用）：完整提取所有可见文字，返回 markdown 格式，不遗漏任何信息');
       const ocrResult = await mistralClient.ocr.process({
-        model: 'mistral-ocr-2505',
+        model: 'mistral-ocr-2505', // OCR 专用模型
         document: documentParam,
       });
 
@@ -1002,119 +1035,34 @@ ${cleanedText || '这是一张发票，请尝试识别其中的信息。'}`
         console.log(`OCR 提取的文本长度: ${textContent.length}`);
       }
 
-      // 构建提示词（包含所有字段，特别是购买方税号）
-      // 重要：要求只返回纯JSON格式，不要markdown格式
-      const systemPrompt = `你是一个专业的发票识别助手。请从提供的发票文本中提取以下信息，并以纯JSON格式返回（不要使用markdown代码块，直接返回JSON对象）：
-
-{
-  "invoiceNumber": "发票号码（发票号码字段的值，如：19599492）",
-  "invoiceCode": "发票代码（发票代码字段的值，如：035022100211）",
-  "invoiceDate": "发票日期/开票日期（格式：YYYY-MM-DD，如：2022-07-12）",
-  "invoiceType": "发票类型（如：增值税普通发票、电子发票(普通发票)等）",
-  "amount": 合计金额/金额合计（数字，不含货币符号，不含税金额）,
-  "taxAmount": 税额合计/税额（数字，不含货币符号，如果免税则为0）,
-  "totalAmount": 价税合计/总计（数字，不含货币符号，含税总金额）,
-  "currency": "货币类型（如：CNY, USD等，默认CNY）",
-  "vendorName": "销售方名称（销售方/开票方名称，如：厦门滴滴出行科技有限公司）",
-  "vendorTaxId": "销售方税号（销售方纳税人识别号/统一社会信用代码，如：91350203MA32T53J0X）",
-  "vendorAddress": "销售方地址（销售方地址、电话信息）",
-  "buyerName": "购买方名称（购买方/买方名称，如：北京星网锐捷网络技术有限公司）",
-  "buyerTaxId": "购买方税号（购买方纳税人识别号/统一社会信用代码，如：91110108668444162H）",
-  "issuer": "开票人（开票人字段的值）",
-  "totalAmountInWords": "价税合计大写（如：叁拾捌圆捌角肆分）",
-  "items": [
-    {
-      "name": "项目名称（货物或应税劳务、服务名称）",
-      "unitPrice": 单价（数字）,
-      "quantity": 数量（数字）,
-      "amount": 金额（数字，该项的金额）,
-      "taxRate": "税率（如：3%、免税等）",
-      "taxAmount": 税额（数字，如果免税则为0）
-    }
-  ]
-}
-
-字段识别说明（支持中文和英文发票）：
-
-**通用字段：**
-- 发票号码/invoiceNumber：查找"发票号码"、"发票号"、"Invoice Number"、"Invoice No."后的数字
-- 发票代码/invoiceCode：查找"发票代码"、"Invoice Code"后的数字
-- 开票日期/invoiceDate：查找"开票日期"、"发票日期"、"Issue Date"、"Date"后的日期，转换为YYYY-MM-DD格式
-- 发票类型/invoiceType：查找"发票类型"、"Invoice Type"、"Type"等
-
-**销售方/卖方信息（Seller/Vendor/Merchant）：**
-- 销售方名称/vendorName：**必须仔细查找**以下关键词后的公司名称：
-  - "销售方"、"开票方"、"销货方"、"开票单位"、"销售单位"
-  - "Seller"、"Vendor"、"Merchant"、"From"、"Issuer"
-  - 如果看到"名称:"、"Name:"等标签，查找其后的公司名称
-  - 注意：销售方信息可能在发票的顶部、底部或右侧，请仔细查找整个文本
-- 销售方税号/vendorTaxId：查找销售方信息区域中的：
-  - "纳税人识别号"、"统一社会信用代码"、"税号"、"Tax ID"、"Tax Number"、"EIN"、"VAT Number"
-  - 通常是一个18位或15位的字母数字组合
-- 销售方地址/vendorAddress：查找销售方信息区域中的"地址"、"Address"、"Location"等
-
-**购买方/买方信息（Buyer/Purchaser/Customer）：**
-- 购买方名称/buyerName：**必须仔细查找**以下关键词后的公司名称：
-  - "购买方"、"买方"、"购货方"、"购买单位"、"付款单位"
-  - "Buyer"、"Purchaser"、"Customer"、"To"、"Bill To"
-  - 如果看到"名称:"、"Name:"等标签，查找其后的公司名称
-  - 注意：购买方信息可能在发票的顶部、底部或左侧，请仔细查找整个文本
-- 购买方税号/buyerTaxId：查找购买方信息区域中的：
-  - "纳税人识别号"、"统一社会信用代码"、"税号"、"Tax ID"、"Tax Number"、"EIN"、"VAT Number"
-  - 通常是一个18位或15位的字母数字组合
-
-**金额信息：**
-- 金额/amount：查找"合计金额"、"金额合计"、"Subtotal"、"Amount"、"Net Amount"（不含税）
-- 税额/taxAmount：查找"税额合计"、"税额"、"Tax Amount"、"VAT"、"Tax"（如果显示"免税"、"Tax Exempt"、"***"则为0）
-- 价税合计/totalAmount：查找"价税合计"、"总计"、"Total Amount"、"Total"、"Grand Total"（含税总金额）
-- 货币/currency：查找货币类型，如"CNY"、"USD"、"EUR"、"JPY"等，默认为"CNY"
-
-**其他字段：**
-- 开票人/issuer：查找"开票人"、"Issuer"、"Issued By"等
-- 价税合计大写/totalAmountInWords：查找"价税合计大写"、"Amount in Words"等
-- 项目明细/items：从表格中提取所有项目行，包括名称、单价、数量、金额、税率、税额
-
-**重要要求：**
-1. 只返回纯JSON对象，不要使用markdown代码块（不要用\`\`\`json包裹）
-2. 不要添加任何解释文字或说明
-3. 如果某个字段无法识别，请返回 null 或空字符串
-4. **无论发票是中文还是英文，都必须使用上述JSON字段名返回（vendorName, buyerName等），不要使用Seller, Buyer等英文字段名**
-5. **特别注意：销售方和购买方信息是发票的核心信息，必须仔细查找整个文本，不要遗漏**
-6. 仔细区分"销售方/Seller"和"购买方/Buyer"，不要混淆
-7. 如果文本中有"购买方信息"或"销售方信息"这样的标题，其下的内容就是对应的信息
-8. 日期格式必须转换为YYYY-MM-DD格式
-9. 金额字段必须是数字类型，不要包含货币符号`;
-
+      // 使用统一的提示词配置
       const messages = [
         {
           role: 'system',
-          content: systemPrompt
+          content: MISTRAL_CHAT_SYSTEM_PROMPT
         },
         {
           role: 'user',
-          content: `请从以下发票文本中提取信息：
-
-**特别注意：**
-1. 必须仔细查找销售方（开票方）和购买方（买方）的完整信息，包括名称和税号
-2. 销售方和购买方信息可能在文本的不同位置，请完整扫描整个文本
-3. 如果看到"购买方信息"、"销售方信息"等标题，其下的内容就是对应的信息
-4. 查找"名称:"、"统一社会信用代码"、"纳税人识别号"等标签后的值
-
-发票文本：
-${textContent || '这是一张发票，请尝试识别其中的信息。'}`
+          content: MISTRAL_CHAT_USER_PROMPT_TEMPLATE(textContent)
         }
       ];
 
-      // 调用 Mistral Chat API
-      // 使用 response_format 强制返回 JSON 格式
-      console.log('正在使用 Mistral Chat API 识别发票...');
-      console.log(`- 文本长度: ${textContent.length} 字符`);
-      console.log(`- Temperature: 0.2 (提高识别能力)`);
-      console.log(`- Max Tokens: 6000 (确保完整响应)`);
-      
       // 估算 token 数量（粗略估算：1 token ≈ 4 字符）
       const estimatedTokens = Math.ceil(textContent.length / 4);
       const maxTokens = Math.min(6000, Math.max(2000, estimatedTokens + 2000)); // 确保有足够空间返回完整 JSON
+      
+      // 调用 Mistral Chat API
+      // 使用 response_format 强制返回 JSON 格式
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 🤖 调用 Mistral Chat API (Fallback)                         │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      console.log(`  🤖 模型: mistral-small-latest`);
+      console.log(`  📥 输入: Markdown 文本 (${textContent.length} 字符)`);
+      console.log(`  📤 输出: JSON 结构化数据`);
+      console.log(`  ⚙️  Temperature: 0.2`);
+      console.log(`  ⚙️  Max Tokens: ${maxTokens}`);
+      const aiStartTime = Date.now();
+      console.log('════════════════════════════════════════════════════════════════');
       
       const result = await mistralClient.chat.complete({
         model: 'mistral-small-latest',
@@ -1125,8 +1073,9 @@ ${textContent || '这是一张发票，请尝试识别其中的信息。'}`
         responseFormat: { type: 'json_object' }, // 强制返回JSON格式
       });
 
+      const aiDuration = Date.now() - aiStartTime;
       const aiResponse = result.choices[0]?.message?.content || '';
-      console.log('Mistral Chat API 响应:', aiResponse);
+      console.log(`\n  ⏱️  调用耗时: ${aiDuration}ms`);
 
       // 解析 AI 返回的 JSON
       let invoiceData = {};
@@ -1143,118 +1092,75 @@ ${textContent || '这是一张发票，请尝试识别其中的信息。'}`
             invoiceData[key] = '';
           }
         });
+        console.log(`  ✅ AI 解析成功`);
+        console.log(`  📊 识别字段数: ${Object.keys(invoiceData).length} 个`);
+        console.log('════════════════════════════════════════════════════════════════');
       } catch (parseError) {
-        console.error('解析 AI 响应失败:', parseError);
+        console.error(`  ❌ AI解析失败: ${parseError.message}`);
         // AI解析失败，返回空数据
-        console.error('无法解析AI响应为JSON格式');
         invoiceData = {};
       }
 
-      // 清理和验证数据
-      console.log('Chat API解析的原始数据:', JSON.stringify(invoiceData, null, 2));
+      // ============================================
+      // 执行流程：OCR提取 → AI解析 → 字段映射 → 数据标准化
+      // ============================================
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 📋 数据处理流程开始                                          │');
+      console.log('└────────────────────────────────────────────────────────────┘');
       
-      // 字段映射：确保英文字段名正确映射到标准字段名（兼容国外发票）
-      // 如果AI返回了Seller/Buyer等字段，映射到vendorName/buyerName
-      if (invoiceData.Seller && !invoiceData.vendorName) {
-        invoiceData.vendorName = invoiceData.Seller;
-        delete invoiceData.Seller;
-      }
-      if (invoiceData.Vendor && !invoiceData.vendorName) {
-        invoiceData.vendorName = invoiceData.Vendor;
-        delete invoiceData.Vendor;
-      }
-      if (invoiceData.Merchant && !invoiceData.vendorName) {
-        invoiceData.vendorName = invoiceData.Merchant;
-        delete invoiceData.Merchant;
-      }
-      if (invoiceData['Seller Name'] && !invoiceData.vendorName) {
-        invoiceData.vendorName = invoiceData['Seller Name'];
-        delete invoiceData['Seller Name'];
-      }
+      // 步骤1: OCR提取（已完成，textContent 为 markdown 文本）
+      console.log('\n  [1/4] 🔍 OCR提取');
+      console.log(`      ✅ 使用服务: Mistral OCR API (mistral-ocr-2505)`);
+      console.log(`      📝 OCR文本长度: ${textContent.length} 字符`);
+      console.log(`      📄 输出格式: Markdown`);
       
-      if (invoiceData.Buyer && !invoiceData.buyerName) {
-        invoiceData.buyerName = invoiceData.Buyer;
-        delete invoiceData.Buyer;
-      }
-      if (invoiceData.Purchaser && !invoiceData.buyerName) {
-        invoiceData.buyerName = invoiceData.Purchaser;
-        delete invoiceData.Purchaser;
-      }
-      if (invoiceData.Customer && !invoiceData.buyerName) {
-        invoiceData.buyerName = invoiceData.Customer;
-        delete invoiceData.Customer;
-      }
-      if (invoiceData['Buyer Name'] && !invoiceData.buyerName) {
-        invoiceData.buyerName = invoiceData['Buyer Name'];
-        delete invoiceData['Buyer Name'];
-      }
+      // 步骤2: AI解析（Chat API 已返回结构化 JSON）
+      console.log('\n  [2/4] 🤖 AI解析');
+      console.log(`      ✅ 使用服务: Mistral AI Chat API (mistral-small-latest)`);
+      console.log(`      📥 输入: Markdown 文本 (${textContent.length} 字符)`);
+      console.log(`      📤 输出: JSON 结构化数据`);
+      console.log(`      📊 识别字段数: ${Object.keys(invoiceData).length} 个`);
       
-      // 税号字段映射
-      if (invoiceData['Seller Tax ID'] && !invoiceData.vendorTaxId) {
-        invoiceData.vendorTaxId = invoiceData['Seller Tax ID'];
-        delete invoiceData['Seller Tax ID'];
-      }
-      if (invoiceData['Vendor Tax ID'] && !invoiceData.vendorTaxId) {
-        invoiceData.vendorTaxId = invoiceData['Vendor Tax ID'];
-        delete invoiceData['Vendor Tax ID'];
-      }
-      if (invoiceData['Buyer Tax ID'] && !invoiceData.buyerTaxId) {
-        invoiceData.buyerTaxId = invoiceData['Buyer Tax ID'];
-        delete invoiceData['Buyer Tax ID'];
+      // 步骤3: 字段映射（将不同格式的字段名映射到标准字段名）
+      console.log('\n  [3/4] 🔄 字段映射');
+      const beforeMapping = Object.keys(invoiceData).length;
+      invoiceData = this.mapFieldNames(invoiceData);
+      const afterMapping = Object.keys(invoiceData).length;
+      console.log(`      📋 映射前字段数: ${beforeMapping}`);
+      console.log(`      📋 映射后字段数: ${afterMapping}`);
+      
+      // 步骤4: 数据标准化（日期格式、金额类型、字符串清理等）
+      console.log('\n  [4/4] ✨ 数据标准化');
+      invoiceData = this.normalizeInvoiceData(invoiceData);
+      console.log(`      ✅ 日期格式: YYYY-MM-DD`);
+      console.log(`      ✅ 金额类型: 数字`);
+      console.log(`      ✅ 字符串: 已清理空格`);
+      
+      // 验证销售方和购买方信息
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 📊 识别结果验证                                              │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      console.log('  📦 销售方信息:');
+      console.log(`      - 名称: ${invoiceData.vendorName || '❌ 未识别'}`);
+      console.log(`      - 税号: ${invoiceData.vendorTaxId || '❌ 未识别'}`);
+      console.log(`      - 地址: ${invoiceData.vendorAddress || '❌ 未识别'}`);
+      if (!invoiceData.vendorName && !invoiceData.vendorTaxId) {
+        console.warn('      ⚠️  警告：未识别到销售方信息');
       }
       
-      // 地址字段映射
-      if (invoiceData['Seller Address'] && !invoiceData.vendorAddress) {
-        invoiceData.vendorAddress = invoiceData['Seller Address'];
-        delete invoiceData['Seller Address'];
-      }
-      if (invoiceData['Vendor Address'] && !invoiceData.vendorAddress) {
-        invoiceData.vendorAddress = invoiceData['Vendor Address'];
-        delete invoiceData['Vendor Address'];
+      console.log('\n  📦 购买方信息:');
+      console.log(`      - 名称: ${invoiceData.buyerName || '❌ 未识别'}`);
+      console.log(`      - 税号: ${invoiceData.buyerTaxId || '❌ 未识别'}`);
+      if (!invoiceData.buyerName && !invoiceData.buyerTaxId) {
+        console.warn('      ⚠️  警告：未识别到购买方信息');
       }
       
-      console.log('字段映射后的数据:', JSON.stringify(invoiceData, null, 2));
-      
-      // 日期解析：支持多种格式
-      if (invoiceData.invoiceDate && typeof invoiceData.invoiceDate === 'string') {
-        let dateStr = invoiceData.invoiceDate.trim();
-        const datePatterns = [
-          /(\d{4})[年\/\-\.](\d{1,2})[月\/\-\.](\d{1,2})[日]?/,
-          /(\d{4})(\d{2})(\d{2})/,
-        ];
-        
-        for (const pattern of datePatterns) {
-          const match = dateStr.match(pattern);
-          if (match) {
-            const year = match[1];
-            const month = match[2].padStart(2, '0');
-            const day = match[3].padStart(2, '0');
-            invoiceData.invoiceDate = `${year}-${month}-${day}`;
-            break;
-          }
-        }
-      }
-
-      // 金额解析
-      if (invoiceData.amount !== undefined && invoiceData.amount !== null && typeof invoiceData.amount === 'string') {
-        invoiceData.amount = parseFloat(invoiceData.amount.replace(/[^\d.]/g, '')) || 0;
-      }
-
-      if (invoiceData.taxAmount !== undefined && invoiceData.taxAmount !== null) {
-        if (typeof invoiceData.taxAmount === 'string') {
-          if (invoiceData.taxAmount.includes('免税') || invoiceData.taxAmount.includes('***')) {
-            invoiceData.taxAmount = 0;
-          } else {
-            invoiceData.taxAmount = parseFloat(invoiceData.taxAmount.replace(/[^\d.]/g, '')) || 0;
-          }
-        }
-      }
-
-      if (invoiceData.totalAmount !== undefined && invoiceData.totalAmount !== null && typeof invoiceData.totalAmount === 'string') {
-        invoiceData.totalAmount = parseFloat(invoiceData.totalAmount.replace(/[^\d.]/g, '')) || 0;
-      }
-
-      console.log('Chat API最终解析结果:', JSON.stringify(invoiceData, null, 2));
+      console.log('\n  📋 其他信息:');
+      console.log(`      - 发票号码: ${invoiceData.invoiceNumber || '❌ 未识别'}`);
+      console.log(`      - 发票日期: ${invoiceData.invoiceDate || '❌ 未识别'}`);
+      console.log(`      - 价税合计: ${invoiceData.totalAmount || '❌ 未识别'}`);
+      console.log(`      - 项目明细: ${invoiceData.items ? invoiceData.items.length : 0} 项`);
+      console.log('════════════════════════════════════════════════════════════════');
 
       return {
         success: true,
@@ -1269,6 +1175,439 @@ ${textContent || '这是一张发票，请尝试识别其中的信息。'}`
       };
     } catch (error) {
       console.error('Mistral Chat API 识别错误:', error);
+      return {
+        success: false,
+        error: error.message,
+        text: '',
+        confidence: 0,
+        invoiceData: {}
+      };
+      }
+  }
+
+  /**
+   * 将 PDF 转换为图片（使用 pdf-poppler）
+   * @param {string} pdfPath - PDF 文件路径
+   * @param {number} pageNumber - 页码（从1开始，默认第1页）
+   * @returns {Promise<string>} 转换后的图片路径
+   */
+  async convertPDFToImage(pdfPath, pageNumber = 1) {
+    try {
+      console.log('开始转换 PDF 为图片:', pdfPath, '页码:', pageNumber);
+      
+      // 检查 poppler 工具是否可用
+      const { execSync } = require('child_process');
+      
+      // 可能的 poppler 路径（按优先级排序）
+      const possiblePopplerPaths = [
+        '', // 系统 PATH 中的 poppler
+        process.env.POPPLER_PATH ? `${process.env.POPPLER_PATH}/bin` : null,
+        `${process.env.HOME}/.local/poppler/bin`,
+        '/usr/local/bin',
+        '/opt/homebrew/bin',
+        '/usr/bin'
+      ].filter(Boolean);
+      
+      let pdftoppmPath = null;
+      let popplerBinDir = null;
+      
+      // 首先尝试系统 PATH
+      try {
+        execSync('pdftoppm -v', { stdio: 'ignore' });
+        pdftoppmPath = 'pdftoppm';
+        console.log('✓ 找到系统 PATH 中的 poppler');
+      } catch (e) {
+        // 尝试自定义路径
+        for (const binDir of possiblePopplerPaths) {
+          const testPath = binDir ? path.join(binDir, 'pdftoppm') : 'pdftoppm';
+          try {
+            execSync(`"${testPath}" -v`, { stdio: 'ignore' });
+            pdftoppmPath = testPath;
+            popplerBinDir = binDir;
+            console.log(`✓ 找到 poppler: ${testPath}`);
+            break;
+          } catch (err) {
+            // 继续尝试下一个路径
+          }
+        }
+      }
+      
+      // 优先使用系统 pdftoppm 命令（更可靠）
+      if (pdftoppmPath) {
+        try {
+          const outputDir = path.dirname(pdfPath);
+          const outputPrefix = path.basename(pdfPath, path.extname(pdfPath));
+          const outputPath = path.join(outputDir, `${outputPrefix}_page${pageNumber}.png`);
+          
+          // 使用 pdftoppm 直接转换
+          // pdftoppm 输出格式：prefix-page.png（例如：file-1.png）
+          const outputPrefixName = `${outputPrefix}_page${pageNumber}`;
+          const expectedOutputPath = path.join(outputDir, `${outputPrefixName}-${pageNumber}.png`);
+          
+          // 构建命令：pdftoppm -png -f 1 -l 1 -singlefile input.pdf output_prefix
+          // -singlefile 参数会生成单个文件 output_prefix-1.png
+          const command = `"${pdftoppmPath}" -png -f ${pageNumber} -l ${pageNumber} -singlefile "${pdfPath}" "${path.join(outputDir, outputPrefixName)}"`;
+          
+          console.log(`执行命令: ${command}`);
+          execSync(command, { stdio: 'pipe', encoding: 'utf8' });
+          
+          // pdftoppm 使用 -singlefile 时，输出文件名格式为：prefix-1.png（页码从1开始）
+          // 例如：如果输出前缀是 "file_page1"，则生成 "file_page1-1.png"
+          // 注意：pdftoppm 总是使用页码 "1" 作为后缀，即使指定了 -f 和 -l
+          const possiblePaths = [
+            path.join(outputDir, `${outputPrefixName}-1.png`), // prefix_page1-1.png (最常见)
+            path.join(outputDir, `${outputPrefixName}-${pageNumber}.png`), // prefix_page1-1.png (如果 pageNumber=1)
+            path.join(outputDir, `${outputPrefixName}.png`), // prefix_page1.png (无页码后缀)
+            path.join(outputDir, `${outputPrefix}-1.png`), // prefix-1.png (简化前缀)
+            expectedOutputPath // prefix_page1-1.png (原始预期路径)
+          ];
+          
+          // 查找实际生成的图片文件
+          let foundPath = null;
+          for (const possiblePath of possiblePaths) {
+            if (fs.existsSync(possiblePath)) {
+              foundPath = possiblePath;
+              break;
+            }
+          }
+          
+          // 如果没找到，列出目录中的所有文件以便调试
+          if (!foundPath) {
+            const filesInDir = fs.readdirSync(outputDir).filter(f => f.endsWith('.png'));
+            console.error(`未找到转换后的图片文件。目录中的 PNG 文件:`, filesInDir);
+            throw new Error(`PDF 转换失败：生成的图片文件不存在。可能的文件名: ${possiblePaths.join(', ')}`);
+          }
+          
+          console.log(`✓ PDF 转换成功（使用系统 pdftoppm），输出路径: ${foundPath}`);
+          return foundPath;
+        } catch (systemError) {
+          console.error('系统 pdftoppm 转换失败:', systemError.message);
+          // 继续尝试 pdf-poppler
+        }
+      }
+      
+      // 如果系统 pdftoppm 不可用，尝试使用 pdf-poppler
+      const pdfPoppler = require('pdf-poppler');
+      const outputDir = path.dirname(pdfPath);
+      const outputFilename = path.basename(pdfPath, path.extname(pdfPath)) + `_page${pageNumber}.png`;
+      const outputPath = path.join(outputDir, outputFilename);
+      
+      const options = {
+        format: 'png',
+        out_dir: outputDir,
+        out_prefix: path.basename(pdfPath, path.extname(pdfPath)),
+        page: pageNumber
+      };
+      
+      // 如果找到了自定义 poppler 路径，设置环境变量
+      if (popplerBinDir) {
+        const originalPath = process.env.PATH;
+        process.env.PATH = `${popplerBinDir}:${originalPath}`;
+        console.log(`设置 PATH: ${process.env.PATH}`);
+      }
+      
+      await pdfPoppler.convert(pdfPath, options);
+      
+      // pdf-poppler 会生成带页码的文件名
+      const generatedPath = path.join(outputDir, `${options.out_prefix}-${pageNumber}.png`);
+      if (fs.existsSync(generatedPath)) {
+        console.log('✓ PDF 转换成功（使用 pdf-poppler），输出路径:', generatedPath);
+        return generatedPath;
+      } else {
+        throw new Error('PDF 转换失败：生成的图片文件不存在');
+      }
+    } catch (error) {
+      console.error('PDF 转换错误（pdf-poppler）:', error.message);
+      
+      // 如果 pdf-poppler 失败，尝试使用 pdf2pic 作为备选方案
+      try {
+        console.log('尝试使用 pdf2pic 作为备选方案...');
+        const pdf2pic = require('pdf2pic');
+        const outputDir = path.dirname(pdfPath);
+        const outputPrefix = path.basename(pdfPath, path.extname(pdfPath));
+        
+        const convert = pdf2pic.fromPath(pdfPath, {
+          density: 200,
+          saveFilename: outputPrefix,
+          savePath: outputDir,
+          format: 'png',
+          width: 2000,
+          height: 2000
+        });
+        
+        const result = await convert(pageNumber, { responseType: 'image' });
+        if (result && result.path && fs.existsSync(result.path)) {
+          console.log('✓ PDF 转换成功（使用 pdf2pic），输出路径:', result.path);
+          return result.path;
+        }
+      } catch (pdf2picError) {
+        console.error('pdf2pic 转换也失败:', pdf2picError.message);
+      }
+      
+      // 如果两种方法都失败，抛出错误
+      const errorMsg = error.message || '未知错误';
+      
+      // 检查是否是 poppler 未安装的错误
+      if (errorMsg.includes('pdftoppm') || errorMsg.includes('poppler') || errorMsg.includes('command not found')) {
+        const installHint = process.platform === 'darwin' 
+          ? 'brew install poppler（如果网络有问题，可以稍后重试）' 
+          : '请安装 poppler 工具包';
+        throw new Error(`PDF 转图片失败: 系统未安装 poppler 工具。请运行: ${installHint}`);
+      }
+      
+      throw new Error(`PDF 转图片失败: ${errorMsg}`);
+    }
+      }
+      
+  /**
+   * 使用阿里云 DashScope OCR 识别发票（图片或PDF）
+   * @param {string} filePath - 文件路径
+   * @param {string} fileType - 文件类型 ('image' 或 'pdf')
+   * @returns {Promise<Object>} 识别结果
+   */
+  async recognizeInvoiceWithDashScope(filePath, fileType = 'image') {
+    try {
+      console.log('========================================');
+      console.log('recognizeInvoiceWithDashScope 被调用');
+      console.log('文件路径:', filePath);
+      console.log('文件类型:', fileType);
+      
+      if (!dashscopeClient) {
+        const errorMsg = '阿里云 DashScope 未配置，请设置 DASHSCOPE_API_KEY 环境变量';
+        console.error('OCR失败:', errorMsg);
+        console.log('========================================');
+        return {
+          success: false,
+          error: errorMsg,
+          text: '',
+          confidence: 0,
+          invoiceData: {}
+        };
+      }
+
+      const absolutePath = path.isAbsolute(filePath) 
+        ? filePath 
+        : path.resolve(__dirname, '..', filePath);
+      console.log('绝对路径:', absolutePath);
+      console.log('文件是否存在:', fs.existsSync(absolutePath) ? '✓' : '✗');
+
+      if (!fs.existsSync(absolutePath)) {
+        throw new Error(`文件不存在: ${absolutePath}`);
+      }
+
+      // 如果是 PDF，先转换为图片
+      let imagePath = absolutePath;
+      let tempImagePath = null; // 用于标记临时文件，需要在函数结束时清理
+      
+      if (fileType === 'pdf') {
+        console.log('\n┌────────────────────────────────────────────────────────────┐');
+        console.log('│ 📄 PDF 转图片处理                                            │');
+        console.log('└────────────────────────────────────────────────────────────┘');
+        console.log('  🔧 转换工具: poppler (pdftoppm)');
+        console.log(`  📄 PDF路径: ${absolutePath}`);
+        try {
+          imagePath = await this.convertPDFToImage(absolutePath, 1);
+          tempImagePath = imagePath; // 标记为临时文件，后续需要删除
+          console.log(`  ✅ 转换成功: ${imagePath}`);
+          console.log('════════════════════════════════════════════════════════════════');
+        } catch (convertError) {
+          console.error(`  ❌ PDF 转图片失败: ${convertError.message}`);
+          console.log('════════════════════════════════════════════════════════════════');
+          return {
+            success: false,
+            error: `PDF 转图片失败: ${convertError.message}`,
+            text: '',
+            confidence: 0,
+            invoiceData: {}
+          };
+        }
+      }
+
+      // 读取图片文件并转换为 base64
+      const fileBuffer = fs.readFileSync(imagePath);
+      const fileBase64 = fileBuffer.toString('base64');
+      
+      // 获取文件 MIME 类型（转换后都是图片）
+      const ext = path.extname(imagePath).toLowerCase();
+      const mimeTypes = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp'
+      };
+      const mimeType = mimeTypes[ext] || 'image/png';
+      
+      // 创建 data URL
+      const dataUrl = `data:${mimeType};base64,${fileBase64}`;
+
+      // 使用统一的 OCR 提示词配置
+      const ocrPrompt = OCR_PROMPT;
+
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 🔍 调用阿里云 DashScope OCR API                              │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      console.log(`  🤖 模型: qwen-vl-ocr-latest`);
+      console.log(`  📄 输入: ${fileType === 'pdf' ? '图片 (PDF转换)' : '图片'}`);
+      console.log(`  📝 输出格式: Markdown`);
+      const ocrStartTime = Date.now();
+      
+      // 调用阿里云 OCR API - 返回 markdown 格式文本
+      const response = await dashscopeClient.chat.completions.create({
+        model: 'qwen-vl-ocr-latest',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: ocrPrompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: dataUrl,
+                  min_pixels: 28 * 28 * 4,
+                  max_pixels: 28 * 28 * 8192
+                }
+              }
+            ]
+          }
+        ]
+      });
+
+      const ocrDuration = Date.now() - ocrStartTime;
+      console.log(`  ⏱️  调用耗时: ${ocrDuration}ms`);
+      console.log('  ✅ OCR 调用成功');
+      console.log('════════════════════════════════════════════════════════════════');
+
+      // 解析响应 - OCR 返回 markdown 格式文本
+      const ocrText = response.choices[0]?.message?.content || '';
+      console.log(`\n  📝 OCR文本长度: ${ocrText.length} 字符`);
+      if (ocrText.length > 0) {
+        console.log(`  📄 文本预览（前200字符）: ${ocrText.substring(0, 200)}...`);
+      }
+      
+      if (!ocrText || ocrText.trim().length === 0) {
+        throw new Error('阿里云 OCR 未返回文本内容');
+      }
+
+      // ============================================
+      // 执行流程：OCR提取 → AI解析 → 字段映射 → 数据标准化
+      // ============================================
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 📋 数据处理流程开始                                          │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      
+      // 步骤1: OCR提取（已完成，ocrText 为 markdown 文本）
+      console.log('\n  [1/4] 🔍 OCR提取');
+      console.log(`      ✅ 使用服务: 阿里云 DashScope OCR (qwen-vl-ocr-latest)`);
+      if (fileType === 'pdf') {
+        console.log(`      📄 文件类型: PDF (已转换为图片)`);
+        console.log(`      🛠️  转换工具: poppler (pdftoppm)`);
+      } else {
+        console.log(`      📄 文件类型: 图片`);
+      }
+      console.log(`      📝 OCR文本长度: ${ocrText.length} 字符`);
+      console.log(`      📄 输出格式: Markdown`);
+      
+      // 步骤2: AI解析（将 markdown 文本解析为结构化 JSON）
+      console.log('\n  [2/4] 🤖 AI解析');
+      console.log(`      ✅ 使用服务: Mistral AI Chat API (mistral-small-latest)`);
+      console.log(`      📥 输入: Markdown 文本 (${ocrText.length} 字符)`);
+      let invoiceData = {};
+      try {
+        invoiceData = await this.parseInvoiceDataWithAI(ocrText);
+        console.log(`      📤 输出: JSON 结构化数据`);
+        console.log(`      📊 识别字段数: ${Object.keys(invoiceData).length} 个`);
+      } catch (parseError) {
+        console.error(`      ❌ AI解析失败: ${parseError.message}`);
+        // AI解析失败，返回空数据
+        invoiceData = {};
+      }
+
+      // 步骤3: 字段映射（将不同格式的字段名映射到标准字段名）
+      console.log('\n  [3/4] 🔄 字段映射');
+      const beforeMapping = Object.keys(invoiceData).length;
+      invoiceData = this.mapFieldNames(invoiceData);
+      const afterMapping = Object.keys(invoiceData).length;
+      console.log(`      📋 映射前字段数: ${beforeMapping}`);
+      console.log(`      📋 映射后字段数: ${afterMapping}`);
+      
+      // 步骤4: 数据标准化（日期格式、金额类型、字符串清理等）
+      console.log('\n  [4/4] ✨ 数据标准化');
+      invoiceData = this.normalizeInvoiceData(invoiceData);
+      console.log(`      ✅ 日期格式: YYYY-MM-DD`);
+      console.log(`      ✅ 金额类型: 数字`);
+      console.log(`      ✅ 字符串: 已清理空格`);
+      
+      // 验证销售方和购买方信息
+      console.log('\n┌────────────────────────────────────────────────────────────┐');
+      console.log('│ 📊 识别结果验证                                              │');
+      console.log('└────────────────────────────────────────────────────────────┘');
+      console.log('  📦 销售方信息:');
+      console.log(`      - 名称: ${invoiceData.vendorName || '❌ 未识别'}`);
+      console.log(`      - 税号: ${invoiceData.vendorTaxId || '❌ 未识别'}`);
+      console.log(`      - 地址: ${invoiceData.vendorAddress || '❌ 未识别'}`);
+      if (!invoiceData.vendorName && !invoiceData.vendorTaxId) {
+        console.warn('      ⚠️  警告：未识别到销售方信息');
+      }
+      
+      console.log('\n  📦 购买方信息:');
+      console.log(`      - 名称: ${invoiceData.buyerName || '❌ 未识别'}`);
+      console.log(`      - 税号: ${invoiceData.buyerTaxId || '❌ 未识别'}`);
+      if (!invoiceData.buyerName && !invoiceData.buyerTaxId) {
+        console.warn('      ⚠️  警告：未识别到购买方信息');
+      }
+      
+      console.log('\n  📋 其他信息:');
+      console.log(`      - 发票号码: ${invoiceData.invoiceNumber || '❌ 未识别'}`);
+      console.log(`      - 发票日期: ${invoiceData.invoiceDate || '❌ 未识别'}`);
+      console.log(`      - 价税合计: ${invoiceData.totalAmount || '❌ 未识别'}`);
+      console.log(`      - 项目明细: ${invoiceData.items ? invoiceData.items.length : 0} 项`);
+      console.log('════════════════════════════════════════════════════════════════');
+
+      // 清理临时图片文件（如果是 PDF 转换生成的）
+      if (tempImagePath && fs.existsSync(tempImagePath)) {
+        try {
+          fs.unlinkSync(tempImagePath);
+          console.log('✓ 已清理临时图片文件:', tempImagePath);
+        } catch (cleanupError) {
+          console.warn('清理临时文件失败:', cleanupError.message);
+        }
+      }
+
+      return {
+        success: true,
+        text: ocrText,
+        confidence: 90, // 阿里云 OCR 默认置信度
+        invoiceData: invoiceData,
+        rawData: {
+          text: ocrText,
+          words: [],
+          lines: ocrText.split('\n').filter(line => line.trim().length > 0),
+          fullResponse: response,
+          provider: 'dashscope'
+        }
+      };
+    } catch (error) {
+      console.error('========================================');
+      console.error('阿里云 DashScope OCR 识别错误:', error.message);
+      console.error('错误类型:', error.constructor.name);
+      console.error('错误堆栈:', error.stack);
+      if (error.response) {
+        console.error('API响应状态:', error.response.status);
+        console.error('API响应数据:', JSON.stringify(error.response.data, null, 2));
+      }
+      console.error('========================================');
+      
+      // 清理临时图片文件（错误情况下也要清理）
+      if (tempImagePath && fs.existsSync(tempImagePath)) {
+        try {
+          fs.unlinkSync(tempImagePath);
+          console.log('✓ 已清理临时图片文件:', tempImagePath);
+        } catch (cleanupError) {
+          console.warn('清理临时文件失败:', cleanupError.message);
+        }
+      }
+      
       return {
         success: false,
         error: error.message,

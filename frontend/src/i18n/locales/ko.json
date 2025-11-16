@@ -1304,6 +1304,7 @@
         "entertainment": "오락비",
         "communication": "통신비",
         "office_supplies": "사무용품",
+        "officeSupplies": "사무용품",
         "training": "교육비",
         "other": "기타"
       },

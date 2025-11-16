@@ -108,3 +108,5 @@ const createTextIndexes = async () => {
 
 createTextIndexes();
 
+
+

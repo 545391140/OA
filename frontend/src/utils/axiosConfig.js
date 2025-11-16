@@ -27,7 +27,7 @@ const getApiBaseURL = () => {
 // 创建 axios 实例
 const apiClient = axios.create({
   baseURL: getApiBaseURL(),
-  timeout: 60000, // 增加超时时间到60秒，以应对慢速数据库查询
+  timeout: 120000, // OCR识别可能需要更长时间，设置为120秒（2分钟）
   headers: {
     'Content-Type': 'application/json'
   }
