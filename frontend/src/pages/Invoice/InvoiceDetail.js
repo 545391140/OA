@@ -310,7 +310,7 @@ const InvoiceDetail = () => {
           <Button
             variant="outlined"
             startIcon={<EditIcon />}
-            onClick={() => setEditDialogOpen(true)}
+            onClick={() => navigate(`/invoices/upload?edit=${id}&hideUpload=true`)}
             sx={{ mr: 1 }}
           >
             {t('invoice.detail.edit')}

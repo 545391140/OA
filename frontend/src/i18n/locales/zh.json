@@ -1765,6 +1765,12 @@
       "uploadSuccess": "发票上传成功",
       "uploadFailed": "上传失败",
       "uploadError": "发票上传失败",
+      "updateSuccess": "发票更新成功",
+      "updateFailed": "更新失败",
+      "updating": "更新中...",
+      "updateInvoice": "更新发票",
+      "loadingInvoice": "正在加载发票数据...",
+      "loadInvoiceFailed": "加载发票数据失败",
       "ocrApplied": "OCR识别结果已应用到表单",
       "manualFillHint": "您可以手动填写",
       "confidence": "置信度"

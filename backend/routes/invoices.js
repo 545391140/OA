@@ -707,7 +707,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 // @desc    Update invoice
 // @route   PUT /api/invoices/:id
 // @access  Private
-router.put('/:id', protect, async (req, res) => {
+router.put('/:id', protect, upload.single('file'), async (req, res) => {
   try {
     let invoice = await Invoice.findById(req.params.id);
 
@@ -726,6 +726,91 @@ router.put('/:id', protect, async (req, res) => {
       });
     }
 
+    // 如果上传了新文件，更新文件信息
+    if (req.file) {
+      // 删除旧文件（如果存在）
+      if (invoice.file && invoice.file.path) {
+        const oldFilePath = path.join(__dirname, '..', invoice.file.path);
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+          } catch (err) {
+            console.error('删除旧文件失败:', err);
+          }
+        }
+      }
+
+      // 处理文件名编码（与上传路由相同的逻辑）
+      let originalName = req.file.originalname;
+      try {
+        if (originalName.includes('%')) {
+          try {
+            originalName = decodeURIComponent(originalName);
+          } catch (e) {}
+        }
+        
+        const hasLatin1Pattern = /[à-ÿ]/g.test(originalName) || /[æ-ÿ]/g.test(originalName);
+        if (hasLatin1Pattern) {
+          try {
+            const fixed = Buffer.from(originalName, 'latin1').toString('utf-8');
+            if (/[\u4e00-\u9fa5]/.test(fixed)) {
+              originalName = fixed;
+            }
+          } catch (e) {}
+        }
+        
+        if (!/[\u4e00-\u9fa5]/.test(originalName)) {
+          try {
+            const converted = Buffer.from(originalName, 'latin1').toString('utf-8');
+            if (/[\u4e00-\u9fa5]/.test(converted)) {
+              originalName = converted;
+            }
+          } catch (e) {}
+        }
+      } catch (error) {
+        console.error('文件名编码处理失败:', error);
+      }
+
+      invoice.file = {
+        filename: req.file.filename,
+        originalName: originalName,
+        path: req.file.path,
+        size: req.file.size,
+        mimeType: req.file.mimetype
+      };
+    }
+
+    // 处理表单数据（可能是JSON字符串或对象）
+    let bodyData = req.body;
+    if (typeof req.body.vendor === 'string') {
+      try {
+        bodyData.vendor = JSON.parse(req.body.vendor);
+      } catch (e) {
+        console.error('解析vendor失败:', e);
+      }
+    }
+    if (typeof req.body.buyer === 'string') {
+      try {
+        bodyData.buyer = JSON.parse(req.body.buyer);
+      } catch (e) {
+        console.error('解析buyer失败:', e);
+      }
+    }
+    if (typeof req.body.items === 'string') {
+      try {
+        bodyData.items = JSON.parse(req.body.items);
+      } catch (e) {
+        console.error('解析items失败:', e);
+      }
+    }
+    if (typeof req.body.tags === 'string') {
+      try {
+        bodyData.tags = JSON.parse(req.body.tags);
+      } catch (e) {
+        console.error('解析tags失败:', e);
+      }
+    }
+
     // 更新字段
     const updateFields = [
       'invoiceNumber',
@@ -742,58 +827,62 @@ router.put('/:id', protect, async (req, res) => {
     ];
 
     updateFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        invoice[field] = req.body[field];
+      if (bodyData[field] !== undefined && bodyData[field] !== null && bodyData[field] !== '') {
+        if (field === 'amount' || field === 'taxAmount' || field === 'totalAmount') {
+          invoice[field] = parseFloat(bodyData[field]);
+        } else {
+          invoice[field] = bodyData[field];
+        }
       }
     });
 
     // 更新商户信息（销售方）
-    if (req.body.vendor) {
-      invoice.vendor = { ...invoice.vendor, ...req.body.vendor };
+    if (bodyData.vendor) {
+      invoice.vendor = { ...invoice.vendor, ...bodyData.vendor };
     }
 
     // 更新购买方信息
-    if (req.body.buyer) {
-      invoice.buyer = { ...invoice.buyer, ...req.body.buyer };
+    if (bodyData.buyer) {
+      invoice.buyer = { ...invoice.buyer, ...bodyData.buyer };
     }
 
     // 更新发票项目明细
-    if (req.body.items !== undefined) {
-      invoice.items = Array.isArray(req.body.items) ? req.body.items : [];
+    if (bodyData.items !== undefined) {
+      invoice.items = Array.isArray(bodyData.items) ? bodyData.items : [];
     }
 
     // 更新开票人
-    if (req.body.issuer !== undefined) {
-      invoice.issuer = req.body.issuer || null;
+    if (bodyData.issuer !== undefined) {
+      invoice.issuer = bodyData.issuer || null;
     }
 
     // 更新出行人信息
-    if (req.body.traveler) {
-      invoice.traveler = { ...invoice.traveler, ...req.body.traveler };
+    if (bodyData.traveler) {
+      invoice.traveler = { ...invoice.traveler, ...bodyData.traveler };
     }
 
     // 更新价税合计（大写）
-    if (req.body.totalAmountInWords !== undefined) {
-      invoice.totalAmountInWords = req.body.totalAmountInWords || null;
+    if (bodyData.totalAmountInWords !== undefined) {
+      invoice.totalAmountInWords = bodyData.totalAmountInWords || null;
     }
 
     // 更新标签
-    if (req.body.tags !== undefined) {
-      invoice.tags = Array.isArray(req.body.tags) 
-        ? req.body.tags 
-        : req.body.tags.split(',').map(t => t.trim()).filter(t => t);
+    if (bodyData.tags !== undefined) {
+      invoice.tags = Array.isArray(bodyData.tags) 
+        ? bodyData.tags 
+        : (typeof bodyData.tags === 'string' ? bodyData.tags.split(',').map(t => t.trim()).filter(t => t) : []);
     }
 
     // 更新关联
-    if (req.body.relatedExpense !== undefined) {
-      invoice.relatedExpense = req.body.relatedExpense || null;
+    if (bodyData.relatedExpense !== undefined) {
+      invoice.relatedExpense = bodyData.relatedExpense || null;
     }
-    if (req.body.relatedTravel !== undefined) {
-      invoice.relatedTravel = req.body.relatedTravel || null;
+    if (bodyData.relatedTravel !== undefined) {
+      invoice.relatedTravel = bodyData.relatedTravel || null;
     }
 
     // 如果状态改为verified，记录审核信息
-    if (req.body.status === 'verified' && invoice.status !== 'verified') {
+    if (bodyData.status === 'verified' && invoice.status !== 'verified') {
       invoice.verifiedBy = req.user.id;
       invoice.verifiedAt = new Date();
     }

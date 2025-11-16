@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -52,6 +52,9 @@ const InvoiceUpload = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editInvoiceId = searchParams.get('edit');
+  const hideUpload = searchParams.get('hideUpload') === 'true';
 
   const [formData, setFormData] = useState({
     invoiceNumber: '',
@@ -83,6 +86,69 @@ const InvoiceUpload = () => {
   const [ocrResult, setOcrResult] = useState(null);
   const [showOcrDialog, setShowOcrDialog] = useState(false);
   const [uploadedInvoiceId, setUploadedInvoiceId] = useState(null);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+
+  // 加载发票数据（编辑模式）
+  useEffect(() => {
+    if (editInvoiceId) {
+      loadInvoiceData(editInvoiceId);
+    }
+  }, [editInvoiceId]);
+
+  const loadInvoiceData = async (invoiceId) => {
+    try {
+      setLoadingInvoice(true);
+      const response = await apiClient.get(`/invoices/${invoiceId}`);
+      
+      if (response.data && response.data.success) {
+        const invoiceData = response.data.data;
+        setFormData({
+          invoiceNumber: invoiceData.invoiceNumber || '',
+          invoiceDate: invoiceData.invoiceDate || '',
+          invoiceType: invoiceData.invoiceType || '',
+          amount: invoiceData.amount || '',
+          currency: invoiceData.currency || 'CNY',
+          taxAmount: invoiceData.taxAmount || '',
+          totalAmount: invoiceData.totalAmount || '',
+          category: invoiceData.category || 'other',
+          vendorName: invoiceData.vendor?.name || '',
+          vendorTaxId: invoiceData.vendor?.taxId || '',
+          vendorAddress: invoiceData.vendor?.address || '',
+          buyerName: invoiceData.buyer?.name || '',
+          buyerTaxId: invoiceData.buyer?.taxId || '',
+          buyerAddress: invoiceData.buyer?.address || '',
+          items: invoiceData.items || [],
+          issuer: invoiceData.issuer || '',
+          totalAmountInWords: invoiceData.totalAmountInWords || '',
+          notes: invoiceData.notes || '',
+          tags: invoiceData.tags || []
+        });
+        
+        // 如果有文件，加载预览
+        if (invoiceData.file?.mimeType?.startsWith('image/')) {
+          loadFilePreview(invoiceId);
+        }
+      }
+    } catch (err) {
+      console.error('Load invoice error:', err);
+      showNotification(t('invoice.upload.loadInvoiceFailed'), 'error');
+    } finally {
+      setLoadingInvoice(false);
+    }
+  };
+
+  const loadFilePreview = async (invoiceId) => {
+    try {
+      const response = await apiClient.get(`/invoices/${invoiceId}/file`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data]);
+      const url = URL.createObjectURL(blob);
+      setFilePreview(url);
+    } catch (err) {
+      console.error('Load file preview error:', err);
+    }
+  };
 
   const handleChange = (field) => (e) => {
     const value = e.target.value;
@@ -422,7 +488,8 @@ const InvoiceUpload = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!file) {
+    // 编辑模式下不需要文件
+    if (!editInvoiceId && !file) {
       newErrors.file = t('invoice.upload.fileRequired');
     }
 
@@ -440,57 +507,127 @@ const InvoiceUpload = () => {
     try {
       setUploading(true);
 
-      const formDataToSend = new FormData();
-      formDataToSend.append('file', file);
-      
-      if (formData.invoiceNumber) formDataToSend.append('invoiceNumber', formData.invoiceNumber);
-      if (formData.invoiceDate) formDataToSend.append('invoiceDate', formData.invoiceDate);
-      if (formData.invoiceType) formDataToSend.append('invoiceType', formData.invoiceType);
-      if (formData.amount) formDataToSend.append('amount', formData.amount);
-      if (formData.currency) formDataToSend.append('currency', formData.currency);
-      if (formData.taxAmount) formDataToSend.append('taxAmount', formData.taxAmount);
-      if (formData.totalAmount) formDataToSend.append('totalAmount', formData.totalAmount);
-      if (formData.category) formDataToSend.append('category', formData.category);
-      if (formData.vendorName) formDataToSend.append('vendorName', formData.vendorName);
-      if (formData.vendorTaxId) formDataToSend.append('vendorTaxId', formData.vendorTaxId);
-      if (formData.vendorAddress) formDataToSend.append('vendorAddress', formData.vendorAddress);
-      if (formData.buyerName) formDataToSend.append('buyerName', formData.buyerName);
-      if (formData.buyerTaxId) formDataToSend.append('buyerTaxId', formData.buyerTaxId);
-      if (formData.buyerAddress) formDataToSend.append('buyerAddress', formData.buyerAddress);
-      if (formData.items && formData.items.length > 0) {
-        formDataToSend.append('items', JSON.stringify(formData.items));
-      }
-      if (formData.issuer) formDataToSend.append('issuer', formData.issuer);
-      if (formData.totalAmountInWords) formDataToSend.append('totalAmountInWords', formData.totalAmountInWords);
-      if (formData.notes) formDataToSend.append('notes', formData.notes);
-      if (formData.tags.length > 0) {
-        formDataToSend.append('tags', JSON.stringify(formData.tags));
-      }
+      // 编辑模式：调用更新API
+      if (editInvoiceId) {
+        const updateData = {
+          invoiceNumber: formData.invoiceNumber,
+          invoiceDate: formData.invoiceDate,
+          invoiceType: formData.invoiceType,
+          amount: formData.amount,
+          currency: formData.currency,
+          taxAmount: formData.taxAmount,
+          totalAmount: formData.totalAmount,
+          category: formData.category,
+          vendor: {
+            name: formData.vendorName,
+            taxId: formData.vendorTaxId,
+            address: formData.vendorAddress
+          },
+          buyer: {
+            name: formData.buyerName,
+            taxId: formData.buyerTaxId,
+            address: formData.buyerAddress
+          },
+          items: formData.items || [],
+          issuer: formData.issuer,
+          totalAmountInWords: formData.totalAmountInWords,
+          notes: formData.notes,
+          tags: formData.tags || []
+        };
 
-      const response = await apiClient.post('/invoices/upload', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+        // 如果用户选择了新文件，需要上传
+        if (file) {
+          const formDataToSend = new FormData();
+          formDataToSend.append('file', file);
+          Object.keys(updateData).forEach(key => {
+            if (updateData[key] !== undefined && updateData[key] !== null) {
+              if (typeof updateData[key] === 'object' && !Array.isArray(updateData[key])) {
+                formDataToSend.append(key, JSON.stringify(updateData[key]));
+              } else if (Array.isArray(updateData[key])) {
+                formDataToSend.append(key, JSON.stringify(updateData[key]));
+              } else {
+                formDataToSend.append(key, updateData[key]);
+              }
+            }
+          });
 
-      if (response.data && response.data.success) {
-        const uploadedInvoice = response.data.data;
-        
-        // 检查是否有 OCR 识别结果
-        if (uploadedInvoice.ocrData?.extracted) {
-          showNotification(t('invoice.upload.uploadSuccessWithOcr'), 'success');
+          const response = await apiClient.put(`/invoices/${editInvoiceId}`, formDataToSend, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+
+          if (response.data && response.data.success) {
+            showNotification(t('invoice.upload.updateSuccess'), 'success');
+            navigate(`/invoices/${editInvoiceId}`);
+          } else {
+            throw new Error(response.data?.message || t('invoice.upload.updateFailed'));
+          }
         } else {
-          showNotification(t('invoice.upload.uploadSuccess'), 'success');
+          // 没有新文件，直接更新数据
+          const response = await apiClient.put(`/invoices/${editInvoiceId}`, updateData);
+
+          if (response.data && response.data.success) {
+            showNotification(t('invoice.upload.updateSuccess'), 'success');
+            navigate(`/invoices/${editInvoiceId}`);
+          } else {
+            throw new Error(response.data?.message || t('invoice.upload.updateFailed'));
+          }
         }
-        
-        // 跳转到详情页（识别结果会在详情页显示）
-        navigate(`/invoices/${uploadedInvoice._id}`);
       } else {
-        throw new Error(response.data?.message || t('invoice.upload.uploadFailed'));
+        // 新建模式：调用上传API
+        const formDataToSend = new FormData();
+        formDataToSend.append('file', file);
+        
+        if (formData.invoiceNumber) formDataToSend.append('invoiceNumber', formData.invoiceNumber);
+        if (formData.invoiceDate) formDataToSend.append('invoiceDate', formData.invoiceDate);
+        if (formData.invoiceType) formDataToSend.append('invoiceType', formData.invoiceType);
+        if (formData.amount) formDataToSend.append('amount', formData.amount);
+        if (formData.currency) formDataToSend.append('currency', formData.currency);
+        if (formData.taxAmount) formDataToSend.append('taxAmount', formData.taxAmount);
+        if (formData.totalAmount) formDataToSend.append('totalAmount', formData.totalAmount);
+        if (formData.category) formDataToSend.append('category', formData.category);
+        if (formData.vendorName) formDataToSend.append('vendorName', formData.vendorName);
+        if (formData.vendorTaxId) formDataToSend.append('vendorTaxId', formData.vendorTaxId);
+        if (formData.vendorAddress) formDataToSend.append('vendorAddress', formData.vendorAddress);
+        if (formData.buyerName) formDataToSend.append('buyerName', formData.buyerName);
+        if (formData.buyerTaxId) formDataToSend.append('buyerTaxId', formData.buyerTaxId);
+        if (formData.buyerAddress) formDataToSend.append('buyerAddress', formData.buyerAddress);
+        if (formData.items && formData.items.length > 0) {
+          formDataToSend.append('items', JSON.stringify(formData.items));
+        }
+        if (formData.issuer) formDataToSend.append('issuer', formData.issuer);
+        if (formData.totalAmountInWords) formDataToSend.append('totalAmountInWords', formData.totalAmountInWords);
+        if (formData.notes) formDataToSend.append('notes', formData.notes);
+        if (formData.tags.length > 0) {
+          formDataToSend.append('tags', JSON.stringify(formData.tags));
+        }
+
+        const response = await apiClient.post('/invoices/upload', formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+
+        if (response.data && response.data.success) {
+          const uploadedInvoice = response.data.data;
+          
+          // 检查是否有 OCR 识别结果
+          if (uploadedInvoice.ocrData?.extracted) {
+            showNotification(t('invoice.upload.uploadSuccessWithOcr'), 'success');
+          } else {
+            showNotification(t('invoice.upload.uploadSuccess'), 'success');
+          }
+          
+          // 跳转到详情页（识别结果会在详情页显示）
+          navigate(`/invoices/${uploadedInvoice._id}`);
+        } else {
+          throw new Error(response.data?.message || t('invoice.upload.uploadFailed'));
+        }
       }
     } catch (err) {
-      console.error('Upload error:', err);
-      const errorMsg = err.response?.data?.message || err.message || t('invoice.upload.uploadFailed');
+      console.error('Submit error:', err);
+      const errorMsg = err.response?.data?.message || err.message || (editInvoiceId ? t('invoice.upload.updateFailed') : t('invoice.upload.uploadFailed'));
       showNotification(errorMsg, 'error');
       setErrors({ submit: errorMsg });
     } finally {
@@ -515,7 +652,7 @@ const InvoiceUpload = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" fontWeight={600}>
-            {t('invoice.upload.title')}
+            {editInvoiceId ? t('invoice.detail.edit') : t('invoice.upload.title')}
           </Typography>
         </Box>
 
@@ -525,10 +662,20 @@ const InvoiceUpload = () => {
           </Alert>
         )}
 
+        {loadingInvoice && (
+          <Box sx={{ mb: 3 }}>
+            <LinearProgress />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+              {t('invoice.upload.loadingInvoice')}
+            </Typography>
+          </Box>
+        )}
+
         <Paper sx={{ p: 3 }}>
           <form onSubmit={handleSubmit}>
-            {/* File Upload */}
-            <Box sx={{ mb: 4 }}>
+            {/* File Upload - 隐藏当 hideUpload 为 true */}
+            {!hideUpload && (
+              <Box sx={{ mb: 4 }}>
               <Typography variant="h6" gutterBottom>
                 {t('invoice.upload.selectFile')}
               </Typography>
@@ -634,6 +781,7 @@ const InvoiceUpload = () => {
                 </Box>
               )}
             </Box>
+            )}
 
             {/* Basic Information */}
             <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
@@ -999,9 +1147,12 @@ const InvoiceUpload = () => {
                 type="submit"
                 variant="contained"
                 startIcon={<UploadIcon />}
-                disabled={uploading || !file}
+                disabled={uploading || (!editInvoiceId && !file)}
               >
-                {uploading ? t('invoice.upload.uploading') : t('invoice.upload.uploadInvoice')}
+                {uploading 
+                  ? (editInvoiceId ? t('invoice.upload.updating') : t('invoice.upload.uploading'))
+                  : (editInvoiceId ? t('invoice.upload.updateInvoice') : t('invoice.upload.uploadInvoice'))
+                }
               </Button>
             </Box>
 
