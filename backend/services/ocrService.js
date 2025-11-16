@@ -232,8 +232,31 @@ class OCRService {
     }
     }
 
-    // 4. 空值处理（null 转为空字符串）
+    // 4. 发票分类映射（中文转英文）
+    if (normalized.category) {
+      const categoryMap = {
+        '交通': 'transportation',
+        '住宿': 'accommodation',
+        '餐饮': 'meals',
+        '娱乐': 'entertainment',
+        '通讯': 'communication',
+        '办公用品': 'office_supplies',
+        '培训': 'training',
+        '其他': 'other'
+      };
+      // 如果category是中文，转换为英文；如果已经是英文，保持不变
+      normalized.category = categoryMap[normalized.category] || normalized.category || 'other';
+    } else {
+      // 如果没有category字段，设置为默认值
+      normalized.category = 'other';
+    }
+
+    // 5. 空值处理（null 转为空字符串，但category保持默认值）
     Object.keys(normalized).forEach(key => {
+      if (key === 'category') {
+        // category字段不处理，保持上面的逻辑
+        return;
+      }
       if (normalized[key] === null) {
         normalized[key] = '';
       }

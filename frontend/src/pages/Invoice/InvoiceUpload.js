@@ -67,6 +67,7 @@ const InvoiceUpload = () => {
     vendorAddress: '',
     buyerName: '', // 购买方名称
     buyerTaxId: '', // 购买方税号
+    buyerAddress: '', // 购买方地址
     items: [], // 项目明细
     issuer: '', // 开票人
     totalAmountInWords: '', // 价税合计（大写）
@@ -207,6 +208,26 @@ const InvoiceUpload = () => {
             return updated;
           });
         }
+        // 货币字段：如果OCR识别到了货币类型，自动填写（覆盖默认值）
+        if (recognizedData?.currency) {
+          setFormData(prev => ({ ...prev, currency: recognizedData.currency }));
+        }
+        // 发票分类：如果OCR识别到了分类，自动填写（覆盖默认值）
+        if (recognizedData?.category) {
+          // 将中文分类转换为英文（如果OCR返回的是中文）
+          const categoryMap = {
+            '交通': 'transportation',
+            '住宿': 'accommodation',
+            '餐饮': 'meals',
+            '娱乐': 'entertainment',
+            '通讯': 'communication',
+            '办公用品': 'office_supplies',
+            '培训': 'training',
+            '其他': 'other'
+          };
+          const category = categoryMap[recognizedData.category] || recognizedData.category || 'other';
+          setFormData(prev => ({ ...prev, category }));
+        }
         if (recognizedData?.vendorName && isEmpty(formData.vendorName)) {
           setFormData(prev => ({ ...prev, vendorName: recognizedData.vendorName }));
         }
@@ -221,6 +242,9 @@ const InvoiceUpload = () => {
         }
         if (recognizedData?.buyerTaxId && isEmpty(formData.buyerTaxId)) {
           setFormData(prev => ({ ...prev, buyerTaxId: recognizedData.buyerTaxId }));
+        }
+        if (recognizedData?.buyerAddress && isEmpty(formData.buyerAddress)) {
+          setFormData(prev => ({ ...prev, buyerAddress: recognizedData.buyerAddress }));
         }
         if (recognizedData?.items && recognizedData.items.length > 0 && (!formData.items || formData.items.length === 0)) {
           // 确保 items 中的数字字段被转换为数字类型
@@ -336,6 +360,22 @@ const InvoiceUpload = () => {
     if (recognized.currency) {
       setFormData(prev => ({ ...prev, currency: recognized.currency }));
     }
+    // 发票分类：如果OCR识别到了分类，自动填写（覆盖默认值）
+    if (recognized.category) {
+      // 将中文分类转换为英文（如果OCR返回的是中文）
+      const categoryMap = {
+        '交通': 'transportation',
+        '住宿': 'accommodation',
+        '餐饮': 'meals',
+        '娱乐': 'entertainment',
+        '通讯': 'communication',
+        '办公用品': 'office_supplies',
+        '培训': 'training',
+        '其他': 'other'
+      };
+      const category = categoryMap[recognized.category] || recognized.category || 'other';
+      setFormData(prev => ({ ...prev, category }));
+    }
     if (recognized.vendorName && isEmpty(formData.vendorName)) {
       setFormData(prev => ({ ...prev, vendorName: recognized.vendorName }));
     }
@@ -350,6 +390,9 @@ const InvoiceUpload = () => {
     }
     if (recognized.buyerTaxId && isEmpty(formData.buyerTaxId)) {
       setFormData(prev => ({ ...prev, buyerTaxId: recognized.buyerTaxId }));
+    }
+    if (recognized.buyerAddress && isEmpty(formData.buyerAddress)) {
+      setFormData(prev => ({ ...prev, buyerAddress: recognized.buyerAddress }));
     }
     if (recognized.items && recognized.items.length > 0 && (!formData.items || formData.items.length === 0)) {
       // 确保 items 中的数字字段被转换为数字类型
@@ -413,6 +456,7 @@ const InvoiceUpload = () => {
       if (formData.vendorAddress) formDataToSend.append('vendorAddress', formData.vendorAddress);
       if (formData.buyerName) formDataToSend.append('buyerName', formData.buyerName);
       if (formData.buyerTaxId) formDataToSend.append('buyerTaxId', formData.buyerTaxId);
+      if (formData.buyerAddress) formDataToSend.append('buyerAddress', formData.buyerAddress);
       if (formData.items && formData.items.length > 0) {
         formDataToSend.append('items', JSON.stringify(formData.items));
       }
@@ -1075,6 +1119,28 @@ const InvoiceUpload = () => {
                       <ListItemText 
                         primary={t('invoice.upload.buyerTaxId')}
                         secondary={ocrResult.recognizedData.buyerTaxId}
+                      />
+                    </ListItem>
+                  )}
+                  {ocrResult.recognizedData.buyerAddress && (
+                    <ListItem>
+                      <ListItemIcon>
+                        <CheckCircleIcon color="success" />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={t('invoice.upload.buyerAddress')}
+                        secondary={ocrResult.recognizedData.buyerAddress}
+                      />
+                    </ListItem>
+                  )}
+                  {ocrResult.recognizedData.category && (
+                    <ListItem>
+                      <ListItemIcon>
+                        <CheckCircleIcon color="success" />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={t('invoice.upload.category')}
+                        secondary={ocrResult.recognizedData.category}
                       />
                     </ListItem>
                   )}

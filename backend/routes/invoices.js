@@ -438,10 +438,11 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
     }
     
     // 购买方信息
-    if (req.body.buyerName || req.body.buyerTaxId) {
+    if (req.body.buyerName || req.body.buyerTaxId || req.body.buyerAddress) {
       invoiceData.buyer = {};
       if (req.body.buyerName) invoiceData.buyer.name = req.body.buyerName;
       if (req.body.buyerTaxId) invoiceData.buyer.taxId = req.body.buyerTaxId;
+      if (req.body.buyerAddress) invoiceData.buyer.address = req.body.buyerAddress;
     }
     
     // 发票项目明细
