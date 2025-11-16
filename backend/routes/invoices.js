@@ -478,8 +478,41 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
     const invoice = await Invoice.create(invoiceData);
 
-    // 如果是图片或PDF文件，自动进行OCR识别
-    if (req.file.mimetype.startsWith('image/') || req.file.mimetype === 'application/pdf') {
+    // 检查前端是否已经进行过 OCR 识别
+    const skipOcr = req.body.skipOcr === 'true' || req.body.skipOcr === true;
+    
+    // 如果前端已经进行过 OCR 识别，直接使用前端传递的 OCR 数据
+    if (skipOcr && req.body.ocrData) {
+      try {
+        const ocrDataFromFrontend = typeof req.body.ocrData === 'string' 
+          ? JSON.parse(req.body.ocrData) 
+          : req.body.ocrData;
+        
+        invoice.ocrData = {
+          extracted: ocrDataFromFrontend.extracted !== false,
+          confidence: ocrDataFromFrontend.confidence || 0,
+          rawData: ocrDataFromFrontend.rawData || {},
+          extractedAt: ocrDataFromFrontend.extractedAt ? new Date(ocrDataFromFrontend.extractedAt) : new Date()
+        };
+        
+        await invoice.save();
+        console.log('✓ 使用前端传递的 OCR 数据，跳过后端 OCR 识别');
+        
+        // 重新加载发票以获取最新数据
+        const updatedInvoice = await Invoice.findById(invoice._id).populate('uploadedBy', 'name email');
+        
+        return res.status(201).json({
+          success: true,
+          message: '发票上传成功',
+          data: updatedInvoice
+        });
+      } catch (ocrDataError) {
+        console.error('解析前端 OCR 数据失败:', ocrDataError);
+        // 如果解析失败，继续执行后端 OCR 识别
+      }
+    }
+    // 如果前端未进行 OCR 识别，且是图片或PDF文件，自动进行OCR识别
+    else if (!skipOcr && (req.file.mimetype.startsWith('image/') || req.file.mimetype === 'application/pdf')) {
       console.log('========================================');
       console.log('开始OCR识别，文件类型:', req.file.mimetype);
       console.log('文件路径:', req.file.path);

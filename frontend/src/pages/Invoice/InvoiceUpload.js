@@ -603,6 +603,17 @@ const InvoiceUpload = () => {
           formDataToSend.append('tags', JSON.stringify(formData.tags));
         }
 
+        // 如果前端已经进行过 OCR 识别，告诉后端跳过 OCR，并传递 OCR 结果
+        if (ocrResult && ocrResult.ocrData) {
+          formDataToSend.append('skipOcr', 'true');
+          formDataToSend.append('ocrData', JSON.stringify({
+            extracted: ocrResult.ocrData.extracted || true,
+            confidence: ocrResult.ocrData.confidence || 0,
+            rawData: ocrResult.ocrData.rawData || {},
+            extractedAt: ocrResult.ocrData.extractedAt || new Date().toISOString()
+          }));
+        }
+
         const response = await apiClient.post('/invoices/upload', formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data'
