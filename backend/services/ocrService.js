@@ -95,13 +95,61 @@ class OCRService {
   // ============================================
 
   /**
+   * 验证税号格式是否正确
+   * @param {string} taxId - 税号
+   * @returns {boolean} 格式是否正确
+   */
+  isValidTaxId(taxId) {
+    if (!taxId || typeof taxId !== 'string') {
+      return false;
+    }
+    
+    const trimmed = taxId.trim();
+    
+    // 空字符串不算有效
+    if (trimmed === '') {
+      return false;
+    }
+    
+    // 中国税号格式：
+    // - 统一社会信用代码：18位（字母+数字，第一位必须是字母或数字）
+    // - 纳税人识别号：15位或18位（数字或字母数字组合）
+    // - 长度通常在15-18位之间
+    // - 不能全是相同字符（如"000000000000000000"）
+    // - 不能包含特殊字符（除了字母和数字）
+    
+    // 检查长度（15-18位）
+    if (trimmed.length < 15 || trimmed.length > 18) {
+      return false;
+    }
+    
+    // 检查是否只包含字母和数字
+    if (!/^[A-Za-z0-9]+$/.test(trimmed)) {
+      return false;
+    }
+    
+    // 检查是否全是相同字符（如"000000000000000000"或"AAAAAAAAAAAAAAAAAA"）
+    const firstChar = trimmed[0];
+    if (trimmed.split('').every(char => char === firstChar)) {
+      return false;
+    }
+    
+    // 检查是否全是数字0（无效税号）
+    if (/^0+$/.test(trimmed)) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
    * 检查识别结果是否完整
    * @param {Object} invoiceData - 识别出的发票数据
-   * @returns {Object} { isComplete: boolean, missingFields: Array<string> }
+   * @returns {Object} { isComplete: boolean, missingFields: Array<string>, invalidFields: Array<string> }
    */
   isRecognitionComplete(invoiceData) {
     if (!invoiceData || typeof invoiceData !== 'object') {
-      return { isComplete: false, missingFields: ['所有字段'] };
+      return { isComplete: false, missingFields: ['所有字段'], invalidFields: [] };
     }
 
     // 定义关键字段（必须存在的字段）
@@ -119,6 +167,7 @@ class OCRService {
     
     // 检查关键字段是否存在且不为空
     const missingFields = [];
+    const invalidFields = [];
     let validFieldCount = 0;
     
     for (const field of criticalFields) {
@@ -140,12 +189,39 @@ class OCRService {
              (typeof value === 'number' && (isNaN(value) || value === 0));
     });
 
+    // 验证税号格式（如果存在税号）
+    if (invoiceData.vendorTaxId && !this.isValidTaxId(invoiceData.vendorTaxId)) {
+      invalidFields.push('vendorTaxId');
+      console.log(`⚠️  销售方税号格式错误: "${invoiceData.vendorTaxId}"`);
+    }
+    
+    if (invoiceData.buyerTaxId && !this.isValidTaxId(invoiceData.buyerTaxId)) {
+      invalidFields.push('buyerTaxId');
+      console.log(`⚠️  购买方税号格式错误: "${invoiceData.buyerTaxId}"`);
+    }
+
+    // 如果税号格式错误，也认为识别不完整，需要fallback到阿里云OCR
+    if (invalidFields.length > 0) {
+      console.log(`⚠️  识别不完整：税号格式错误 (${invalidFields.join(', ')})`);
+      console.log(`   已识别 ${validFieldCount}/${criticalFields.length} 个关键字段`);
+      console.log(`   缺失字段: ${missingFields.join(', ')}`);
+      return { 
+        isComplete: false, 
+        missingFields: missingFields,
+        invalidFields: invalidFields
+      };
+    }
+
     // 如果必填字段缺失，直接返回不完整
     if (missingRequiredFields.length > 0) {
       console.log(`⚠️  识别不完整：必填字段缺失 (${missingRequiredFields.join(', ')})`);
       console.log(`   已识别 ${validFieldCount}/${criticalFields.length} 个关键字段`);
       console.log(`   缺失字段: ${missingFields.join(', ')}`);
-      return { isComplete: false, missingFields };
+      return { 
+        isComplete: false, 
+        missingFields: missingRequiredFields,
+        invalidFields: invalidFields
+      };
     }
 
     // 如果必填字段都存在，要求至少有 4 个关键字段有值，才认为识别完整
@@ -153,12 +229,20 @@ class OCRService {
     const requiredFieldCount = 4;
     if (validFieldCount >= requiredFieldCount) {
       console.log(`✓ 识别结果完整，已识别 ${validFieldCount}/${criticalFields.length} 个关键字段`);
-      return { isComplete: true, missingFields: [] };
+      return { 
+        isComplete: true, 
+        missingFields: [],
+        invalidFields: []
+      };
     }
 
     console.log(`⚠️  识别不完整，只识别了 ${validFieldCount}/${criticalFields.length} 个关键字段（需要至少 ${requiredFieldCount} 个）`);
     console.log(`   缺失字段: ${missingFields.join(', ')}`);
-    return { isComplete: false, missingFields };
+    return { 
+      isComplete: false, 
+      missingFields: missingFields,
+      invalidFields: []
+    };
   }
 
   /**
@@ -370,7 +454,7 @@ class OCRService {
         
         // 检查识别结果是否完整
         if (mistralResult.success && mistralResult.invoiceData) {
-          const { isComplete, missingFields } = this.isRecognitionComplete(mistralResult.invoiceData);
+          const { isComplete, missingFields, invalidFields } = this.isRecognitionComplete(mistralResult.invoiceData);
           
           if (isComplete) {
             console.log('\n╔════════════════════════════════════════════════════════════════╗');
@@ -390,7 +474,12 @@ class OCRService {
             console.log('\n╔════════════════════════════════════════════════════════════════╗');
             console.log('║  ⚠️  Mistral AI 识别不完整 - 切换到阿里云 OCR                  ║');
             console.log('╚════════════════════════════════════════════════════════════════╝');
-            console.log(`📋 缺失字段: ${missingFields.join(', ')}`);
+            if (invalidFields && invalidFields.length > 0) {
+              console.log(`📋 税号格式错误: ${invalidFields.join(', ')}`);
+            }
+            if (missingFields && missingFields.length > 0) {
+              console.log(`📋 缺失字段: ${missingFields.join(', ')}`);
+            }
             console.log('🔄 流转: Mistral AI → 阿里云 DashScope OCR');
             console.log('════════════════════════════════════════════════════════════════');
           }
@@ -664,7 +753,7 @@ class OCRService {
         
         // 检查识别结果是否完整
         if (mistralResult.success && mistralResult.invoiceData) {
-          const { isComplete, missingFields } = this.isRecognitionComplete(mistralResult.invoiceData);
+          const { isComplete, missingFields, invalidFields } = this.isRecognitionComplete(mistralResult.invoiceData);
           
           if (isComplete) {
             console.log('✓ Mistral AI 识别完整，直接返回结果');
@@ -672,7 +761,10 @@ class OCRService {
             // 数据已经过完整流程处理：OCR提取 → AI解析 → 字段映射 → 数据标准化
             return mistralResult;
           } else {
-            console.log(`⚠ Mistral AI 识别不完整，缺失字段: ${missingFields.join(', ')}`);
+            const reason = invalidFields.length > 0 
+              ? `税号格式错误: ${invalidFields.join(', ')}` 
+              : `缺失字段: ${missingFields.join(', ')}`;
+            console.log(`⚠ Mistral AI 识别不完整，${reason}`);
             console.log('尝试使用阿里云 OCR 作为补充');
           }
         } else {
@@ -1069,7 +1161,7 @@ class OCRService {
           content: MISTRAL_CHAT_USER_PROMPT_TEMPLATE(textContent)
         }
       ];
-
+      
       // 估算 token 数量（粗略估算：1 token ≈ 4 字符）
       const estimatedTokens = Math.ceil(textContent.length / 4);
       const maxTokens = Math.min(6000, Math.max(2000, estimatedTokens + 2000)); // 确保有足够空间返回完整 JSON
@@ -1215,9 +1307,15 @@ class OCRService {
    * @returns {Promise<string>} 转换后的图片路径
    */
   async convertPDFToImage(pdfPath, pageNumber = 1) {
+    console.log('\n════════════════════════════════════════════════════════════════');
+    console.log('🔄 PDF 转图片流程开始');
+    console.log('════════════════════════════════════════════════════════════════');
+    console.log(`📄 PDF 文件路径: ${pdfPath}`);
+    console.log(`📑 页码: ${pageNumber}`);
+    console.log(`⏰ 开始时间: ${new Date().toLocaleString('zh-CN')}`);
+    console.log('────────────────────────────────────────────────────────────────');
+    
     try {
-      console.log('开始转换 PDF 为图片:', pdfPath, '页码:', pageNumber);
-      
       // 检查 poppler 工具是否可用
       const { execSync } = require('child_process');
       
@@ -1235,11 +1333,20 @@ class OCRService {
       let popplerBinDir = null;
       
       // 首先尝试系统 PATH
+      console.log('\n[步骤 1] 检测 poppler 工具位置...');
+      console.log('  尝试路径列表:');
+      console.log('    1. 系统 PATH (pdftoppm)');
+      possiblePopplerPaths.forEach((p, i) => {
+        if (p) console.log(`    ${i + 2}. ${p}/pdftoppm`);
+      });
+      
       try {
         execSync('pdftoppm -v', { stdio: 'ignore' });
         pdftoppmPath = 'pdftoppm';
-        console.log('✓ 找到系统 PATH 中的 poppler');
+        console.log('  ✅ 成功：找到系统 PATH 中的 pdftoppm');
+        console.log(`  📍 工具路径: pdftoppm (系统 PATH)`);
       } catch (e) {
+        console.log('  ⚠️  系统 PATH 中未找到 pdftoppm，尝试自定义路径...');
         // 尝试自定义路径
         for (const binDir of possiblePopplerPaths) {
           const testPath = binDir ? path.join(binDir, 'pdftoppm') : 'pdftoppm';
@@ -1247,9 +1354,11 @@ class OCRService {
             execSync(`"${testPath}" -v`, { stdio: 'ignore' });
             pdftoppmPath = testPath;
             popplerBinDir = binDir;
-            console.log(`✓ 找到 poppler: ${testPath}`);
+            console.log(`  ✅ 成功：找到 poppler`);
+            console.log(`  📍 工具路径: ${testPath}`);
             break;
           } catch (err) {
+            console.log(`  ❌ 失败：${testPath} 不可用`);
             // 继续尝试下一个路径
           }
         }
@@ -1257,6 +1366,10 @@ class OCRService {
       
       // 优先使用系统 pdftoppm 命令（更可靠）
       if (pdftoppmPath) {
+        console.log('\n[步骤 2] 使用系统 pdftoppm 命令转换...');
+        console.log(`  🔧 使用工具: pdftoppm (系统命令)`);
+        console.log(`  📍 工具路径: ${pdftoppmPath}`);
+        
         try {
           const outputDir = path.dirname(pdfPath);
           const outputPrefix = path.basename(pdfPath, path.extname(pdfPath));
@@ -1271,8 +1384,13 @@ class OCRService {
           // -singlefile 参数会生成单个文件 output_prefix-1.png
           const command = `"${pdftoppmPath}" -png -f ${pageNumber} -l ${pageNumber} -singlefile "${pdfPath}" "${path.join(outputDir, outputPrefixName)}"`;
           
-          console.log(`执行命令: ${command}`);
+          console.log(`  📝 执行命令:`);
+          console.log(`     ${command}`);
+          console.log(`  ⏳ 正在执行转换...`);
+          const startTime = Date.now();
           execSync(command, { stdio: 'pipe', encoding: 'utf8' });
+          const duration = Date.now() - startTime;
+          console.log(`  ⏱️  执行耗时: ${duration}ms`);
           
           // pdftoppm 使用 -singlefile 时，输出文件名格式为：prefix-1.png（页码从1开始）
           // 例如：如果输出前缀是 "file_page1"，则生成 "file_page1-1.png"
@@ -1286,10 +1404,13 @@ class OCRService {
           ];
           
           // 查找实际生成的图片文件
+          console.log(`  🔍 查找生成的图片文件...`);
           let foundPath = null;
           for (const possiblePath of possiblePaths) {
+            console.log(`    检查: ${possiblePath}`);
             if (fs.existsSync(possiblePath)) {
               foundPath = possiblePath;
+              console.log(`    ✅ 找到文件: ${foundPath}`);
               break;
             }
           }
@@ -1297,19 +1418,25 @@ class OCRService {
           // 如果没找到，列出目录中的所有文件以便调试
           if (!foundPath) {
             const filesInDir = fs.readdirSync(outputDir).filter(f => f.endsWith('.png'));
-            console.error(`未找到转换后的图片文件。目录中的 PNG 文件:`, filesInDir);
+            console.error(`  ❌ 未找到转换后的图片文件`);
+            console.error(`  📂 目录中的 PNG 文件:`, filesInDir);
             throw new Error(`PDF 转换失败：生成的图片文件不存在。可能的文件名: ${possiblePaths.join(', ')}`);
           }
           
-          console.log(`✓ PDF 转换成功（使用系统 pdftoppm），输出路径: ${foundPath}`);
+          console.log(`\n✅ PDF 转换成功（使用系统 pdftoppm）`);
+          console.log(`📁 输出路径: ${foundPath}`);
+          console.log(`════════════════════════════════════════════════════════════════\n`);
           return foundPath;
         } catch (systemError) {
-          console.error('系统 pdftoppm 转换失败:', systemError.message);
+          console.error(`  ❌ 系统 pdftoppm 转换失败: ${systemError.message}`);
+          console.log(`  ⚠️  将尝试使用 pdf-poppler npm 包作为备选方案`);
           // 继续尝试 pdf-poppler
         }
       }
       
       // 如果系统 pdftoppm 不可用，尝试使用 pdf-poppler
+      console.log('\n[步骤 3] 使用 pdf-poppler npm 包转换...');
+      console.log(`  🔧 使用工具: pdf-poppler (npm 包)`);
       const pdfPoppler = require('pdf-poppler');
       const outputDir = path.dirname(pdfPath);
       const outputFilename = path.basename(pdfPath, path.extname(pdfPath)) + `_page${pageNumber}.png`;
@@ -1326,49 +1453,77 @@ class OCRService {
       if (popplerBinDir) {
         const originalPath = process.env.PATH;
         process.env.PATH = `${popplerBinDir}:${originalPath}`;
-        console.log(`设置 PATH: ${process.env.PATH}`);
+        console.log(`  🔧 设置 PATH: ${process.env.PATH}`);
       }
       
+      console.log(`  📝 转换选项:`, JSON.stringify(options, null, 2));
+      console.log(`  ⏳ 正在执行转换...`);
+      const startTime = Date.now();
       await pdfPoppler.convert(pdfPath, options);
+      const duration = Date.now() - startTime;
+      console.log(`  ⏱️  执行耗时: ${duration}ms`);
       
       // pdf-poppler 会生成带页码的文件名
       const generatedPath = path.join(outputDir, `${options.out_prefix}-${pageNumber}.png`);
+      console.log(`  🔍 检查输出文件: ${generatedPath}`);
       if (fs.existsSync(generatedPath)) {
-        console.log('✓ PDF 转换成功（使用 pdf-poppler），输出路径:', generatedPath);
+        console.log(`\n✅ PDF 转换成功（使用 pdf-poppler）`);
+        console.log(`📁 输出路径: ${generatedPath}`);
+        console.log(`════════════════════════════════════════════════════════════════\n`);
         return generatedPath;
       } else {
         throw new Error('PDF 转换失败：生成的图片文件不存在');
       }
     } catch (error) {
-      console.error('PDF 转换错误（pdf-poppler）:', error.message);
+      console.error(`  ❌ PDF 转换错误（pdf-poppler）: ${error.message}`);
       
       // 如果 pdf-poppler 失败，尝试使用 pdf2pic 作为备选方案
+      console.log('\n[步骤 4] 使用 pdf2pic npm 包转换（最后备选方案）...');
+      console.log(`  🔧 使用工具: pdf2pic (npm 包)`);
       try {
-        console.log('尝试使用 pdf2pic 作为备选方案...');
         const pdf2pic = require('pdf2pic');
         const outputDir = path.dirname(pdfPath);
         const outputPrefix = path.basename(pdfPath, path.extname(pdfPath));
         
-        const convert = pdf2pic.fromPath(pdfPath, {
+        const pdf2picOptions = {
           density: 200,
           saveFilename: outputPrefix,
           savePath: outputDir,
           format: 'png',
           width: 2000,
           height: 2000
-        });
+        };
+        console.log(`  📝 转换选项:`, JSON.stringify(pdf2picOptions, null, 2));
+        console.log(`  ⏳ 正在执行转换...`);
         
+        const convert = pdf2pic.fromPath(pdfPath, pdf2picOptions);
+        const startTime = Date.now();
         const result = await convert(pageNumber, { responseType: 'image' });
+        const duration = Date.now() - startTime;
+        console.log(`  ⏱️  执行耗时: ${duration}ms`);
+        
         if (result && result.path && fs.existsSync(result.path)) {
-          console.log('✓ PDF 转换成功（使用 pdf2pic），输出路径:', result.path);
+          console.log(`\n✅ PDF 转换成功（使用 pdf2pic）`);
+          console.log(`📁 输出路径: ${result.path}`);
+          console.log(`════════════════════════════════════════════════════════════════\n`);
           return result.path;
+        } else {
+          console.error(`  ❌ pdf2pic 转换失败：未生成有效的输出文件`);
         }
       } catch (pdf2picError) {
-        console.error('pdf2pic 转换也失败:', pdf2picError.message);
+        console.error(`  ❌ pdf2pic 转换也失败: ${pdf2picError.message}`);
       }
       
-      // 如果两种方法都失败，抛出错误
+      // 如果所有方法都失败，抛出错误
       const errorMsg = error.message || '未知错误';
+      
+      console.log('\n❌ PDF 转图片失败：所有方法都尝试失败');
+      console.log('════════════════════════════════════════════════════════════════');
+      console.log('尝试的方法:');
+      console.log('  1. ❌ 系统 pdftoppm 命令');
+      console.log('  2. ❌ pdf-poppler npm 包');
+      console.log('  3. ❌ pdf2pic npm 包');
+      console.log('════════════════════════════════════════════════════════════════\n');
       
       // 检查是否是 poppler 未安装的错误
       if (errorMsg.includes('pdftoppm') || errorMsg.includes('poppler') || errorMsg.includes('command not found')) {
@@ -1470,14 +1625,14 @@ class OCRService {
       console.log('\n┌────────────────────────────────────────────────────────────┐');
       console.log('│ 🔍 调用阿里云 DashScope OCR API                              │');
       console.log('└────────────────────────────────────────────────────────────┘');
-      console.log(`  🤖 模型: qwen-vl-ocr-latest`);
+      console.log(`  🤖 模型: qwen-vl-max`);
       console.log(`  📄 输入: ${fileType === 'pdf' ? '图片 (PDF转换)' : '图片'}`);
       console.log(`  📝 输出格式: Markdown`);
       const ocrStartTime = Date.now();
       
       // 调用阿里云 OCR API - 返回 markdown 格式文本
       const response = await dashscopeClient.chat.completions.create({
-        model: 'qwen-vl-ocr-latest',
+        model: 'qwen-vl-max',
         messages: [
           {
             role: 'user',
@@ -1487,8 +1642,8 @@ class OCRService {
                 type: 'image_url',
                 image_url: {
                   url: dataUrl,
-                  min_pixels: 28 * 28 * 4,
-                  max_pixels: 28 * 28 * 8192
+                  min_pixels: 28 * 28 * 600,
+                  max_pixels: 28 * 28 * 15360   
                 }
               }
             ]
@@ -1521,11 +1676,11 @@ class OCRService {
       
       // 步骤1: OCR提取（已完成，ocrText 为 markdown 文本）
       console.log('\n  [1/4] 🔍 OCR提取');
-      console.log(`      ✅ 使用服务: 阿里云 DashScope OCR (qwen-vl-ocr-latest)`);
+      console.log(`      ✅ 使用服务: 阿里云 DashScope OCR (qwen-vl-max)`);
       if (fileType === 'pdf') {
         console.log(`      📄 文件类型: PDF (已转换为图片)`);
         console.log(`      🛠️  转换工具: poppler (pdftoppm)`);
-      } else {
+          } else {
         console.log(`      📄 文件类型: 图片`);
       }
       console.log(`      📝 OCR文本长度: ${ocrText.length} 字符`);
@@ -1587,14 +1742,18 @@ class OCRService {
       console.log(`      - 项目明细: ${invoiceData.items ? invoiceData.items.length : 0} 项`);
       console.log('════════════════════════════════════════════════════════════════');
 
-      // 清理临时图片文件（如果是 PDF 转换生成的）
-      if (tempImagePath && fs.existsSync(tempImagePath)) {
-        try {
-          fs.unlinkSync(tempImagePath);
-          console.log('✓ 已清理临时图片文件:', tempImagePath);
-        } catch (cleanupError) {
-          console.warn('清理临时文件失败:', cleanupError.message);
-        }
+      // 保留 PDF 转换的图片文件，不自动清理
+      // 注释掉自动清理逻辑，以便后续查看和调试
+      // if (tempImagePath && fs.existsSync(tempImagePath)) {
+      //   try {
+      //     fs.unlinkSync(tempImagePath);
+      //     console.log('✓ 已清理临时图片文件:', tempImagePath);
+      //   } catch (cleanupError) {
+      //     console.warn('清理临时文件失败:', cleanupError.message);
+      //   }
+      // }
+      if (tempImagePath) {
+        console.log('📁 PDF 转换的图片文件已保留:', tempImagePath);
       }
 
       return {
@@ -1621,14 +1780,18 @@ class OCRService {
       }
       console.error('========================================');
       
-      // 清理临时图片文件（错误情况下也要清理）
-      if (tempImagePath && fs.existsSync(tempImagePath)) {
-        try {
-          fs.unlinkSync(tempImagePath);
-          console.log('✓ 已清理临时图片文件:', tempImagePath);
-        } catch (cleanupError) {
-          console.warn('清理临时文件失败:', cleanupError.message);
-        }
+      // 保留 PDF 转换的图片文件，不自动清理（即使出错也保留以便调试）
+      // 注释掉自动清理逻辑，以便后续查看和调试
+      // if (tempImagePath && fs.existsSync(tempImagePath)) {
+      //   try {
+      //     fs.unlinkSync(tempImagePath);
+      //     console.log('✓ 已清理临时图片文件:', tempImagePath);
+      //   } catch (cleanupError) {
+      //     console.warn('清理临时文件失败:', cleanupError.message);
+      //   }
+      // }
+      if (tempImagePath) {
+        console.log('📁 PDF 转换的图片文件已保留（错误情况下）:', tempImagePath);
       }
       
       return {
