@@ -200,9 +200,129 @@ fi
 
 cd ..
 
-# 3. 安装后端依赖
+# 3. 安装系统依赖（Poppler等）
 echo ""
-echo -e "${YELLOW}[步骤 3/5] 安装后端依赖...${NC}"
+echo -e "${YELLOW}[步骤 3/6] 安装系统依赖（Poppler等）...${NC}"
+
+# 检查操作系统类型
+if [ -f /etc/redhat-release ]; then
+    # CentOS/RHEL/Amazon Linux
+    echo "   检测到 RedHat 系列系统，使用 yum 安装..."
+    
+    # 检查并安装 poppler
+    if ! command -v pdftoppm &> /dev/null; then
+        echo "   安装 poppler-utils..."
+        sudo yum install -y poppler-utils poppler-data 2>/dev/null || {
+            echo -e "${YELLOW}   ⚠️  yum 安装失败，尝试使用 dnf...${NC}"
+            sudo dnf install -y poppler-utils poppler-data 2>/dev/null || {
+                echo -e "${YELLOW}   ⚠️  无法通过包管理器安装 poppler，请手动安装${NC}"
+            }
+        }
+    else
+        echo -e "${GREEN}   ✅ Poppler 已安装${NC}"
+    fi
+    
+    # 安装其他可能需要的依赖
+    echo "   安装其他系统依赖..."
+    sudo yum install -y gcc-c++ make cmake 2>/dev/null || sudo dnf install -y gcc-c++ make cmake 2>/dev/null || true
+    
+elif [ -f /etc/debian_version ]; then
+    # Debian/Ubuntu
+    echo "   检测到 Debian 系列系统，使用 apt-get 安装..."
+    
+    # 更新包列表
+    sudo apt-get update -qq 2>/dev/null || true
+    
+    # 检查并安装 poppler
+    if ! command -v pdftoppm &> /dev/null; then
+        echo "   安装 poppler-utils..."
+        sudo apt-get install -y poppler-utils poppler-data 2>/dev/null || {
+            echo -e "${YELLOW}   ⚠️  无法通过包管理器安装 poppler，请手动安装${NC}"
+        }
+    else
+        echo -e "${GREEN}   ✅ Poppler 已安装${NC}"
+    fi
+    
+    # 安装其他可能需要的依赖
+    echo "   安装其他系统依赖..."
+    sudo apt-get install -y build-essential cmake 2>/dev/null || true
+else
+    echo -e "${YELLOW}   ⚠️  无法识别操作系统类型，跳过系统依赖安装${NC}"
+    echo "   请手动安装 poppler-utils"
+fi
+
+# 验证 poppler 安装
+if command -v pdftoppm &> /dev/null; then
+    POPPLER_VERSION=$(pdftoppm -v 2>&1 | head -1 || echo "已安装")
+    echo -e "${GREEN}   ✅ Poppler 验证成功: $POPPLER_VERSION${NC}"
+else
+    echo -e "${YELLOW}   ⚠️  警告: Poppler 未找到，PDF 转图片功能可能不可用${NC}"
+    echo "   请手动安装: sudo yum install poppler-utils 或 sudo apt-get install poppler-utils"
+fi
+
+echo -e "${GREEN}✅ 系统依赖检查完成${NC}"
+
+# 4. 检查环境变量配置
+echo ""
+echo -e "${YELLOW}[步骤 4/6] 检查环境变量配置...${NC}"
+
+ENV_FILE="$DEPLOY_PATH/backend/.env"
+ENV_EXAMPLE="$DEPLOY_PATH/backend/config.example.js"
+
+# 检查 .env 文件是否存在
+if [ ! -f "$ENV_FILE" ]; then
+    echo "   ⚠️  .env 文件不存在，创建模板..."
+    
+    # 从 config.example.js 创建 .env 模板
+    cat > "$ENV_FILE" << 'EOF'
+# Server Configuration
+PORT=3001
+NODE_ENV=production
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/travel-expense-system
+
+# JWT Secret
+JWT_SECRET=your-super-secret-jwt-key-here-change-in-production
+JWT_EXPIRE=7d
+
+# Mistral AI Configuration (必需 - 用于OCR识别)
+MISTRAL_API_KEY=your-mistral-api-key-here
+
+# 阿里云 DashScope Configuration (可选 - OCR备用方案)
+# DASHSCOPE_API_KEY=your-dashscope-api-key-here
+
+# Email Configuration (可选)
+# EMAIL_HOST=smtp.gmail.com
+# EMAIL_PORT=587
+# EMAIL_USER=your-email@gmail.com
+# EMAIL_PASS=your-app-password
+
+# File Upload
+MAX_FILE_SIZE=10485760
+UPLOAD_PATH=./uploads
+EOF
+    echo -e "${YELLOW}   ✅ 已创建 .env 模板文件${NC}"
+    echo -e "${RED}   ⚠️  重要: 请编辑 $ENV_FILE 并配置 MISTRAL_API_KEY${NC}"
+else
+    echo -e "${GREEN}   ✅ .env 文件已存在${NC}"
+fi
+
+# 检查 MISTRAL_API_KEY 是否配置
+if [ -f "$ENV_FILE" ]; then
+    if grep -q "MISTRAL_API_KEY=your-mistral-api-key-here" "$ENV_FILE" || ! grep -q "MISTRAL_API_KEY=" "$ENV_FILE"; then
+        echo -e "${RED}   ⚠️  警告: MISTRAL_API_KEY 未配置或使用默认值${NC}"
+        echo "   请编辑 $ENV_FILE 并设置正确的 MISTRAL_API_KEY"
+    else
+        echo -e "${GREEN}   ✅ MISTRAL_API_KEY 已配置${NC}"
+    fi
+fi
+
+echo -e "${GREEN}✅ 环境变量检查完成${NC}"
+
+# 5. 安装后端依赖
+echo ""
+echo -e "${YELLOW}[步骤 5/6] 安装后端依赖...${NC}"
 cd backend
 
 if [ ! -f "package.json" ]; then
@@ -237,9 +357,9 @@ fi
 echo -e "${GREEN}✅ 后端依赖安装完成${NC}"
 cd ..
 
-# 4. 重启服务
+# 6. 重启服务
 echo ""
-echo -e "${YELLOW}[步骤 4/5] 重启服务...${NC}"
+echo -e "${YELLOW}[步骤 6/6] 重启服务...${NC}"
 
 # 检查 PM2 是否已安装
 if command -v pm2 &> /dev/null; then
@@ -289,10 +409,29 @@ echo "   - 部署路径: $DEPLOY_PATH"
 echo "   - 前端构建: frontend/index.html"
 echo "   - 后端服务: backend/server.js"
 echo ""
+echo "⚠️  重要配置检查："
+echo "   1. Poppler (PDF工具):"
+if command -v pdftoppm &> /dev/null; then
+    echo -e "      ${GREEN}✅ 已安装${NC}"
+else
+    echo -e "      ${RED}❌ 未安装 - 请运行: sudo yum install poppler-utils${NC}"
+fi
+echo "   2. Mistral API Key:"
+ENV_FILE="$DEPLOY_PATH/backend/.env"
+if [ -f "$ENV_FILE" ] && grep -q "MISTRAL_API_KEY=" "$ENV_FILE" && ! grep -q "MISTRAL_API_KEY=your-mistral-api-key-here" "$ENV_FILE"; then
+    echo -e "      ${GREEN}✅ 已配置${NC}"
+else
+    echo -e "      ${RED}❌ 未配置 - 请编辑 $ENV_FILE 并设置 MISTRAL_API_KEY${NC}"
+fi
+echo ""
 echo "🔍 查看服务状态："
 echo "   pm2 list              # 查看 PM2 进程"
 echo "   pm2 logs oa-backend    # 查看日志"
 echo "   pm2 monit              # 监控面板"
+echo ""
+echo "🔧 配置 API Key："
+echo "   nano $ENV_FILE        # 编辑环境变量文件"
+echo "   # 设置 MISTRAL_API_KEY=your-actual-api-key"
 echo ""
 
 
