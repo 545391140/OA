@@ -240,46 +240,204 @@ const InvoiceUpload = () => {
       if (ocrResponse.data && ocrResponse.data.success) {
         const recognizedData = ocrResponse.data.data.recognizedData;
         
+        // 详细日志：打印 OCR 返回的完整数据结构
+        console.log('========================================');
+        console.log('✓ OCR 识别成功，开始前端自动赋值');
+        console.log('OCR 返回的完整数据:', JSON.stringify(ocrResponse.data, null, 2));
+        console.log('recognizedData 对象:', recognizedData);
+        console.log('recognizedData 类型:', typeof recognizedData);
+        console.log('recognizedData 是否为对象:', recognizedData && typeof recognizedData === 'object');
+        console.log('recognizedData 的字段:', recognizedData ? Object.keys(recognizedData) : 'null/undefined');
+        console.log('当前表单数据:', formData);
+        console.log('========================================');
+        
         setOcrResult(ocrResponse.data.data);
         
-        // 自动应用识别结果到表单（如果表单字段为空或空字符串）
-        // 辅助函数：检查字段是否为空
-        const isEmpty = (value) => !value || (typeof value === 'string' && value.trim() === '');
+        // 检查 recognizedData 是否存在且为对象
+        if (!recognizedData || typeof recognizedData !== 'object') {
+          console.error('✗ recognizedData 无效:', recognizedData);
+          showNotification('OCR识别成功，但数据格式异常', 'warning');
+          return;
+        }
         
-        if (recognizedData?.invoiceNumber && isEmpty(formData.invoiceNumber)) {
-          setFormData(prev => ({ ...prev, invoiceNumber: recognizedData.invoiceNumber }));
+        // 检查 recognizedData 是否为空对象
+        const recognizedDataKeys = Object.keys(recognizedData);
+        const recognizedDataHasValues = recognizedDataKeys.some(key => {
+          const value = recognizedData[key];
+          return value !== undefined && value !== null && value !== '' && 
+                 !(Array.isArray(value) && value.length === 0);
+        });
+        
+        console.log('recognizedData 字段数量:', recognizedDataKeys.length);
+        console.log('recognizedData 字段列表:', recognizedDataKeys);
+        console.log('recognizedData 是否有有效值:', recognizedDataHasValues);
+        
+        if (recognizedDataKeys.length === 0) {
+          console.warn('⚠️ recognizedData 为空对象，AI 解析可能失败');
+          console.log('原始文本内容:', ocrResponse.data.data.text);
+          console.log('建议：检查后端日志，查看 AI 解析过程');
+          showNotification('OCR识别成功，但结构化数据为空，请检查后端日志', 'warning');
+          return;
         }
-        // 发票日期特殊处理：如果OCR识别到了日期，优先使用识别到的日期（覆盖默认日期）
-        if (recognizedData?.invoiceDate) {
-          setFormData(prev => ({ ...prev, invoiceDate: recognizedData.invoiceDate }));
+        
+        if (!recognizedDataHasValues) {
+          console.warn('⚠️ recognizedData 存在但所有字段值都为空');
+          console.log('recognizedData 详细内容:', JSON.stringify(recognizedData, null, 2));
+          showNotification('OCR识别成功，但所有字段值都为空', 'warning');
+          return;
         }
-        if (recognizedData?.invoiceType && isEmpty(formData.invoiceType)) {
-          setFormData(prev => ({ ...prev, invoiceType: recognizedData.invoiceType }));
-        }
-        if (recognizedData?.amount && isEmpty(formData.amount)) {
-          setFormData(prev => ({ ...prev, amount: recognizedData.amount.toString() }));
-        }
-        if (recognizedData?.taxAmount && isEmpty(formData.taxAmount)) {
-          setFormData(prev => ({ ...prev, taxAmount: recognizedData.taxAmount.toString() }));
-        }
-        if (recognizedData?.totalAmount && isEmpty(formData.totalAmount)) {
-          const totalAmount = recognizedData.totalAmount.toString();
-          setFormData(prev => {
-            const updated = { ...prev, totalAmount };
-            // 自动计算大写金额
-            const amount = parseFloat(totalAmount);
-            if (!isNaN(amount) && amount >= 0) {
-              updated.totalAmountInWords = amountToChinese(amount);
+        
+        // 优化的辅助函数：检查字符串字段是否有有效值（非空字符串）
+        const hasValidStringValue = (value) => {
+          const result = value !== undefined && value !== null && 
+                 typeof value === 'string' && value.trim() !== '';
+          if (value !== undefined && value !== null) {
+            console.log(`  [hasValidStringValue] "${value}" (类型: ${typeof value}) => ${result}`);
+          }
+          return result;
+        };
+        
+        // 优化的辅助函数：检查数字字段是否有有效值（非零数字）
+        const hasValidNumberValue = (value) => {
+          if (value === undefined || value === null) {
+            console.log(`  [hasValidNumberValue] ${value} => false (undefined/null)`);
+            return false;
+          }
+          if (typeof value === 'number') {
+            const result = !isNaN(value) && value !== 0;
+            console.log(`  [hasValidNumberValue] ${value} (number) => ${result}`);
+            return result;
+          }
+          if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed === '') {
+              console.log(`  [hasValidNumberValue] "${value}" (string, empty) => false`);
+              return false;
             }
-            return updated;
-          });
+            const parsed = parseFloat(trimmed);
+            const result = !isNaN(parsed) && parsed !== 0;
+            console.log(`  [hasValidNumberValue] "${value}" (string) => parsed: ${parsed}, result: ${result}`);
+            return result;
+          }
+          console.log(`  [hasValidNumberValue] ${value} (${typeof value}) => false (unknown type)`);
+          return false;
+        };
+        
+        // 优化的辅助函数：检查日期字段是否有有效值
+        const hasValidDateValue = (value) => {
+          if (!value || value === '') {
+            console.log(`  [hasValidDateValue] ${value} => false (empty)`);
+            return false;
+          }
+          if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed === '') {
+              console.log(`  [hasValidDateValue] "${value}" => false (empty after trim)`);
+              return false;
+            }
+            const date = new Date(trimmed);
+            const result = !isNaN(date.getTime());
+            console.log(`  [hasValidDateValue] "${value}" => date: ${date}, valid: ${result}`);
+            return result;
+          }
+          console.log(`  [hasValidDateValue] ${value} (${typeof value}) => false (not string)`);
+          return false;
+        };
+        
+        // 优化的辅助函数：检查表单字段是否为空（用于判断是否需要赋值）
+        const isFormFieldEmpty = (value) => {
+          if (value === undefined || value === null || value === '') {
+            console.log(`  [isFormFieldEmpty] ${value} => true (undefined/null/empty)`);
+            return true;
+          }
+          if (typeof value === 'string' && value.trim() === '') {
+            console.log(`  [isFormFieldEmpty] "${value}" => true (empty string)`);
+            return true;
+          }
+          if (typeof value === 'number' && value === 0) {
+            console.log(`  [isFormFieldEmpty] ${value} => true (zero)`);
+            return true;
+          }
+          console.log(`  [isFormFieldEmpty] ${value} (${typeof value}) => false (has value)`);
+          return false;
+        };
+        
+        // 批量更新表单数据，避免多次 setState
+        const updates = {};
+        let hasUpdates = false;
+        
+        // 基本信息
+        console.log('[invoiceNumber] OCR值:', recognizedData.invoiceNumber, '类型:', typeof recognizedData.invoiceNumber, '当前表单值:', formData.invoiceNumber);
+        if (hasValidStringValue(recognizedData?.invoiceNumber) && isFormFieldEmpty(formData.invoiceNumber)) {
+          updates.invoiceNumber = recognizedData.invoiceNumber.trim();
+          hasUpdates = true;
+          console.log('  ✓ 准备赋值 invoiceNumber:', updates.invoiceNumber);
+        } else {
+          console.log('  ✗ 跳过 invoiceNumber - OCR值无效或表单已有值');
         }
+        
+        // 发票日期特殊处理：如果OCR识别到了日期，优先使用识别到的日期（覆盖默认日期）
+        console.log('[invoiceDate] OCR值:', recognizedData.invoiceDate, '类型:', typeof recognizedData.invoiceDate, '当前表单值:', formData.invoiceDate);
+        if (hasValidDateValue(recognizedData?.invoiceDate)) {
+          updates.invoiceDate = recognizedData.invoiceDate.trim();
+          hasUpdates = true;
+          console.log('  ✓ 准备赋值 invoiceDate:', updates.invoiceDate);
+        } else {
+          console.log('  ✗ 跳过 invoiceDate - OCR值无效');
+        }
+        
+        console.log('[invoiceType] OCR值:', recognizedData.invoiceType, '类型:', typeof recognizedData.invoiceType, '当前表单值:', formData.invoiceType);
+        if (hasValidStringValue(recognizedData?.invoiceType) && isFormFieldEmpty(formData.invoiceType)) {
+          updates.invoiceType = recognizedData.invoiceType.trim();
+          hasUpdates = true;
+          console.log('  ✓ 准备赋值 invoiceType:', updates.invoiceType);
+        } else {
+          console.log('  ✗ 跳过 invoiceType - OCR值无效或表单已有值');
+        }
+        
+        console.log('[amount] OCR值:', recognizedData.amount, '类型:', typeof recognizedData.amount, '当前表单值:', formData.amount);
+        if (hasValidNumberValue(recognizedData?.amount) && isFormFieldEmpty(formData.amount)) {
+          const parsedAmount = typeof recognizedData.amount === 'string' 
+            ? parseFloat(recognizedData.amount.trim()) 
+            : recognizedData.amount;
+          updates.amount = parsedAmount.toString();
+          hasUpdates = true;
+          console.log('  ✓ 准备赋值 amount:', updates.amount);
+        } else {
+          console.log('  ✗ 跳过 amount - OCR值无效或表单已有值');
+        }
+        
+        // taxAmount 可以为 0（免税情况），需要特殊处理
+        if (recognizedData?.taxAmount !== undefined && recognizedData?.taxAmount !== null && isFormFieldEmpty(formData.taxAmount)) {
+          const parsedTaxAmount = typeof recognizedData.taxAmount === 'string' 
+            ? parseFloat(recognizedData.taxAmount.trim()) 
+            : recognizedData.taxAmount;
+          if (!isNaN(parsedTaxAmount)) {
+            updates.taxAmount = parsedTaxAmount.toString();
+            hasUpdates = true;
+          }
+        }
+        
+        if (hasValidNumberValue(recognizedData?.totalAmount) && isFormFieldEmpty(formData.totalAmount)) {
+          const totalAmount = typeof recognizedData.totalAmount === 'string' 
+            ? parseFloat(recognizedData.totalAmount.trim()) 
+            : recognizedData.totalAmount;
+          updates.totalAmount = totalAmount.toString();
+          // 自动计算大写金额
+          if (!isNaN(totalAmount) && totalAmount >= 0) {
+            updates.totalAmountInWords = amountToChinese(totalAmount);
+          }
+          hasUpdates = true;
+        }
+        
         // 货币字段：如果OCR识别到了货币类型，自动填写（覆盖默认值）
-        if (recognizedData?.currency) {
-          setFormData(prev => ({ ...prev, currency: recognizedData.currency }));
+        if (hasValidStringValue(recognizedData?.currency)) {
+          updates.currency = recognizedData.currency.trim();
+          hasUpdates = true;
         }
+        
         // 发票分类：如果OCR识别到了分类，自动填写（覆盖默认值）
-        if (recognizedData?.category) {
+        if (hasValidStringValue(recognizedData?.category)) {
           // 将中文分类转换为英文（如果OCR返回的是中文）
           const categoryMap = {
             '交通': 'transportation',
@@ -291,28 +449,43 @@ const InvoiceUpload = () => {
             '培训': 'training',
             '其他': 'other'
           };
-          const category = categoryMap[recognizedData.category] || recognizedData.category || 'other';
-          setFormData(prev => ({ ...prev, category }));
+          const category = categoryMap[recognizedData.category.trim()] || recognizedData.category.trim() || 'other';
+          updates.category = category;
+          hasUpdates = true;
         }
-        if (recognizedData?.vendorName && isEmpty(formData.vendorName)) {
-          setFormData(prev => ({ ...prev, vendorName: recognizedData.vendorName }));
+        
+        if (hasValidStringValue(recognizedData?.vendorName) && isFormFieldEmpty(formData.vendorName)) {
+          updates.vendorName = recognizedData.vendorName.trim();
+          hasUpdates = true;
         }
-        if (recognizedData?.vendorTaxId && isEmpty(formData.vendorTaxId)) {
-          setFormData(prev => ({ ...prev, vendorTaxId: recognizedData.vendorTaxId }));
+        
+        if (hasValidStringValue(recognizedData?.vendorTaxId) && isFormFieldEmpty(formData.vendorTaxId)) {
+          updates.vendorTaxId = recognizedData.vendorTaxId.trim();
+          hasUpdates = true;
         }
-        if (recognizedData?.vendorAddress && isEmpty(formData.vendorAddress)) {
-          setFormData(prev => ({ ...prev, vendorAddress: recognizedData.vendorAddress }));
+        
+        if (hasValidStringValue(recognizedData?.vendorAddress) && isFormFieldEmpty(formData.vendorAddress)) {
+          updates.vendorAddress = recognizedData.vendorAddress.trim();
+          hasUpdates = true;
         }
-        if (recognizedData?.buyerName && isEmpty(formData.buyerName)) {
-          setFormData(prev => ({ ...prev, buyerName: recognizedData.buyerName }));
+        
+        if (hasValidStringValue(recognizedData?.buyerName) && isFormFieldEmpty(formData.buyerName)) {
+          updates.buyerName = recognizedData.buyerName.trim();
+          hasUpdates = true;
         }
-        if (recognizedData?.buyerTaxId && isEmpty(formData.buyerTaxId)) {
-          setFormData(prev => ({ ...prev, buyerTaxId: recognizedData.buyerTaxId }));
+        
+        if (hasValidStringValue(recognizedData?.buyerTaxId) && isFormFieldEmpty(formData.buyerTaxId)) {
+          updates.buyerTaxId = recognizedData.buyerTaxId.trim();
+          hasUpdates = true;
         }
-        if (recognizedData?.buyerAddress && isEmpty(formData.buyerAddress)) {
-          setFormData(prev => ({ ...prev, buyerAddress: recognizedData.buyerAddress }));
+        
+        if (hasValidStringValue(recognizedData?.buyerAddress) && isFormFieldEmpty(formData.buyerAddress)) {
+          updates.buyerAddress = recognizedData.buyerAddress.trim();
+          hasUpdates = true;
         }
-        if (recognizedData?.items && recognizedData.items.length > 0 && (!formData.items || formData.items.length === 0)) {
+        
+        if (recognizedData?.items && Array.isArray(recognizedData.items) && recognizedData.items.length > 0 && 
+            (!formData.items || formData.items.length === 0)) {
           // 确保 items 中的数字字段被转换为数字类型
           const normalizedItems = recognizedData.items.map(item => ({
             ...item,
@@ -325,13 +498,53 @@ const InvoiceUpload = () => {
                   : parseFloat(item.taxAmount) || 0)
               : 0
           }));
-          setFormData(prev => ({ ...prev, items: normalizedItems }));
+          updates.items = normalizedItems;
+          hasUpdates = true;
         }
-        if (recognizedData?.issuer && isEmpty(formData.issuer)) {
-          setFormData(prev => ({ ...prev, issuer: recognizedData.issuer }));
+        
+        if (hasValidStringValue(recognizedData?.issuer) && isFormFieldEmpty(formData.issuer)) {
+          updates.issuer = recognizedData.issuer.trim();
+          hasUpdates = true;
         }
-        // 不自动填充 totalAmountInWords，由前端根据 totalAmount 自动计算
-        // 如果识别到了 totalAmount，会自动触发大写金额的计算
+        
+        // 出行人信息
+        if (hasValidStringValue(recognizedData?.travelerName) || 
+            hasValidStringValue(recognizedData?.travelerIdNumber) ||
+            hasValidStringValue(recognizedData?.departure) ||
+            hasValidStringValue(recognizedData?.destination)) {
+          // 这些字段在前端表单中可能不存在，暂时跳过
+          // 如果需要，可以在表单中添加这些字段
+        }
+        
+        // 价税合计（大写）
+        if (hasValidStringValue(recognizedData?.totalAmountInWords) && isFormFieldEmpty(formData.totalAmountInWords)) {
+          updates.totalAmountInWords = recognizedData.totalAmountInWords.trim();
+          hasUpdates = true;
+        }
+        
+        // 批量更新表单
+        console.log('========================================');
+        console.log('赋值检查完成，准备更新表单');
+        console.log('updates 对象:', updates);
+        console.log('updates 字段数量:', Object.keys(updates).length);
+        console.log('hasUpdates:', hasUpdates);
+        console.log('recognizedData 完整内容:', JSON.stringify(recognizedData, null, 2));
+        console.log('========================================');
+        
+        if (hasUpdates) {
+          setFormData(prev => {
+            const updated = { ...prev, ...updates };
+            console.log('✓ 前端自动赋值成功，更新的字段:', Object.keys(updates));
+            console.log('更新后的表单数据:', updated);
+            return updated;
+          });
+        } else {
+          console.log('✗ 前端自动赋值：没有需要更新的字段');
+          console.log('可能的原因：');
+          console.log('  1. OCR 返回的字段值无效（null、undefined、空字符串）');
+          console.log('  2. 表单字段已有值，不需要覆盖');
+          console.log('  3. 字段类型不匹配');
+        }
         
         showNotification(t('invoice.upload.autoRecognitionSuccess'), 'success');
       } else {
@@ -390,44 +603,107 @@ const InvoiceUpload = () => {
 
     const recognized = ocrResult.recognizedData;
     
-    // 辅助函数：检查字段是否为空
-    const isEmpty = (value) => !value || (typeof value === 'string' && value.trim() === '');
+    // 优化的辅助函数：检查字符串字段是否有有效值（非空字符串）
+    const hasValidStringValue = (value) => {
+      return value !== undefined && value !== null && 
+             typeof value === 'string' && value.trim() !== '';
+    };
+    
+    // 优化的辅助函数：检查数字字段是否有有效值（非零数字）
+    const hasValidNumberValue = (value) => {
+      if (value === undefined || value === null) return false;
+      if (typeof value === 'number') {
+        return !isNaN(value) && value !== 0;
+      }
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed === '') return false;
+        const parsed = parseFloat(trimmed);
+        return !isNaN(parsed) && parsed !== 0;
+      }
+      return false;
+    };
+    
+    // 优化的辅助函数：检查日期字段是否有有效值
+    const hasValidDateValue = (value) => {
+      if (!value || value === '') return false;
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed === '') return false;
+        const date = new Date(trimmed);
+        return !isNaN(date.getTime());
+      }
+      return false;
+    };
+    
+    // 优化的辅助函数：检查表单字段是否为空（用于判断是否需要赋值）
+    const isFormFieldEmpty = (value) => {
+      if (value === undefined || value === null || value === '') return true;
+      if (typeof value === 'string' && value.trim() === '') return true;
+      if (typeof value === 'number' && value === 0) return true;
+      return false;
+    };
+    
+    // 批量更新表单数据，避免多次 setState
+    const updates = {};
+    let hasUpdates = false;
     
     // 应用识别结果到表单（如果表单字段为空或空字符串）
-    if (recognized.invoiceNumber && isEmpty(formData.invoiceNumber)) {
-      setFormData(prev => ({ ...prev, invoiceNumber: recognized.invoiceNumber }));
+    if (hasValidStringValue(recognized.invoiceNumber) && isFormFieldEmpty(formData.invoiceNumber)) {
+      updates.invoiceNumber = recognized.invoiceNumber.trim();
+      hasUpdates = true;
     }
+    
     // 发票日期特殊处理：如果OCR识别到了日期，优先使用识别到的日期（覆盖默认日期）
-    if (recognized.invoiceDate) {
-      setFormData(prev => ({ ...prev, invoiceDate: recognized.invoiceDate }));
+    if (hasValidDateValue(recognized.invoiceDate)) {
+      updates.invoiceDate = recognized.invoiceDate.trim();
+      hasUpdates = true;
     }
-    if (recognized.invoiceType && isEmpty(formData.invoiceType)) {
-      setFormData(prev => ({ ...prev, invoiceType: recognized.invoiceType }));
+    
+    if (hasValidStringValue(recognized.invoiceType) && isFormFieldEmpty(formData.invoiceType)) {
+      updates.invoiceType = recognized.invoiceType.trim();
+      hasUpdates = true;
     }
-    if (recognized.amount && isEmpty(formData.amount)) {
-      setFormData(prev => ({ ...prev, amount: recognized.amount.toString() }));
+    
+    if (hasValidNumberValue(recognized.amount) && isFormFieldEmpty(formData.amount)) {
+      const parsedAmount = typeof recognized.amount === 'string' 
+        ? parseFloat(recognized.amount.trim()) 
+        : recognized.amount;
+      updates.amount = parsedAmount.toString();
+      hasUpdates = true;
     }
-    if (recognized.taxAmount && isEmpty(formData.taxAmount)) {
-      setFormData(prev => ({ ...prev, taxAmount: recognized.taxAmount.toString() }));
+    
+    // taxAmount 可以为 0（免税情况），需要特殊处理
+    if (recognized.taxAmount !== undefined && recognized.taxAmount !== null && isFormFieldEmpty(formData.taxAmount)) {
+      const parsedTaxAmount = typeof recognized.taxAmount === 'string' 
+        ? parseFloat(recognized.taxAmount.trim()) 
+        : recognized.taxAmount;
+      if (!isNaN(parsedTaxAmount)) {
+        updates.taxAmount = parsedTaxAmount.toString();
+        hasUpdates = true;
+      }
     }
-    if (recognized.totalAmount && isEmpty(formData.totalAmount)) {
-      const totalAmount = recognized.totalAmount.toString();
-      setFormData(prev => {
-        const updated = { ...prev, totalAmount };
-        // 自动计算大写金额
-        const amount = parseFloat(totalAmount);
-        if (!isNaN(amount) && amount >= 0) {
-          updated.totalAmountInWords = amountToChinese(amount);
-        }
-        return updated;
-      });
+    
+    if (hasValidNumberValue(recognized.totalAmount) && isFormFieldEmpty(formData.totalAmount)) {
+      const totalAmount = typeof recognized.totalAmount === 'string' 
+        ? parseFloat(recognized.totalAmount.trim()) 
+        : recognized.totalAmount;
+      updates.totalAmount = totalAmount.toString();
+      // 自动计算大写金额
+      if (!isNaN(totalAmount) && totalAmount >= 0) {
+        updates.totalAmountInWords = amountToChinese(totalAmount);
+      }
+      hasUpdates = true;
     }
+    
     // 货币字段：如果OCR识别到了货币类型，自动填写（覆盖默认值）
-    if (recognized.currency) {
-      setFormData(prev => ({ ...prev, currency: recognized.currency }));
+    if (hasValidStringValue(recognized.currency)) {
+      updates.currency = recognized.currency.trim();
+      hasUpdates = true;
     }
+    
     // 发票分类：如果OCR识别到了分类，自动填写（覆盖默认值）
-    if (recognized.category) {
+    if (hasValidStringValue(recognized.category)) {
       // 将中文分类转换为英文（如果OCR返回的是中文）
       const categoryMap = {
         '交通': 'transportation',
@@ -439,28 +715,43 @@ const InvoiceUpload = () => {
         '培训': 'training',
         '其他': 'other'
       };
-      const category = categoryMap[recognized.category] || recognized.category || 'other';
-      setFormData(prev => ({ ...prev, category }));
+      const category = categoryMap[recognized.category.trim()] || recognized.category.trim() || 'other';
+      updates.category = category;
+      hasUpdates = true;
     }
-    if (recognized.vendorName && isEmpty(formData.vendorName)) {
-      setFormData(prev => ({ ...prev, vendorName: recognized.vendorName }));
+    
+    if (hasValidStringValue(recognized.vendorName) && isFormFieldEmpty(formData.vendorName)) {
+      updates.vendorName = recognized.vendorName.trim();
+      hasUpdates = true;
     }
-    if (recognized.vendorTaxId && isEmpty(formData.vendorTaxId)) {
-      setFormData(prev => ({ ...prev, vendorTaxId: recognized.vendorTaxId }));
+    
+    if (hasValidStringValue(recognized.vendorTaxId) && isFormFieldEmpty(formData.vendorTaxId)) {
+      updates.vendorTaxId = recognized.vendorTaxId.trim();
+      hasUpdates = true;
     }
-    if (recognized.vendorAddress && isEmpty(formData.vendorAddress)) {
-      setFormData(prev => ({ ...prev, vendorAddress: recognized.vendorAddress }));
+    
+    if (hasValidStringValue(recognized.vendorAddress) && isFormFieldEmpty(formData.vendorAddress)) {
+      updates.vendorAddress = recognized.vendorAddress.trim();
+      hasUpdates = true;
     }
-    if (recognized.buyerName && isEmpty(formData.buyerName)) {
-      setFormData(prev => ({ ...prev, buyerName: recognized.buyerName }));
+    
+    if (hasValidStringValue(recognized.buyerName) && isFormFieldEmpty(formData.buyerName)) {
+      updates.buyerName = recognized.buyerName.trim();
+      hasUpdates = true;
     }
-    if (recognized.buyerTaxId && isEmpty(formData.buyerTaxId)) {
-      setFormData(prev => ({ ...prev, buyerTaxId: recognized.buyerTaxId }));
+    
+    if (hasValidStringValue(recognized.buyerTaxId) && isFormFieldEmpty(formData.buyerTaxId)) {
+      updates.buyerTaxId = recognized.buyerTaxId.trim();
+      hasUpdates = true;
     }
-    if (recognized.buyerAddress && isEmpty(formData.buyerAddress)) {
-      setFormData(prev => ({ ...prev, buyerAddress: recognized.buyerAddress }));
+    
+    if (hasValidStringValue(recognized.buyerAddress) && isFormFieldEmpty(formData.buyerAddress)) {
+      updates.buyerAddress = recognized.buyerAddress.trim();
+      hasUpdates = true;
     }
-    if (recognized.items && recognized.items.length > 0 && (!formData.items || formData.items.length === 0)) {
+    
+    if (recognized.items && Array.isArray(recognized.items) && recognized.items.length > 0 && 
+        (!formData.items || formData.items.length === 0)) {
       // 确保 items 中的数字字段被转换为数字类型
       const normalizedItems = recognized.items.map(item => ({
         ...item,
@@ -473,13 +764,28 @@ const InvoiceUpload = () => {
               : parseFloat(item.taxAmount) || 0)
           : 0
       }));
-      setFormData(prev => ({ ...prev, items: normalizedItems }));
+      updates.items = normalizedItems;
+      hasUpdates = true;
     }
-    if (recognized.issuer && isEmpty(formData.issuer)) {
-      setFormData(prev => ({ ...prev, issuer: recognized.issuer }));
+    
+    if (hasValidStringValue(recognized.issuer) && isFormFieldEmpty(formData.issuer)) {
+      updates.issuer = recognized.issuer.trim();
+      hasUpdates = true;
     }
-    // 不自动填充 totalAmountInWords，由前端根据 totalAmount 自动计算
-    // 如果识别到了 totalAmount，会自动触发大写金额的计算
+    
+    // 价税合计（大写）
+    if (hasValidStringValue(recognized.totalAmountInWords) && isFormFieldEmpty(formData.totalAmountInWords)) {
+      updates.totalAmountInWords = recognized.totalAmountInWords.trim();
+      hasUpdates = true;
+    }
+    
+    // 批量更新表单
+    if (hasUpdates) {
+      setFormData(prev => ({ ...prev, ...updates }));
+      console.log('✓ 手动应用OCR赋值成功，更新的字段:', Object.keys(updates));
+    } else {
+      console.log('✗ 手动应用OCR赋值：没有需要更新的字段');
+    }
 
     setShowOcrDialog(false);
     showNotification(t('invoice.upload.ocrApplied'), 'success');

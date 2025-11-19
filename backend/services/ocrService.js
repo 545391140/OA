@@ -458,17 +458,33 @@ class OCRService {
 
       const aiResponse = result.choices[0]?.message?.content || '';
 
+      console.log('========================================');
+      console.log('AI 解析响应');
+      console.log('AI 返回的原始内容长度:', aiResponse.length);
+      console.log('AI 返回的原始内容（前500字符）:', aiResponse.substring(0, 500));
+      console.log('AI 返回的完整内容:', aiResponse);
+      console.log('========================================');
+
       // 解析 AI 返回的 JSON
       let invoiceData = {};
       try {
         const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
+          console.log('找到 JSON 匹配，开始解析...');
           invoiceData = JSON.parse(jsonMatch[0]);
+          console.log('✓ JSON 解析成功，字段数量:', Object.keys(invoiceData).length);
+          console.log('解析后的数据:', JSON.stringify(invoiceData, null, 2));
         } else {
+          console.log('未找到 JSON 匹配，尝试直接解析...');
           invoiceData = JSON.parse(aiResponse);
+          console.log('✓ JSON 解析成功，字段数量:', Object.keys(invoiceData).length);
+          console.log('解析后的数据:', JSON.stringify(invoiceData, null, 2));
         }
       } catch (parseError) {
         // AI解析失败，返回空数据
+        console.error('✗ JSON 解析失败:', parseError.message);
+        console.error('解析错误堆栈:', parseError.stack);
+        console.error('尝试解析的内容:', aiResponse);
         return {};
       }
 
@@ -1180,6 +1196,14 @@ class OCRService {
 
       // 解析响应 - OCR 返回 markdown 格式文本
       const ocrText = response.choices[0]?.message?.content || '';
+      
+      console.log('========================================');
+      console.log('阿里云 OCR API 响应');
+      console.log('OCR 原始文本长度:', ocrText.length);
+      console.log('OCR 原始文本内容:', ocrText);
+      console.log('OCR 完整响应:', JSON.stringify(response, null, 2));
+      console.log('========================================');
+      
       if (ocrText.length > 0) {
       }
       
@@ -1199,19 +1223,35 @@ class OCRService {
       // 步骤2: AI解析（将 markdown 文本解析为结构化 JSON）
       let invoiceData = {};
       try {
+        console.log('========================================');
+        console.log('开始 AI 解析 OCR 文本');
+        console.log('OCR 文本长度:', ocrText.length);
+        console.log('OCR 文本内容（前500字符）:', ocrText.substring(0, 500));
+        console.log('========================================');
         invoiceData = await this.parseInvoiceDataWithAI(ocrText);
+        console.log('AI 解析完成，返回的字段数量:', Object.keys(invoiceData).length);
+        console.log('AI 解析返回的数据:', JSON.stringify(invoiceData, null, 2));
       } catch (parseError) {
         // AI解析失败，返回空数据
+        console.error('✗ AI 解析异常:', parseError.message);
+        console.error('解析错误堆栈:', parseError.stack);
         invoiceData = {};
       }
 
       // 步骤3: 字段映射（将不同格式的字段名映射到标准字段名）
       const beforeMapping = Object.keys(invoiceData).length;
+      console.log('字段映射前，字段数量:', beforeMapping);
+      console.log('字段映射前的数据:', JSON.stringify(invoiceData, null, 2));
       invoiceData = this.mapFieldNames(invoiceData);
       const afterMapping = Object.keys(invoiceData).length;
+      console.log('字段映射后，字段数量:', afterMapping);
+      console.log('字段映射后的数据:', JSON.stringify(invoiceData, null, 2));
       
       // 步骤4: 数据标准化（日期格式、金额类型、字符串清理等）
+      console.log('开始数据标准化...');
       invoiceData = this.normalizeInvoiceData(invoiceData);
+      console.log('数据标准化完成，最终字段数量:', Object.keys(invoiceData).length);
+      console.log('数据标准化后的数据:', JSON.stringify(invoiceData, null, 2));
       
       // 验证销售方和购买方信息
       if (!invoiceData.vendorName && !invoiceData.vendorTaxId) {

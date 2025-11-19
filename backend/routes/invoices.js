@@ -762,61 +762,177 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
           // 如果OCR识别到信息，自动填充（仅在用户未手动填写时）
           if (ocrResult.invoiceData) {
-            console.log('开始赋值 OCR 识别数据，识别到的字段:', Object.keys(ocrResult.invoiceData));
+            console.log('========================================');
+            console.log('开始赋值 OCR 识别数据');
+            console.log('识别到的字段:', Object.keys(ocrResult.invoiceData));
+            console.log('识别数据详情:', JSON.stringify(ocrResult.invoiceData, null, 2));
+            console.log('========================================');
+            
+            // 辅助函数：检查字符串字段是否有有效值（非空字符串）
+            const hasValidStringValue = (value) => {
+              return value !== undefined && value !== null && 
+                     typeof value === 'string' && value.trim() !== '';
+            };
+            
+            // 辅助函数：检查数字字段是否有有效值（非零数字）
+            const hasValidNumberValue = (value) => {
+              if (value === undefined || value === null) return false;
+              if (typeof value === 'number') {
+                return !isNaN(value) && value !== 0;
+              }
+              if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed === '') return false;
+                const parsed = parseFloat(trimmed);
+                return !isNaN(parsed) && parsed !== 0;
+              }
+              return false;
+            };
+            
+            // 辅助函数：检查日期字段是否有有效值
+            const hasValidDateValue = (value) => {
+              if (!value || value === '') return false;
+              if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed === '') return false;
+                const date = new Date(trimmed);
+                return !isNaN(date.getTime());
+              }
+              return false;
+            };
             
             // 基本信息
-            if (ocrResult.invoiceData.invoiceNumber && (!invoice.invoiceNumber || invoice.invoiceNumber.trim() === '')) {
-              invoice.invoiceNumber = ocrResult.invoiceData.invoiceNumber;
+            const ocrInvoiceNumber = ocrResult.invoiceData.invoiceNumber;
+            const currentInvoiceNumber = invoice.invoiceNumber;
+            console.log(`[invoiceNumber] OCR值: "${ocrInvoiceNumber}" (类型: ${typeof ocrInvoiceNumber}), 当前值: "${currentInvoiceNumber}"`);
+            if (hasValidStringValue(ocrInvoiceNumber) && (!currentInvoiceNumber || (typeof currentInvoiceNumber === 'string' && currentInvoiceNumber.trim() === ''))) {
+              invoice.invoiceNumber = ocrInvoiceNumber.trim();
               console.log('✓ 赋值 invoiceNumber:', invoice.invoiceNumber);
+            } else {
+              console.log('✗ 跳过 invoiceNumber - OCR值无效或当前值已存在');
             }
-            if (ocrResult.invoiceData.invoiceDate && !invoice.invoiceDate) {
-              invoice.invoiceDate = new Date(ocrResult.invoiceData.invoiceDate);
-              console.log('✓ 赋值 invoiceDate:', invoice.invoiceDate);
+            
+            const ocrInvoiceDate = ocrResult.invoiceData.invoiceDate;
+            const currentInvoiceDate = invoice.invoiceDate;
+            console.log(`[invoiceDate] OCR值: "${ocrInvoiceDate}" (类型: ${typeof ocrInvoiceDate}), 当前值: ${currentInvoiceDate}`);
+            if (hasValidDateValue(ocrInvoiceDate) && !currentInvoiceDate) {
+              try {
+                invoice.invoiceDate = new Date(ocrInvoiceDate.trim());
+                if (isNaN(invoice.invoiceDate.getTime())) {
+                  console.log('✗ 跳过 invoiceDate - 日期格式无效');
+                } else {
+                  console.log('✓ 赋值 invoiceDate:', invoice.invoiceDate);
+                }
+              } catch (e) {
+                console.log('✗ 跳过 invoiceDate - 日期解析错误:', e.message);
+              }
+            } else {
+              console.log('✗ 跳过 invoiceDate - OCR值无效或当前值已存在');
             }
-            if (ocrResult.invoiceData.invoiceType && (!invoice.invoiceType || invoice.invoiceType.trim() === '')) {
-              invoice.invoiceType = ocrResult.invoiceData.invoiceType;
+            
+            const ocrInvoiceType = ocrResult.invoiceData.invoiceType;
+            const currentInvoiceType = invoice.invoiceType;
+            console.log(`[invoiceType] OCR值: "${ocrInvoiceType}" (类型: ${typeof ocrInvoiceType}), 当前值: "${currentInvoiceType}"`);
+            if (hasValidStringValue(ocrInvoiceType) && (!currentInvoiceType || (typeof currentInvoiceType === 'string' && currentInvoiceType.trim() === ''))) {
+              invoice.invoiceType = ocrInvoiceType.trim();
               console.log('✓ 赋值 invoiceType:', invoice.invoiceType);
+            } else {
+              console.log('✗ 跳过 invoiceType - OCR值无效或当前值已存在');
             }
-            if (ocrResult.invoiceData.amount !== undefined && ocrResult.invoiceData.amount !== null && (!invoice.amount || invoice.amount === 0)) {
-              invoice.amount = parseFloat(ocrResult.invoiceData.amount);
+            
+            const ocrAmount = ocrResult.invoiceData.amount;
+            const currentAmount = invoice.amount;
+            console.log(`[amount] OCR值: ${ocrAmount} (类型: ${typeof ocrAmount}), 当前值: ${currentAmount}`);
+            if (hasValidNumberValue(ocrAmount) && (!currentAmount || currentAmount === 0)) {
+              const parsedAmount = typeof ocrAmount === 'string' ? parseFloat(ocrAmount.trim()) : ocrAmount;
+              invoice.amount = parsedAmount;
               console.log('✓ 赋值 amount:', invoice.amount);
+            } else {
+              console.log('✗ 跳过 amount - OCR值无效或当前值已存在');
             }
-            if (ocrResult.invoiceData.taxAmount !== undefined && ocrResult.invoiceData.taxAmount !== null && (!invoice.taxAmount || invoice.taxAmount === 0)) {
-              invoice.taxAmount = parseFloat(ocrResult.invoiceData.taxAmount);
-              console.log('✓ 赋值 taxAmount:', invoice.taxAmount);
+            
+            const ocrTaxAmount = ocrResult.invoiceData.taxAmount;
+            const currentTaxAmount = invoice.taxAmount;
+            console.log(`[taxAmount] OCR值: ${ocrTaxAmount} (类型: ${typeof ocrTaxAmount}), 当前值: ${currentTaxAmount}`);
+            // taxAmount 可以为 0（免税情况），所以需要特殊处理
+            if (ocrTaxAmount !== undefined && ocrTaxAmount !== null && (currentTaxAmount === undefined || currentTaxAmount === null || currentTaxAmount === 0)) {
+              const parsedTaxAmount = typeof ocrTaxAmount === 'string' ? parseFloat(ocrTaxAmount.trim()) : ocrTaxAmount;
+              if (!isNaN(parsedTaxAmount)) {
+                invoice.taxAmount = parsedTaxAmount;
+                console.log('✓ 赋值 taxAmount:', invoice.taxAmount);
+              } else {
+                console.log('✗ 跳过 taxAmount - 解析后无效');
+              }
+            } else {
+              console.log('✗ 跳过 taxAmount - OCR值无效或当前值已存在');
             }
-            if (ocrResult.invoiceData.totalAmount !== undefined && ocrResult.invoiceData.totalAmount !== null && (!invoice.totalAmount || invoice.totalAmount === 0)) {
-              invoice.totalAmount = parseFloat(ocrResult.invoiceData.totalAmount);
+            
+            const ocrTotalAmount = ocrResult.invoiceData.totalAmount;
+            const currentTotalAmount = invoice.totalAmount;
+            console.log(`[totalAmount] OCR值: ${ocrTotalAmount} (类型: ${typeof ocrTotalAmount}), 当前值: ${currentTotalAmount}`);
+            if (hasValidNumberValue(ocrTotalAmount) && (!currentTotalAmount || currentTotalAmount === 0)) {
+              const parsedTotalAmount = typeof ocrTotalAmount === 'string' ? parseFloat(ocrTotalAmount.trim()) : ocrTotalAmount;
+              invoice.totalAmount = parsedTotalAmount;
               console.log('✓ 赋值 totalAmount:', invoice.totalAmount);
+            } else {
+              console.log('✗ 跳过 totalAmount - OCR值无效或当前值已存在');
             }
             
             // 销售方（商户）信息
-            if (ocrResult.invoiceData.vendorName && (!invoice.vendor?.name || invoice.vendor.name.trim() === '')) {
+            const ocrVendorName = ocrResult.invoiceData.vendorName;
+            const currentVendorName = invoice.vendor?.name;
+            console.log(`[vendorName] OCR值: "${ocrVendorName}" (类型: ${typeof ocrVendorName}), 当前值: "${currentVendorName}"`);
+            if (hasValidStringValue(ocrVendorName) && (!currentVendorName || (typeof currentVendorName === 'string' && currentVendorName.trim() === ''))) {
               invoice.vendor = invoice.vendor || {};
-              invoice.vendor.name = ocrResult.invoiceData.vendorName;
+              invoice.vendor.name = ocrVendorName.trim();
               console.log('✓ 赋值 vendor.name:', invoice.vendor.name);
+            } else {
+              console.log('✗ 跳过 vendor.name - OCR值无效或当前值已存在');
             }
-            if (ocrResult.invoiceData.vendorTaxId && (!invoice.vendor?.taxId || invoice.vendor.taxId.trim() === '')) {
+            
+            const ocrVendorTaxId = ocrResult.invoiceData.vendorTaxId;
+            const currentVendorTaxId = invoice.vendor?.taxId;
+            console.log(`[vendorTaxId] OCR值: "${ocrVendorTaxId}" (类型: ${typeof ocrVendorTaxId}), 当前值: "${currentVendorTaxId}"`);
+            if (hasValidStringValue(ocrVendorTaxId) && (!currentVendorTaxId || (typeof currentVendorTaxId === 'string' && currentVendorTaxId.trim() === ''))) {
               invoice.vendor = invoice.vendor || {};
-              invoice.vendor.taxId = ocrResult.invoiceData.vendorTaxId;
+              invoice.vendor.taxId = ocrVendorTaxId.trim();
               console.log('✓ 赋值 vendor.taxId:', invoice.vendor.taxId);
+            } else {
+              console.log('✗ 跳过 vendor.taxId - OCR值无效或当前值已存在');
             }
-            if (ocrResult.invoiceData.vendorAddress && (!invoice.vendor?.address || invoice.vendor.address.trim() === '')) {
+            
+            const ocrVendorAddress = ocrResult.invoiceData.vendorAddress;
+            const currentVendorAddress = invoice.vendor?.address;
+            console.log(`[vendorAddress] OCR值: "${ocrVendorAddress}" (类型: ${typeof ocrVendorAddress}), 当前值: "${currentVendorAddress}"`);
+            if (hasValidStringValue(ocrVendorAddress) && (!currentVendorAddress || (typeof currentVendorAddress === 'string' && currentVendorAddress.trim() === ''))) {
               invoice.vendor = invoice.vendor || {};
-              invoice.vendor.address = ocrResult.invoiceData.vendorAddress;
+              invoice.vendor.address = ocrVendorAddress.trim();
               console.log('✓ 赋值 vendor.address:', invoice.vendor.address);
+            } else {
+              console.log('✗ 跳过 vendor.address - OCR值无效或当前值已存在');
             }
             
             // 购买方信息
-            if (ocrResult.invoiceData.buyerName || ocrResult.invoiceData.buyerTaxId) {
+            const ocrBuyerName = ocrResult.invoiceData.buyerName;
+            const ocrBuyerTaxId = ocrResult.invoiceData.buyerTaxId;
+            if (hasValidStringValue(ocrBuyerName) || hasValidStringValue(ocrBuyerTaxId)) {
               invoice.buyer = invoice.buyer || {};
-              if (ocrResult.invoiceData.buyerName && (!invoice.buyer.name || invoice.buyer.name.trim() === '')) {
-                invoice.buyer.name = ocrResult.invoiceData.buyerName;
+              const currentBuyerName = invoice.buyer.name;
+              console.log(`[buyerName] OCR值: "${ocrBuyerName}" (类型: ${typeof ocrBuyerName}), 当前值: "${currentBuyerName}"`);
+              if (hasValidStringValue(ocrBuyerName) && (!currentBuyerName || (typeof currentBuyerName === 'string' && currentBuyerName.trim() === ''))) {
+                invoice.buyer.name = ocrBuyerName.trim();
                 console.log('✓ 赋值 buyer.name:', invoice.buyer.name);
+              } else {
+                console.log('✗ 跳过 buyer.name - OCR值无效或当前值已存在');
               }
-              if (ocrResult.invoiceData.buyerTaxId && (!invoice.buyer.taxId || invoice.buyer.taxId.trim() === '')) {
-                invoice.buyer.taxId = ocrResult.invoiceData.buyerTaxId;
+              
+              const currentBuyerTaxId = invoice.buyer.taxId;
+              console.log(`[buyerTaxId] OCR值: "${ocrBuyerTaxId}" (类型: ${typeof ocrBuyerTaxId}), 当前值: "${currentBuyerTaxId}"`);
+              if (hasValidStringValue(ocrBuyerTaxId) && (!currentBuyerTaxId || (typeof currentBuyerTaxId === 'string' && currentBuyerTaxId.trim() === ''))) {
+                invoice.buyer.taxId = ocrBuyerTaxId.trim();
                 console.log('✓ 赋值 buyer.taxId:', invoice.buyer.taxId);
+              } else {
+                console.log('✗ 跳过 buyer.taxId - OCR值无效或当前值已存在');
               }
             }
             
@@ -824,43 +940,75 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
             if (ocrResult.invoiceData.items && Array.isArray(ocrResult.invoiceData.items) && ocrResult.invoiceData.items.length > 0) {
               invoice.items = ocrResult.invoiceData.items;
               console.log('✓ 赋值 items，数量:', invoice.items.length);
+            } else {
+              console.log('✗ 跳过 items - OCR值无效或为空');
             }
             
             // 开票人
-            if (ocrResult.invoiceData.issuer && (!invoice.issuer || invoice.issuer.trim() === '')) {
-              invoice.issuer = ocrResult.invoiceData.issuer;
+            const ocrIssuer = ocrResult.invoiceData.issuer;
+            const currentIssuer = invoice.issuer;
+            console.log(`[issuer] OCR值: "${ocrIssuer}" (类型: ${typeof ocrIssuer}), 当前值: "${currentIssuer}"`);
+            if (hasValidStringValue(ocrIssuer) && (!currentIssuer || (typeof currentIssuer === 'string' && currentIssuer.trim() === ''))) {
+              invoice.issuer = ocrIssuer.trim();
               console.log('✓ 赋值 issuer:', invoice.issuer);
+            } else {
+              console.log('✗ 跳过 issuer - OCR值无效或当前值已存在');
             }
             
             // 出行人信息
-            if (ocrResult.invoiceData.travelerName || ocrResult.invoiceData.travelerIdNumber || 
-                ocrResult.invoiceData.departure || ocrResult.invoiceData.destination) {
+            const ocrTravelerName = ocrResult.invoiceData.travelerName;
+            const ocrTravelerIdNumber = ocrResult.invoiceData.travelerIdNumber;
+            const ocrDeparture = ocrResult.invoiceData.departure;
+            const ocrDestination = ocrResult.invoiceData.destination;
+            if (hasValidStringValue(ocrTravelerName) || hasValidStringValue(ocrTravelerIdNumber) || 
+                hasValidStringValue(ocrDeparture) || hasValidStringValue(ocrDestination)) {
               invoice.traveler = invoice.traveler || {};
-              if (ocrResult.invoiceData.travelerName && (!invoice.traveler.name || invoice.traveler.name.trim() === '')) {
-                invoice.traveler.name = ocrResult.invoiceData.travelerName;
+              
+              const currentTravelerName = invoice.traveler.name;
+              console.log(`[travelerName] OCR值: "${ocrTravelerName}" (类型: ${typeof ocrTravelerName}), 当前值: "${currentTravelerName}"`);
+              if (hasValidStringValue(ocrTravelerName) && (!currentTravelerName || (typeof currentTravelerName === 'string' && currentTravelerName.trim() === ''))) {
+                invoice.traveler.name = ocrTravelerName.trim();
                 console.log('✓ 赋值 traveler.name:', invoice.traveler.name);
               }
-              if (ocrResult.invoiceData.travelerIdNumber && (!invoice.traveler.idNumber || invoice.traveler.idNumber.trim() === '')) {
-                invoice.traveler.idNumber = ocrResult.invoiceData.travelerIdNumber;
+              
+              const currentTravelerIdNumber = invoice.traveler.idNumber;
+              console.log(`[travelerIdNumber] OCR值: "${ocrTravelerIdNumber}" (类型: ${typeof ocrTravelerIdNumber}), 当前值: "${currentTravelerIdNumber}"`);
+              if (hasValidStringValue(ocrTravelerIdNumber) && (!currentTravelerIdNumber || (typeof currentTravelerIdNumber === 'string' && currentTravelerIdNumber.trim() === ''))) {
+                invoice.traveler.idNumber = ocrTravelerIdNumber.trim();
                 console.log('✓ 赋值 traveler.idNumber:', invoice.traveler.idNumber);
               }
-              if (ocrResult.invoiceData.departure && (!invoice.traveler.departure || invoice.traveler.departure.trim() === '')) {
-                invoice.traveler.departure = ocrResult.invoiceData.departure;
+              
+              const currentDeparture = invoice.traveler.departure;
+              console.log(`[departure] OCR值: "${ocrDeparture}" (类型: ${typeof ocrDeparture}), 当前值: "${currentDeparture}"`);
+              if (hasValidStringValue(ocrDeparture) && (!currentDeparture || (typeof currentDeparture === 'string' && currentDeparture.trim() === ''))) {
+                invoice.traveler.departure = ocrDeparture.trim();
                 console.log('✓ 赋值 traveler.departure:', invoice.traveler.departure);
               }
-              if (ocrResult.invoiceData.destination && (!invoice.traveler.destination || invoice.traveler.destination.trim() === '')) {
-                invoice.traveler.destination = ocrResult.invoiceData.destination;
+              
+              const currentDestination = invoice.traveler.destination;
+              console.log(`[destination] OCR值: "${ocrDestination}" (类型: ${typeof ocrDestination}), 当前值: "${currentDestination}"`);
+              if (hasValidStringValue(ocrDestination) && (!currentDestination || (typeof currentDestination === 'string' && currentDestination.trim() === ''))) {
+                invoice.traveler.destination = ocrDestination.trim();
                 console.log('✓ 赋值 traveler.destination:', invoice.traveler.destination);
               }
             }
             
             // 价税合计（大写）
-            if (ocrResult.invoiceData.totalAmountInWords && (!invoice.totalAmountInWords || invoice.totalAmountInWords.trim() === '')) {
-              invoice.totalAmountInWords = ocrResult.invoiceData.totalAmountInWords;
+            const ocrTotalAmountInWords = ocrResult.invoiceData.totalAmountInWords;
+            const currentTotalAmountInWords = invoice.totalAmountInWords;
+            console.log(`[totalAmountInWords] OCR值: "${ocrTotalAmountInWords}" (类型: ${typeof ocrTotalAmountInWords}), 当前值: "${currentTotalAmountInWords}"`);
+            if (hasValidStringValue(ocrTotalAmountInWords) && (!currentTotalAmountInWords || (typeof currentTotalAmountInWords === 'string' && currentTotalAmountInWords.trim() === ''))) {
+              invoice.totalAmountInWords = ocrTotalAmountInWords.trim();
               console.log('✓ 赋值 totalAmountInWords:', invoice.totalAmountInWords);
+            } else {
+              console.log('✗ 跳过 totalAmountInWords - OCR值无效或当前值已存在');
             }
             
+            console.log('========================================');
             console.log('OCR 数据赋值完成');
+            console.log('========================================');
+          } else {
+            console.log('✗ OCR识别成功但 invoiceData 为空或未定义');
           }
 
           await invoice.save();
