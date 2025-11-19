@@ -1733,6 +1733,7 @@
       "buyerName": "购买方名称",
       "buyerNamePlaceholder": "如：刘旨践(个人)",
       "buyerTaxId": "购买方税号/统一社会信用代码",
+      "buyerAddress": "购买方地址",
       "vendorInfo": "销售方信息（商户信息）",
       "vendorName": "销售方名称",
       "vendorNamePlaceholder": "如：北京滴滴出行科技有限公司",

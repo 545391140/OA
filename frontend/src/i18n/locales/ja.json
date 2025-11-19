@@ -1397,6 +1397,7 @@
       "buyerName": "購入者名",
       "buyerNamePlaceholder": "例：山田太郎（個人）",
       "buyerTaxId": "購入者税番号/統一社会信用コード",
+      "buyerAddress": "購入者住所",
       "vendorInfo": "販売者情報",
       "vendorName": "販売者名",
       "vendorNamePlaceholder": "例：北京滴滴出行科技有限公司",

@@ -1432,6 +1432,7 @@
       "buyerName": "구매자 이름",
       "buyerNamePlaceholder": "예: 홍길동 (개인)",
       "buyerTaxId": "구매자 세무 번호/통일 사회 신용 코드",
+      "buyerAddress": "구매자 주소",
       "vendorInfo": "판매자 정보",
       "vendorName": "판매자 이름",
       "vendorNamePlaceholder": "예: 베이징 디디 추싱 기술 유한회사",

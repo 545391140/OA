@@ -1671,6 +1671,7 @@
       "buyerName": "Buyer Name",
       "buyerNamePlaceholder": "e.g.: John Doe (Individual)",
       "buyerTaxId": "Buyer Tax ID / Unified Social Credit Code",
+      "buyerAddress": "Buyer Address",
       "vendorInfo": "Vendor Information",
       "vendorName": "Vendor Name",
       "vendorNamePlaceholder": "e.g.: Beijing Didi Chuxing Technology Co., Ltd.",
