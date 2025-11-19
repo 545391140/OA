@@ -79,6 +79,26 @@ const RoleManagement = () => {
   });
   const [saving, setSaving] = useState(false);
 
+  // 根据当前语言获取角色名称
+  const getRoleName = (role) => {
+    if (!role) return '';
+    // 根据当前语言返回对应的名称
+    const lang = i18n.language || 'zh';
+    if (lang === 'en' || lang.startsWith('en')) {
+      return role.nameEn || role.name || '';
+    }
+    if (lang === 'ja' || lang.startsWith('ja')) {
+      // 日语优先使用 nameEn，如果没有则使用 name
+      return role.nameEn || role.name || '';
+    }
+    if (lang === 'ko' || lang.startsWith('ko')) {
+      // 韩语优先使用 nameEn，如果没有则使用 name
+      return role.nameEn || role.name || '';
+    }
+    // 中文默认使用 name
+    return role.name || '';
+  };
+
   useEffect(() => {
     fetchRoles();
   }, [statusFilter]);
@@ -329,8 +349,12 @@ const RoleManagement = () => {
                         {role.code}
                       </Typography>
                     </TableCell>
-                    <TableCell>{role.name}</TableCell>
-                    <TableCell>{role.nameEn || '-'}</TableCell>
+                    <TableCell>{getRoleName(role)}</TableCell>
+                    <TableCell>
+                      {i18n.language === 'zh' || i18n.language?.startsWith('zh') 
+                        ? (role.nameEn || '-') 
+                        : (role.name || '-')}
+                    </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 200 }}>
                         {role.description || '-'}
@@ -406,7 +430,7 @@ const RoleManagement = () => {
           <DialogTitle>{t('role.management.confirmDelete')}</DialogTitle>
           <DialogContent>
             <Typography>
-              {t('role.management.deleteConfirmMessage')} <strong>{deleteDialog.role?.name}</strong> ({deleteDialog.role?.code}){i18n.language === 'zh' ? '吗？' : '?'}
+              {t('role.management.deleteConfirmMessage')} <strong>{getRoleName(deleteDialog.role)}</strong> ({deleteDialog.role?.code}){i18n.language === 'zh' ? '吗？' : '?'}
             </Typography>
             {deleteDialog.role?.isSystem && (
               <Alert severity="warning" sx={{ mt: 2 }}>

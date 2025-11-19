@@ -36,7 +36,9 @@
     "retry": "Retry",
     "nA": "N/A",
     "dateFormat": "YYYY-MM-DD",
-    "actions": "Actions"
+    "actions": "Actions",
+    "all": "All",
+    "reset": "Reset"
   },
   "notifications": {
     "title": "Notifications",
@@ -1081,6 +1083,10 @@
     "departureDate": "Departure Date",
     "returnDate": "Return Date",
     "viewDetail": "View Detail",
+    "searchPlaceholder": "Search title, employee, department, amount...",
+    "type": "Type",
+    "status": "Status",
+    "noSearchResults": "No matching approval items found",
     "detail": {
       "title": "Approval Detail",
       "travelRequest": "Travel Request",

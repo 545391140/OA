@@ -36,7 +36,9 @@
     "viewAll": "すべて表示",
     "retry": "再試行",
     "nA": "該当なし",
-    "dateFormat": "YYYY-MM-DD"
+    "dateFormat": "YYYY-MM-DD",
+    "all": "すべて",
+    "reset": "リセット"
   },
   "navigation": {
     "dashboard": "ダッシュボード",
@@ -903,6 +905,10 @@
     "departureDate": "出発日",
     "returnDate": "帰着日",
     "viewDetail": "詳細を見る",
+    "searchPlaceholder": "タイトル、従業員、部門、金額で検索...",
+    "type": "タイプ",
+    "status": "ステータス",
+    "noSearchResults": "一致する承認項目が見つかりません",
     "detail": {
       "title": "承認詳細",
       "travelRequest": "出張申請",

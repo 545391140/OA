@@ -36,7 +36,9 @@
     "viewAll": "전체 보기",
     "retry": "다시 시도",
     "nA": "해당 없음",
-    "dateFormat": "YYYY-MM-DD"
+    "dateFormat": "YYYY-MM-DD",
+    "all": "전체",
+    "reset": "재설정"
   },
   "navigation": {
     "dashboard": "대시보드",
@@ -938,6 +940,10 @@
     "departureDate": "출발일",
     "returnDate": "귀국일",
     "viewDetail": "상세 보기",
+    "searchPlaceholder": "제목, 직원, 부서, 금액 검색...",
+    "type": "유형",
+    "status": "상태",
+    "noSearchResults": "일치하는 승인 항목을 찾을 수 없습니다",
     "detail": {
       "title": "승인 상세",
       "travelRequest": "출장 신청",

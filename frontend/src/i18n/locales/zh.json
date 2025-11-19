@@ -37,7 +37,9 @@
     "retry": "重试",
     "nA": "暂无",
     "dateFormat": "YYYY-MM-DD",
-    "untitled": "未命名"
+    "untitled": "未命名",
+    "all": "全部",
+    "reset": "重置"
   },
   "notifications": {
     "title": "通知",
@@ -1130,6 +1132,10 @@
     "departureDate": "出发日期",
     "returnDate": "返回日期",
     "viewDetail": "查看详情",
+    "searchPlaceholder": "搜索标题、员工、部门、金额...",
+    "type": "类型",
+    "status": "状态",
+    "noSearchResults": "没有找到匹配的审批项",
     "detail": {
       "title": "审批详情",
       "travelRequest": "差旅申请",

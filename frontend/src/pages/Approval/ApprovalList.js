@@ -28,7 +28,8 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
-  Alert
+  Alert,
+  InputAdornment
 } from '@mui/material';
 import {
   Approval as ApprovalIcon,
@@ -42,7 +43,9 @@ import {
   Business as BusinessIcon,
   LocationOn as LocationIcon,
   FlightTakeoff as DepartureIcon,
-  FlightLand as ReturnIcon
+  FlightLand as ReturnIcon,
+  Search as SearchIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -65,6 +68,9 @@ const ApprovalList = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [approvalAction, setApprovalAction] = useState('');
   const [approvalComments, setApprovalComments] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all'); // all, travel, expense
+  const [statusFilter, setStatusFilter] = useState('all'); // all, submitted, approved, rejected
 
   useEffect(() => {
     fetchApprovals();
@@ -386,6 +392,18 @@ const ApprovalList = () => {
     setTabValue(newValue);
   };
 
+  const handleSearch = () => {
+    // 实时搜索已经在 filterItems 中处理，此函数保留以保持与其他页面的一致性
+    // 可以在这里添加额外的搜索逻辑，如记录搜索历史等
+  };
+
+  const handleReset = () => {
+    setSearchTerm('');
+    setTypeFilter('all');
+    setStatusFilter('all');
+    fetchApprovals(); // 重新加载数据
+  };
+
   const handleApproval = (item, action) => {
     setSelectedItem(item);
     setApprovalAction(action);
@@ -471,6 +489,43 @@ const ApprovalList = () => {
     return type === 'travel' ? <TravelIcon /> : <ExpenseIcon />;
   };
 
+  // 搜索和过滤逻辑
+  const filterItems = (items) => {
+    return items.filter(item => {
+      // 类型过滤
+      if (typeFilter !== 'all' && item.type !== typeFilter) {
+        return false;
+      }
+
+      // 状态过滤（仅对审批历史有效）
+      if (tabValue === 1 && statusFilter !== 'all' && item.status !== statusFilter) {
+        return false;
+      }
+
+      // 搜索过滤
+      if (searchTerm.trim()) {
+        const search = searchTerm.toLowerCase();
+        const matchSearch = 
+          item.title?.toLowerCase().includes(search) ||
+          item.employee?.firstName?.toLowerCase().includes(search) ||
+          item.employee?.lastName?.toLowerCase().includes(search) ||
+          item.employee?.department?.toLowerCase().includes(search) ||
+          item.travelNumber?.toLowerCase().includes(search) ||
+          item.destination?.toLowerCase().includes(search) ||
+          item.departureCity?.toLowerCase().includes(search) ||
+          item.amount?.toString().includes(search) ||
+          item.currency?.toLowerCase().includes(search);
+        
+        if (!matchSearch) return false;
+      }
+
+      return true;
+    });
+  };
+
+  const filteredPendingApprovals = filterItems(pendingApprovals);
+  const filteredApprovalHistory = filterItems(approvalHistory);
+
   const ApprovalCard = ({ item, showActions = true }) => {
     // 获取员工差旅统计
     const emp = item.employee;
@@ -507,7 +562,7 @@ const ApprovalList = () => {
               {getTypeIcon(item.type)}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: '0.875rem', mb: 0.25 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.25 }}>
                 {item.title}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
@@ -517,7 +572,6 @@ const ApprovalList = () => {
                   size="small"
                   sx={{ 
                     height: 20, 
-                    fontSize: '0.75rem',
                     fontWeight: 600,
                     px: 0.75,
                     '& .MuiChip-label': {
@@ -528,7 +582,7 @@ const ApprovalList = () => {
                 />
                 {/* 差旅申请副标题：出发地-目的地   出发日期-返回日期 共X天 */}
                 {item.type === 'travel' && (item.departureCity || item.destination || (item.earliestDate && item.latestDate)) && (
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem', lineHeight: 1.3 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
                     {item.departureCity || '?'}-{item.destination || '?'}
                     {(item.earliestDate && item.latestDate) && (
                       <> • {dayjs(item.earliestDate).format('MMM DD')}-{dayjs(item.latestDate).format('MMM DD')}
@@ -547,7 +601,6 @@ const ApprovalList = () => {
               size="small"
               sx={{ 
                 height: 20, 
-                fontSize: '0.75rem',
                 fontWeight: 600,
                 px: 0.75,
                 '& .MuiChip-label': {
@@ -563,30 +616,30 @@ const ApprovalList = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: item.type === 'travel' && stats ? 1 : 0.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <PersonIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-            <Typography variant="caption" sx={{ fontSize: '0.85rem', lineHeight: 1.3 }}>
+            <Typography variant="body2" sx={{ lineHeight: 1.3 }}>
               {item.employee.firstName} {item.employee.lastName}
               {item.employee.department && (
-                <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5, fontSize: '0.85rem' }}>
+                <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
                   ({item.employee.department})
                 </Typography>
               )}
             </Typography>
           </Box>
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+          <Typography component="span" variant="body2" color="text.secondary">
             •
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.85rem', lineHeight: 1.3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
               {dayjs(item.date).format('MMM DD, YYYY')}
             </Typography>
           </Box>
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+          <Typography component="span" variant="body2" color="text.secondary">
             •
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <MoneyIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-            <Typography variant="caption" sx={{ fontSize: '0.85rem', lineHeight: 1.3, fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ lineHeight: 1.3, fontWeight: 500 }}>
               {item.currency} {item.amount.toLocaleString()}
             </Typography>
           </Box>
@@ -602,46 +655,46 @@ const ApprovalList = () => {
             border: '1px solid', 
             borderColor: 'grey.300'
           }}>
-            <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.primary', mb: 0.75, display: 'block' }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.75, display: 'block' }}>
               {t('approval.employeeTravelStats')} ({stats.year})
             </Typography>
             <Grid container spacing={1}>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
                   {t('approval.totalTrips')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
                   {stats.totalTrips}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
                   {t('approval.totalAmount')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
                   {item.currency} {stats.totalAmount.toLocaleString()}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
                   {t('approval.totalDays')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
                   {stats.totalDays} {t('approval.days')}
                 </Typography>
               </Grid>
               <Grid item xs={6} sm={3}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
                   {t('approval.efficiency')}
                 </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.3 }}>
                   {item.currency} {stats.efficiency}/{t('approval.day')}
                 </Typography>
               </Grid>
               {stats.budgetUsage !== null && (
                 <Grid item xs={12}>
                   <Box sx={{ mt: 0.75 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block', mb: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                       {t('approval.budgetUsage')}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -655,7 +708,7 @@ const ApprovalList = () => {
                           }} 
                         />
                       </Box>
-                      <Typography variant="caption" sx={{ fontSize: '0.8rem', fontWeight: 600, minWidth: 40, color: 'text.primary' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 40, color: 'text.primary' }}>
                         {stats.budgetUsage}%
                       </Typography>
                     </Box>
@@ -670,11 +723,11 @@ const ApprovalList = () => {
         {/* 审批信息（紧凑显示） */}
         {item.approver && (
           <Box sx={{ mt: 0.5, mb: 0.5 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem', lineHeight: 1.3, display: 'block' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3, display: 'block' }}>
               {t('approval.approvedBy')}: {item.approver.firstName} {item.approver.lastName} ({item.approver.position}) • {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
             </Typography>
             {item.comments && (
-              <Typography variant="caption" sx={{ fontSize: '0.8rem', lineHeight: 1.3, color: 'text.secondary' }}>
+              <Typography variant="body2" sx={{ lineHeight: 1.3, color: 'text.secondary' }}>
                 {t('approval.comments')}: {item.comments}
               </Typography>
             )}
@@ -694,7 +747,6 @@ const ApprovalList = () => {
                   minWidth: 'auto',
                   px: 1,
                   py: 0.5,
-                  fontSize: '0.85rem',
                   textTransform: 'none',
                   lineHeight: 1.3
                 }}
@@ -710,7 +762,6 @@ const ApprovalList = () => {
                   minWidth: 'auto',
                   px: 1,
                   py: 0.5,
-                  fontSize: '0.85rem',
                   textTransform: 'none',
                   fontWeight: 600,
                   lineHeight: 1.3
@@ -728,7 +779,6 @@ const ApprovalList = () => {
               minWidth: 'auto',
               px: 1,
               py: 0.5,
-              fontSize: '0.85rem',
               textTransform: 'none',
               lineHeight: 1.3
             }}
@@ -758,7 +808,79 @@ const ApprovalList = () => {
           {t('approval.title')}
         </Typography>
 
-        <Paper sx={{ mt: 3 }} elevation={2}>
+        {/* 搜索和过滤栏 */}
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                placeholder={t('approval.searchPlaceholder') || '搜索标题、员工、部门、金额...'}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>{t('approval.type') || '类型'}</InputLabel>
+                <Select
+                  value={typeFilter}
+                  label={t('approval.type') || '类型'}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                >
+                  <MenuItem value="all">{t('common.all') || '全部'}</MenuItem>
+                  <MenuItem value="travel">{t('approval.travelRequest') || '差旅申请'}</MenuItem>
+                  <MenuItem value="expense">{t('approval.expenseReport') || '费用报告'}</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            {tabValue === 1 && (
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>{t('approval.status') || '状态'}</InputLabel>
+                  <Select
+                    value={statusFilter}
+                    label={t('approval.status') || '状态'}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">{t('common.all') || '全部'}</MenuItem>
+                    <MenuItem value="approved">{t('approval.approved') || '已通过'}</MenuItem>
+                    <MenuItem value="rejected">{t('approval.rejected') || '已拒绝'}</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
+            <Grid item xs={12} md={2}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<SearchIcon />}
+                  onClick={handleSearch}
+                  sx={{ flex: 1 }}
+                >
+                  {t('common.search')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={handleReset}
+                  sx={{ flex: 1 }}
+                >
+                  {t('common.refresh')}
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </Paper>
+
+        <Paper elevation={2}>
           <Tabs
             value={tabValue}
             onChange={handleTabChange}
@@ -782,13 +904,22 @@ const ApprovalList = () => {
               <Box>
                 <Typography variant="h6" gutterBottom>
                   {t('approval.pendingApprovals')}
+                  {filteredPendingApprovals.length !== pendingApprovals.length && (
+                    <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                      ({filteredPendingApprovals.length} / {pendingApprovals.length})
+                    </Typography>
+                  )}
                 </Typography>
                 {pendingApprovals.length === 0 ? (
                   <Alert severity="info">
                     {t('approval.noPendingApprovals')}
                   </Alert>
+                ) : filteredPendingApprovals.length === 0 ? (
+                  <Alert severity="info">
+                    {t('approval.noSearchResults') || '没有找到匹配的审批项'}
+                  </Alert>
                 ) : (
-                  pendingApprovals.map((item) => (
+                  filteredPendingApprovals.map((item) => (
                     <ApprovalCard key={item.id} item={item} showActions={true} />
                   ))
                 )}
@@ -799,13 +930,22 @@ const ApprovalList = () => {
               <Box>
                 <Typography variant="h6" gutterBottom>
                   {t('approval.approvalHistory')}
+                  {filteredApprovalHistory.length !== approvalHistory.length && (
+                    <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                      ({filteredApprovalHistory.length} / {approvalHistory.length})
+                    </Typography>
+                  )}
                 </Typography>
                 {approvalHistory.length === 0 ? (
                   <Alert severity="info">
                     {t('approval.noApprovalHistory')}
                   </Alert>
+                ) : filteredApprovalHistory.length === 0 ? (
+                  <Alert severity="info">
+                    {t('approval.noSearchResults') || '没有找到匹配的审批项'}
+                  </Alert>
                 ) : (
-                  approvalHistory.map((item) => (
+                  filteredApprovalHistory.map((item) => (
                     <ApprovalCard key={item.id} item={item} showActions={false} />
                   ))
                 )}

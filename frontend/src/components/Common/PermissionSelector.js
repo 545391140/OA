@@ -85,17 +85,19 @@ const PermissionSelector = ({ selectedPermissions = [], onChange, disabled = fal
 
   const getGroupLabel = (group) => {
     // 根据当前语言返回对应的标签
-    if (i18n.language === 'zh') return group.label;
-    if (i18n.language === 'ja') return group.labelJa || group.labelEn;
-    if (i18n.language === 'ko') return group.labelKo || group.labelEn;
+    const lang = i18n.language || 'zh';
+    if (lang === 'zh' || lang.startsWith('zh')) return group.label;
+    if (lang === 'ja' || lang.startsWith('ja')) return group.labelJa || group.labelEn;
+    if (lang === 'ko' || lang.startsWith('ko')) return group.labelKo || group.labelEn;
     return group.labelEn;
   };
 
   const getPermissionLabel = (permission) => {
     // 根据当前语言返回对应的标签
-    if (i18n.language === 'zh') return permission.label;
-    if (i18n.language === 'ja') return permission.labelJa || permission.labelEn;
-    if (i18n.language === 'ko') return permission.labelKo || permission.labelEn;
+    const lang = i18n.language || 'zh';
+    if (lang === 'zh' || lang.startsWith('zh')) return permission.label;
+    if (lang === 'ja' || lang.startsWith('ja')) return permission.labelJa || permission.labelEn;
+    if (lang === 'ko' || lang.startsWith('ko')) return permission.labelKo || permission.labelEn;
     return permission.labelEn;
   };
 
