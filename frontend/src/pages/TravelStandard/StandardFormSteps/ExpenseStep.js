@@ -39,8 +39,21 @@ const ExpenseStep = ({ formData, setFormData, options, loadingOptions }) => {
 
   // 统一ID比较的辅助函数
   const compareIds = (id1, id2) => {
-    const str1 = typeof id1 === 'object' ? (id1._id?.toString() || id1.toString()) : (id1?.toString() || id1);
-    const str2 = typeof id2 === 'object' ? (id2._id?.toString() || id2.toString()) : (id2?.toString() || id2);
+    // 处理 null 和 undefined
+    if (id1 === null || id1 === undefined) {
+      return id2 === null || id2 === undefined;
+    }
+    if (id2 === null || id2 === undefined) {
+      return false;
+    }
+    
+    // 处理对象类型（排除 null）
+    const str1 = (id1 !== null && typeof id1 === 'object' && id1._id) 
+      ? (id1._id?.toString() || id1.toString()) 
+      : (id1?.toString() || id1);
+    const str2 = (id2 !== null && typeof id2 === 'object' && id2._id)
+      ? (id2._id?.toString() || id2.toString())
+      : (id2?.toString() || id2);
     return str1 === str2;
   };
 

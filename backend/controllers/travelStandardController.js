@@ -22,6 +22,15 @@ exports.getStandards = async (req, res) => {
       .populate('expenseStandards.expenseItemId', 'itemName description')
       .sort({ priority: -1, effectiveDate: -1, createdAt: -1 }); // Sort by priority first
 
+    // 过滤掉 expenseItemId 为 null 的项（关联的费用项可能已被删除）
+    standards.forEach(standard => {
+      if (standard.expenseStandards && Array.isArray(standard.expenseStandards)) {
+        standard.expenseStandards = standard.expenseStandards.filter(
+          es => es.expenseItemId !== null && es.expenseItemId !== undefined
+        );
+      }
+    });
+
     res.json({
       success: true,
       count: standards.length,
@@ -51,6 +60,13 @@ exports.getStandardById = async (req, res) => {
         success: false,
         message: 'Travel standard not found'
       });
+    }
+
+    // 过滤掉 expenseItemId 为 null 的项（关联的费用项可能已被删除）
+    if (standard.expenseStandards && Array.isArray(standard.expenseStandards)) {
+      standard.expenseStandards = standard.expenseStandards.filter(
+        es => es.expenseItemId !== null && es.expenseItemId !== undefined
+      );
     }
 
     res.json({
@@ -83,20 +99,22 @@ exports.createStandard = async (req, res) => {
     // 处理 expenseStandards 中的 expenseItemId 转换
     const processedBody = { ...req.body };
     if (processedBody.expenseStandards && Array.isArray(processedBody.expenseStandards)) {
-      processedBody.expenseStandards = processedBody.expenseStandards.map(es => {
-        const processedEs = { ...es };
-        // 确保 expenseItemId 是有效的 ObjectId 字符串
-        if (processedEs.expenseItemId) {
-          // 如果是对象，提取 _id；如果是字符串，直接使用
-          if (typeof processedEs.expenseItemId === 'object' && processedEs.expenseItemId._id) {
-            processedEs.expenseItemId = processedEs.expenseItemId._id;
-          } else if (typeof processedEs.expenseItemId === 'string') {
-            // 已经是字符串，保持不变（Mongoose会自动转换）
-            processedEs.expenseItemId = processedEs.expenseItemId;
+      processedBody.expenseStandards = processedBody.expenseStandards
+        .map(es => {
+          const processedEs = { ...es };
+          // 确保 expenseItemId 是有效的 ObjectId 字符串
+          if (processedEs.expenseItemId) {
+            // 如果是对象（排除 null），提取 _id；如果是字符串，直接使用
+            if (processedEs.expenseItemId !== null && processedEs.expenseItemId !== undefined && typeof processedEs.expenseItemId === 'object' && processedEs.expenseItemId._id) {
+              processedEs.expenseItemId = processedEs.expenseItemId._id;
+            } else if (typeof processedEs.expenseItemId === 'string') {
+              // 已经是字符串，保持不变（Mongoose会自动转换）
+              processedEs.expenseItemId = processedEs.expenseItemId;
+            }
           }
-        }
-        return processedEs;
-      });
+          return processedEs;
+        })
+        .filter(es => es.expenseItemId !== null && es.expenseItemId !== undefined && es.expenseItemId !== ''); // 过滤掉无效的项
     }
 
     const standardData = {
@@ -131,6 +149,13 @@ exports.createStandard = async (req, res) => {
     // Populate expenseStandards after creation
     const populatedStandard = await TravelStandard.findById(standard._id)
       .populate('expenseStandards.expenseItemId', 'itemName description amount');
+
+    // 过滤掉 expenseItemId 为 null 的项（关联的费用项可能已被删除）
+    if (populatedStandard.expenseStandards && Array.isArray(populatedStandard.expenseStandards)) {
+      populatedStandard.expenseStandards = populatedStandard.expenseStandards.filter(
+        es => es.expenseItemId !== null && es.expenseItemId !== undefined
+      );
+    }
 
     res.status(201).json({
       success: true,
@@ -176,20 +201,22 @@ exports.updateStandard = async (req, res) => {
     // 处理 expenseStandards 中的 expenseItemId 转换
     const processedBody = { ...req.body };
     if (processedBody.expenseStandards && Array.isArray(processedBody.expenseStandards)) {
-      processedBody.expenseStandards = processedBody.expenseStandards.map(es => {
-        const processedEs = { ...es };
-        // 确保 expenseItemId 是有效的 ObjectId 字符串
-        if (processedEs.expenseItemId) {
-          // 如果是对象，提取 _id；如果是字符串，直接使用
-          if (typeof processedEs.expenseItemId === 'object' && processedEs.expenseItemId._id) {
-            processedEs.expenseItemId = processedEs.expenseItemId._id;
-          } else if (typeof processedEs.expenseItemId === 'string') {
-            // 已经是字符串，保持不变（Mongoose会自动转换）
-            processedEs.expenseItemId = processedEs.expenseItemId;
+      processedBody.expenseStandards = processedBody.expenseStandards
+        .map(es => {
+          const processedEs = { ...es };
+          // 确保 expenseItemId 是有效的 ObjectId 字符串
+          if (processedEs.expenseItemId) {
+            // 如果是对象（排除 null），提取 _id；如果是字符串，直接使用
+            if (processedEs.expenseItemId !== null && processedEs.expenseItemId !== undefined && typeof processedEs.expenseItemId === 'object' && processedEs.expenseItemId._id) {
+              processedEs.expenseItemId = processedEs.expenseItemId._id;
+            } else if (typeof processedEs.expenseItemId === 'string') {
+              // 已经是字符串，保持不变（Mongoose会自动转换）
+              processedEs.expenseItemId = processedEs.expenseItemId;
+            }
           }
-        }
-        return processedEs;
-      });
+          return processedEs;
+        })
+        .filter(es => es.expenseItemId !== null && es.expenseItemId !== undefined && es.expenseItemId !== ''); // 过滤掉无效的项
     }
 
     console.log('[UPDATE] Processed update data:', JSON.stringify({
@@ -280,6 +307,13 @@ exports.updateStandard = async (req, res) => {
     const standardDoc = await TravelStandard.findById(req.params.id)
       .populate('expenseStandards.expenseItemId', 'itemName description amount');
 
+    // 过滤掉 expenseItemId 为 null 的项（关联的费用项可能已被删除）
+    if (standardDoc.expenseStandards && Array.isArray(standardDoc.expenseStandards)) {
+      standardDoc.expenseStandards = standardDoc.expenseStandards.filter(
+        es => es.expenseItemId !== null && es.expenseItemId !== undefined
+      );
+    }
+
     console.log('[UPDATE] Saved standard (from DB after save):', JSON.stringify({
       _id: standardDoc._id.toString(),
       conditionGroupsLength: standardDoc.conditionGroups?.length || 0,
@@ -301,9 +335,10 @@ exports.updateStandard = async (req, res) => {
     });
   } catch (error) {
     console.error('Update standard error:', error);
+    console.error('Update standard error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + (error.message || 'Unknown error')
     });
   }
 };

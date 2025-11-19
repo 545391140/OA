@@ -273,3 +273,4 @@ async recognizeInvoiceWithMistral(filePath, fileType = 'image') {
 3. **转换是同步阻塞操作，影响并发性能**
 
 
+

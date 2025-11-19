@@ -125,26 +125,28 @@ const StandardForm = () => {
         // 重建expenseItemsConfigured对象（基于expenseStandards）
         const expenseItemsConfigured = {};
         
-        // 处理expenseStandards，统一ID格式
-        const normalizedExpenseStandards = (standard.expenseStandards || []).map(es => {
-          // 提取expenseItemId（可能是对象或字符串）
-          let expenseItemId = es.expenseItemId;
-          if (typeof expenseItemId === 'object' && expenseItemId._id) {
-            expenseItemId = expenseItemId._id;
-          }
-          const itemIdStr = expenseItemId?.toString() || expenseItemId;
-          
-          // 设置到expenseItemsConfigured
-          if (itemIdStr) {
-            expenseItemsConfigured[itemIdStr] = true;
-          }
-          
-          // 返回标准化后的expenseStandard，确保expenseItemId是字符串ID
-          return {
-            ...es,
-            expenseItemId: itemIdStr
-          };
-        });
+        // 处理expenseStandards，统一ID格式，并过滤掉无效的项
+        const normalizedExpenseStandards = (standard.expenseStandards || [])
+          .map(es => {
+            // 提取expenseItemId（可能是对象或字符串）
+            let expenseItemId = es.expenseItemId;
+            if (expenseItemId !== null && expenseItemId !== undefined && typeof expenseItemId === 'object' && expenseItemId._id) {
+              expenseItemId = expenseItemId._id;
+            }
+            const itemIdStr = expenseItemId?.toString() || expenseItemId;
+            
+            // 设置到expenseItemsConfigured
+            if (itemIdStr) {
+              expenseItemsConfigured[itemIdStr] = true;
+            }
+            
+            // 返回标准化后的expenseStandard，确保expenseItemId是字符串ID
+            return {
+              ...es,
+              expenseItemId: itemIdStr
+            };
+          })
+          .filter(es => es.expenseItemId !== null && es.expenseItemId !== undefined && es.expenseItemId !== ''); // 过滤掉无效的项
         
         // 同时保留原有的expenseItemsConfigured中的配置（兼容旧数据）
         Object.keys(standard.expenseItemsConfigured || {}).forEach(key => {
@@ -228,6 +230,12 @@ const StandardForm = () => {
 
     try {
       setSaving(true);
+      
+      // 过滤掉 expenseItemId 为 null 或 undefined 的 expenseStandards 项
+      const validExpenseStandards = (formData.expenseStandards || []).filter(es => {
+        return es.expenseItemId !== null && es.expenseItemId !== undefined && es.expenseItemId !== '';
+      });
+      
       const payload = {
         standardCode: formData.standardCode.trim().toUpperCase(),
         standardName: formData.standardName.trim(),
@@ -238,7 +246,7 @@ const StandardForm = () => {
         priority: formData.priority,
         conditionGroups: formData.conditionGroups || [],
         expenseItemsConfigured: formData.expenseItemsConfigured || {},
-        expenseStandards: formData.expenseStandards || []
+        expenseStandards: validExpenseStandards
       };
 
       console.log('[FRONTEND] Submit payload:', JSON.stringify({
