@@ -71,6 +71,7 @@ const PERMISSIONS = {
   USER_CREATE: 'user.create',
   USER_EDIT: 'user.edit',
   USER_DELETE: 'user.delete',
+  USER_TOGGLE_ACTIVE: 'user.toggleActive',
   
   // 审批工作流管理
   APPROVAL_WORKFLOW_VIEW: 'approval.workflow.view',
@@ -84,6 +85,44 @@ const PERMISSIONS = {
   // 设置
   SETTINGS_VIEW: 'settings.view',
   SETTINGS_EDIT: 'settings.edit',
+  
+  // 发票夹
+  INVOICE_VIEW: 'invoice.view',
+  INVOICE_CREATE: 'invoice.create',
+  INVOICE_UPLOAD: 'invoice.upload',
+  INVOICE_EDIT: 'invoice.edit',
+  INVOICE_DELETE: 'invoice.delete',
+  INVOICE_RECOGNIZE: 'invoice.recognize',
+  
+  // 通知管理
+  NOTIFICATION_VIEW: 'notification.view',
+  NOTIFICATION_MANAGE: 'notification.manage',
+  
+  // 城市级别管理
+  CITY_LEVEL_VIEW: 'city.level.view',
+  CITY_LEVEL_CREATE: 'city.level.create',
+  CITY_LEVEL_EDIT: 'city.level.edit',
+  CITY_LEVEL_DELETE: 'city.level.delete',
+  
+  // 职位级别管理
+  JOB_LEVEL_VIEW: 'job.level.view',
+  JOB_LEVEL_CREATE: 'job.level.create',
+  JOB_LEVEL_EDIT: 'job.level.edit',
+  JOB_LEVEL_DELETE: 'job.level.delete',
+  
+  // 标准匹配
+  STANDARD_MATCH_VIEW: 'standard.match.view',
+  STANDARD_MATCH_USE: 'standard.match.use',
+  
+  // 搜索功能
+  SEARCH_VIEW: 'search.view',
+  SEARCH_ADVANCED: 'search.advanced',
+  
+  // 预算管理
+  BUDGET_VIEW: 'budget.view',
+  
+  // 推送通知
+  PUSH_NOTIFICATION_SUBSCRIBE: 'push.notification.subscribe',
 };
 
 /**
@@ -238,7 +277,8 @@ const PERMISSION_GROUPS = [
       { code: PERMISSIONS.USER_VIEW, label: '查看用户', labelEn: 'View Users', labelJa: 'ユーザーを表示', labelKo: '사용자 보기' },
       { code: PERMISSIONS.USER_CREATE, label: '创建用户', labelEn: 'Create Users', labelJa: 'ユーザーを作成', labelKo: '사용자 생성' },
       { code: PERMISSIONS.USER_EDIT, label: '编辑用户', labelEn: 'Edit Users', labelJa: 'ユーザーを編集', labelKo: '사용자 편집' },
-      { code: PERMISSIONS.USER_DELETE, label: '删除用户', labelEn: 'Delete Users', labelJa: 'ユーザーを削除', labelKo: '사용자 삭제' }
+      { code: PERMISSIONS.USER_DELETE, label: '删除用户', labelEn: 'Delete Users', labelJa: 'ユーザーを削除', labelKo: '사용자 삭제' },
+      { code: PERMISSIONS.USER_TOGGLE_ACTIVE, label: '启用/禁用用户', labelEn: 'Toggle User Active Status', labelJa: 'ユーザーを有効/無効化', labelKo: '사용자 활성화/비활성화' }
     ]
   },
   {
@@ -274,6 +314,100 @@ const PERMISSION_GROUPS = [
       { code: PERMISSIONS.SETTINGS_VIEW, label: '查看设置', labelEn: 'View Settings', labelJa: '設定を表示', labelKo: '설정 보기' },
       { code: PERMISSIONS.SETTINGS_EDIT, label: '编辑设置', labelEn: 'Edit Settings', labelJa: '設定を編集', labelKo: '설정 편집' }
     ]
+  },
+  {
+    name: 'invoice',
+    label: '发票夹',
+    labelEn: 'Invoice Folder',
+    labelJa: '請求書フォルダ',
+    labelKo: '인보이스 폴더',
+    permissions: [
+      { code: PERMISSIONS.INVOICE_VIEW, label: '查看发票', labelEn: 'View Invoices', labelJa: '請求書を表示', labelKo: '인보이스 보기' },
+      { code: PERMISSIONS.INVOICE_CREATE, label: '创建发票', labelEn: 'Create Invoices', labelJa: '請求書を作成', labelKo: '인보이스 생성' },
+      { code: PERMISSIONS.INVOICE_UPLOAD, label: '上传发票', labelEn: 'Upload Invoices', labelJa: '請求書をアップロード', labelKo: '인보이스 업로드' },
+      { code: PERMISSIONS.INVOICE_EDIT, label: '编辑发票', labelEn: 'Edit Invoices', labelJa: '請求書を編集', labelKo: '인보이스 편집' },
+      { code: PERMISSIONS.INVOICE_DELETE, label: '删除发票', labelEn: 'Delete Invoices', labelJa: '請求書を削除', labelKo: '인보이스 삭제' },
+      { code: PERMISSIONS.INVOICE_RECOGNIZE, label: 'OCR识别', labelEn: 'OCR Recognition', labelJa: 'OCR認識', labelKo: 'OCR 인식' }
+    ]
+  },
+  {
+    name: 'notification',
+    label: '通知管理',
+    labelEn: 'Notification Management',
+    labelJa: '通知管理',
+    labelKo: '알림 관리',
+    permissions: [
+      { code: PERMISSIONS.NOTIFICATION_VIEW, label: '查看通知', labelEn: 'View Notifications', labelJa: '通知を表示', labelKo: '알림 보기' },
+      { code: PERMISSIONS.NOTIFICATION_MANAGE, label: '管理通知', labelEn: 'Manage Notifications', labelJa: '通知を管理', labelKo: '알림 관리' }
+    ]
+  },
+  {
+    name: 'cityLevel',
+    label: '城市级别',
+    labelEn: 'City Levels',
+    labelJa: '都市レベル',
+    labelKo: '도시 레벨',
+    permissions: [
+      { code: PERMISSIONS.CITY_LEVEL_VIEW, label: '查看城市级别', labelEn: 'View City Levels', labelJa: '都市レベルを表示', labelKo: '도시 레벨 보기' },
+      { code: PERMISSIONS.CITY_LEVEL_CREATE, label: '创建城市级别', labelEn: 'Create City Levels', labelJa: '都市レベルを作成', labelKo: '도시 레벨 생성' },
+      { code: PERMISSIONS.CITY_LEVEL_EDIT, label: '编辑城市级别', labelEn: 'Edit City Levels', labelJa: '都市レベルを編集', labelKo: '도시 레벨 편집' },
+      { code: PERMISSIONS.CITY_LEVEL_DELETE, label: '删除城市级别', labelEn: 'Delete City Levels', labelJa: '都市レベルを削除', labelKo: '도시 레벨 삭제' }
+    ]
+  },
+  {
+    name: 'jobLevel',
+    label: '职位级别',
+    labelEn: 'Job Levels',
+    labelJa: '職位レベル',
+    labelKo: '직위 레벨',
+    permissions: [
+      { code: PERMISSIONS.JOB_LEVEL_VIEW, label: '查看职位级别', labelEn: 'View Job Levels', labelJa: '職位レベルを表示', labelKo: '직위 레벨 보기' },
+      { code: PERMISSIONS.JOB_LEVEL_CREATE, label: '创建职位级别', labelEn: 'Create Job Levels', labelJa: '職位レベルを作成', labelKo: '직위 레벨 생성' },
+      { code: PERMISSIONS.JOB_LEVEL_EDIT, label: '编辑职位级别', labelEn: 'Edit Job Levels', labelJa: '職位レベルを編集', labelKo: '직위 레벨 편집' },
+      { code: PERMISSIONS.JOB_LEVEL_DELETE, label: '删除职位级别', labelEn: 'Delete Job Levels', labelJa: '職位レベルを削除', labelKo: '직위 레벨 삭제' }
+    ]
+  },
+  {
+    name: 'standardMatch',
+    label: '标准匹配',
+    labelEn: 'Standard Matching',
+    labelJa: '基準マッチング',
+    labelKo: '기준 매칭',
+    permissions: [
+      { code: PERMISSIONS.STANDARD_MATCH_VIEW, label: '查看标准匹配', labelEn: 'View Standard Matching', labelJa: '基準マッチングを表示', labelKo: '기준 매칭 보기' },
+      { code: PERMISSIONS.STANDARD_MATCH_USE, label: '使用标准匹配', labelEn: 'Use Standard Matching', labelJa: '基準マッチングを使用', labelKo: '기준 매칭 사용' }
+    ]
+  },
+  {
+    name: 'search',
+    label: '搜索功能',
+    labelEn: 'Search',
+    labelJa: '検索機能',
+    labelKo: '검색 기능',
+    permissions: [
+      { code: PERMISSIONS.SEARCH_VIEW, label: '查看搜索', labelEn: 'View Search', labelJa: '検索を表示', labelKo: '검색 보기' },
+      { code: PERMISSIONS.SEARCH_ADVANCED, label: '高级搜索', labelEn: 'Advanced Search', labelJa: '高度な検索', labelKo: '고급 검색' }
+    ]
+  },
+  {
+    name: 'budget',
+    label: '预算管理',
+    labelEn: 'Budget Management',
+    labelJa: '予算管理',
+    labelKo: '예산 관리',
+    permissions: [
+      { code: PERMISSIONS.BUDGET_VIEW, label: '查看预算', labelEn: 'View Budget', labelJa: '予算を表示', labelKo: '예산 보기' }
+    ]
+  },
+  {
+    name: 'pushNotification',
+    label: '推送通知',
+    labelEn: 'Push Notifications',
+    labelJa: 'プッシュ通知',
+    labelKo: '푸시 알림',
+    permissions: [
+      { code: PERMISSIONS.PUSH_NOTIFICATION_SUBSCRIBE, label: '订阅推送通知', labelEn: 'Subscribe Push Notifications', labelJa: 'プッシュ通知を購読', labelKo: '푸시 알림 구독' }
+    ]
   }
 ];
 
@@ -299,6 +433,13 @@ const MENU_PERMISSIONS = {
   '/approval-workflows': PERMISSIONS.APPROVAL_WORKFLOW_VIEW,
   '/approval-statistics': PERMISSIONS.APPROVAL_STATISTICS_VIEW,
   '/settings': PERMISSIONS.SETTINGS_VIEW,
+  '/invoices': PERMISSIONS.INVOICE_VIEW,
+  '/notifications': PERMISSIONS.NOTIFICATION_VIEW,
+  '/city-levels': PERMISSIONS.CITY_LEVEL_VIEW,
+  '/job-levels': PERMISSIONS.JOB_LEVEL_VIEW,
+  '/standard-match': PERMISSIONS.STANDARD_MATCH_VIEW,
+  '/search': PERMISSIONS.SEARCH_VIEW,
+  '/budgets': PERMISSIONS.BUDGET_VIEW,
 };
 
 module.exports = {

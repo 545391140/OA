@@ -71,6 +71,7 @@ export const PERMISSIONS = {
   USER_CREATE: 'user.create',
   USER_EDIT: 'user.edit',
   USER_DELETE: 'user.delete',
+  USER_TOGGLE_ACTIVE: 'user.toggleActive',
   
   // 审批工作流管理
   APPROVAL_WORKFLOW_VIEW: 'approval.workflow.view',
@@ -84,6 +85,44 @@ export const PERMISSIONS = {
   // 设置
   SETTINGS_VIEW: 'settings.view',
   SETTINGS_EDIT: 'settings.edit',
+  
+  // 发票管理
+  INVOICE_VIEW: 'invoice.view',
+  INVOICE_CREATE: 'invoice.create',
+  INVOICE_UPLOAD: 'invoice.upload',
+  INVOICE_EDIT: 'invoice.edit',
+  INVOICE_DELETE: 'invoice.delete',
+  INVOICE_RECOGNIZE: 'invoice.recognize',
+  
+  // 通知管理
+  NOTIFICATION_VIEW: 'notification.view',
+  NOTIFICATION_MANAGE: 'notification.manage',
+  
+  // 城市级别管理
+  CITY_LEVEL_VIEW: 'city.level.view',
+  CITY_LEVEL_CREATE: 'city.level.create',
+  CITY_LEVEL_EDIT: 'city.level.edit',
+  CITY_LEVEL_DELETE: 'city.level.delete',
+  
+  // 职位级别管理
+  JOB_LEVEL_VIEW: 'job.level.view',
+  JOB_LEVEL_CREATE: 'job.level.create',
+  JOB_LEVEL_EDIT: 'job.level.edit',
+  JOB_LEVEL_DELETE: 'job.level.delete',
+  
+  // 标准匹配
+  STANDARD_MATCH_VIEW: 'standard.match.view',
+  STANDARD_MATCH_USE: 'standard.match.use',
+  
+  // 搜索功能
+  SEARCH_VIEW: 'search.view',
+  SEARCH_ADVANCED: 'search.advanced',
+  
+  // 预算管理
+  BUDGET_VIEW: 'budget.view',
+  
+  // 推送通知
+  PUSH_NOTIFICATION_SUBSCRIBE: 'push.notification.subscribe',
 };
 
 /**
@@ -108,6 +147,13 @@ export const MENU_PERMISSIONS = {
   '/approval-workflows': PERMISSIONS.APPROVAL_WORKFLOW_VIEW,
   '/approval-statistics': PERMISSIONS.APPROVAL_STATISTICS_VIEW,
   '/settings': PERMISSIONS.SETTINGS_VIEW,
+  '/invoices': PERMISSIONS.INVOICE_VIEW,
+  '/notifications': PERMISSIONS.NOTIFICATION_VIEW,
+  '/city-levels': PERMISSIONS.CITY_LEVEL_VIEW,
+  '/job-levels': PERMISSIONS.JOB_LEVEL_VIEW,
+  '/standard-match': PERMISSIONS.STANDARD_MATCH_VIEW,
+  '/search': PERMISSIONS.SEARCH_VIEW,
+  '/budgets': PERMISSIONS.BUDGET_VIEW,
 };
 
 
