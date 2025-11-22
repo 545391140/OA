@@ -41,6 +41,9 @@ connectDB();
 
 const app = express();
 
+// 禁用 ETag（避免 304 响应）
+app.set('etag', false);
+
 // Security middleware
 app.use(helmet({
   crossOriginOpenerPolicy: false, // 禁用 COOP 以支持 HTTP（生产环境建议使用 HTTPS）
@@ -181,7 +184,16 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/positions', positionRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/search', searchRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+// Dashboard routes with logging
+app.use('/api/dashboard', (req, res, next) => {
+  console.log('[SERVER] Dashboard route accessed:', req.method, req.originalUrl);
+  console.log('[SERVER] Headers:', {
+    authorization: req.headers.authorization ? 'Present' : 'Missing',
+    'content-type': req.headers['content-type'],
+    'user-agent': req.headers['user-agent']
+  });
+  next();
+}, dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/notification-templates', notificationTemplateRoutes);
 app.use('/api/push', pushNotificationRoutes);

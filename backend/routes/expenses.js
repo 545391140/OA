@@ -5,6 +5,11 @@ const fs = require('fs');
 const { protect } = require('../middleware/auth');
 const Expense = require('../models/Expense');
 const Invoice = require('../models/Invoice');
+const User = require('../models/User');
+const { buildDataScopeQuery, checkDataAccess } = require('../utils/dataScope');
+const Role = require('../models/Role');
+const approvalWorkflowService = require('../services/approvalWorkflowService');
+const notificationService = require('../services/notificationService');
 
 const router = express.Router();
 
@@ -45,8 +50,14 @@ router.get('/', protect, async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
     
-    // 构建查询条件
-    const query = { employee: req.user.id };
+    // 获取用户角色以确定数据权限范围
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    
+    // 构建数据权限查询条件
+    const dataScopeQuery = await buildDataScopeQuery(req.user, role, 'employee');
+    
+    // 构建查询条件（合并数据权限条件和筛选条件）
+    const query = { ...dataScopeQuery };
     
     // 状态筛选
     if (req.query.status && req.query.status !== 'all') {
@@ -146,86 +157,15 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
 
-    // 权限检查：只能查看自己的费用申请或管理员
-    // 统一提取 employee ID 并转换为字符串
-    let employeeId = null;
-    if (expense.employee) {
-      if (expense.employee._id) {
-        // populate 后的对象
-        employeeId = expense.employee._id.toString();
-      } else if (mongoose.Types.ObjectId.isValid(expense.employee)) {
-        // ObjectId 对象或有效的 ObjectId 字符串
-        const objId = expense.employee instanceof mongoose.Types.ObjectId 
-          ? expense.employee 
-          : new mongoose.Types.ObjectId(expense.employee);
-        employeeId = objId.toString();
-      } else if (typeof expense.employee === 'object' && expense.employee.toString) {
-        // 其他对象类型
-        employeeId = expense.employee.toString();
-      } else {
-        // 字符串或其他类型，统一转换为字符串
-        employeeId = String(expense.employee);
-      }
-    }
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
-    // 统一提取 user ID 并转换为字符串
-    let userId = null;
-    if (req.user && req.user.id) {
-      if (mongoose.Types.ObjectId.isValid(req.user.id)) {
-        const userObjId = req.user.id instanceof mongoose.Types.ObjectId 
-          ? req.user.id 
-          : new mongoose.Types.ObjectId(req.user.id);
-        userId = userObjId.toString();
-      } else {
-        userId = String(req.user.id);
-      }
-    }
-    
-    const userRole = req.user?.role || '';
-    const isAdmin = userRole === 'admin' || userRole === 'Administrator';
-    
-    console.log('[GET_EXPENSE] Permission check:', {
-      expenseId: req.params.id,
-      employeeId: employeeId,
-      userId: userId,
-      userRole: userRole,
-      isAdmin: isAdmin,
-      employeeMatch: employeeId === userId,
-      employeeIdType: typeof employeeId,
-      userIdType: typeof userId,
-      employeeValue: expense.employee,
-      userValue: req.user?.id
-    });
-    
-    // 如果没有 employee 字段，允许访问（可能是旧数据或特殊情况）
-    if (!employeeId) {
-      console.warn('[GET_EXPENSE] Expense has no employee field:', req.params.id);
-      // 允许访问，但记录警告
-    } else if (!userId) {
-      console.error('[GET_EXPENSE] User ID is missing:', req.user);
-      return res.status(401).json({
+    if (!hasAccess) {
+      return res.status(403).json({
         success: false,
-        message: 'User authentication required'
+        message: 'Not authorized to access this expense'
       });
-    } else {
-      // 统一转换为字符串后比较
-      const employeeIdStr = String(employeeId);
-      const userIdStr = String(userId);
-      
-      if (employeeIdStr !== userIdStr && !isAdmin) {
-        console.warn('[GET_EXPENSE] Unauthorized access attempt:', {
-          expenseId: req.params.id,
-          employeeId: employeeIdStr,
-          userId: userIdStr,
-          userRole: userRole,
-          exactMatch: employeeIdStr === userIdStr,
-          lengthMatch: employeeIdStr.length === userIdStr.length
-        });
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to access this expense'
-        });
-      }
     }
 
     // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
@@ -306,7 +246,98 @@ router.post('/', protect, async (req, res) => {
       expenseData.matchSource = 'manual';
     }
 
+    // 如果创建时状态就是 submitted，需要触发审批流程
+    const isSubmittingOnCreate = expenseData.status === 'submitted';
+    
+    if (isSubmittingOnCreate) {
+      // 获取员工信息（用于匹配审批流程）
+      const employee = await User.findById(req.user.id).select('department jobLevel manager');
+      
+      // 使用审批工作流服务匹配审批流程
+      const expenseAmount = expenseData.amount || 0;
+      const workflow = await approvalWorkflowService.matchWorkflow({
+        type: 'expense',
+        amount: expenseAmount,
+        department: employee?.department || req.user.department,
+        jobLevel: employee?.jobLevel || req.user.jobLevel
+      });
+
+      let approvals = [];
+      
+      if (workflow) {
+        // 使用匹配的工作流生成审批人
+        approvals = await approvalWorkflowService.generateApprovers({
+          workflow,
+          requesterId: req.user.id,
+          department: employee?.department || req.user.department
+        });
+      } else {
+        // 没有匹配的工作流，使用默认逻辑
+        console.log('No matching workflow found for expense, using default approval logic');
+        
+        if (expenseAmount > 10000) {
+          approvals.push({
+            approver: employee?.manager || req.user.id,
+            level: 1,
+            status: 'pending'
+          });
+          approvals.push({
+            approver: req.user.id,
+            level: 2,
+            status: 'pending'
+          });
+        } else if (expenseAmount > 5000) {
+          approvals.push({
+            approver: employee?.manager || req.user.id,
+            level: 1,
+            status: 'pending'
+          });
+        } else {
+          approvals.push({
+            approver: employee?.manager || req.user.id,
+            level: 1,
+            status: 'pending'
+          });
+        }
+
+        // 如果没有指定审批人，使用管理员作为默认审批人
+        const adminUser = await User.findOne({ role: 'admin', isActive: true });
+        if (adminUser) {
+          approvals.forEach(approval => {
+            if (!approval.approver || approval.approver.toString() === req.user.id.toString()) {
+              approval.approver = adminUser._id;
+            }
+          });
+        }
+      }
+
+      // 设置审批流程
+      expenseData.approvals = approvals;
+    }
+
     const expense = await Expense.create(expenseData);
+
+    // 如果创建时状态就是 submitted，发送审批通知
+    if (isSubmittingOnCreate && expense.approvals && expense.approvals.length > 0) {
+      try {
+        const approverIds = [...new Set(expense.approvals.map(a => a.approver.toString()))];
+        
+        await notificationService.notifyApprovalRequest({
+          approvers: approverIds,
+          requestType: 'expense',
+          requestId: expense._id,
+          requestTitle: expense.title || expense.expenseItem?.itemName || expense.reimbursementNumber || '费用申请',
+          requester: {
+            _id: req.user.id,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName
+          }
+        });
+      } catch (notifyError) {
+        console.error('Failed to send approval notifications:', notifyError);
+        // 通知失败不影响创建流程
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -336,12 +367,11 @@ router.put('/:id', protect, async (req, res) => {
       });
     }
 
-    // 权限检查：统一 ID 格式进行比较
-    const employeeId = expense.employee?.toString() || String(expense.employee);
-    const userId = req.user?.id?.toString() || String(req.user.id);
-    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'Administrator';
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
-    if (employeeId !== userId && !isAdmin) {
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -350,6 +380,10 @@ router.put('/:id', protect, async (req, res) => {
 
     // 处理更新数据
     const updateData = { ...req.body };
+    
+    // 记录原始状态，用于检测状态变化
+    const originalStatus = expense.status;
+    const isSubmitting = updateData.status === 'submitted' && originalStatus === 'draft';
     
     // 处理日期字段
     if (updateData.date && typeof updateData.date === 'string') {
@@ -384,13 +418,118 @@ router.put('/:id', protect, async (req, res) => {
       });
     }
 
+    // 如果是从草稿状态提交审批，触发审批流程
+    if (isSubmitting) {
+      console.log('[EXPENSE_SUBMIT] Detected status change from draft to submitted');
+      
+      // 只能提交草稿状态的申请
+      if (expense.status !== 'draft') {
+        console.log('[EXPENSE_SUBMIT] Expense status is not draft:', expense.status);
+        return res.status(400).json({
+          success: false,
+          message: 'Can only submit draft expense requests'
+        });
+      }
+
+      // 获取员工信息（用于匹配审批流程）
+      const employee = await User.findById(expense.employee).select('department jobLevel manager');
+      console.log('[EXPENSE_SUBMIT] Employee info:', {
+        id: expense.employee,
+        department: employee?.department,
+        jobLevel: employee?.jobLevel,
+        manager: employee?.manager
+      });
+      
+      // 使用审批工作流服务匹配审批流程
+      const expenseAmount = expense.amount || 0;
+      console.log('[EXPENSE_SUBMIT] Matching workflow for amount:', expenseAmount);
+      
+      const workflow = await approvalWorkflowService.matchWorkflow({
+        type: 'expense',
+        amount: expenseAmount,
+        department: employee?.department || req.user.department,
+        jobLevel: employee?.jobLevel || req.user.jobLevel
+      });
+
+      let approvals = [];
+      
+      if (workflow) {
+        console.log('[EXPENSE_SUBMIT] Workflow matched:', workflow.name);
+        // 使用匹配的工作流生成审批人
+        approvals = await approvalWorkflowService.generateApprovers({
+          workflow,
+          requesterId: expense.employee,
+          department: employee?.department || req.user.department
+        });
+        console.log('[EXPENSE_SUBMIT] Generated approvers from workflow:', approvals.length);
+      } else {
+        // 没有匹配的工作流，使用默认逻辑
+        console.log('[EXPENSE_SUBMIT] No matching workflow found, using default approval logic');
+        
+        if (expenseAmount > 10000) {
+          approvals.push({
+            approver: employee?.manager || req.user.id,
+            level: 1,
+            status: 'pending'
+          });
+          approvals.push({
+            approver: req.user.id,
+            level: 2,
+            status: 'pending'
+          });
+        } else if (expenseAmount > 5000) {
+          approvals.push({
+            approver: employee?.manager || req.user.id,
+            level: 1,
+            status: 'pending'
+          });
+        } else {
+          approvals.push({
+            approver: employee?.manager || req.user.id,
+            level: 1,
+            status: 'pending'
+          });
+        }
+
+        // 如果没有指定审批人，使用管理员作为默认审批人
+        const adminUser = await User.findOne({ role: 'admin', isActive: true });
+        if (adminUser) {
+          approvals.forEach(approval => {
+            if (!approval.approver || approval.approver.toString() === expense.employee.toString()) {
+              approval.approver = adminUser._id;
+            }
+          });
+        }
+        console.log('[EXPENSE_SUBMIT] Generated approvers from default logic:', approvals.length);
+      }
+
+      // 设置审批流程
+      updateData.approvals = approvals;
+      console.log('[EXPENSE_SUBMIT] Final approvals to set:', JSON.stringify(approvals, null, 2));
+    } else {
+      console.log('[EXPENSE_SUBMIT] Not submitting - isSubmitting:', isSubmitting, 'originalStatus:', originalStatus, 'newStatus:', updateData.status);
+    }
+
     // 更新费用申请
+    // 注意：如果是从草稿状态提交审批，approvals 字段已经在上面设置好了，需要确保不被覆盖
     Object.keys(updateData).forEach(key => {
       // 不允许更新 employee、_id、createdAt、updatedAt、__v 和 reimbursementNumber（核销单号一旦生成不可修改）
+      // 如果是从草稿状态提交审批，不允许前端覆盖 approvals 字段
       if (key !== 'employee' && key !== '_id' && key !== 'createdAt' && key !== 'updatedAt' && key !== '__v' && key !== 'reimbursementNumber') {
+        // 如果是从草稿状态提交审批，且当前字段是 approvals，跳过（使用后端生成的审批流程）
+        if (isSubmitting && key === 'approvals' && updateData.approvals && updateData.approvals.length > 0) {
+          // 使用后端生成的审批流程，忽略前端传递的
+          return;
+        }
         expense[key] = updateData[key];
       }
     });
+    
+    // 确保审批流程被正确设置（如果是从草稿状态提交审批）
+    if (isSubmitting && updateData.approvals && updateData.approvals.length > 0) {
+      expense.approvals = updateData.approvals;
+      console.log('[EXPENSE_SUBMIT] Set approvals on expense object:', expense.approvals.length);
+    }
     
     // 如果费用申请还没有核销单号，自动生成一个
     if (!expense.reimbursementNumber) {
@@ -398,6 +537,32 @@ router.put('/:id', protect, async (req, res) => {
     }
 
     await expense.save();
+    
+    console.log('[EXPENSE_SUBMIT] Expense saved. Status:', expense.status, 'Approvals count:', expense.approvals?.length || 0);
+
+    // 如果是从草稿状态提交审批，发送审批通知
+    if (isSubmitting && expense.approvals && expense.approvals.length > 0) {
+      console.log('[EXPENSE_SUBMIT] Sending approval notifications to:', expense.approvals.map(a => a.approver.toString()));
+      try {
+        const approverIds = [...new Set(expense.approvals.map(a => a.approver.toString()))];
+        const requester = await User.findById(expense.employee).select('firstName lastName');
+        
+        await notificationService.notifyApprovalRequest({
+          approvers: approverIds,
+          requestType: 'expense',
+          requestId: expense._id,
+          requestTitle: expense.title || expense.expenseItem?.itemName || expense.reimbursementNumber || '费用申请',
+          requester: {
+            _id: expense.employee,
+            firstName: requester?.firstName || req.user.firstName,
+            lastName: requester?.lastName || req.user.lastName
+          }
+        });
+      } catch (notifyError) {
+        console.error('Failed to send approval notifications:', notifyError);
+        // 通知失败不影响提交流程
+      }
+    }
 
     // 重新查询并 populate 关联数据，确保返回完整的数据
     // 使用 lean() 和手动 populate 以避免某些关联文档不存在时的错误
@@ -446,12 +611,11 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    // 权限检查：统一 ID 格式进行比较
-    const employeeId = expense.employee?.toString() || String(expense.employee);
-    const userId = req.user?.id?.toString() || String(req.user.id);
-    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'Administrator';
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
-    if (employeeId !== userId && !isAdmin) {
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -545,9 +709,11 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
       });
     }
     
-    // 权限检查
-    if (expense.employee.toString() !== req.user.id && req.user.role !== 'admin') {
-      console.log(`User ${req.user.id} not authorized to link invoice to expense ${req.params.id}`);
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -625,12 +791,11 @@ router.delete('/:id/unlink-invoice/:invoiceId', protect, async (req, res) => {
       });
     }
     
-    // 权限检查：统一 ID 格式进行比较
-    const employeeId = expense.employee?.toString() || String(expense.employee);
-    const userId = req.user?.id?.toString() || String(req.user.id);
-    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'Administrator';
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
-    if (employeeId !== userId && !isAdmin) {
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -677,12 +842,11 @@ router.get('/:id/receipts/*', protect, async (req, res) => {
       });
     }
     
-    // 权限检查：统一 ID 格式进行比较
-    const employeeId = expense.employee?.toString() || String(expense.employee);
-    const userId = req.user?.id?.toString() || String(req.user.id);
-    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'Administrator';
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
-    if (employeeId !== userId && !isAdmin) {
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this file'

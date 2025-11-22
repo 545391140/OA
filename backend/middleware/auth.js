@@ -5,6 +5,12 @@ const Role = require('../models/Role');
 
 // Protect routes
 const protect = async (req, res, next) => {
+  // 添加日志以追踪请求
+  if (req.path && req.path.includes('/dashboard')) {
+    console.log('[AUTH_PROTECT] Dashboard route protected:', req.method, req.path);
+    console.log('[AUTH_PROTECT] Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+  }
+  
   let token;
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {

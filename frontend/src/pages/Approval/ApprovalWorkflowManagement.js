@@ -305,9 +305,9 @@ const ApprovalWorkflowManagement = () => {
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={workflow.type === 'travel' ? t('approval.workflow.travel') : t('approval.workflow.expense')}
+                    label={(workflow.appliesTo || workflow.type) === 'travel' ? t('approval.workflow.travel') : t('approval.workflow.expense')}
                     size="small"
-                    color={workflow.type === 'travel' ? 'primary' : 'secondary'}
+                    color={(workflow.appliesTo || workflow.type) === 'travel' ? 'primary' : 'secondary'}
                   />
                 </TableCell>
                 <TableCell>
@@ -630,7 +630,7 @@ const ApprovalWorkflowManagement = () => {
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="caption" color="text.secondary">{t('approval.workflow.workflowType')}</Typography>
-                  <Typography>{selectedWorkflow.type === 'travel' ? t('approval.workflow.travel') : t('approval.workflow.expense')}</Typography>
+                  <Typography>{(selectedWorkflow.appliesTo || selectedWorkflow.type) === 'travel' ? t('approval.workflow.travel') : t('approval.workflow.expense')}</Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="caption" color="text.secondary">{t('approval.workflow.priority')}</Typography>

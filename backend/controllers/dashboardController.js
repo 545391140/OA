@@ -1,6 +1,9 @@
+const mongoose = require('mongoose');
 const Travel = require('../models/Travel');
 const Expense = require('../models/Expense');
 const User = require('../models/User');
+const { buildDataScopeQuery } = require('../utils/dataScope');
+const Role = require('../models/Role');
 
 /**
  * @desc    获取Dashboard统计数据
@@ -15,9 +18,12 @@ exports.getDashboardStats = async (req, res) => {
     const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
 
-    // 根据角色确定查询条件
-    const travelQuery = userRole === 'admin' ? {} : { employee: userId };
-    const expenseQuery = userRole === 'admin' ? {} : { employee: userId };
+    // 获取用户角色以确定数据权限范围
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    
+    // 构建数据权限查询条件
+    const travelQuery = await buildDataScopeQuery(req.user, role, 'employee');
+    const expenseQuery = await buildDataScopeQuery(req.user, role, 'employee');
 
     // 并行查询所有统计数据
     const [
@@ -121,7 +127,9 @@ exports.getRecentTravels = async (req, res) => {
     const userRole = req.user.role;
     const limit = parseInt(req.query.limit) || 5;
 
-    const query = userRole === 'admin' ? {} : { employee: userId };
+    // 获取用户角色以确定数据权限范围
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const query = await buildDataScopeQuery(req.user, role, 'employee');
 
     const recentTravels = await Travel.find(query)
       .sort({ createdAt: -1 })
@@ -155,7 +163,9 @@ exports.getRecentExpenses = async (req, res) => {
     const userRole = req.user.role;
     const limit = parseInt(req.query.limit) || 5;
 
-    const query = userRole === 'admin' ? {} : { employee: userId };
+    // 获取用户角色以确定数据权限范围
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const query = await buildDataScopeQuery(req.user, role, 'employee');
 
     const recentExpenses = await Expense.find(query)
       .sort({ date: -1 })
@@ -185,23 +195,41 @@ exports.getRecentExpenses = async (req, res) => {
  */
 exports.getMonthlySpending = async (req, res) => {
   try {
+    console.log('[MONTHLY_SPENDING_API] Request received');
     const userId = req.user.id;
     const userRole = req.user.role;
     const months = parseInt(req.query.months) || 6;
 
-    const query = userRole === 'admin' ? {} : { employee: userId };
+    console.log('[MONTHLY_SPENDING_API] userId:', userId, 'userRole:', userRole, 'months:', months);
+
+    // 获取用户角色以确定数据权限范围
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const query = await buildDataScopeQuery(req.user, role, 'employee');
+
+    console.log('[MONTHLY_SPENDING_API] Data scope query:', JSON.stringify(query, null, 2));
 
     // 计算起始日期（往前N个月）
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
     startDate.setDate(1);
     startDate.setHours(0, 0, 0, 0);
+    startDate.setMilliseconds(0);
+
+    console.log('[MONTHLY_SPENDING_API] Date range - startDate:', startDate.toISOString());
+
+    const matchQuery = Object.assign({}, query, {
+      date: { $gte: startDate }
+    });
+    
+    console.log('[MONTHLY_SPENDING_API] Match query:', JSON.stringify(matchQuery, null, 2));
+    
+    // 先检查是否有符合条件的数据
+    const totalCount = await Expense.countDocuments(matchQuery);
+    console.log('[MONTHLY_SPENDING_API] Total expenses matching query:', totalCount);
 
     const monthlyData = await Expense.aggregate([
       {
-        $match: Object.assign({}, query, {
-          date: { $gte: startDate }
-        })
+        $match: matchQuery
       },
       {
         $group: {
@@ -218,6 +246,8 @@ exports.getMonthlySpending = async (req, res) => {
       }
     ]);
 
+    console.log('[MONTHLY_SPENDING_API] Aggregation result:', JSON.stringify(monthlyData, null, 2));
+
     // 格式化数据
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const formattedData = monthlyData.map(item => ({
@@ -227,12 +257,23 @@ exports.getMonthlySpending = async (req, res) => {
       count: item.count
     }));
 
+    console.log('[MONTHLY_SPENDING_API] Final formatted data:', JSON.stringify(formattedData, null, 2));
+
+    // 禁用缓存
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'ETag': false
+    });
+
     res.json({
       success: true,
       data: formattedData
     });
   } catch (error) {
-    console.error('Get monthly spending error:', error);
+    console.error('[MONTHLY_SPENDING_API] Error:', error);
+    console.error('[MONTHLY_SPENDING_API] Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: '获取月度支出失败',
@@ -252,23 +293,50 @@ exports.getCategoryBreakdown = async (req, res) => {
     const userRole = req.user.role;
     const period = req.query.period || 'month'; // month, quarter, year
 
-    const query = userRole === 'admin' ? {} : { employee: userId };
+    // 获取用户角色以确定数据权限范围
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const query = await buildDataScopeQuery(req.user, role, 'employee');
 
-    // 计算时间范围
-    const startDate = new Date();
+    // 计算时间范围（使用本地时间，避免时区问题）
+    const now = new Date();
+    let startDate;
     if (period === 'month') {
-      startDate.setMonth(startDate.getMonth() - 1);
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
     } else if (period === 'quarter') {
-      startDate.setMonth(startDate.getMonth() - 3);
+      startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1, 0, 0, 0, 0);
     } else if (period === 'year') {
-      startDate.setFullYear(startDate.getFullYear() - 1);
+      startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1, 0, 0, 0, 0);
+    } else {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
     }
+
+    console.log('[CATEGORY_BREAKDOWN_API] userId:', userId, 'userRole:', userRole, 'period:', period);
+    console.log('[CATEGORY_BREAKDOWN_API] Data scope query:', JSON.stringify(query, null, 2));
+    console.log('[CATEGORY_BREAKDOWN_API] Date range:');
+    console.log('[CATEGORY_BREAKDOWN_API] - Now:', now.toISOString());
+    console.log('[CATEGORY_BREAKDOWN_API] - Start date:', startDate.toISOString());
+    console.log('[CATEGORY_BREAKDOWN_API] - Start date local:', startDate.toString());
+
+    const matchQuery = Object.assign({}, query, {
+      date: { $gte: startDate }
+    });
+    
+    console.log('[CATEGORY_BREAKDOWN_API] Match query:', JSON.stringify(matchQuery, null, 2));
+    
+    // 先检查是否有符合条件的数据
+    const totalCount = await Expense.countDocuments(matchQuery);
+    console.log('[CATEGORY_BREAKDOWN_API] Total expenses matching query:', totalCount);
+    
+    // 检查是否有 category 字段的数据
+    const expensesWithCategory = await Expense.countDocuments({
+      ...matchQuery,
+      category: { $exists: true, $ne: null }
+    });
+    console.log('[CATEGORY_BREAKDOWN_API] Expenses with category field:', expensesWithCategory);
 
     const categoryData = await Expense.aggregate([
       {
-        $match: Object.assign({}, query, {
-          date: { $gte: startDate }
-        })
+        $match: matchQuery
       },
       {
         $group: {
@@ -284,29 +352,48 @@ exports.getCategoryBreakdown = async (req, res) => {
 
     // 计算总额
     const totalAmount = categoryData.reduce((sum, item) => sum + item.total, 0);
+    console.log('[CATEGORY_BREAKDOWN_API] Aggregation result:', JSON.stringify(categoryData, null, 2));
+    console.log('[CATEGORY_BREAKDOWN_API] Total amount:', totalAmount);
 
-    // 定义类别颜色
+    // 定义类别颜色（使用实际的类别名称）
     const categoryColors = {
-      flight: '#8884d8',
+      transportation: '#8884d8',
       accommodation: '#82ca9d',
-      meal: '#ffc658',
-      transport: '#ff7300',
-      other: '#a4de6c',
-      default: '#d0d0d0'
+      meals: '#ffc658',
+      entertainment: '#ff7300',
+      communication: '#8dd3c7',
+      office_supplies: '#a4de6c',
+      training: '#ffb347',
+      other: '#d0d0d0'
     };
 
-    // 格式化数据
-    const formattedData = categoryData.map(item => ({
-      name: item._id || 'Other',
-      value: parseFloat(item.total.toFixed(2)),
-      count: item.count,
-      percentage: totalAmount > 0 ? ((item.total / totalAmount) * 100).toFixed(1) : 0,
-      color: categoryColors[item._id] || categoryColors.default
-    }));
+    // 格式化数据 - 前端期望value是百分比
+    const formattedData = categoryData.map(item => {
+      const categoryName = item._id || 'other';
+      const percentage = totalAmount > 0 ? parseFloat(((item.total / totalAmount) * 100).toFixed(1)) : 0;
+      return {
+        name: categoryName,
+        value: percentage, // 前端期望百分比
+        amount: parseFloat(item.total.toFixed(2)), // 保留金额用于tooltip
+        count: item.count,
+        percentage: percentage,
+        color: categoryColors[categoryName] || categoryColors.other
+      };
+    });
+
+    console.log('[CATEGORY_BREAKDOWN_API] Final formatted data:', JSON.stringify(formattedData, null, 2));
+
+    // 禁用缓存
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'ETag': false
+    });
 
     res.json({
       success: true,
-      data: formattedData,
+      data: formattedData || [], // 确保返回数组
       total: parseFloat(totalAmount.toFixed(2))
     });
   } catch (error) {
@@ -409,11 +496,18 @@ exports.getPendingTasks = async (req, res) => {
  */
 exports.getDashboardData = async (req, res) => {
   try {
+    console.log('[DASHBOARD_DATA] ========== Request received ==========');
+    console.log('[DASHBOARD_DATA] User ID:', req.user?.id);
+    console.log('[DASHBOARD_DATA] User Role:', req.user?.role);
+    console.log('[DASHBOARD_DATA] User:', JSON.stringify(req.user, null, 2));
+    
     const userId = req.user.id;
     const userRole = req.user.role;
 
-    // 并行获取所有数据
-    const [stats, recentTravels, recentExpenses, monthlySpending, categoryBreakdown, pendingTasks] = await Promise.all([
+    console.log('[DASHBOARD_DATA] Starting parallel data fetch...');
+
+    // 并行获取所有数据，使用 Promise.allSettled 避免一个失败导致全部失败
+    const results = await Promise.allSettled([
       // 复用上面的逻辑
       getDashboardStatsData(userId, userRole),
       getRecentTravelsData(userId, userRole, 5),
@@ -423,19 +517,62 @@ exports.getDashboardData = async (req, res) => {
       getPendingTasksData(userId, userRole)
     ]);
 
-    res.json({
-      success: true,
-      data: {
-        stats,
-        recentTravels,
-        recentExpenses,
-        monthlySpending,
-        categoryBreakdown,
-        pendingTasks
+    // 处理结果，如果失败则使用默认值
+    const stats = results[0].status === 'fulfilled' ? results[0].value : {};
+    const recentTravels = results[1].status === 'fulfilled' ? results[1].value : [];
+    const recentExpenses = results[2].status === 'fulfilled' ? results[2].value : [];
+    const monthlySpending = results[3].status === 'fulfilled' ? results[3].value : [];
+    const categoryBreakdown = results[4].status === 'fulfilled' ? results[4].value : [];
+    const pendingTasks = results[5].status === 'fulfilled' ? results[5].value : [];
+
+    // 记录任何失败的结果
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const functionNames = ['getDashboardStatsData', 'getRecentTravelsData', 'getRecentExpensesData', 'getMonthlySpendingData', 'getCategoryBreakdownData', 'getPendingTasksData'];
+        console.error(`[DASHBOARD_DATA] ❌ ${functionNames[index]} failed:`, result.reason);
+        console.error(`[DASHBOARD_DATA] Error stack:`, result.reason?.stack);
       }
     });
+
+    console.log('[DASHBOARD_DATA] Data fetched:');
+    console.log('[DASHBOARD_DATA] - stats:', JSON.stringify(stats, null, 2));
+    console.log('[DASHBOARD_DATA] - recentTravels count:', recentTravels?.length || 0);
+    console.log('[DASHBOARD_DATA] - recentExpenses count:', recentExpenses?.length || 0);
+    console.log('[DASHBOARD_DATA] - monthlySpending:', JSON.stringify(monthlySpending, null, 2));
+    console.log('[DASHBOARD_DATA] - monthlySpending length:', monthlySpending?.length || 0);
+    console.log('[DASHBOARD_DATA] - categoryBreakdown:', JSON.stringify(categoryBreakdown, null, 2));
+    console.log('[DASHBOARD_DATA] - categoryBreakdown length:', categoryBreakdown?.length || 0);
+    console.log('[DASHBOARD_DATA] - pendingTasks count:', pendingTasks?.length || 0);
+
+    const responseData = {
+      success: true,
+      data: {
+        stats: stats || {},
+        recentTravels: recentTravels || [],
+        recentExpenses: recentExpenses || [],
+        monthlySpending: monthlySpending || [], // 确保返回数组
+        categoryBreakdown: categoryBreakdown || [], // 确保返回数组
+        pendingTasks: pendingTasks || []
+      }
+    };
+    
+    console.log('[DASHBOARD_DATA] Sending response...');
+    console.log('[DASHBOARD_DATA] Response data:', JSON.stringify(responseData, null, 2));
+    
+    // 禁用缓存，确保每次请求都执行服务器端逻辑
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'ETag': false
+    });
+    
+    res.json(responseData);
   } catch (error) {
-    console.error('Get dashboard data error:', error);
+    console.error('[DASHBOARD_DATA] ========== ERROR ==========');
+    console.error('[DASHBOARD_DATA] Error:', error);
+    console.error('[DASHBOARD_DATA] Error stack:', error.stack);
+    console.error('[DASHBOARD_DATA] ============================');
     res.status(500).json({
       success: false,
       message: '获取Dashboard数据失败',
@@ -446,8 +583,35 @@ exports.getDashboardData = async (req, res) => {
 
 // 辅助函数（内部使用）
 async function getDashboardStatsData(userId, userRole) {
-  const travelQuery = userRole === 'admin' ? {} : { employee: userId };
-  const expenseQuery = userRole === 'admin' ? {} : { employee: userId };
+  // 获取完整用户信息以确定数据权限范围
+  const user = await User.findById(userId);
+  if (!user) {
+    // 如果用户不存在，返回空数据
+    return {
+      totalTravelRequests: 0,
+      pendingApprovals: 0,
+      approvedRequests: 0,
+      monthlySpending: 0,
+      spendingTrend: 0
+    };
+  }
+  const role = await Role.findOne({ code: userRole, isActive: true });
+  const travelQuery = await buildDataScopeQuery(user, role, 'employee');
+  const expenseQuery = await buildDataScopeQuery(user, role, 'employee');
+  
+  // 转换 employee 字段为 ObjectId（如果存在且是字符串）
+  const expenseQueryForAggregate = { ...expenseQuery };
+  if (expenseQueryForAggregate.employee) {
+    if (typeof expenseQueryForAggregate.employee === 'string') {
+      expenseQueryForAggregate.employee = new mongoose.Types.ObjectId(expenseQueryForAggregate.employee);
+    } else if (expenseQueryForAggregate.employee.$in && Array.isArray(expenseQueryForAggregate.employee.$in)) {
+      // 处理 $in 操作符的情况
+      expenseQueryForAggregate.employee.$in = expenseQueryForAggregate.employee.$in.map(id => 
+        typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id
+      );
+    }
+  }
+  
   const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const lastMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
 
@@ -462,11 +626,11 @@ async function getDashboardStatsData(userId, userRole) {
     Travel.countDocuments({ ...travelQuery, status: 'submitted' }),
     Travel.countDocuments({ ...travelQuery, status: 'approved' }),
     Expense.aggregate([
-      { $match: Object.assign({}, expenseQuery, { date: { $gte: currentMonth } }) },
+      { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: currentMonth } }) },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]),
     Expense.aggregate([
-      { $match: Object.assign({}, expenseQuery, { date: { $gte: lastMonth, $lt: currentMonth } }) },
+      { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: lastMonth, $lt: currentMonth } }) },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ])
   ]);
@@ -487,7 +651,10 @@ async function getDashboardStatsData(userId, userRole) {
 }
 
 async function getRecentTravelsData(userId, userRole, limit) {
-  const query = userRole === 'admin' ? {} : { employee: userId };
+  const user = await User.findById(userId);
+  if (!user) return [];
+  const role = await Role.findOne({ code: userRole, isActive: true });
+  const query = await buildDataScopeQuery(user, role, 'employee');
   return await Travel.find(query)
     .sort({ createdAt: -1 })
     .limit(limit)
@@ -497,7 +664,10 @@ async function getRecentTravelsData(userId, userRole, limit) {
 }
 
 async function getRecentExpensesData(userId, userRole, limit) {
-  const query = userRole === 'admin' ? {} : { employee: userId };
+  const user = await User.findById(userId);
+  if (!user) return [];
+  const role = await Role.findOne({ code: userRole, isActive: true });
+  const query = await buildDataScopeQuery(user, role, 'employee');
   return await Expense.find(query)
     .sort({ date: -1 })
     .limit(limit)
@@ -506,55 +676,213 @@ async function getRecentExpensesData(userId, userRole, limit) {
 }
 
 async function getMonthlySpendingData(userId, userRole, months) {
-  const query = userRole === 'admin' ? {} : { employee: userId };
-  const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - months);
-  startDate.setDate(1);
+  try {
+    console.log('[MONTHLY_SPENDING_DATA] ========== Starting ==========');
+    console.log('[MONTHLY_SPENDING_DATA] userId:', userId);
+    console.log('[MONTHLY_SPENDING_DATA] userRole:', userRole);
+    console.log('[MONTHLY_SPENDING_DATA] months:', months);
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log('[MONTHLY_SPENDING_DATA] ❌ User not found:', userId);
+      return [];
+    }
+    console.log('[MONTHLY_SPENDING_DATA] ✅ User found:', user.email);
+    
+    const role = await Role.findOne({ code: userRole, isActive: true });
+    console.log('[MONTHLY_SPENDING_DATA] Role:', role?.name, role?.dataScope);
+    
+    const query = await buildDataScopeQuery(user, role, 'employee');
+    console.log('[MONTHLY_SPENDING_DATA] Data scope query:', JSON.stringify(query, null, 2));
+    
+    // 计算起始日期（往前N个月的第一天）
+    // 注意：使用本地时间，避免时区问题
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - months, 1, 0, 0, 0, 0);
 
-  const monthlyData = await Expense.aggregate([
-    { $match: Object.assign({}, query, { date: { $gte: startDate } }) },
-    {
-      $group: {
-        _id: { year: { $year: '$date' }, month: { $month: '$date' } },
-        total: { $sum: '$amount' }
+    console.log('[MONTHLY_SPENDING_DATA] Date range:');
+    console.log('[MONTHLY_SPENDING_DATA] - Now:', now.toISOString(), now.toString());
+    console.log('[MONTHLY_SPENDING_DATA] - Start date:', startDate.toISOString(), startDate.toString());
+
+    // 转换 employee 字段为 ObjectId（如果存在且是字符串）
+    const matchQuery = Object.assign({}, query, { date: { $gte: startDate } });
+    if (matchQuery.employee) {
+      if (typeof matchQuery.employee === 'string') {
+        matchQuery.employee = new mongoose.Types.ObjectId(matchQuery.employee);
+      } else if (matchQuery.employee.$in && Array.isArray(matchQuery.employee.$in)) {
+        // 处理 $in 操作符的情况
+        matchQuery.employee.$in = matchQuery.employee.$in.map(id => 
+          typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id
+        );
       }
-    },
-    { $sort: { '_id.year': 1, '_id.month': 1 } }
-  ]);
+    }
+    console.log('[MONTHLY_SPENDING_DATA] Match query:', JSON.stringify(matchQuery, null, 2));
+    
+    // 先检查是否有符合条件的数据
+    const totalCount = await Expense.countDocuments(matchQuery);
+    console.log('[MONTHLY_SPENDING_DATA] Total expenses matching query:', totalCount);
+    
+    if (totalCount === 0) {
+      console.log('[MONTHLY_SPENDING_DATA] ⚠️ No expenses found matching query');
+      return [];
+    }
 
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return monthlyData.map(item => ({
-    month: monthNames[item._id.month - 1],
-    amount: parseFloat(item.total.toFixed(2))
-  }));
+    console.log('[MONTHLY_SPENDING_DATA] Running aggregation...');
+    const monthlyData = await Expense.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { year: { $year: '$date' }, month: { $month: '$date' } },
+          total: { $sum: '$amount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    console.log('[MONTHLY_SPENDING_DATA] Aggregation result:', JSON.stringify(monthlyData, null, 2));
+    console.log('[MONTHLY_SPENDING_DATA] Aggregation result length:', monthlyData.length);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const result = monthlyData.map(item => ({
+      month: monthNames[item._id.month - 1],
+      amount: parseFloat(item.total.toFixed(2))
+    }));
+    
+    console.log('[MONTHLY_SPENDING_DATA] Final result:', JSON.stringify(result, null, 2));
+    console.log('[MONTHLY_SPENDING_DATA] ========== Completed ==========');
+    
+    return result;
+  } catch (error) {
+    console.error('[MONTHLY_SPENDING_DATA] ========== ERROR ==========');
+    console.error('[MONTHLY_SPENDING_DATA] Error:', error);
+    console.error('[MONTHLY_SPENDING_DATA] Error message:', error.message);
+    console.error('[MONTHLY_SPENDING_DATA] Error stack:', error.stack);
+    console.error('[MONTHLY_SPENDING_DATA] ============================');
+    return [];
+  }
 }
 
 async function getCategoryBreakdownData(userId, userRole, period) {
-  const query = userRole === 'admin' ? {} : { employee: userId };
-  const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - 1);
+  try {
+    console.log('[CATEGORY_BREAKDOWN] ========== Starting ==========');
+    console.log('[CATEGORY_BREAKDOWN] userId:', userId);
+    console.log('[CATEGORY_BREAKDOWN] userRole:', userRole);
+    console.log('[CATEGORY_BREAKDOWN] period:', period);
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log('[CATEGORY_BREAKDOWN] ❌ User not found:', userId);
+      return [];
+    }
+    console.log('[CATEGORY_BREAKDOWN] ✅ User found:', user.email);
+    
+    const role = await Role.findOne({ code: userRole, isActive: true });
+    console.log('[CATEGORY_BREAKDOWN] Role:', role?.name, role?.dataScope);
+    
+    const query = await buildDataScopeQuery(user, role, 'employee');
+    console.log('[CATEGORY_BREAKDOWN] Data scope query:', JSON.stringify(query, null, 2));
+    
+    // 计算时间范围（使用本地时间，避免时区问题）
+    const now = new Date();
+    let startDate;
+    if (period === 'month') {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    } else if (period === 'quarter') {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1, 0, 0, 0, 0);
+    } else if (period === 'year') {
+      startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1, 0, 0, 0, 0);
+    } else {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    }
 
-  const categoryData = await Expense.aggregate([
-    { $match: Object.assign({}, query, { date: { $gte: startDate } }) },
-    { $group: { _id: '$category', total: { $sum: '$amount' } } },
-    { $sort: { total: -1 } }
-  ]);
+    console.log('[CATEGORY_BREAKDOWN] Date range:');
+    console.log('[CATEGORY_BREAKDOWN] - Now:', now.toISOString(), now.toString());
+    console.log('[CATEGORY_BREAKDOWN] - Start date:', startDate.toISOString(), startDate.toString());
 
-  const categoryColors = {
-    flight: '#8884d8',
-    accommodation: '#82ca9d',
-    meal: '#ffc658',
-    transport: '#ff7300',
-    other: '#a4de6c'
-  };
+    // 转换 employee 字段为 ObjectId（如果存在且是字符串）
+    const matchQuery = Object.assign({}, query, { date: { $gte: startDate } });
+    if (matchQuery.employee) {
+      if (typeof matchQuery.employee === 'string') {
+        matchQuery.employee = new mongoose.Types.ObjectId(matchQuery.employee);
+      } else if (matchQuery.employee.$in && Array.isArray(matchQuery.employee.$in)) {
+        // 处理 $in 操作符的情况
+        matchQuery.employee.$in = matchQuery.employee.$in.map(id => 
+          typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id
+        );
+      }
+    }
+    console.log('[CATEGORY_BREAKDOWN] Match query:', JSON.stringify(matchQuery, null, 2));
+    
+    const totalCount = await Expense.countDocuments(matchQuery);
+    console.log('[CATEGORY_BREAKDOWN] Total expenses matching query:', totalCount);
+    
+    if (totalCount === 0) {
+      console.log('[CATEGORY_BREAKDOWN] ⚠️ No expenses found matching query');
+      return [];
+    }
+    
+    // 检查是否有 category 字段的数据
+    const expensesWithCategory = await Expense.countDocuments({
+      ...matchQuery,
+      category: { $exists: true, $ne: null }
+    });
+    console.log('[CATEGORY_BREAKDOWN] Expenses with category field:', expensesWithCategory);
 
-  const totalAmount = categoryData.reduce((sum, item) => sum + item.total, 0);
+    console.log('[CATEGORY_BREAKDOWN] Running aggregation...');
+    const categoryData = await Expense.aggregate([
+      { $match: matchQuery },
+      { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      { $sort: { total: -1 } }
+    ]);
 
-  return categoryData.map(item => ({
-    name: item._id || 'Other',
-    value: parseFloat(((item.total / totalAmount) * 100).toFixed(1)),
-    color: categoryColors[item._id] || '#d0d0d0'
-  }));
+    console.log('[CATEGORY_BREAKDOWN] Aggregation result:', JSON.stringify(categoryData, null, 2));
+    console.log('[CATEGORY_BREAKDOWN] Aggregation result length:', categoryData.length);
+
+    if (categoryData.length === 0) {
+      console.log('[CATEGORY_BREAKDOWN] ⚠️ No category data found');
+      return [];
+    }
+
+    // 定义类别颜色（使用实际的类别名称）
+    const categoryColors = {
+      transportation: '#8884d8',
+      accommodation: '#82ca9d',
+      meals: '#ffc658',
+      entertainment: '#ff7300',
+      communication: '#8dd3c7',
+      office_supplies: '#a4de6c',
+      training: '#ffb347',
+      other: '#d0d0d0'
+    };
+
+    const totalAmount = categoryData.reduce((sum, item) => sum + item.total, 0);
+    console.log('[CATEGORY_BREAKDOWN] Total amount:', totalAmount);
+
+    const result = categoryData.map(item => {
+      const categoryName = item._id || 'other';
+      const percentage = totalAmount > 0 ? parseFloat(((item.total / totalAmount) * 100).toFixed(1)) : 0;
+      return {
+        name: categoryName,
+        value: percentage, // 前端期望百分比
+        amount: parseFloat(item.total.toFixed(2)), // 保留金额用于tooltip
+        count: item.count,
+        percentage: percentage,
+        color: categoryColors[categoryName] || categoryColors.other
+      };
+    });
+    
+    console.log('[CATEGORY_BREAKDOWN] Final result:', JSON.stringify(result, null, 2));
+    console.log('[CATEGORY_BREAKDOWN] ========== Completed ==========');
+    
+    return result;
+  } catch (error) {
+    console.error('[CATEGORY_BREAKDOWN] ========== ERROR ==========');
+    console.error('[CATEGORY_BREAKDOWN] Error:', error);
+    console.error('[CATEGORY_BREAKDOWN] Error message:', error.message);
+    console.error('[CATEGORY_BREAKDOWN] Error stack:', error.stack);
+    console.error('[CATEGORY_BREAKDOWN] ============================');
+    return [];
+  }
 }
 
 async function getPendingTasksData(userId, userRole) {

@@ -340,10 +340,15 @@ const Dashboard = () => {
                   ))}
                 </Pie>
                   <ChartTooltip 
-                    formatter={(value, name) => {
+                    formatter={(value, name, props) => {
                       const categoryKey = `expense.categories.${name}`;
                       const translatedName = t(categoryKey);
                       const displayName = translatedName !== categoryKey ? translatedName : name;
+                      const amount = props.payload?.amount;
+                      // 如果有金额数据，显示金额和百分比；否则只显示百分比
+                      if (amount !== undefined) {
+                        return [`${formatCurrency(amount)} (${value}%)`, displayName];
+                      }
                       return [`${value}%`, displayName];
                     }}
                   />

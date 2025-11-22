@@ -105,7 +105,8 @@ router.post('/', protect, async (req, res) => {
     const workflow = new ApprovalWorkflow({
       name,
       description,
-      appliesTo: type,
+      type: type, // 设置 type 字段
+      appliesTo: type, // 设置 appliesTo 字段
       conditions: {
         minAmount: conditions?.amountRange?.min || 0,
         maxAmount: conditions?.amountRange?.max === Number.MAX_SAFE_INTEGER || !conditions?.amountRange?.max
@@ -188,7 +189,10 @@ router.put('/:id', protect, async (req, res) => {
     }
 
     if (description !== undefined) workflow.description = description;
-    if (type) workflow.appliesTo = type;
+    if (type) {
+      workflow.appliesTo = type;
+      workflow.type = type; // 同时更新 type 字段以保持兼容性
+    }
     if (priority !== undefined) workflow.priority = priority;
     if (isActive !== undefined) workflow.isActive = isActive;
 
