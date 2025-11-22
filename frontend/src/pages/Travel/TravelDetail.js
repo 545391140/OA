@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -85,11 +85,20 @@ const TravelDetail = () => {
     fetchTravelDetail();
   }, [id]);
 
+  // 使用 useRef 防止重复请求
+  const expensesFetchedRef = useRef(false);
+  
   useEffect(() => {
-    if (travel && travel.status === 'completed') {
+    // 只有当差旅状态为 completed 且还没有加载过费用时才加载
+    if (travel && travel.status === 'completed' && !expensesFetchedRef.current) {
+      expensesFetchedRef.current = true;
       fetchTravelExpenses();
     }
-  }, [travel]);
+    // 如果差旅状态不是 completed，重置标记
+    if (travel && travel.status !== 'completed') {
+      expensesFetchedRef.current = false;
+    }
+  }, [travel?.status, travel?._id]);
 
   const fetchExpenseItems = async () => {
     try {
@@ -108,15 +117,74 @@ const TravelDetail = () => {
   };
 
   const fetchTravelExpenses = async () => {
+    // 防止重复请求
+    if (expensesLoading) {
+      return;
+    }
+    
     try {
       setExpensesLoading(true);
+      console.log(`[TravelDetail] Fetching expenses for travel ${id}`);
       const response = await apiClient.get(`/travel/${id}/expenses`);
+      console.log(`[TravelDetail] Expenses response:`, response.data);
+      
       if (response.data && response.data.success) {
-        setExpenses(response.data.data || []);
+        const expenses = response.data.data || [];
+        console.log(`[TravelDetail] Loaded ${expenses.length} expenses`);
+        
+        // 过滤掉 null、undefined 或没有 _id 的费用项
+        const validExpenses = expenses.filter(expense => {
+          if (!expense) {
+            console.warn(`[TravelDetail] Found null/undefined expense, skipping`);
+            return false;
+          }
+          if (!expense._id) {
+            console.warn(`[TravelDetail] Found expense without _id:`, expense);
+            return false;
+          }
+          return true;
+        });
+        
+        console.log(`[TravelDetail] Valid expenses: ${validExpenses.length} out of ${expenses.length}`);
+        setExpenses(validExpenses);
+      } else {
+        console.warn(`[TravelDetail] Unexpected response format:`, response.data);
+        setExpenses([]);
       }
     } catch (error) {
-      console.error('Failed to load travel expenses:', error);
-      showNotification(t('travel.detail.expenses.loadError') || '加载费用申请失败', 'error');
+      console.error(`[TravelDetail] Failed to load travel expenses:`, error);
+      console.error(`[TravelDetail] Error response:`, error.response);
+      console.error(`[TravelDetail] Error details:`, error.response?.data);
+      
+      // 429 错误是请求频率过高，不显示错误提示，避免干扰用户
+      if (error.response?.status === 429) {
+        console.log(`[TravelDetail] Rate limit hit, suppressing error notification`);
+        return;
+      }
+      
+      // 500 错误显示详细错误信息
+      if (error.response?.status === 500) {
+        const errorMessage = error.response?.data?.message || 
+                            error.response?.data?.error?.message ||
+                            '加载费用申请失败，服务器错误';
+        console.error(`[TravelDetail] Server error:`, errorMessage);
+        showNotification(errorMessage, 'error');
+      } else if (error.response?.status === 404) {
+        // 404 错误可能是差旅单不存在，不显示错误
+        console.log(`[TravelDetail] Travel not found`);
+        setExpenses([]);
+      } else if (error.response?.status === 403) {
+        // 403 错误是权限问题
+        showNotification('无权访问此差旅的费用申请', 'error');
+      } else {
+        // 其他错误显示通用错误信息
+        showNotification(t('travel.detail.expenses.loadError') || '加载费用申请失败', 'error');
+      }
+      
+      // 请求失败时重置标记，允许重试
+      expensesFetchedRef.current = false;
+      // 设置空数组，避免显示错误状态
+      setExpenses([]);
     } finally {
       setExpensesLoading(false);
     }
@@ -1255,7 +1323,7 @@ const TravelDetail = () => {
                 </Box>
               ) : expenses.length > 0 ? (
                 <Box>
-                  {expenses.map((expense) => (
+                  {expenses.filter(expense => expense && expense._id).map((expense) => (
                     <Card key={expense._id} variant="outlined" sx={{ mb: 2 }}>
                       <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>

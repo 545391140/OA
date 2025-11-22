@@ -232,6 +232,9 @@ const ExpenseForm = () => {
     'conference'
   ];
 
+  // 使用 useRef 防止重复生成费用申请
+  const generatingExpensesRef = useRef(false);
+  
   useEffect(() => {
     if (isEdit) {
       fetchExpenseData();
@@ -239,7 +242,16 @@ const ExpenseForm = () => {
       fetchTravelOptions();
     } else if (travelId) {
       // 如果是从差旅页面跳转过来的，自动生成费用申请
-      generateExpensesFromTravel();
+      // 防止重复调用
+      if (!generatingExpensesRef.current && !generatingExpenses) {
+        generatingExpensesRef.current = true;
+        generateExpensesFromTravel().finally(() => {
+          // 延迟重置，避免快速切换时的重复调用
+          setTimeout(() => {
+            generatingExpensesRef.current = false;
+          }, 1000);
+        });
+      }
     } else {
       // 新建费用申请时，加载差旅单列表和费用项列表
       fetchTravelOptions();
@@ -337,12 +349,49 @@ const ExpenseForm = () => {
       }
     } catch (error) {
       console.error('Failed to generate expenses from travel:', error);
+      console.error('Error response:', error.response);
       console.error('Error details:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      const errorData = error.response?.data || {};
+      const errorMessage = errorData.message || error.message || '生成费用申请失败';
+      
+      // 如果错误是 "Expense generation in progress"，等待后重试
+      if (error.response?.status === 400 && 
+          (errorMessage === 'Expense generation in progress' || 
+           errorMessage.includes('generation in progress'))) {
+        const timeout = errorData.data?.timeout || 3;
+        showNotification(
+          `费用申请正在生成中，请稍候...（预计还需 ${timeout} 秒）`,
+          'info'
+        );
+        // 等待3秒后重试一次
+        setTimeout(async () => {
+          try {
+            await generateExpensesFromTravel();
+          } catch (retryError) {
+            // 如果重试仍然失败，显示错误
+            const retryErrorMessage = retryError.response?.data?.message || 
+                                retryError.message || 
+                                '生成费用申请失败，请稍后重试';
+            showNotification(retryErrorMessage, 'error');
+          }
+        }, 3000);
+        return;
+      }
       
       // 如果已经生成过，尝试获取已生成的费用申请列表
-      if (error.response?.status === 400 && error.response?.data?.data?.expenses) {
-        const existingExpenses = error.response.data.data.expenses;
+      if (error.response?.status === 400 && 
+          (errorMessage === 'Expenses already generated' || 
+           errorMessage.includes('already generated'))) {
+        const existingExpenses = errorData.data?.expenses || [];
+        console.log('Found existing expenses:', existingExpenses);
+        
         if (existingExpenses.length > 0) {
+          showNotification(
+            '费用申请已生成，正在加载...',
+            'info'
+          );
           // 获取费用申请的详细信息
           const expensesWithDetails = await Promise.all(
             existingExpenses.map(async (expenseId) => {
@@ -357,28 +406,45 @@ const ExpenseForm = () => {
           );
           
           const validExpenses = expensesWithDetails.filter(exp => exp !== null);
+          console.log('Loaded valid expenses:', validExpenses.length);
           setGeneratedExpenses(validExpenses);
           
           if (validExpenses.length === 1) {
             // 如果只有一个费用申请，直接加载到表单中
             loadExpenseToForm(validExpenses[0]);
+            showNotification(
+              '已加载已生成的费用申请',
+              'success'
+            );
           } else if (validExpenses.length > 1) {
             // 如果有多个费用申请，显示选择对话框
             setExpenseSelectDialogOpen(true);
+            showNotification(
+              `已找到 ${validExpenses.length} 个费用申请，请选择要编辑的申请`,
+              'info'
+            );
           } else {
             showNotification(
-              t('travel.detail.expenses.alreadyGenerated') || '费用申请已生成',
-              'info'
+              '费用申请已生成，但无法加载详情',
+              'warning'
             );
           }
           return;
+        } else {
+          showNotification(
+            '费用申请已生成，但未找到关联的费用申请',
+            'warning'
+          );
+          return;
         }
       }
+      
       // 显示详细的错误信息
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          t('travel.detail.expenses.generateError') || 
-                          '生成费用申请失败';
+      console.error('Unhandled error:', {
+        status: error.response?.status,
+        message: errorMessage,
+        data: errorData
+      });
       showNotification(errorMessage, 'error');
       
       // 如果是服务器错误，记录详细信息
@@ -502,6 +568,11 @@ const ExpenseForm = () => {
           });
           return updated;
         });
+
+        // 自动匹配发票到费用项（仅在新建模式下）
+        if (!isEdit) {
+          await autoMatchInvoicesToExpenseItems(travelData, budgets);
+        }
       }
     } catch (error) {
       console.error('Failed to load travel info:', error);
@@ -612,6 +683,304 @@ const ExpenseForm = () => {
     });
     
     return Object.values(merged);
+  };
+
+  // 自动匹配发票到费用项
+  const autoMatchInvoicesToExpenseItems = async (travel, budgets) => {
+    if (!travel || !budgets || budgets.length === 0) {
+      return;
+    }
+
+    try {
+      console.log('[AUTO_MATCH] Starting auto match invoices for travel:', travel._id);
+      
+      // 1. 查询可用发票（在差旅日期范围内，未关联的发票）
+      const startDate = travel.startDate ? new Date(travel.startDate).toISOString().split('T')[0] : null;
+      const endDate = travel.endDate ? new Date(travel.endDate).toISOString().split('T')[0] : null;
+      
+      if (!startDate || !endDate) {
+        console.log('[AUTO_MATCH] Travel dates missing, skipping auto match');
+        return;
+      }
+
+      // 查询发票：日期在差旅范围内，状态为 pending 或 verified，未关联费用
+      // 先查询 pending 状态的发票
+      const pendingResponse = await apiClient.get('/invoices', {
+        params: {
+          status: 'pending',
+          startDate: startDate,
+          endDate: endDate,
+          limit: 500
+        }
+      });
+      
+      // 再查询 verified 状态的发票
+      const verifiedResponse = await apiClient.get('/invoices', {
+        params: {
+          status: 'verified',
+          startDate: startDate,
+          endDate: endDate,
+          limit: 500
+        }
+      });
+
+      const pendingInvoices = pendingResponse.data?.data || [];
+      const verifiedInvoices = verifiedResponse.data?.data || [];
+      const allInvoices = [...pendingInvoices, ...verifiedInvoices];
+      
+      // 过滤出未关联费用的发票
+      const availableInvoices = allInvoices.filter(inv => {
+        return !inv.relatedExpense || inv.relatedExpense === null;
+      });
+      
+      console.log('[AUTO_MATCH] Found', availableInvoices.length, 'available invoices');
+
+      if (availableInvoices.length === 0) {
+        return;
+      }
+
+      // 2. 获取费用项详细信息（需要分类信息）
+      const expenseItemIds = budgets.map(b => b.expenseItemId?.toString() || b.expenseItemId);
+      const expenseItemsMap = {};
+      
+      // 从已有的 expenseItems 中获取，如果没有则查询
+      expenseItemIds.forEach(itemId => {
+        const item = expenseItems.find(i => {
+          const id = i._id?.toString() || i._id;
+          return id === itemId || id === itemId?.toString();
+        });
+        if (item) {
+          expenseItemsMap[itemId] = item;
+        }
+      });
+
+      // 如果费用项信息不完整，需要加载费用项列表
+      if (Object.keys(expenseItemsMap).length < expenseItemIds.length) {
+        await fetchExpenseItemsList();
+        // 重新构建费用项映射
+        expenseItemIds.forEach(itemId => {
+          const item = expenseItems.find(i => {
+            const id = i._id?.toString() || i._id;
+            return id === itemId || id === itemId?.toString();
+          });
+          if (item) {
+            expenseItemsMap[itemId] = item;
+          }
+        });
+      }
+
+      // 3. 为每个费用项匹配发票
+      const matchedInvoices = {};
+      const usedInvoiceIds = new Set();
+
+      budgets.forEach(budget => {
+        const expenseItemId = budget.expenseItemId?.toString() || budget.expenseItemId;
+        const expenseItem = expenseItemsMap[expenseItemId];
+        
+        if (!expenseItem) {
+          console.warn('[AUTO_MATCH] Expense item not found:', expenseItemId);
+          return;
+        }
+
+        const matched = [];
+        
+        availableInvoices.forEach(invoice => {
+          // 跳过已使用的发票
+          const invoiceId = invoice._id?.toString() || invoice._id;
+          if (usedInvoiceIds.has(invoiceId)) {
+            return;
+          }
+
+          let score = 0;
+
+          // 1. 分类匹配（权重：40%）
+          const categoryMatch = matchInvoiceCategory(invoice.category, expenseItem.category);
+          score += categoryMatch * 40;
+
+          // 2. 时间匹配（权重：30%）
+          const dateMatch = isInvoiceDateInRange(invoice.invoiceDate, travel.startDate, travel.endDate);
+          score += dateMatch * 30;
+
+          // 3. 地点匹配（仅交通类，权重：30%）
+          if (invoice.category === 'transportation') {
+            const locationMatch = matchInvoiceLocation(invoice, travel);
+            score += locationMatch * 30;
+          } else {
+            // 非交通类发票，地点匹配不适用，给予默认分数（30分）
+            score += 30;
+          }
+
+          // 4. 出行人匹配（交通类，额外加分）
+          if (invoice.category === 'transportation') {
+            const travelerMatch = matchInvoiceTraveler(invoice, travel);
+            score += travelerMatch * 10;
+          }
+
+          // 匹配阈值：60分以上认为匹配
+          if (score >= 60) {
+            matched.push({ invoice, score });
+          }
+        });
+
+        // 按分数排序，选择匹配的发票
+        matched.sort((a, b) => b.score - a.score);
+        const selectedInvoices = matched.map(m => m.invoice);
+        
+        if (selectedInvoices.length > 0) {
+          matchedInvoices[expenseItemId] = selectedInvoices;
+          selectedInvoices.forEach(inv => {
+            usedInvoiceIds.add(inv._id?.toString() || inv._id);
+          });
+          console.log(`[AUTO_MATCH] Matched ${selectedInvoices.length} invoices for expense item ${expenseItemId}`);
+        }
+      });
+
+      // 4. 更新状态，将匹配的发票添加到对应的费用项
+      if (Object.keys(matchedInvoices).length > 0) {
+        setExpenseItemInvoices(prev => {
+          const updated = { ...prev };
+          Object.keys(matchedInvoices).forEach(expenseItemId => {
+            const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
+            // 合并匹配的发票，避免重复
+            const existingInvoices = updated[expenseItemIdStr] || [];
+            const newInvoices = matchedInvoices[expenseItemId];
+            const existingIds = new Set(existingInvoices.map(inv => (inv._id || inv.id)?.toString()));
+            const invoicesToAdd = newInvoices.filter(inv => {
+              const invId = (inv._id || inv.id)?.toString();
+              return !existingIds.has(invId);
+            });
+            updated[expenseItemIdStr] = [...existingInvoices, ...invoicesToAdd];
+          });
+          return updated;
+        });
+
+        const totalMatched = Object.values(matchedInvoices).reduce((sum, invs) => sum + invs.length, 0);
+        showNotification(
+          `已自动匹配 ${totalMatched} 张发票到费用项`,
+          'success'
+        );
+      }
+    } catch (error) {
+      console.error('[AUTO_MATCH] Failed to auto match invoices:', error);
+      // 不显示错误提示，避免干扰用户
+    }
+  };
+
+  // 匹配发票分类到费用项分类
+  const matchInvoiceCategory = (invoiceCategory, expenseItemCategory) => {
+    if (!invoiceCategory || !expenseItemCategory) {
+      return 0;
+    }
+
+    // 分类映射
+    const categoryMapping = {
+      'transportation': ['transport', 'transportation'],
+      'accommodation': ['accommodation'],
+      'meals': ['meal', 'meals'],
+      'entertainment': ['entertainment'],
+      'communication': ['communication'],
+      'office_supplies': ['office_supplies', 'officeSupplies'],
+      'training': ['training'],
+      'other': ['other', 'general']
+    };
+
+    const allowedCategories = categoryMapping[expenseItemCategory] || [expenseItemCategory];
+    return allowedCategories.includes(invoiceCategory) ? 1 : 0;
+  };
+
+  // 检查发票日期是否在差旅日期范围内
+  const isInvoiceDateInRange = (invoiceDate, travelStartDate, travelEndDate) => {
+    if (!invoiceDate || !travelStartDate || !travelEndDate) {
+      return false;
+    }
+    const invoiceDateObj = new Date(invoiceDate);
+    const startDate = new Date(travelStartDate);
+    const endDate = new Date(travelEndDate);
+    return invoiceDateObj >= startDate && invoiceDateObj <= endDate;
+  };
+
+  // 匹配发票地点（仅交通类）
+  const matchInvoiceLocation = (invoice, travel) => {
+    if (invoice.category !== 'transportation' || !invoice.traveler) {
+      return 1; // 非交通类或无地点信息，默认匹配
+    }
+
+    const invoiceDeparture = invoice.traveler.departure;
+    const invoiceDestination = invoice.traveler.destination;
+
+    if (!invoiceDeparture || !invoiceDestination) {
+      return 1; // 无地点信息，默认匹配
+    }
+
+    // 匹配去程
+    if (travel.outbound) {
+      const outboundMatch = (
+        (compareLocation(invoiceDeparture, travel.outbound.departure) ||
+         compareLocation(invoiceDeparture, travel.destination)) &&
+        (compareLocation(invoiceDestination, travel.outbound.destination) ||
+         compareLocation(invoiceDestination, travel.destination))
+      );
+      if (outboundMatch) return 1;
+    }
+
+    // 匹配返程
+    if (travel.inbound) {
+      const inboundMatch = (
+        (compareLocation(invoiceDeparture, travel.inbound.departure) ||
+         compareLocation(invoiceDeparture, travel.destination)) &&
+        (compareLocation(invoiceDestination, travel.inbound.destination) ||
+         compareLocation(invoiceDestination, travel.destination))
+      );
+      if (inboundMatch) return 1;
+    }
+
+    // 匹配多程行程
+    if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
+      for (const route of travel.multiCityRoutes) {
+        if (route.departure && route.destination) {
+          const routeMatch = (
+            compareLocation(invoiceDeparture, route.departure) &&
+            compareLocation(invoiceDestination, route.destination)
+          );
+          if (routeMatch) return 1;
+        }
+      }
+    }
+
+    return 0;
+  };
+
+  // 匹配发票出行人（仅交通类）
+  const matchInvoiceTraveler = (invoice, travel) => {
+    if (invoice.category !== 'transportation' || !invoice.traveler) {
+      return 0;
+    }
+
+    // 如果发票有出行人信息，检查是否匹配差旅单的员工
+    if (invoice.traveler.name && travel.employee) {
+      const employeeName = travel.employee.firstName + ' ' + travel.employee.lastName;
+      return invoice.traveler.name.includes(employeeName) || employeeName.includes(invoice.traveler.name) ? 1 : 0;
+    }
+
+    return 0;
+  };
+
+  // 比较地点（支持字符串和对象）
+  const compareLocation = (loc1, loc2) => {
+    if (!loc1 || !loc2) return false;
+    if (typeof loc1 === 'string' && typeof loc2 === 'string') {
+      return loc1 === loc2 || loc1.includes(loc2) || loc2.includes(loc1);
+    }
+    if (typeof loc1 === 'object' && typeof loc2 === 'object') {
+      return loc1.name === loc2.name || loc1._id?.toString() === loc2._id?.toString();
+    }
+    if (typeof loc1 === 'object') {
+      return loc1.name === loc2 || loc1._id?.toString() === loc2;
+    }
+    if (typeof loc2 === 'object') {
+      return loc1 === loc2.name || loc1 === loc2._id?.toString();
+    }
+    return false;
   };
 
   // 为费用项添加发票
@@ -855,18 +1224,22 @@ const ExpenseForm = () => {
         
         // 如果关联了差旅单，加载差旅信息
         if (expenseData.travel) {
-          const travelId = expenseData.travel._id || expenseData.travel;
-          await loadTravelInfoById(travelId);
+          const travelId = expenseData.travel?._id || expenseData.travel;
+          if (travelId) {
+            await loadTravelInfoById(travelId);
+          }
         }
         
         // 如果关联了费用项，初始化费用项发票管理
         if (expenseData.expenseItem) {
-          const expenseItemId = expenseData.expenseItem._id || expenseData.expenseItem;
-          const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
-          setExpenseItemInvoices(prev => ({
-            ...prev,
-            [expenseItemIdStr]: expenseData.relatedInvoices || []
-          }));
+          const expenseItemId = expenseData.expenseItem?._id || expenseData.expenseItem;
+          if (expenseItemId) {
+            const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
+            setExpenseItemInvoices(prev => ({
+              ...prev,
+              [expenseItemIdStr]: expenseData.relatedInvoices || []
+            }));
+          }
         }
         
         // 加载费用项列表（用于显示费用项名称）

@@ -39,7 +39,21 @@
     "dateFormat": "YYYY-MM-DD",
     "all": "전체",
     "reset": "재설정",
-    "submitting": "제출 중..."
+    "submitting": "제출 중...",
+    "months": {
+      "Jan": "1월",
+      "Feb": "2월",
+      "Mar": "3월",
+      "Apr": "4월",
+      "May": "5월",
+      "Jun": "6월",
+      "Jul": "7월",
+      "Aug": "8월",
+      "Sep": "9월",
+      "Oct": "10월",
+      "Nov": "11월",
+      "Dec": "12월"
+    }
   },
   "navigation": {
     "dashboard": "대시보드",
@@ -906,6 +920,7 @@
     "subcategory": "하위 카테고리",
     "amount": "금액",
     "date": "날짜",
+    "reimbursementNumber": "상환 번호",
     "vendor": "공급업체",
     "receipts": "영수증",
     "project": "프로젝트",

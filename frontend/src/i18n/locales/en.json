@@ -40,7 +40,21 @@
     "all": "All",
     "reset": "Reset",
     "submitting": "Submitting...",
-    "sheet": "sheet"
+    "sheet": "sheet",
+    "months": {
+      "Jan": "January",
+      "Feb": "February",
+      "Mar": "March",
+      "Apr": "April",
+      "May": "May",
+      "Jun": "June",
+      "Jul": "July",
+      "Aug": "August",
+      "Sep": "September",
+      "Oct": "October",
+      "Nov": "November",
+      "Dec": "December"
+    }
   },
   "notifications": {
     "title": "Notifications",
@@ -1051,6 +1065,7 @@
     "subcategory": "Subcategory",
     "amount": "Amount",
     "date": "Date",
+    "reimbursementNumber": "Reimbursement Number",
     "vendor": "Vendor",
     "receipts": "Receipts",
     "project": "Project",

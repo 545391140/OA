@@ -926,11 +926,17 @@ router.post('/:id/submit', protect, async (req, res) => {
 // @route   POST /api/travel/:id/generate-expenses
 // @access  Private
 router.post('/:id/generate-expenses', protect, async (req, res) => {
+  const travelId = req.params.id;
+  console.log(`[GENERATE_EXPENSES] Starting request for travel ${travelId}`);
+  
   try {
-    const travel = await Travel.findById(req.params.id)
+    const travel = await Travel.findById(travelId)
       .populate('employee', 'firstName lastName email');
     
+    console.log(`[GENERATE_EXPENSES] Travel found: ${travel ? 'yes' : 'no'}`);
+    
     if (!travel) {
+      console.log(`[GENERATE_EXPENSES] Travel ${travelId} not found`);
       return res.status(404).json({
         success: false,
         message: 'Travel not found'
@@ -938,10 +944,30 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
     }
     
     // 权限检查：只能为自己的差旅生成费用申请
-    const employeeId = travel.employee._id ? travel.employee._id.toString() : travel.employee.toString();
+    let employeeId;
+    if (travel.employee) {
+      if (travel.employee._id) {
+        employeeId = travel.employee._id.toString();
+      } else if (typeof travel.employee === 'object' && travel.employee.toString) {
+        employeeId = travel.employee.toString();
+      } else {
+        employeeId = String(travel.employee);
+      }
+    }
+    
+    if (!employeeId) {
+      console.error(`[GENERATE_EXPENSES] Travel ${travelId} has no employee`);
+      return res.status(400).json({
+        success: false,
+        message: 'Travel has no employee assigned'
+      });
+    }
+    
     const userId = req.user.id.toString();
+    console.log(`[GENERATE_EXPENSES] Employee ID: ${employeeId}, User ID: ${userId}`);
     
     if (employeeId !== userId && req.user.role !== 'admin') {
+      console.log(`[GENERATE_EXPENSES] Unauthorized access attempt by user ${userId}`);
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -950,38 +976,99 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
     
     // 检查是否已经生成过
     if (travel.expenseGenerationStatus === 'completed') {
+      console.log(`[GENERATE_EXPENSES] Travel ${req.params.id} already has completed expense generation`);
+      console.log(`[GENERATE_EXPENSES] Related expenses:`, travel.relatedExpenses);
       return res.status(400).json({
         success: false,
         message: 'Expenses already generated',
         data: {
-          expenses: travel.relatedExpenses
+          expenses: travel.relatedExpenses || [],
+          expenseGenerationStatus: travel.expenseGenerationStatus,
+          expenseGeneratedAt: travel.expenseGeneratedAt
         }
       });
     }
     
     // 检查是否正在生成中
     if (travel.expenseGenerationStatus === 'generating') {
-      return res.status(400).json({
-        success: false,
-        message: 'Expense generation in progress'
-      });
+      // 检查生成状态是否已经持续太长时间（超过5分钟），如果是，重置状态
+      const generatingTimeout = 5 * 60 * 1000; // 5分钟
+      const now = new Date();
+      // 使用 updatedAt 来判断，因为 generating 状态是在更新时设置的
+      const updatedAt = travel.updatedAt || travel.createdAt;
+      const timeSinceUpdate = now - new Date(updatedAt);
+      
+      if (timeSinceUpdate > generatingTimeout) {
+        console.warn(`Expense generation status stuck in 'generating' for ${Math.round(timeSinceUpdate / 1000)}s, resetting to 'pending'`);
+        // 重置状态为 pending，允许重新生成
+        await Travel.updateOne(
+          { _id: req.params.id },
+          { 
+            $set: { 
+              expenseGenerationStatus: 'pending',
+              expenseGenerationError: 'Previous generation timed out, reset to pending'
+            } 
+          }
+        );
+        // 重新查询差旅单
+        travel = await Travel.findById(req.params.id)
+          .populate('employee', 'firstName lastName email');
+      } else {
+        // 如果还在超时时间内，返回错误
+        const remainingSeconds = Math.round((generatingTimeout - timeSinceUpdate) / 1000);
+        console.log(`[GENERATE_EXPENSES] Travel ${req.params.id} is still generating, remaining time: ${remainingSeconds}s`);
+        return res.status(400).json({
+          success: false,
+          message: 'Expense generation in progress',
+          data: {
+            timeout: remainingSeconds, // 剩余秒数
+            startedAt: updatedAt,
+            elapsedSeconds: Math.round(timeSinceUpdate / 1000)
+          }
+        });
+      }
     }
     
     // 执行自动生成
+    console.log(`[GENERATE_EXPENSES] Calling autoGenerateExpenses for travel ${travelId}`);
     const expenseMatchService = require('../services/expenseMatchService');
-    const result = await expenseMatchService.autoGenerateExpenses(travel);
     
-    res.json({
-      success: true,
-      message: `Successfully generated ${result.generatedCount} expense(s)`,
-      data: result
-    });
+    try {
+      const result = await expenseMatchService.autoGenerateExpenses(travel);
+      console.log(`[GENERATE_EXPENSES] Successfully generated ${result.generatedCount} expenses`);
+      
+      res.json({
+        success: true,
+        message: `Successfully generated ${result.generatedCount} expense(s)`,
+        data: result
+      });
+    } catch (serviceError) {
+      console.error(`[GENERATE_EXPENSES] Service error:`, serviceError);
+      console.error(`[GENERATE_EXPENSES] Service error stack:`, serviceError.stack);
+      throw serviceError; // 重新抛出，让外层 catch 处理
+    }
     
   } catch (error) {
-    console.error('Generate expenses error:', error);
+    console.error(`[GENERATE_EXPENSES] Fatal error for travel ${travelId}:`, error);
+    console.error(`[GENERATE_EXPENSES] Error stack:`, error.stack);
+    console.error(`[GENERATE_EXPENSES] Error details:`, {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      keyPattern: error.keyPattern,
+      keyValue: error.keyValue
+    });
+    
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to generate expenses'
+      message: error.message || 'Failed to generate expenses',
+      error: process.env.NODE_ENV === 'development' ? {
+        name: error.name,
+        code: error.code,
+        keyPattern: error.keyPattern,
+        keyValue: error.keyValue,
+        stack: error.stack
+      } : undefined
     });
   }
 });
@@ -990,22 +1077,39 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
 // @route   GET /api/travel/:id/expenses
 // @access  Private
 router.get('/:id/expenses', protect, async (req, res) => {
+  const travelId = req.params.id;
+  console.log(`[GET_TRAVEL_EXPENSES] Starting request for travel ${travelId}`);
+  
   try {
-    const travel = await Travel.findById(req.params.id)
+    const travel = await Travel.findById(travelId)
       .populate('employee', 'firstName lastName email');
     
     if (!travel) {
+      console.log(`[GET_TRAVEL_EXPENSES] Travel ${travelId} not found`);
       return res.status(404).json({
         success: false,
         message: 'Travel not found'
       });
     }
     
+    console.log(`[GET_TRAVEL_EXPENSES] Travel found: ${travel.travelNumber || travelId}`);
+    
     // 权限检查
-    const employeeId = travel.employee._id ? travel.employee._id.toString() : travel.employee.toString();
+    let employeeId;
+    if (travel.employee) {
+      if (travel.employee._id) {
+        employeeId = travel.employee._id.toString();
+      } else if (typeof travel.employee === 'object' && travel.employee.toString) {
+        employeeId = travel.employee.toString();
+      } else {
+        employeeId = String(travel.employee);
+      }
+    }
+    
     const userId = req.user.id.toString();
     
-    if (employeeId !== userId && req.user.role !== 'admin') {
+    if (employeeId && employeeId !== userId && req.user.role !== 'admin') {
+      console.log(`[GET_TRAVEL_EXPENSES] Unauthorized access attempt by user ${userId} for travel ${travelId}`);
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -1014,12 +1118,151 @@ router.get('/:id/expenses', protect, async (req, res) => {
     
     // 获取费用申请的详细信息
     const Expense = require('../models/Expense');
-    const expenses = await Expense.find({
-      _id: { $in: travel.relatedExpenses || [] }
-    })
-      .populate('expenseItem', 'itemName category')
-      .populate('relatedInvoices', 'invoiceNumber invoiceDate amount vendor category')
-      .sort({ createdAt: -1 });
+    const mongoose = require('mongoose');
+    
+    // 过滤掉无效的 ObjectId
+    const relatedExpenses = travel.relatedExpenses || [];
+    console.log(`[GET_TRAVEL_EXPENSES] Travel has ${relatedExpenses.length} related expenses`);
+    
+    const validExpenseIds = relatedExpenses.filter(id => {
+      if (!id) return false;
+      try {
+        const idStr = id.toString ? id.toString() : String(id);
+        const isValid = mongoose.Types.ObjectId.isValid(idStr);
+        if (!isValid) {
+          console.warn(`[GET_TRAVEL_EXPENSES] Invalid expense ID found: ${idStr}`);
+        }
+        return isValid;
+      } catch (e) {
+        console.warn(`[GET_TRAVEL_EXPENSES] Error validating expense ID: ${id}`, e);
+        return false;
+      }
+    }).map(id => {
+      // 统一转换为 ObjectId（必须使用 new 关键字）
+      const idStr = id.toString ? id.toString() : String(id);
+      return new mongoose.Types.ObjectId(idStr);
+    });
+    
+    console.log(`[GET_TRAVEL_EXPENSES] Valid expense IDs: ${validExpenseIds.length} out of ${relatedExpenses.length}`);
+    
+    if (validExpenseIds.length === 0) {
+      console.log(`[GET_TRAVEL_EXPENSES] No valid expense IDs found, returning empty array`);
+      return res.json({
+        success: true,
+        count: 0,
+        data: []
+      });
+    }
+    
+    // 查询费用申请，使用 try-catch 处理 populate 错误
+    let expenses = [];
+    try {
+      console.log(`[GET_TRAVEL_EXPENSES] Querying expenses with populate...`);
+      console.log(`[GET_TRAVEL_EXPENSES] Valid expense IDs:`, validExpenseIds.map(id => id.toString()));
+      
+      // 先尝试使用 populate 查询，使用 lean() 提高性能
+      expenses = await Expense.find({
+        _id: { $in: validExpenseIds }
+      })
+        .populate({
+          path: 'expenseItem',
+          select: 'itemName category',
+          model: 'ExpenseItem'
+        })
+        .populate({
+          path: 'relatedInvoices',
+          select: 'invoiceNumber invoiceDate amount totalAmount currency vendor category',
+          model: 'Invoice'
+        })
+        .sort({ createdAt: -1 })
+        .lean(); // 使用 lean() 直接返回普通对象，提高性能
+      
+      console.log(`[GET_TRAVEL_EXPENSES] Found ${expenses.length} expenses`);
+      
+      // 清理 populate 失败的数据（null 值）
+      expenses = expenses.map(expense => {
+        // 如果 expenseItem populate 失败（为 null），保持原样
+        if (expense.expenseItem === null) {
+          expense.expenseItem = null;
+        }
+        // 如果 relatedInvoices populate 失败，过滤掉 null 值
+        if (Array.isArray(expense.relatedInvoices)) {
+          expense.relatedInvoices = expense.relatedInvoices.filter(inv => inv !== null && inv !== undefined);
+        } else if (expense.relatedInvoices === null || expense.relatedInvoices === undefined) {
+          expense.relatedInvoices = [];
+        }
+        return expense;
+      });
+      
+    } catch (queryError) {
+      console.error(`[GET_TRAVEL_EXPENSES] Error querying expenses with populate:`, queryError);
+      console.error(`[GET_TRAVEL_EXPENSES] Error details:`, {
+        message: queryError.message,
+        stack: queryError.stack,
+        name: queryError.name,
+        validExpenseIds: validExpenseIds.map(id => id.toString())
+      });
+      
+      // 如果 populate 失败，尝试不使用 populate
+      try {
+        console.log(`[GET_TRAVEL_EXPENSES] Falling back to query without populate...`);
+        expenses = await Expense.find({
+          _id: { $in: validExpenseIds }
+        })
+          .sort({ createdAt: -1 })
+          .lean();
+        console.log(`[GET_TRAVEL_EXPENSES] Fallback query found ${expenses.length} expenses`);
+        
+        // 手动清理数据
+        expenses = expenses.map(expense => {
+          if (expense.expenseItem && typeof expense.expenseItem === 'string') {
+            expense.expenseItem = null;
+          }
+          if (!Array.isArray(expense.relatedInvoices)) {
+            expense.relatedInvoices = [];
+          }
+          return expense;
+        });
+      } catch (fallbackError) {
+        console.error(`[GET_TRAVEL_EXPENSES] Fallback query also failed:`, fallbackError);
+        console.error(`[GET_TRAVEL_EXPENSES] Fallback error details:`, {
+          message: fallbackError.message,
+          stack: fallbackError.stack,
+          name: fallbackError.name
+        });
+        // 如果查询也失败，返回空数组而不是抛出错误
+        expenses = [];
+      }
+    }
+    
+    // 过滤掉 null 值和无效数据
+    expenses = expenses.filter(expense => expense !== null && expense !== undefined);
+    console.log(`[GET_TRAVEL_EXPENSES] Filtered expenses: ${expenses.length}`);
+    
+    // 手动处理 populate 失败的字段
+    expenses = expenses.map(expense => {
+      try {
+        // 确保 expenseItem 和 relatedInvoices 格式正确
+        if (expense.expenseItem && typeof expense.expenseItem === 'string') {
+          // 如果 expenseItem 是字符串 ID，设置为 null
+          expense.expenseItem = null;
+        }
+        if (expense.relatedInvoices && !Array.isArray(expense.relatedInvoices)) {
+          // 如果 relatedInvoices 不是数组，初始化为空数组
+          expense.relatedInvoices = [];
+        }
+        // 确保 relatedInvoices 数组中的元素格式正确
+        if (Array.isArray(expense.relatedInvoices)) {
+          expense.relatedInvoices = expense.relatedInvoices.filter(inv => inv !== null && inv !== undefined);
+        }
+        return expense;
+      } catch (e) {
+        console.warn(`[GET_TRAVEL_EXPENSES] Error processing expense ${expense._id}:`, e);
+        return expense;
+      }
+    });
+    
+    console.log(`[GET_TRAVEL_EXPENSES] Successfully returning ${expenses.length} expenses`);
     
     res.json({
       success: true,
@@ -1028,10 +1271,23 @@ router.get('/:id/expenses', protect, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Get travel expenses error:', error);
+    console.error(`[GET_TRAVEL_EXPENSES] Fatal error for travel ${travelId}:`, error);
+    console.error(`[GET_TRAVEL_EXPENSES] Error stack:`, error.stack);
+    console.error(`[GET_TRAVEL_EXPENSES] Error details:`, {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      keyPattern: error.keyPattern,
+      keyValue: error.keyValue
+    });
+    
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to get expenses'
+      message: error.message || 'Failed to get expenses',
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack
+      } : undefined
     });
   }
 });

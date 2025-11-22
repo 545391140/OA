@@ -400,6 +400,8 @@ async function autoGenerateExpenses(travel) {
   const Travel = mongoose.model('Travel');
   const travelId = travel._id || travel;
   
+  console.log(`[EXPENSE_GENERATION] Starting expense generation for travel ${travelId}`);
+  
   try {
     // 1. 更新状态为生成中（使用 updateOne 避免版本冲突）
     await Travel.updateOne(
@@ -415,10 +417,14 @@ async function autoGenerateExpenses(travel) {
       throw new Error('Travel not found');
     }
     
+    console.log(`[EXPENSE_GENERATION] Travel found: ${travel.travelNumber || travelId}, employee: ${travel.employee?._id || travel.employee}`);
+    
     // 2. 获取差旅单的费用预算
     const expenseBudgets = extractExpenseBudgets(travel);
+    console.log(`[EXPENSE_GENERATION] Found ${expenseBudgets.length} expense budgets`);
     
     if (expenseBudgets.length === 0) {
+      console.log(`[EXPENSE_GENERATION] No expense budgets found, marking as completed`);
       await Travel.updateOne(
         { _id: travelId },
         { $set: { expenseGenerationStatus: 'completed' } }
@@ -434,6 +440,7 @@ async function autoGenerateExpenses(travel) {
     // 3. 查询发票夹中未匹配的发票
     // 确保日期范围有效
     if (!travel.startDate || !travel.endDate) {
+      console.error(`[EXPENSE_GENERATION] Missing dates: startDate=${travel.startDate}, endDate=${travel.endDate}`);
       await Travel.updateOne(
         { _id: travelId },
         {
@@ -451,30 +458,65 @@ async function autoGenerateExpenses(travel) {
       };
     }
     
-    const availableInvoices = await Invoice.find({
-      uploadedBy: travel.employee._id || travel.employee,
+    // 安全地获取员工ID
+    let employeeId;
+    if (travel.employee) {
+      if (travel.employee._id) {
+        employeeId = travel.employee._id;
+      } else if (typeof travel.employee === 'object' && travel.employee.toString) {
+        employeeId = travel.employee.toString();
+      } else {
+        employeeId = travel.employee;
+      }
+    }
+    
+    if (!employeeId) {
+      throw new Error('Employee ID is missing from travel');
+    }
+    
+    // 验证日期
+    const startDate = new Date(travel.startDate);
+    const endDate = new Date(travel.endDate);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Invalid travel dates');
+    }
+    
+    console.log(`[EXPENSE_GENERATION] Querying invoices for employee ${employeeId}, date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    
+    // 优化查询条件：查找未关联的发票
+    // 条件：1. 属于该员工 2. 状态为pending或verified 3. 未关联费用 4. 未关联差旅 5. 日期在差旅日期范围内
+    const queryConditions = {
+      uploadedBy: employeeId,
       status: { $in: ['pending', 'verified'] },
+      invoiceDate: {
+        $gte: startDate,
+        $lte: endDate
+      },
       $and: [
         {
           $or: [
-            { relatedExpense: null },  // 未关联费用
+            { relatedExpense: null },
             { relatedExpense: { $exists: false } }
           ]
         },
         {
           $or: [
-            { relatedTravel: null },   // 未关联差旅
+            { relatedTravel: null },
             { relatedTravel: { $exists: false } }
           ]
         }
-      ],
-      invoiceDate: {
-        $gte: new Date(travel.startDate),
-        $lte: new Date(travel.endDate)
-      }
-    });
+      ]
+    };
+    
+    console.log(`[EXPENSE_GENERATION] Query conditions:`, JSON.stringify(queryConditions, null, 2));
+    
+    const availableInvoices = await Invoice.find(queryConditions);
+    
+    console.log(`[EXPENSE_GENERATION] Found ${availableInvoices.length} available invoices`);
     
     if (availableInvoices.length === 0) {
+      console.log(`[EXPENSE_GENERATION] No available invoices found, marking as completed`);
       await Travel.updateOne(
         { _id: travelId },
         { $set: { expenseGenerationStatus: 'completed' } }
@@ -491,12 +533,16 @@ async function autoGenerateExpenses(travel) {
     const matchedResults = [];
     const usedInvoiceIds = new Set(); // 用于跟踪已使用的发票ID
     
+    console.log(`[EXPENSE_GENERATION] Starting invoice matching for ${expenseBudgets.length} expense budgets`);
+    
     for (const budget of expenseBudgets) {
       const expenseItem = await ExpenseItem.findById(budget.expenseItemId);
       if (!expenseItem) {
-        console.warn(`ExpenseItem not found: ${budget.expenseItemId}`);
+        console.warn(`[EXPENSE_GENERATION] ExpenseItem not found: ${budget.expenseItemId}`);
         continue;
       }
+      
+      console.log(`[EXPENSE_GENERATION] Matching invoices for expense item: ${expenseItem.itemName} (${budget.expenseItemId})`);
       
       // 匹配发票（传入已使用的发票ID集合）
       const matchedInvoices = matchInvoicesForExpenseItem(
@@ -506,6 +552,8 @@ async function autoGenerateExpenses(travel) {
         travel,
         usedInvoiceIds
       );
+      
+      console.log(`[EXPENSE_GENERATION] Matched ${matchedInvoices.length} invoices for expense item ${expenseItem.itemName}`);
       
       if (matchedInvoices.length > 0) {
         // 标记这些发票为已使用
@@ -524,7 +572,10 @@ async function autoGenerateExpenses(travel) {
       }
     }
     
+    console.log(`[EXPENSE_GENERATION] Total matched results: ${matchedResults.length}`);
+    
     if (matchedResults.length === 0) {
+      console.log(`[EXPENSE_GENERATION] No invoices matched for any expense items, marking as completed`);
       await Travel.updateOne(
         { _id: travelId },
         { $set: { expenseGenerationStatus: 'completed' } }
@@ -540,77 +591,201 @@ async function autoGenerateExpenses(travel) {
     // 5. 生成费用申请
     const generatedExpenses = [];
     
+    console.log(`[EXPENSE_GENERATION] Starting expense creation for ${matchedResults.length} matched results`);
+    
     for (const result of matchedResults) {
-      // 计算总金额
-      const totalAmount = result.matchedInvoices.reduce(
-        (sum, inv) => sum + (inv.totalAmount || inv.amount || 0), 0
-      );
-      
-      // 创建费用申请
-      const expense = await Expense.create({
-        employee: travel.employee._id || travel.employee,
-        travel: travel._id,
-        expenseItem: result.expenseItemId,
-        title: `${travel.title || travel.travelNumber || '差旅'} - ${result.expenseItem.itemName}`,
-        description: `自动生成：${result.route === 'outbound' ? '去程' : result.route === 'inbound' ? '返程' : '多程'}`,
-        category: mapExpenseItemCategoryToExpenseCategory(result.expenseItem.category),
-        amount: totalAmount,
-        currency: travel.currency || 'CNY',
-        date: travel.endDate || new Date(),
-        status: 'draft',  // 草稿状态，等待用户编辑
-        reimbursementNumber: await generateReimbursementNumber(), // 自动生成核销单号
-        relatedInvoices: result.matchedInvoices.map(inv => inv._id),
-        autoMatched: true,
-        matchSource: 'auto',
-        matchRules: {
-          expenseItemId: result.expenseItemId,
-          travelId: travel._id,
-          matchedInvoices: result.matchedInvoices.map(inv => inv._id),
-          matchedAt: new Date(),
-          confidence: result.confidence
-        },
-        vendor: extractVendorFromInvoices(result.matchedInvoices)
-      });
-      
-      // 更新发票关联
-      await Invoice.updateMany(
-        { _id: { $in: result.matchedInvoices.map(inv => inv._id) } },
+      try {
+        console.log(`[EXPENSE_GENERATION] Creating expense for expense item: ${result.expenseItemId}`);
+        
+        // 验证必要数据
+        if (!result.expenseItem || !result.expenseItem.itemName) {
+          console.error(`[EXPENSE_GENERATION] Missing expense item data: ${result.expenseItemId}`);
+          continue;
+        }
+        
+        if (!result.matchedInvoices || result.matchedInvoices.length === 0) {
+          console.error(`[EXPENSE_GENERATION] No matched invoices for expense item: ${result.expenseItemId}`);
+          continue;
+        }
+        
+        // 计算总金额
+        const totalAmount = result.matchedInvoices.reduce(
+          (sum, inv) => {
+            const amount = parseFloat(inv.totalAmount || inv.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+          }, 0
+        );
+        
+        // 验证金额有效性
+        if (isNaN(totalAmount) || totalAmount <= 0) {
+          console.error('Invalid total amount for expense item:', result.expenseItemId, totalAmount);
+          continue;
+        }
+        
+        // 生成核销单号（带重试机制，处理唯一性冲突）
+        let reimbursementNumber;
+        let retryCount = 0;
+        const maxRetries = 5;
+        
+        while (retryCount < maxRetries) {
+          try {
+            reimbursementNumber = await generateReimbursementNumber();
+            // 检查是否已存在（避免唯一性冲突）
+            const existingExpense = await Expense.findOne({ reimbursementNumber });
+            if (!existingExpense) {
+              break; // 核销单号可用
+            }
+            retryCount++;
+            // 如果已存在，等待一小段时间后重试
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (genError) {
+            console.error('Error generating reimbursement number:', genError);
+            retryCount++;
+            if (retryCount >= maxRetries) {
+              throw new Error('Failed to generate unique reimbursement number after retries');
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+        
+        if (!reimbursementNumber) {
+          throw new Error('Failed to generate reimbursement number');
+        }
+        
+        // 验证日期
+        let expenseDate;
+        if (travel.endDate) {
+          expenseDate = travel.endDate instanceof Date ? travel.endDate : new Date(travel.endDate);
+        } else if (travel.startDate) {
+          expenseDate = travel.startDate instanceof Date ? travel.startDate : new Date(travel.startDate);
+        } else {
+          expenseDate = new Date();
+        }
+        
+        if (!(expenseDate instanceof Date) || isNaN(expenseDate.getTime())) {
+          throw new Error('Invalid expense date');
+        }
+        
+        // 安全地获取员工ID和差旅ID
+        const expenseEmployeeId = travel.employee?._id || travel.employee || employeeId;
+        const expenseTravelId = travel._id || travelId;
+        
+        if (!expenseEmployeeId) {
+          throw new Error('Cannot determine employee ID for expense');
+        }
+        
+        if (!expenseTravelId) {
+          throw new Error('Cannot determine travel ID for expense');
+        }
+        
+        // 创建费用申请
+        const expense = await Expense.create({
+          employee: expenseEmployeeId,
+          travel: expenseTravelId,
+          expenseItem: result.expenseItemId,
+          title: `${travel.title || travel.travelNumber || '差旅'} - ${result.expenseItem.itemName}`,
+          description: `自动生成：${result.route === 'outbound' ? '去程' : result.route === 'inbound' ? '返程' : '多程'}`,
+          category: mapExpenseItemCategoryToExpenseCategory(result.expenseItem.category || 'other'),
+          amount: totalAmount,
+          currency: travel.currency || 'CNY',
+          date: expenseDate,
+          status: 'draft',  // 草稿状态，等待用户编辑
+          reimbursementNumber: reimbursementNumber,
+          relatedInvoices: result.matchedInvoices.map(inv => inv._id).filter(Boolean),
+          autoMatched: true,
+          matchSource: 'auto',
+          matchRules: {
+            expenseItemId: result.expenseItemId,
+            travelId: expenseTravelId,
+            matchedInvoices: result.matchedInvoices.map(inv => inv._id).filter(Boolean),
+            matchedAt: new Date(),
+            confidence: result.confidence || 0
+          },
+          vendor: extractVendorFromInvoices(result.matchedInvoices)
+        });
+        
+        // 更新发票关联
+        const invoiceIds = result.matchedInvoices.map(inv => inv._id).filter(Boolean);
+        if (invoiceIds.length > 0) {
+          await Invoice.updateMany(
+            { _id: { $in: invoiceIds } },
+            {
+              $set: {
+                relatedExpense: expense._id,
+                relatedTravel: expenseTravelId,
+                matchStatus: 'matched',
+                matchedTravelId: expenseTravelId,
+                matchedExpenseItemId: result.expenseItemId
+              }
+            }
+          );
+        }
+        
+        generatedExpenses.push(expense);
+        console.log(`[EXPENSE_GENERATION] Successfully created expense ${expense._id} for expense item ${result.expenseItemId}`);
+      } catch (expenseError) {
+        console.error(`[EXPENSE_GENERATION] Error creating expense for expense item: ${result.expenseItemId}`, expenseError);
+        console.error(`[EXPENSE_GENERATION] Error details:`, {
+          message: expenseError.message,
+          name: expenseError.name,
+          code: expenseError.code,
+          keyPattern: expenseError.keyPattern,
+          keyValue: expenseError.keyValue,
+          stack: expenseError.stack
+        });
+        // 继续处理其他费用项，不中断整个流程
+        continue;
+      }
+    }
+    
+    console.log(`[EXPENSE_GENERATION] Successfully created ${generatedExpenses.length} expenses`);
+    
+    // 6. 更新差旅单（使用 updateOne 避免版本冲突）
+    // 只有当成功生成了至少一个费用申请时才更新
+    if (generatedExpenses.length > 0) {
+      await Travel.updateOne(
+        { _id: travelId },
         {
           $set: {
-            relatedExpense: expense._id,
-            relatedTravel: travel._id,
-            matchStatus: 'matched',
-            matchedTravelId: travel._id,
-            matchedExpenseItemId: result.expenseItemId
+            relatedExpenses: generatedExpenses.map(exp => exp._id),
+            expenseGenerationStatus: 'completed',
+            expenseGeneratedAt: new Date()
           }
         }
       );
       
-      generatedExpenses.push(expense);
-    }
-    
-    // 6. 更新差旅单（使用 updateOne 避免版本冲突）
-    await Travel.updateOne(
-      { _id: travelId },
-      {
-        $set: {
-          relatedExpenses: generatedExpenses.map(exp => exp._id),
-          expenseGenerationStatus: 'completed',
-          expenseGeneratedAt: new Date()
+      // 重新查询文档以获取最新数据（用于通知）
+      travel = await Travel.findById(travelId)
+        .populate('employee', 'firstName lastName email');
+      
+      // 7. 发送通知给用户
+      try {
+        const notifyEmployeeId = travel.employee?._id || travel.employee || employeeId;
+        if (notifyEmployeeId) {
+          await notifyExpenseGenerated(
+            notifyEmployeeId,
+            travel,
+            generatedExpenses
+          );
+        } else {
+          console.warn(`[EXPENSE_GENERATION] Cannot send notification: employee ID not found`);
         }
+      } catch (notifyError) {
+        console.error(`[EXPENSE_GENERATION] Failed to send notification:`, notifyError);
+        // 通知失败不影响主流程
       }
-    );
-    
-    // 重新查询文档以获取最新数据（用于通知）
-    travel = await Travel.findById(travelId)
-      .populate('employee', 'firstName lastName email');
-    
-    // 7. 发送通知给用户
-    await notifyExpenseGenerated(
-      travel.employee._id || travel.employee,
-      travel,
-      generatedExpenses
-    );
+    } else {
+      // 如果没有生成任何费用申请，更新状态为完成（但没有费用）
+      await Travel.updateOne(
+        { _id: travelId },
+        {
+          $set: {
+            expenseGenerationStatus: 'completed',
+            expenseGeneratedAt: new Date()
+          }
+        }
+      );
+    }
     
     return {
       success: true,
@@ -620,21 +795,23 @@ async function autoGenerateExpenses(travel) {
     
   } catch (error) {
     // 错误处理（使用 updateOne 避免版本冲突）
+    console.error(`[EXPENSE_GENERATION] Fatal error during expense generation for travel ${travelId}:`, error);
+    console.error(`[EXPENSE_GENERATION] Error stack:`, error.stack);
+    
     try {
       await Travel.updateOne(
         { _id: travelId },
         {
           $set: {
             expenseGenerationStatus: 'failed',
-            expenseGenerationError: error.message
+            expenseGenerationError: error.message || 'Unknown error'
           }
         }
       );
     } catch (updateError) {
-      console.error('Failed to update travel error status:', updateError);
+      console.error(`[EXPENSE_GENERATION] Failed to update travel error status:`, updateError);
     }
     
-    console.error('Auto generate expenses error:', error);
     throw error;
   }
 }

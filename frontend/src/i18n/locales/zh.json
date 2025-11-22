@@ -41,7 +41,21 @@
     "all": "全部",
     "reset": "重置",
     "submitting": "提交中...",
-    "sheet": "张"
+    "sheet": "张",
+    "months": {
+      "Jan": "一月",
+      "Feb": "二月",
+      "Mar": "三月",
+      "Apr": "四月",
+      "May": "五月",
+      "Jun": "六月",
+      "Jul": "七月",
+      "Aug": "八月",
+      "Sep": "九月",
+      "Oct": "十月",
+      "Nov": "十一月",
+      "Dec": "十二月"
+    }
   },
   "notifications": {
     "title": "通知",
@@ -1096,6 +1110,7 @@
     "subcategory": "子类别",
     "amount": "金额",
     "date": "日期",
+    "reimbursementNumber": "核销单号",
     "vendor": "供应商",
     "receipts": "发票",
     "project": "项目",
