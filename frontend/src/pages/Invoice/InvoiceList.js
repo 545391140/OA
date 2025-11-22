@@ -364,9 +364,9 @@ const InvoiceList = () => {
                     </TableCell>
                     <TableCell>{invoice.vendor?.name || '-'}</TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {invoice.amount ? (
+                      {(invoice.totalAmount || invoice.amount) ? (
                         <Typography variant="body2" fontWeight={600}>
-                          {invoice.currency || 'CNY'} {invoice.amount.toFixed(2)}
+                          {invoice.currency || 'CNY'} {(invoice.totalAmount || invoice.amount).toFixed(2)}
                         </Typography>
                       ) : (
                         '-'

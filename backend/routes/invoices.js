@@ -29,7 +29,11 @@ router.get('/', protect, async (req, res) => {
     } = req.query;
 
     // 构建查询条件
-    const query = { uploadedBy: req.user.id };
+    // 管理员可以看到所有发票，普通用户只能看到自己上传的发票
+    const query = {};
+    if (req.user.role !== 'admin' && req.user.role !== 'Administrator') {
+      query.uploadedBy = req.user.id;
+    }
 
     if (status) {
       query.status = status;
@@ -71,7 +75,7 @@ router.get('/', protect, async (req, res) => {
     // 优化：按照 Mongoose Populate 的工作原理，先查询主数据，再批量查询关联数据
     // 这样可以更精确地控制查询，减少不必要的查询
     const invoices = await Invoice.find(query)
-      .select('_id invoiceNumber invoiceDate amount currency category status createdAt file vendor.name relatedExpense relatedTravel')
+      .select('_id invoiceNumber invoiceDate amount totalAmount currency category status createdAt file vendor.name relatedExpense relatedTravel')
       .lean() // 返回普通对象而非 Mongoose 文档，减少内存占用和序列化开销
       .sort(sortOptions)
       .skip(skip)

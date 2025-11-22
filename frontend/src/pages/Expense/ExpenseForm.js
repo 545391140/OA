@@ -117,6 +117,7 @@ const ExpenseForm = () => {
   // 每个费用项的发票管理
   const [expenseItemInvoices, setExpenseItemInvoices] = useState({}); // { expenseItemId: [invoices] }
   const [expenseItemInvoiceDialogs, setExpenseItemInvoiceDialogs] = useState({}); // { expenseItemId: open }
+  const [expenseItemReimbursementAmounts, setExpenseItemReimbursementAmounts] = useState({}); // { expenseItemId: amount }
 
   const currencies = [
     { value: 'USD', label: 'USD - US Dollar' },
@@ -427,11 +428,19 @@ const ExpenseForm = () => {
 
         // 初始化费用项发票管理
         const budgets = extractExpenseBudgets(travelData);
-        const initialInvoices = {};
-        budgets.forEach(budget => {
-          initialInvoices[budget.expenseItemId] = [];
+        // 保留已有的发票数据，只初始化新的费用项（不覆盖已有数据）
+        setExpenseItemInvoices(prev => {
+          const updated = { ...prev };
+          budgets.forEach(budget => {
+            // 确保使用字符串键
+            const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
+            // 只有当该费用项不存在时才初始化为空数组
+            if (!updated[expenseItemIdStr]) {
+              updated[expenseItemIdStr] = [];
+            }
+          });
+          return updated;
         });
-        setExpenseItemInvoices(initialInvoices);
       }
     } catch (error) {
       console.error('Failed to load travel info:', error);
@@ -535,23 +544,135 @@ const ExpenseForm = () => {
 
   // 为费用项添加发票
   const handleAddInvoicesForExpenseItem = (expenseItemId, selectedInvoices) => {
-    setExpenseItemInvoices(prev => ({
-      ...prev,
-      [expenseItemId]: [...(prev[expenseItemId] || []), ...selectedInvoices]
-    }));
+    if (!selectedInvoices || selectedInvoices.length === 0) {
+      return;
+    }
+    
+    // 确保 expenseItemId 是字符串格式，用于状态键
+    const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
+    
+    // 确保选中的发票对象包含必要的字段，创建新对象避免直接修改
+    const invoicesToAdd = selectedInvoices.map(invoice => {
+      // 创建新对象，确保有 _id 字段
+      const invoiceId = invoice._id || invoice.id;
+      return {
+        ...invoice,
+        _id: invoiceId,
+        id: invoiceId
+      };
+    });
+    
+    setExpenseItemInvoices(prev => {
+      // 尝试两种键格式
+      const currentInvoices = prev[expenseItemIdStr] || prev[expenseItemId] || [];
+      
+      // 避免重复添加相同的发票
+      const existingIds = new Set(currentInvoices.map(inv => {
+        const id = inv._id || inv.id;
+        return id ? String(id) : null;
+      }).filter(Boolean));
+      
+      const newInvoices = invoicesToAdd.filter(inv => {
+        const id = inv._id || inv.id;
+        return id && !existingIds.has(String(id));
+      });
+      
+      if (newInvoices.length === 0) {
+        // 如果没有新发票，返回原状态
+        return prev;
+      }
+      
+      const updatedInvoices = [...currentInvoices, ...newInvoices];
+      
+      // 创建新对象确保 React 检测到变化
+      const newState = {
+        ...prev,
+        [expenseItemIdStr]: updatedInvoices
+      };
+      
+      // 如果 expenseItemId 和 expenseItemIdStr 不同，也更新原键
+      if (expenseItemId !== expenseItemIdStr && prev[expenseItemId]) {
+        delete newState[expenseItemId];
+      }
+      
+      // 计算新的发票总金额
+      const totalAmount = updatedInvoices.reduce((sum, inv) => {
+        const amount = inv.totalAmount || inv.amount || 0;
+        return sum + amount;
+      }, 0);
+      
+      // 计算之前的发票总金额
+      const previousTotal = currentInvoices.reduce((sum, inv) => {
+        const amount = inv.totalAmount || inv.amount || 0;
+        return sum + amount;
+      }, 0);
+      
+      // 自动更新报销金额为发票总金额
+      setExpenseItemReimbursementAmounts(prevAmounts => {
+        const currentReimbursement = prevAmounts[expenseItemIdStr] ?? prevAmounts[expenseItemId];
+        
+        // 如果报销金额还没有设置，或者当前报销金额等于之前的发票总金额，则自动更新
+        if (currentReimbursement === undefined || currentReimbursement === previousTotal) {
+          return {
+            ...prevAmounts,
+            [expenseItemIdStr]: totalAmount
+          };
+        }
+        return prevAmounts;
+      });
+      
+      return newState;
+    });
+    
     setExpenseItemInvoiceDialogs(prev => ({
       ...prev,
+      [expenseItemIdStr]: false,
       [expenseItemId]: false
     }));
-    showNotification(`成功为费用项添加 ${selectedInvoices.length} 张发票`, 'success');
+    
+    showNotification(`成功为费用项添加 ${invoicesToAdd.length} 张发票`, 'success');
   };
 
   // 移除费用项的发票
   const handleRemoveInvoiceFromExpenseItem = (expenseItemId, invoiceId) => {
-    setExpenseItemInvoices(prev => ({
-      ...prev,
-      [expenseItemId]: (prev[expenseItemId] || []).filter(inv => inv._id !== invoiceId)
-    }));
+    const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
+    
+    setExpenseItemInvoices(prev => {
+      const currentInvoices = prev[expenseItemIdStr] || prev[expenseItemId] || [];
+      const previousTotal = currentInvoices.reduce((sum, inv) => {
+        const amount = inv.totalAmount || inv.amount || 0;
+        return sum + amount;
+      }, 0);
+      
+      const updatedInvoices = currentInvoices.filter(inv => {
+        const id = inv._id || inv.id;
+        return id !== invoiceId;
+      });
+      
+      // 计算新的发票总金额
+      const totalAmount = updatedInvoices.reduce((sum, inv) => {
+        const amount = inv.totalAmount || inv.amount || 0;
+        return sum + amount;
+      }, 0);
+      
+      // 如果报销金额等于之前的发票总金额，则自动更新为新总金额
+      setExpenseItemReimbursementAmounts(prevAmounts => {
+        const currentReimbursement = prevAmounts[expenseItemIdStr] ?? prevAmounts[expenseItemId];
+        if (currentReimbursement === previousTotal) {
+          return {
+            ...prevAmounts,
+            [expenseItemIdStr]: totalAmount
+          };
+        }
+        return prevAmounts;
+      });
+      
+      return {
+        ...prev,
+        [expenseItemIdStr]: updatedInvoices
+      };
+    });
+    
     showNotification('发票已移除', 'success');
   };
 
@@ -591,9 +712,11 @@ const ExpenseForm = () => {
         // 如果关联了费用项，初始化费用项发票管理
         if (expenseData.expenseItem) {
           const expenseItemId = expenseData.expenseItem._id || expenseData.expenseItem;
-          setExpenseItemInvoices({
-            [expenseItemId]: expenseData.relatedInvoices || []
-          });
+          const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
+          setExpenseItemInvoices(prev => ({
+            ...prev,
+            [expenseItemIdStr]: expenseData.relatedInvoices || []
+          }));
         }
         
         // 加载费用项列表（用于显示费用项名称）
@@ -626,21 +749,42 @@ const ExpenseForm = () => {
         
         // 初始化费用项发票管理
         const budgets = extractExpenseBudgets(travelData);
-        const initialInvoices = {};
-        budgets.forEach(budget => {
-          initialInvoices[budget.expenseItemId] = [];
-        });
         
         // 如果费用申请关联了费用项，将发票添加到对应的费用项
         const expenseResponse = await apiClient.get(`/expenses/${id}`);
+        let expenseItemInvoicesToSet = null;
         if (expenseResponse.data?.data?.expenseItem) {
           const expenseItemId = expenseResponse.data.data.expenseItem._id || expenseResponse.data.data.expenseItem;
+          const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
           if (expenseResponse.data.data.relatedInvoices) {
-            initialInvoices[expenseItemId] = expenseResponse.data.data.relatedInvoices || [];
+            expenseItemInvoicesToSet = {
+              [expenseItemIdStr]: expenseResponse.data.data.relatedInvoices || []
+            };
           }
         }
         
-        setExpenseItemInvoices(initialInvoices);
+        // 保留已有的发票数据，只初始化新的费用项（不覆盖已有数据）
+        setExpenseItemInvoices(prev => {
+          const updated = { ...prev };
+          budgets.forEach(budget => {
+            // 确保使用字符串键
+            const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
+            // 只有当该费用项不存在时才初始化为空数组
+            if (!updated[expenseItemIdStr]) {
+              updated[expenseItemIdStr] = [];
+            }
+          });
+          // 如果有关联的费用项发票，设置它们（但不要覆盖已有的）
+          if (expenseItemInvoicesToSet) {
+            Object.keys(expenseItemInvoicesToSet).forEach(key => {
+              // 只有当该费用项没有发票时才设置
+              if (!updated[key] || updated[key].length === 0) {
+                updated[key] = expenseItemInvoicesToSet[key];
+              }
+            });
+          }
+          return updated;
+        });
       }
     } catch (error) {
       console.error('Failed to load travel info:', error);
@@ -787,12 +931,18 @@ const ExpenseForm = () => {
         const expensesToCreate = [];
         
         for (const budget of budgets) {
-          const itemInvoices = expenseItemInvoices[budget.expenseItemId] || [];
+          const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
+          const itemInvoices = expenseItemInvoices[expenseItemIdStr] || expenseItemInvoices[budget.expenseItemId] || [];
           if (itemInvoices.length > 0) {
             const expenseItem = expenseItems.find(item => item._id === budget.expenseItemId);
-            const totalAmount = itemInvoices.reduce((sum, inv) => 
+            const invoiceTotalAmount = itemInvoices.reduce((sum, inv) => 
               sum + (inv.totalAmount || inv.amount || 0), 0
             );
+            
+            // 使用报销金额（如果用户修改了），否则使用发票总金额
+            const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemIdStr] ?? 
+                                       expenseItemReimbursementAmounts[budget.expenseItemId] ?? 
+                                       invoiceTotalAmount;
             
             // 从发票中提取商户信息
             const vendor = itemInvoices[0]?.vendor || { name: '', address: '', taxId: '' };
@@ -803,12 +953,12 @@ const ExpenseForm = () => {
               title: `${selectedTravel.title || selectedTravel.travelNumber || '差旅'} - ${expenseItem?.itemName || budget.expenseItemId}`,
               description: `${formData.description || ''} ${budget.route === 'outbound' ? '去程' : budget.route === 'inbound' ? '返程' : '多程'}`.trim(),
               category: mapExpenseItemCategoryToExpenseCategory(expenseItem?.category || 'other'),
-              amount: totalAmount,
+              amount: reimbursementAmount,
               currency: selectedTravel.currency || formData.currency || 'USD',
               date: selectedTravel.endDate || formData.date?.toISOString() || new Date().toISOString(),
               status: status,
               vendor: vendor,
-              relatedInvoices: itemInvoices.map(inv => inv._id),
+              relatedInvoices: itemInvoices.map(inv => inv._id || inv.id).filter(Boolean),
               costCenter: formData.costCenter || '',
               isBillable: formData.isBillable || false,
               client: formData.client || '',
@@ -914,43 +1064,6 @@ const ExpenseForm = () => {
         submitData.travel = selectedTravel._id;
       }
       
-      // 编辑模式下，如果关联了费用项和发票，更新发票关联
-      if (isEdit && selectedTravel) {
-        // 获取当前费用申请关联的费用项
-        const expenseResponse = await apiClient.get(`/expenses/${id}`);
-        if (expenseResponse.data?.data?.expenseItem) {
-          const expenseItemId = expenseResponse.data.data.expenseItem._id || expenseResponse.data.data.expenseItem;
-          const invoicesForItem = expenseItemInvoices[expenseItemId] || [];
-          
-          // 更新发票关联
-          const currentInvoiceIds = new Set((expenseResponse.data.data.relatedInvoices || []).map(inv => inv._id || inv));
-          const newInvoiceIds = new Set(invoicesForItem.map(inv => inv._id || inv));
-          
-          // 添加新关联的发票
-          for (const invoice of invoicesForItem) {
-            const invoiceId = invoice._id || invoice;
-            if (!currentInvoiceIds.has(invoiceId)) {
-              try {
-                await apiClient.post(`/expenses/${id}/link-invoice`, { invoiceId });
-              } catch (err) {
-                console.error('Failed to link invoice:', err);
-              }
-            }
-          }
-          
-          // 移除取消关联的发票
-          for (const invoiceId of currentInvoiceIds) {
-            if (!newInvoiceIds.has(invoiceId)) {
-              try {
-                await apiClient.delete(`/expenses/${id}/unlink-invoice/${invoiceId}`);
-              } catch (err) {
-                console.error('Failed to unlink invoice:', err);
-              }
-            }
-          }
-        }
-      }
-
       let response;
       if (isEdit) {
         response = await apiClient.put(`/expenses/${id}`, submitData);
@@ -959,6 +1072,117 @@ const ExpenseForm = () => {
       }
 
       if (response.data && response.data.success) {
+        const savedExpenseId = response.data.data._id || id;
+        
+        // 处理发票关联（新建和编辑模式都需要）
+        if (selectedTravel) {
+          // 如果关联了差旅单，处理费用项发票
+          const budgets = extractExpenseBudgets(selectedTravel);
+          for (const budget of budgets) {
+            const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
+            const invoicesForItem = expenseItemInvoices[expenseItemIdStr] || [];
+            
+            if (invoicesForItem.length > 0) {
+              // 获取当前费用申请关联的费用项
+              const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
+              const currentExpenseItemId = expenseResponse.data?.data?.expenseItem?._id || expenseResponse.data?.data?.expenseItem;
+              
+              // 如果费用申请关联了当前费用项，更新发票关联
+              if (currentExpenseItemId && (currentExpenseItemId.toString() === expenseItemIdStr || currentExpenseItemId === budget.expenseItemId)) {
+                const currentInvoiceIds = new Set((expenseResponse.data.data.relatedInvoices || []).map(inv => inv._id || inv));
+                const newInvoiceIds = new Set(invoicesForItem.map(inv => inv._id || inv.id).filter(Boolean));
+                
+                // 添加新关联的发票
+                for (const invoice of invoicesForItem) {
+                  const invoiceId = invoice._id || invoice.id;
+                  if (invoiceId && !currentInvoiceIds.has(invoiceId)) {
+                    try {
+                      await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { invoiceId });
+                    } catch (err) {
+                      console.error('Failed to link invoice:', err);
+                    }
+                  }
+                }
+                
+                // 移除取消关联的发票
+                for (const invoiceId of currentInvoiceIds) {
+                  if (!newInvoiceIds.has(invoiceId)) {
+                    try {
+                      await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceId}`);
+                    } catch (err) {
+                      console.error('Failed to unlink invoice:', err);
+                    }
+                  }
+                }
+                
+                // 更新报销金额（如果有修改）
+                const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemIdStr];
+                if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
+                  const invoiceTotalAmount = invoicesForItem.reduce((sum, inv) => {
+                    return sum + (inv.totalAmount || inv.amount || 0);
+                  }, 0);
+                  
+                  // 如果报销金额与发票总金额不同，更新费用申请的金额
+                  if (reimbursementAmount !== invoiceTotalAmount) {
+                    try {
+                      await apiClient.put(`/expenses/${savedExpenseId}`, {
+                        amount: reimbursementAmount
+                      });
+                    } catch (err) {
+                      console.error('Failed to update reimbursement amount:', err);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // 没有关联差旅单的情况，处理 relatedInvoices
+          if (isEdit) {
+            // 编辑模式：更新发票关联
+            const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
+            const currentInvoiceIds = new Set((expenseResponse.data?.data?.relatedInvoices || []).map(inv => inv._id || inv));
+            const newInvoiceIds = new Set((relatedInvoices || []).map(inv => inv._id || inv).filter(Boolean));
+            
+            // 添加新关联的发票
+            for (const invoice of relatedInvoices || []) {
+              const invoiceId = invoice._id || invoice.id;
+              if (invoiceId && !currentInvoiceIds.has(invoiceId)) {
+                try {
+                  await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { invoiceId });
+                } catch (err) {
+                  console.error('Failed to link invoice:', err);
+                }
+              }
+            }
+            
+            // 移除取消关联的发票
+            for (const invoiceId of currentInvoiceIds) {
+              if (!newInvoiceIds.has(invoiceId)) {
+                try {
+                  await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceId}`);
+                } catch (err) {
+                  console.error('Failed to unlink invoice:', err);
+                }
+              }
+            }
+          } else {
+            // 新建模式：关联发票
+            if (relatedInvoices && relatedInvoices.length > 0) {
+              for (const invoice of relatedInvoices) {
+                const invoiceId = invoice._id || invoice.id;
+                if (invoiceId) {
+                  try {
+                    await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { invoiceId });
+                  } catch (err) {
+                    console.error('Failed to link invoice:', err);
+                  }
+                }
+              }
+            }
+          }
+        }
+        
         showNotification(
           status === 'draft' 
             ? (t('expense.saved') || '费用申请已保存为草稿')
@@ -1269,30 +1493,37 @@ const ExpenseForm = () => {
                     <Divider sx={{ mb: 2 }} />
                     {mergeExpenseBudgetsByItem(extractExpenseBudgets(selectedTravel)).map((mergedBudget) => {
                       const expenseItem = expenseItems.find(item => item._id === mergedBudget.expenseItemId);
-                      const itemInvoices = expenseItemInvoices[mergedBudget.expenseItemId] || [];
+                      // 确保正确获取发票列表，支持字符串和对象 ID
+                      const expenseItemId = mergedBudget.expenseItemId?.toString() || mergedBudget.expenseItemId;
+                      const itemInvoices = (expenseItemInvoices[expenseItemId] || expenseItemInvoices[mergedBudget.expenseItemId] || []).filter(Boolean);
                       
-                      // 格式化行程标签
-                      const routeLabels = mergedBudget.routes.map(route => {
-                        if (route === 'outbound') return t('travel.outbound') || '去程';
-                        if (route === 'inbound') return t('travel.inbound') || '返程';
-                        if (route.startsWith('multiCity-')) {
-                          const index = parseInt(route.replace('multiCity-', ''));
-                          return `${t('travel.multiCity') || '多程'}${index + 1}`;
-                        }
-                        return route;
-                      }).join('、');
+                      // 格式化预算明细标签
+                      const budgetDetails = mergedBudget.budgets.map((budget) => {
+                        const routeLabel = budget.route === 'outbound' ? t('travel.outbound') || '去程' :
+                                         budget.route === 'inbound' ? t('travel.inbound') || '返程' :
+                                         budget.route.startsWith('multiCity-') ? 
+                                         `${t('travel.multiCity') || '多程'}${parseInt(budget.route.replace('multiCity-', '')) + 1}` :
+                                         budget.route;
+                        return `${routeLabel}：${selectedTravel.currency} ${budget.amount?.toLocaleString() || 0}`;
+                      });
                       
                       return (
                         <Accordion key={mergedBudget.expenseItemId} sx={{ mb: 2 }}>
                           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pr: 2 }}>
-                              <Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', flex: 1 }}>
                                 <Typography variant="subtitle1">
                                   {expenseItem?.itemName || mergedBudget.expenseItemId}
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {t('expense.routes') || '行程'}：{routeLabels}
-                                </Typography>
+                                {budgetDetails.length > 0 && (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                    {budgetDetails.map((detail, index) => (
+                                      <Typography key={index} variant="caption" color="text.secondary">
+                                        {detail}
+                                      </Typography>
+                                    ))}
+                                  </Box>
+                                )}
                               </Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Chip 
@@ -1312,15 +1543,7 @@ const ExpenseForm = () => {
                           <AccordionDetails>
                             <Box sx={{ mb: 2 }}>
                               <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
-                                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                                    {t('expense.totalBudgetAmount') || '总预算金额'}：{selectedTravel.currency} {mergedBudget.totalAmount?.toLocaleString() || 0}
-                                  </Typography>
-                                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                                    {t('expense.applicableRoutes') || '适用行程'}：{routeLabels}
-                                  </Typography>
-                                </Grid>
-                                <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                                   <Button
                                     startIcon={<AddIcon />}
                                     onClick={() => setExpenseItemInvoiceDialogs(prev => ({
@@ -1336,70 +1559,65 @@ const ExpenseForm = () => {
                               </Grid>
                             </Box>
                             
-                            {/* 显示各行程的预算明细 */}
-                            <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                              <Typography variant="caption" color="text.secondary" gutterBottom>
-                                {t('expense.budgetDetails') || '预算明细'}：
-                              </Typography>
-                              {mergedBudget.budgets.map((budget) => {
-                                const routeLabel = budget.route === 'outbound' ? t('travel.outbound') || '去程' :
-                                                 budget.route === 'inbound' ? t('travel.inbound') || '返程' :
-                                                 budget.route.startsWith('multiCity-') ? 
-                                                 `${t('travel.multiCity') || '多程'}${parseInt(budget.route.replace('multiCity-', '')) + 1}` :
-                                                 budget.route;
-                                return (
-                                  <Typography key={`${mergedBudget.expenseItemId}-${budget.route}`} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                    {routeLabel}：{selectedTravel.currency} {budget.amount?.toLocaleString() || 0}
-                                  </Typography>
-                                );
-                              })}
-                            </Box>
-                            
                             {itemInvoices.length > 0 ? (
-                              <List>
-                                {itemInvoices.map((invoice) => (
-                                  <ListItem key={invoice._id} divider>
-                                    <ListItemIcon>
-                                      <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                        <ReceiptIcon />
+                              <Box>
+                                {itemInvoices.map((invoice) => {
+                                  const invoiceId = invoice._id || invoice.id;
+                                  return (
+                                    <Box
+                                      key={invoiceId}
+                                      sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        p: 1.5,
+                                        borderBottom: '1px solid',
+                                        borderColor: 'divider',
+                                        '&:last-child': {
+                                          borderBottom: 'none'
+                                        }
+                                      }}
+                                    >
+                                      <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, flexShrink: 0 }}>
+                                        <ReceiptIcon fontSize="small" />
                                       </Avatar>
-                                    </ListItemIcon>
-                                    <ListItemText
-                                      primaryTypographyProps={{ component: 'div' }}
-                                      secondaryTypographyProps={{ component: 'div' }}
-                                      primary={
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                          <Typography variant="body2" fontWeight={600}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0 }}>
+                                        <Box sx={{ width: 150, flexShrink: 0 }}>
+                                          <Typography variant="body2" fontWeight={600} noWrap>
                                             {invoice.invoiceNumber || t('invoice.noNumber') || '无发票号'}
                                           </Typography>
+                                        </Box>
+                                        <Box sx={{ width: 200, flexShrink: 0 }}>
                                           <Chip
                                             label={invoice.vendor?.name || '-'}
                                             size="small"
                                             variant="outlined"
                                           />
                                         </Box>
-                                      }
-                                      secondary={
-                                        <Box sx={{ mt: 0.5 }}>
-                                          <Typography variant="caption" color="text.secondary" sx={{ mr: 2 }}>
-                                            {invoice.currency} {invoice.totalAmount?.toLocaleString() || invoice.amount?.toLocaleString() || 0}
+                                        <Box sx={{ width: 120, flexShrink: 0 }}>
+                                          <Typography variant="body2" color="text.secondary" noWrap>
+                                            {invoice.currency || 'CNY'} {(invoice.totalAmount || invoice.amount || 0).toLocaleString()}
                                           </Typography>
-                                          <Typography variant="caption" color="text.secondary">
+                                        </Box>
+                                        <Box sx={{ width: 100, flexShrink: 0 }}>
+                                          <Typography variant="body2" color="text.secondary" noWrap>
                                             {invoice.invoiceDate ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD') : '-'}
                                           </Typography>
                                         </Box>
-                                      }
-                                    />
-                                    <IconButton
-                                      onClick={() => handleRemoveInvoiceFromExpenseItem(mergedBudget.expenseItemId, invoice._id)}
-                                      color="error"
-                                      size="small"
-                                    >
-                                      <DeleteIcon />
-                                    </IconButton>
-                                  </ListItem>
-                                ))}
-                              </List>
+                                        <Box sx={{ ml: 'auto', flexShrink: 0 }}>
+                                          <IconButton
+                                            onClick={() => handleRemoveInvoiceFromExpenseItem(mergedBudget.expenseItemId, invoiceId)}
+                                            color="error"
+                                            size="small"
+                                          >
+                                            <DeleteIcon />
+                                          </IconButton>
+                                        </Box>
+                                      </Box>
+                                    </Box>
+                                  );
+                                })}
+                              </Box>
                             ) : (
                               <Box sx={{ py: 2, textAlign: 'center', color: 'text.secondary' }}>
                                 <Typography variant="body2">
@@ -1407,6 +1625,84 @@ const ExpenseForm = () => {
                                 </Typography>
                               </Box>
                             )}
+                            
+                            {/* 发票金额和报销金额 */}
+                            {itemInvoices.length > 0 && (
+                              <Box sx={{ 
+                                mt: 2, 
+                                pt: 2, 
+                                borderTop: '1px solid', 
+                                borderColor: 'divider',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                gap: 3
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {t('expense.invoiceTotalAmount') || '发票金额'}：
+                                  </Typography>
+                                  <Typography variant="body2" fontWeight={600}>
+                                    {selectedTravel.currency} {(() => {
+                                      const totalAmount = itemInvoices.reduce((sum, inv) => {
+                                        const amount = inv.totalAmount || inv.amount || 0;
+                                        return sum + amount;
+                                      }, 0);
+                                      return totalAmount.toLocaleString();
+                                    })()}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {t('expense.reimbursementAmount') || '报销金额'}：
+                                  </Typography>
+                                  <TextField
+                                    size="small"
+                                    type="number"
+                                    value={expenseItemReimbursementAmounts[expenseItemId] ?? (() => {
+                                      const totalAmount = itemInvoices.reduce((sum, inv) => {
+                                        const amount = inv.totalAmount || inv.amount || 0;
+                                        return sum + amount;
+                                      }, 0);
+                                      return totalAmount;
+                                    })()}
+                                    onChange={(e) => {
+                                      const value = parseFloat(e.target.value) || 0;
+                                      setExpenseItemReimbursementAmounts(prev => ({
+                                        ...prev,
+                                        [expenseItemId]: value
+                                      }));
+                                    }}
+                                    InputProps={{
+                                      startAdornment: (
+                                        <InputAdornment position="start">
+                                          <Typography variant="body2" color="text.secondary">
+                                            {selectedTravel.currency}
+                                          </Typography>
+                                        </InputAdornment>
+                                      ),
+                                    }}
+                                    sx={{ 
+                                      width: 150,
+                                      '& .MuiInputBase-root': {
+                                        height: '21px'
+                                      },
+                                      '& .MuiInputBase-input': {
+                                        padding: '4px 10px',
+                                        fontSize: '0.8125rem'
+                                      },
+                                      '& .MuiInputAdornment-root': {
+                                        marginLeft: '8px',
+                                        '& .MuiTypography-root': {
+                                          fontSize: '0.8125rem'
+                                        }
+                                      }
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                            )}
+                            
                             {/* 费用项发票选择对话框 */}
                             <InvoiceSelectDialog
                               open={expenseItemInvoiceDialogs[mergedBudget.expenseItemId] || false}
@@ -1415,7 +1711,8 @@ const ExpenseForm = () => {
                                 [mergedBudget.expenseItemId]: false
                               }))}
                               onConfirm={(selectedInvoices) => handleAddInvoicesForExpenseItem(mergedBudget.expenseItemId, selectedInvoices)}
-                              excludeInvoiceIds={itemInvoices.map(inv => inv._id)}
+                              excludeInvoiceIds={itemInvoices.map(inv => inv._id || inv.id).filter(Boolean)}
+                              linkedInvoices={itemInvoices}
                             />
                           </AccordionDetails>
                         </Accordion>

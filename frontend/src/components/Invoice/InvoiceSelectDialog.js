@@ -36,7 +36,7 @@ import { useTranslation } from 'react-i18next';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
-const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] }) => {
+const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [], linkedInvoices = [] }) => {
   const { t } = useTranslation();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -44,15 +44,44 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const fetchingRef = useRef(false); // 防止重复请求
+  const prevLinkedIdsRef = useRef(''); // 存储上一次的ID列表字符串
+  
+  // 获取已关联发票的ID列表
+  const linkedInvoiceIds = React.useMemo(() => {
+    return linkedInvoices.map(inv => inv._id || inv.id).filter(Boolean).sort();
+  }, [linkedInvoices]);
 
   useEffect(() => {
     if (open && !fetchingRef.current) {
       fetchInvoices();
-      setSelectedInvoices([]);
       setCategoryFilter('all');
       setSearchTerm('');
+    } else if (!open) {
+      // 对话框关闭时，清空选中状态和重置ref
+      setSelectedInvoices([]);
+      prevLinkedIdsRef.current = '';
     }
   }, [open]);
+  
+  // 当对话框打开时，初始化已关联的发票为选中状态
+  useEffect(() => {
+    if (open) {
+      const currentIdsString = linkedInvoiceIds.join(',');
+      const prevIdsString = prevLinkedIdsRef.current;
+      
+      // 只在ID列表改变时更新选中状态
+      if (currentIdsString !== prevIdsString) {
+        if (linkedInvoiceIds.length > 0) {
+          setSelectedInvoices(prev => {
+            // 合并已关联的发票ID，避免重复
+            const merged = [...new Set([...prev, ...linkedInvoiceIds])];
+            return merged;
+          });
+        }
+        prevLinkedIdsRef.current = currentIdsString; // 保存当前的ID列表字符串
+      }
+    }
+  }, [open, linkedInvoiceIds]); // 依赖数组本身，useMemo 已经稳定化了
 
   const fetchInvoices = async () => {
     // 防止重复请求
@@ -72,17 +101,26 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
       });
       if (response.data && response.data.success) {
         const allInvoices = response.data.data || [];
-        // 过滤掉已关联到费用申请的发票和排除的发票
+        // 过滤掉已关联到其他费用申请的发票和排除的发票（但不排除已关联到当前费用项的发票）
         const availableInvoices = allInvoices.filter(
           invoice => {
-            // 排除已关联到费用申请的发票
+            const invoiceId = invoice._id || invoice.id;
+            // 排除已关联到其他费用申请的发票（但保留已关联到当前费用项的发票）
             const hasRelatedExpense = invoice.relatedExpense && (invoice.relatedExpense._id || invoice.relatedExpense);
-            // 排除在排除列表中的发票
-            const isExcluded = excludeInvoiceIds.includes(invoice._id);
-            return !hasRelatedExpense && !isExcluded;
+            const isLinkedToCurrent = linkedInvoiceIds.includes(invoiceId);
+            // 排除在排除列表中的发票（但保留已关联的发票）
+            const isExcluded = excludeInvoiceIds.includes(invoiceId) && !isLinkedToCurrent;
+            return (!hasRelatedExpense || isLinkedToCurrent) && !isExcluded;
           }
         );
-        setInvoices(availableInvoices);
+        
+        // 合并已关联的发票（如果它们不在列表中）
+        const linkedInvoicesToAdd = linkedInvoices.filter(linkedInv => {
+          const linkedId = linkedInv._id || linkedInv.id;
+          return !availableInvoices.some(inv => (inv._id || inv.id) === linkedId);
+        });
+        
+        setInvoices([...availableInvoices, ...linkedInvoicesToAdd]);
       } else {
         setInvoices([]);
       }
@@ -111,8 +149,20 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
   };
 
   const handleConfirm = () => {
-    const selectedInvoiceObjects = invoices.filter(inv => selectedInvoices.includes(inv._id));
-    onConfirm(selectedInvoiceObjects);
+    // 获取选中的发票对象（包括已关联的发票）
+    const selectedInvoiceObjects = invoices.filter(inv => {
+      const invoiceId = inv._id || inv.id;
+      return selectedInvoices.includes(invoiceId);
+    });
+    
+    // 如果已关联的发票不在 invoices 列表中，也要包含它们
+    const linkedInvoicesToAdd = linkedInvoices.filter(linkedInv => {
+      const linkedId = linkedInv._id || linkedInv.id;
+      return selectedInvoices.includes(linkedId) && 
+             !selectedInvoiceObjects.some(inv => (inv._id || inv.id) === linkedId);
+    });
+    
+    onConfirm([...selectedInvoiceObjects, ...linkedInvoicesToAdd]);
     onClose();
   };
 
@@ -272,21 +322,32 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredInvoices.map((invoice) => (
-                  <TableRow 
-                    key={invoice._id} 
-                    hover
-                    onClick={() => handleToggleInvoice(invoice._id)}
-                    sx={{ cursor: 'pointer' }}
-                    selected={selectedInvoices.includes(invoice._id)}
-                  >
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={selectedInvoices.includes(invoice._id)}
-                        onChange={() => handleToggleInvoice(invoice._id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </TableCell>
+                filteredInvoices.map((invoice) => {
+                  const invoiceId = invoice._id || invoice.id;
+                  const isLinked = linkedInvoiceIds.includes(invoiceId);
+                  const isSelected = selectedInvoices.includes(invoiceId);
+                  
+                  return (
+                    <TableRow 
+                      key={invoiceId} 
+                      hover={!isLinked}
+                      onClick={() => !isLinked && handleToggleInvoice(invoiceId)}
+                      sx={{ 
+                        cursor: isLinked ? 'default' : 'pointer',
+                        opacity: isLinked ? 0.7 : 1,
+                        bgcolor: isLinked ? 'action.selected' : 'transparent'
+                      }}
+                      selected={isSelected}
+                    >
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={isSelected}
+                          onChange={() => !isLinked && handleToggleInvoice(invoiceId)}
+                          onClick={(e) => e.stopPropagation()}
+                          disabled={isLinked}
+                          indeterminate={isLinked}
+                        />
+                      </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         {getFileIcon(invoice.file?.mimeType)}
@@ -323,14 +384,25 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
                       />
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        label={getStatusLabel(invoice.status)}
-                        color={getStatusColor(invoice.status)}
-                        size="small"
-                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          label={getStatusLabel(invoice.status)}
+                          color={getStatusColor(invoice.status)}
+                          size="small"
+                        />
+                        {isLinked && (
+                          <Chip
+                            label={t('invoice.linked') || '已关联'}
+                            color="info"
+                            size="small"
+                            variant="outlined"
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
