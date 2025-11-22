@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -12,22 +12,25 @@ import {
   Select,
   MenuItem,
   Checkbox,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
   Typography,
   Chip,
   CircularProgress,
   Alert,
-  Grid
+  Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  LinearProgress,
+  InputAdornment
 } from '@mui/material';
 import {
-  Receipt as ReceiptIcon,
-  CalendarToday as CalendarIcon,
-  AttachMoney as MoneyIcon,
-  Business as BusinessIcon
+  PictureAsPdf as PdfIcon,
+  Image as ImageIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../utils/axiosConfig';
@@ -40,9 +43,10 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
   const [selectedInvoices, setSelectedInvoices] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const fetchingRef = useRef(false); // 防止重复请求
 
   useEffect(() => {
-    if (open) {
+    if (open && !fetchingRef.current) {
       fetchInvoices();
       setSelectedInvoices([]);
       setCategoryFilter('all');
@@ -51,25 +55,48 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
   }, [open]);
 
   const fetchInvoices = async () => {
+    // 防止重复请求
+    if (fetchingRef.current) {
+      return;
+    }
+    
     try {
+      fetchingRef.current = true;
       setLoading(true);
       const response = await apiClient.get('/invoices', {
         params: {
-          status: 'verified', // 只显示已验证的发票
-          limit: 100
+          // 不限制 status，显示所有发票（包括 pending 和 verified）
+          // 只过滤掉已关联到费用申请的发票
+          limit: 200
         }
       });
       if (response.data && response.data.success) {
-        // 过滤掉已关联的发票和排除的发票
-        const availableInvoices = response.data.data.filter(
-          invoice => !invoice.relatedExpense && !excludeInvoiceIds.includes(invoice._id)
+        const allInvoices = response.data.data || [];
+        // 过滤掉已关联到费用申请的发票和排除的发票
+        const availableInvoices = allInvoices.filter(
+          invoice => {
+            // 排除已关联到费用申请的发票
+            const hasRelatedExpense = invoice.relatedExpense && (invoice.relatedExpense._id || invoice.relatedExpense);
+            // 排除在排除列表中的发票
+            const isExcluded = excludeInvoiceIds.includes(invoice._id);
+            return !hasRelatedExpense && !isExcluded;
+          }
         );
         setInvoices(availableInvoices);
+      } else {
+        setInvoices([]);
       }
     } catch (error) {
       console.error('Failed to fetch invoices:', error);
+      // 处理 429 错误（请求过于频繁）
+      if (error.response?.status === 429) {
+        // 可以显示提示信息，但这里先静默处理
+        console.warn('请求过于频繁，请稍后再试');
+      }
+      setInvoices([]);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   };
 
@@ -109,15 +136,71 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
     { value: 'other', label: t('invoice.list.categories.other') || 'Other' }
   ];
 
+  const getFileIcon = (mimeType) => {
+    if (mimeType?.includes('pdf')) {
+      return <PdfIcon fontSize="small" />;
+    }
+    if (mimeType?.includes('image')) {
+      return <ImageIcon fontSize="small" />;
+    }
+    return <ImageIcon fontSize="small" />;
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: 'warning',
+      verified: 'success',
+      linked: 'info',
+      archived: 'default'
+    };
+    return colors[status] || 'default';
+  };
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      pending: t('invoice.list.statuses.pending'),
+      verified: t('invoice.list.statuses.verified'),
+      linked: t('invoice.list.statuses.linked'),
+      archived: t('invoice.list.statuses.archived')
+    };
+    return labels[status] || status;
+  };
+
+  const getCategoryLabel = (category) => {
+    return categories.find(c => c.value === category)?.label || category;
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
+    <Dialog 
+      open={open} 
+      onClose={() => {
+        fetchingRef.current = false; // 关闭时重置请求标志
+        onClose();
+      }}
+      maxWidth={false}
+      fullWidth
+      sx={{
+        '& .MuiDialog-paper': {
+          width: '90%',
+          maxWidth: '1350px', // md (900px) + 50% = 1350px
+          maxHeight: '90vh', // 限制最大高度
+          display: 'flex',
+          flexDirection: 'column'
+        },
+        '& .MuiDialogContent-root': {
+          overflow: 'visible', // 允许内容溢出，确保 label 显示
+          flex: '1 1 auto',
+          minHeight: 0
+        }
+      }}
+    >
+      <DialogTitle sx={{ pb: 3 }}>
         {t('expense.selectInvoices') || '选择发票'}
       </DialogTitle>
-      <DialogContent>
-        <Box sx={{ mb: 2 }}>
+      <DialogContent sx={{ pt: 4, overflow: 'visible' }}>
+        <Box sx={{ mb: 2, minHeight: 'auto' }}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={7}>
               <TextField
                 fullWidth
                 size="small"
@@ -125,15 +208,24 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={t('invoice.list.searchPlaceholder') || '搜索发票号、商户名称...'}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ minWidth: 0 }} // 确保在小屏幕上也能正常显示
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} md={5}>
               <FormControl fullWidth size="small">
                 <InputLabel>{t('invoice.list.category') || '分类'}</InputLabel>
                 <Select
                   value={categoryFilter}
                   label={t('invoice.list.category') || '分类'}
                   onChange={(e) => setCategoryFilter(e.target.value)}
+                  sx={{ minWidth: 0 }} // 确保在小屏幕上也能正常显示
                 >
                   {categories.map(cat => (
                     <MenuItem key={cat.value} value={cat.value}>
@@ -146,77 +238,103 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [] 
           </Grid>
         </Box>
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : filteredInvoices.length === 0 ? (
-          <Alert severity="info">
-            {t('expense.noAvailableInvoices') || '没有可用的发票'}
-          </Alert>
-        ) : (
-          <List sx={{ maxHeight: 400, overflow: 'auto' }}>
-            {filteredInvoices.map((invoice) => (
-              <ListItem key={invoice._id} disablePadding>
-                <ListItemButton
-                  onClick={() => handleToggleInvoice(invoice._id)}
-                  selected={selectedInvoices.includes(invoice._id)}
-                >
-                  <ListItemIcon>
-                    <Checkbox
-                      edge="start"
-                      checked={selectedInvoices.includes(invoice._id)}
-                      tabIndex={-1}
-                      disableRipple
-                    />
-                  </ListItemIcon>
-                  <ListItemIcon>
-                    <ReceiptIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
+        <TableContainer component={Paper} sx={{ maxHeight: 'calc(90vh - 300px)', overflow: 'auto' }}>
+          {loading && <LinearProgress />}
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell padding="checkbox" sx={{ width: 48 }}></TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.preview')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.invoiceNumber')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.vendorName')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.amount')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.invoiceDate')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.category')}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{t('invoice.list.columns.status')}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                    <CircularProgress />
+                  </TableCell>
+                </TableRow>
+              ) : filteredInvoices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                    <Alert severity="info" sx={{ width: '100%' }}>
+                      {invoices.length === 0 
+                        ? (t('expense.noAvailableInvoices') || '没有可用的发票')
+                        : (t('invoice.list.noSearchResults') || '没有匹配的发票，请尝试调整搜索条件')
+                      }
+                    </Alert>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredInvoices.map((invoice) => (
+                  <TableRow 
+                    key={invoice._id} 
+                    hover
+                    onClick={() => handleToggleInvoice(invoice._id)}
+                    sx={{ cursor: 'pointer' }}
+                    selected={selectedInvoices.includes(invoice._id)}
+                  >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedInvoices.includes(invoice._id)}
+                        onChange={() => handleToggleInvoice(invoice._id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" fontWeight={600}>
-                          {invoice.invoiceNumber || t('invoice.noNumber') || '无发票号'}
+                        {getFileIcon(invoice.file?.mimeType)}
+                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {invoice.file?.originalName || '-'}
                         </Typography>
-                        <Chip
-                          label={categories.find(c => c.value === invoice.category)?.label || invoice.category}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
                       </Box>
-                    }
-                    secondary={
-                      <Box sx={{ mt: 0.5 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <BusinessIcon fontSize="small" color="action" />
-                          <Typography variant="caption" color="text.secondary">
-                            {invoice.vendor?.name || '-'}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <MoneyIcon fontSize="small" color="action" />
-                            <Typography variant="caption" color="text.secondary">
-                              {invoice.currency} {invoice.totalAmount?.toLocaleString() || invoice.amount?.toLocaleString() || 0}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <CalendarIcon fontSize="small" color="action" />
-                            <Typography variant="caption" color="text.secondary">
-                              {invoice.invoiceDate ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD') : '-'}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                    }
-                  />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        )}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={500}>
+                        {invoice.invoiceNumber || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{invoice.vendor?.name || '-'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      {invoice.amount || invoice.totalAmount ? (
+                        <Typography variant="body2" fontWeight={600}>
+                          {invoice.currency || 'CNY'} {(invoice.totalAmount || invoice.amount)?.toFixed(2)}
+                        </Typography>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      {invoice.invoiceDate
+                        ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD')
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getCategoryLabel(invoice.category)}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getStatusLabel(invoice.status)}
+                        color={getStatusColor(invoice.status)}
+                        size="small"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>

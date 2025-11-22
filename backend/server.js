@@ -56,9 +56,10 @@ app.use((req, res, next) => {
 app.use(compression());
 
 // Rate limiting - 增加限制以支持开发环境
+// 开发环境使用内存存储，重启后自动清除限制
 const limiter = rateLimit({
   windowMs: process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000, // 15 minutes
-  max: process.env.RATE_LIMIT_MAX_REQUESTS || 500, // limit each IP to 500 requests per windowMs (increased for development)
+  max: process.env.RATE_LIMIT_MAX_REQUESTS || (process.env.NODE_ENV === 'development' ? 1000 : 500), // 开发环境1000次，生产环境500次
   message: {
     error: 'Too many requests from this IP, please try again later.'
   },
@@ -66,9 +67,40 @@ const limiter = rateLimit({
   legacyHeaders: false,
   // Skip rate limiting in test environment
   skip: (req) => {
+    // 排除登录路由，使用专门的登录限制器
+    if (req.path === '/api/auth/login') {
+      return true;
+    }
     return process.env.NODE_ENV === 'test';
-  }
+  },
+  // 使用更精确的 key 生成器，避免所有请求被算作同一个IP
+  keyGenerator: (req) => {
+    // 使用 IP + 路径作为 key，这样不同路径的请求不会互相影响
+    return `${req.ip}-${req.path}`;
+  },
+  // 开发环境使用内存存储（默认），生产环境可以使用 Redis 等
+  store: undefined // 使用默认的内存存储
 });
+
+// 为登录路由设置更宽松的限制
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 100 : 20, // 开发环境100次，生产环境20次
+  message: {
+    error: 'Too many login attempts, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    return process.env.NODE_ENV === 'test';
+  },
+  // 使用内存存储
+  store: undefined
+});
+
+// 登录路由使用更宽松的限制（必须在通用限制器之前）
+app.use('/api/auth/login', loginLimiter);
+// 通用 API 速率限制（排除登录路由）
 app.use('/api/', limiter);
 
 // CORS configuration
