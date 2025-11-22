@@ -65,6 +65,25 @@ import ExpenseSelectDialog from '../../components/Expense/ExpenseSelectDialog';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
+// 开发环境日志辅助函数
+const devLog = (...args) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...args);
+  }
+};
+
+const devError = (...args) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.error(...args);
+  }
+};
+
+const devWarn = (...args) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(...args);
+  }
+};
+
 const ExpenseForm = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -357,7 +376,7 @@ const ExpenseForm = () => {
                 const detailResponse = await apiClient.get(`/expenses/${expense._id}`);
                 return detailResponse.data?.data || expense;
               } catch (err) {
-                console.error(`Failed to fetch expense ${expense._id}:`, err);
+                devError(`Failed to fetch expense ${expense._id}:`, err);
                 return expense;
               }
             })
@@ -381,10 +400,10 @@ const ExpenseForm = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to generate expenses from travel:', error);
-      console.error('Error response:', error.response);
-      console.error('Error details:', error.response?.data);
-      console.error('Error status:', error.response?.status);
+      devError('Failed to generate expenses from travel:', error);
+      devError('Error response:', error.response);
+      devError('Error details:', error.response?.data);
+      devError('Error status:', error.response?.status);
       
       const errorData = error.response?.data || {};
       const errorMessage = errorData.message || error.message || t('expense.form.expenseGenerationFailed');
@@ -418,7 +437,7 @@ const ExpenseForm = () => {
           (errorMessage === 'Expenses already generated' || 
            errorMessage.includes('already generated'))) {
         const existingExpenses = errorData.data?.expenses || [];
-        console.log('Found existing expenses:', existingExpenses);
+        devLog('Found existing expenses:', existingExpenses);
         
         if (existingExpenses.length > 0) {
           showNotification(
@@ -432,14 +451,14 @@ const ExpenseForm = () => {
                 const detailResponse = await apiClient.get(`/expenses/${expenseId}`);
                 return detailResponse.data?.data;
               } catch (err) {
-                console.error(`Failed to fetch expense ${expenseId}:`, err);
+                devError(`Failed to fetch expense ${expenseId}:`, err);
                 return null;
               }
             })
           );
           
           const validExpenses = expensesWithDetails.filter(exp => exp !== null);
-          console.log('Loaded valid expenses:', validExpenses.length);
+          devLog('Loaded valid expenses:', validExpenses.length);
           setGeneratedExpenses(validExpenses);
           
           if (validExpenses.length === 1) {
@@ -473,7 +492,7 @@ const ExpenseForm = () => {
       }
       
       // 显示详细的错误信息
-      console.error('Unhandled error:', {
+      devError('Unhandled error:', {
         status: error.response?.status,
         message: errorMessage,
         data: errorData
@@ -482,7 +501,7 @@ const ExpenseForm = () => {
       
       // 如果是服务器错误，记录详细信息
       if (error.response?.status >= 500) {
-        console.error('Server error details:', {
+        devError('Server error details:', {
           status: error.response?.status,
           data: error.response?.data,
           message: errorMessage
@@ -536,7 +555,7 @@ const ExpenseForm = () => {
         setTravelOptions(response.data.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch travel options:', error);
+      devError('Failed to fetch travel options:', error);
     } finally {
       setTravelLoading(false);
     }
@@ -551,7 +570,7 @@ const ExpenseForm = () => {
         setExpenseItems(response.data.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch expense items:', error);
+      devError('Failed to fetch expense items:', error);
     } finally {
       setExpenseItemsLoading(false);
     }
@@ -563,7 +582,7 @@ const ExpenseForm = () => {
     
     // 防止重复请求
     if (travelLoading && loadingTravelIdRef.current === travelId) {
-      console.log('Already loading travel info, skipping:', travelId);
+      devLog('Already loading travel info, skipping:', travelId);
       return;
     }
     
@@ -608,7 +627,7 @@ const ExpenseForm = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to load travel info:', error);
+      devError('Failed to load travel info:', error);
       // 429 错误是请求频率过高，不显示错误提示，避免干扰用户
       if (error.response?.status !== 429) {
       showNotification('加载差旅信息失败', 'error');
@@ -725,14 +744,14 @@ const ExpenseForm = () => {
     }
 
     try {
-      console.log('[AUTO_MATCH] Starting auto match invoices for travel:', travel._id);
+      devLog('[AUTO_MATCH] Starting auto match invoices for travel:', travel._id);
       
       // 1. 查询可用发票（在差旅日期范围内，未关联的发票）
       const startDate = travel.startDate ? new Date(travel.startDate).toISOString().split('T')[0] : null;
       const endDate = travel.endDate ? new Date(travel.endDate).toISOString().split('T')[0] : null;
       
       if (!startDate || !endDate) {
-        console.log('[AUTO_MATCH] Travel dates missing, skipping auto match');
+        devLog('[AUTO_MATCH] Travel dates missing, skipping auto match');
         return;
       }
 
@@ -766,7 +785,7 @@ const ExpenseForm = () => {
         return !inv.relatedExpense || inv.relatedExpense === null;
       });
       
-      console.log('[AUTO_MATCH] Found', availableInvoices.length, 'available invoices');
+      devLog('[AUTO_MATCH] Found', availableInvoices.length, 'available invoices');
 
       if (availableInvoices.length === 0) {
         return;
@@ -811,7 +830,7 @@ const ExpenseForm = () => {
         const expenseItem = expenseItemsMap[expenseItemId];
         
         if (!expenseItem) {
-          console.warn('[AUTO_MATCH] Expense item not found:', expenseItemId);
+          devWarn('[AUTO_MATCH] Expense item not found:', expenseItemId);
           return;
         }
 
@@ -864,7 +883,7 @@ const ExpenseForm = () => {
           selectedInvoices.forEach(inv => {
             usedInvoiceIds.add(inv._id?.toString() || inv._id);
           });
-          console.log(`[AUTO_MATCH] Matched ${selectedInvoices.length} invoices for expense item ${expenseItemId}`);
+          devLog(`[AUTO_MATCH] Matched ${selectedInvoices.length} invoices for expense item ${expenseItemId}`);
         }
       });
 
@@ -894,7 +913,7 @@ const ExpenseForm = () => {
         );
       }
     } catch (error) {
-      console.error('[AUTO_MATCH] Failed to auto match invoices:', error);
+      devError('[AUTO_MATCH] Failed to auto match invoices:', error);
       // 不显示错误提示，避免干扰用户
     }
   };
@@ -1279,8 +1298,8 @@ const ExpenseForm = () => {
         await fetchExpenseItemsList();
       }
     } catch (error) {
-      console.error('Failed to load expense data:', error);
-      console.error('Error details:', {
+      devError('Failed to load expense data:', error);
+      devError('Error details:', {
         message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
@@ -1312,7 +1331,7 @@ const ExpenseForm = () => {
     
     // 防止重复请求
     if (travelLoading && loadingTravelIdRef.current === travelIdStr) {
-      console.log('Already loading travel info by ID, skipping:', travelIdStr);
+      devLog('Already loading travel info by ID, skipping:', travelIdStr);
       return;
     }
     
@@ -1374,7 +1393,7 @@ const ExpenseForm = () => {
         });
       }
     } catch (error) {
-      console.error('Failed to load travel info:', error);
+      devError('Failed to load travel info:', error);
       // 429 错误是请求频率过高，不显示错误提示，避免干扰用户
       if (error.response?.status !== 429) {
         showNotification('加载差旅信息失败', 'error');
@@ -1401,8 +1420,8 @@ const ExpenseForm = () => {
       }
       return [];
     } catch (error) {
-      console.error('Failed to load related invoices:', error);
-      console.error('Error details:', {
+      devError('Failed to load related invoices:', error);
+      devError('Error details:', {
         message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
@@ -1445,7 +1464,7 @@ const ExpenseForm = () => {
         });
           successCount++;
         } catch (err) {
-          console.error(`✗ 关联发票失败: ${invoiceIdStr}`, err);
+          devError(`✗ 关联发票失败: ${invoiceIdStr}`, err);
           failCount++;
           // 如果发票已经关联，不算错误
           if (err.response?.status === 400 && 
@@ -1494,7 +1513,7 @@ const ExpenseForm = () => {
         );
       }
     } catch (error) {
-      console.error('Failed to link invoices:', error);
+      devError('Failed to link invoices:', error);
       showNotification(
         error.response?.data?.message || t('expense.invoices.addError') || '关联发票失败',
         'error'
@@ -1510,7 +1529,7 @@ const ExpenseForm = () => {
       showNotification(t('expense.invoices.removed') || '取消关联成功', 'success');
       await fetchRelatedInvoices();
     } catch (error) {
-      console.error('Failed to unlink invoice:', error);
+      devError('Failed to unlink invoice:', error);
       showNotification(
         error.response?.data?.message || t('expense.invoices.removeError') || '取消关联失败',
         'error'
@@ -1755,7 +1774,7 @@ const ExpenseForm = () => {
                         invoiceId: invoiceIdStr
                       });
                     } catch (err) {
-                      console.error('Failed to link invoice:', err);
+                      devError('Failed to link invoice:', err);
                       // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
                       if (err.response?.status === 400 && 
                           err.response?.data?.message?.includes('already linked')) {
@@ -1771,7 +1790,7 @@ const ExpenseForm = () => {
                             continue;
                           }
                         } catch (checkErr) {
-                          console.error('Failed to check invoice link status:', checkErr);
+                          devError('Failed to check invoice link status:', checkErr);
                         }
                       }
                       // 其他错误显示通知
@@ -1784,7 +1803,7 @@ const ExpenseForm = () => {
                 }
               }
             } catch (error) {
-              console.error('Failed to create expense:', error);
+              devError('Failed to create expense:', error);
             }
           }
           
@@ -1885,7 +1904,7 @@ const ExpenseForm = () => {
                     expenseItem: budget.expenseItemId
                   });
                 } catch (err) {
-                  console.error('Failed to update expense item:', err);
+                  devError('Failed to update expense item:', err);
                   showNotification(t('expense.saveError'), 'error');
                   // 继续处理发票关联，即使费用项更新失败
                 }
@@ -1912,7 +1931,7 @@ const ExpenseForm = () => {
                       invoiceId: invoiceIdStr 
                     });
                     } catch (err) {
-                      console.error('Failed to link invoice:', err);
+                      devError('Failed to link invoice:', err);
                     // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
                     if (err.response?.status === 400 && 
                         err.response?.data?.message?.includes('already linked')) {
@@ -1932,7 +1951,7 @@ const ExpenseForm = () => {
                           continue;
                         }
                       } catch (checkErr) {
-                        console.error('Failed to check invoice link status:', checkErr);
+                        devError('Failed to check invoice link status:', checkErr);
                       }
                     }
                     // 其他错误显示通知
@@ -1950,7 +1969,7 @@ const ExpenseForm = () => {
                     try {
                     await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceIdStr}`);
                     } catch (err) {
-                      console.error('Failed to unlink invoice:', err);
+                      devError('Failed to unlink invoice:', err);
                     }
                   }
                 }
@@ -1969,7 +1988,7 @@ const ExpenseForm = () => {
                         amount: reimbursementAmount
                       });
                     } catch (err) {
-                      console.error('Failed to update reimbursement amount:', err);
+                      devError('Failed to update reimbursement amount:', err);
                     }
                   }
               }
@@ -2044,7 +2063,7 @@ const ExpenseForm = () => {
                     });
                     currentInvoiceIds.add(invoiceIdStr);
                   } catch (err) {
-                    console.error(`✗ 关联发票失败 ${invoiceIdStr}:`, err);
+                    devError(`✗ 关联发票失败 ${invoiceIdStr}:`, err);
                     if (err.response?.status === 400 && 
                         err.response?.data?.message?.includes('already linked')) {
                       try {
@@ -2062,7 +2081,7 @@ const ExpenseForm = () => {
                           continue;
                         }
                       } catch (checkErr) {
-                        console.error('检查发票关联状态失败:', checkErr);
+                        devError('检查发票关联状态失败:', checkErr);
                       }
                     }
                     showNotification(
@@ -2080,7 +2099,7 @@ const ExpenseForm = () => {
                 try {
                   await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceIdStr}`);
                 } catch (err) {
-                  console.error('Failed to unlink invoice:', err);
+                  devError('Failed to unlink invoice:', err);
                   showNotification(
                     `取消关联发票失败: ${err.response?.data?.message || err.message}`,
                     'warning'
@@ -2153,7 +2172,7 @@ const ExpenseForm = () => {
                     // 关联成功后，更新 currentInvoiceIds，避免重复关联
                     currentInvoiceIds.add(invoiceIdStr);
                 } catch (err) {
-                    console.error(`✗ 关联发票失败 ${invoiceIdStr}:`, err);
+                    devError(`✗ 关联发票失败 ${invoiceIdStr}:`, err);
                     // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
                     if (err.response?.status === 400 && 
                         err.response?.data?.message?.includes('already linked')) {
@@ -2174,7 +2193,7 @@ const ExpenseForm = () => {
                           continue;
                         }
                       } catch (checkErr) {
-                        console.error('检查发票关联状态失败:', checkErr);
+                        devError('检查发票关联状态失败:', checkErr);
                       }
                     }
                     // 其他错误显示通知
@@ -2193,7 +2212,7 @@ const ExpenseForm = () => {
                 try {
                   await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceIdStr}`);
                 } catch (err) {
-                  console.error('Failed to unlink invoice:', err);
+                  devError('Failed to unlink invoice:', err);
                   showNotification(
                     `取消关联发票失败: ${err.response?.data?.message || err.message}`,
                     'warning'
@@ -2218,7 +2237,7 @@ const ExpenseForm = () => {
                       invoiceId: invoiceIdStr 
                     });
                   } catch (err) {
-                    console.error('Failed to link invoice:', err);
+                    devError('Failed to link invoice:', err);
                     // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
                     if (err.response?.status === 400 && 
                         err.response?.data?.message?.includes('already linked')) {
@@ -2234,7 +2253,7 @@ const ExpenseForm = () => {
                           continue;
                         }
                       } catch (checkErr) {
-                        console.error('Failed to check invoice link status:', checkErr);
+                        devError('Failed to check invoice link status:', checkErr);
                       }
                     }
                     // 其他错误显示通知
@@ -2270,8 +2289,8 @@ const ExpenseForm = () => {
         }, 100);
       }
     } catch (error) {
-      console.error('Failed to save expense:', error);
-      console.error('Error details:', error.response?.data);
+      devError('Failed to save expense:', error);
+      devError('Error details:', error.response?.data);
       showNotification(
         error.response?.data?.message || error.message || (t('expense.saveError') || '保存费用申请失败'),
         'error'

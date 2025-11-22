@@ -58,6 +58,19 @@ import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
+// 开发环境日志辅助函数
+const devLog = (...args) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(...args);
+  }
+};
+
+const devError = (...args) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.error(...args);
+  }
+};
+
 const ExpenseDetail = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -125,8 +138,8 @@ const ExpenseDetail = () => {
         throw new Error('Failed to load expense details');
       }
     } catch (error) {
-      console.error('Failed to load expense details:', error);
-      console.error('Error details:', {
+      devError('Failed to load expense details:', error);
+      devError('Error details:', {
         message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
@@ -170,7 +183,7 @@ const ExpenseDetail = () => {
       );
       navigate('/expenses');
     } catch (error) {
-      console.error('Failed to delete expense:', error);
+      devError('Failed to delete expense:', error);
       showNotification(
         error.response?.data?.message || t('expense.deleteError'),
         'error'
@@ -202,7 +215,7 @@ const ExpenseDetail = () => {
         showNotification(t('expense.receipt.downloadError'), 'error');
       }
     } catch (error) {
-      console.error('Failed to download receipt:', error);
+      devError('Failed to download receipt:', error);
       // 如果API不存在，尝试直接下载
       if (receipt.path) {
         const fileUrl = `${apiClient.defaults.baseURL}/expenses/${id}/receipts/${encodeURIComponent(receipt.path)}`;
@@ -238,7 +251,7 @@ const ExpenseDetail = () => {
         showNotification(t('expense.receipt.previewError'), 'error');
       }
     } catch (error) {
-      console.error('Failed to preview receipt:', error);
+      devError('Failed to preview receipt:', error);
       showNotification(t('expense.receipt.previewError'), 'error');
     }
   };

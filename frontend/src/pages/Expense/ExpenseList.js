@@ -50,6 +50,13 @@ import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
+// 开发环境日志辅助函数
+const devError = (...args) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.error(...args);
+  }
+};
+
 const ExpenseList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -164,7 +171,7 @@ const ExpenseList = () => {
         throw new Error('Failed to load expenses');
       }
     } catch (error) {
-      console.error('Failed to load expenses:', error);
+      devError('Failed to load expenses:', error);
       showNotification(
         error.response?.data?.message || t('expense.list.loadError') || '加载费用申请失败',
         'error'
@@ -228,7 +235,7 @@ const ExpenseList = () => {
       // 刷新列表
       await fetchExpenses();
     } catch (error) {
-      console.error('Failed to delete expense:', error);
+      devError('Failed to delete expense:', error);
       showNotification(
         error.response?.data?.message || t('expense.deleteError') || '删除费用申请失败',
         'error'
