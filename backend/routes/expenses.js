@@ -447,16 +447,7 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
       });
     }
     
-    // 检查发票是否已被关联到其他费用申请
-    if (invoice.relatedExpense && invoice.relatedExpense.toString() !== expense._id.toString()) {
-      console.log(`Invoice ${invoiceId} already linked to another expense: ${invoice.relatedExpense}`);
-      return res.status(400).json({
-        success: false,
-        message: 'Invoice already linked to another expense'
-      });
-    }
-    
-    // 关联发票（如果还没有关联）
+    // 检查发票是否已经在当前费用申请中（只检查当前费用申请，不检查其他费用申请）
     const invoiceObjectId = typeof invoiceId === 'string' ? invoiceId : invoiceId.toString();
     const invoiceIdInExpense = expense.relatedInvoices.some(id => id.toString() === invoiceObjectId);
     
@@ -467,9 +458,20 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
       console.log(`Successfully added invoice to expense. Total invoices: ${expense.relatedInvoices.length}`);
     } else {
       console.log(`Invoice ${invoiceId} already in expense.relatedInvoices, skipping`);
+      // 如果发票已经在当前费用申请中，直接返回成功（幂等操作）
+      return res.json({
+        success: true,
+        message: 'Invoice already linked to this expense',
+        data: {
+          expense: expense,
+          invoice: invoice
+        }
+      });
     }
     
-    // 更新发票（如果还没有关联到当前费用申请）
+    // 更新发票的 relatedExpense（允许同一个发票关联到多个费用申请，但只记录最后关联的那个）
+    // 注意：由于 Invoice 模型的 relatedExpense 字段是单一值，我们只更新为当前费用申请
+    // 但不会阻止发票在其他费用申请中使用（通过 expense.relatedInvoices 数组）
     if (!invoice.relatedExpense || invoice.relatedExpense.toString() !== expense._id.toString()) {
       console.log(`Updating invoice ${invoiceId} relatedExpense to ${expense._id}`);
       invoice.relatedExpense = expense._id;

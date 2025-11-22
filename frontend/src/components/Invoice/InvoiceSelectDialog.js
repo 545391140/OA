@@ -46,9 +46,15 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
   const fetchingRef = useRef(false); // 防止重复请求
   const prevLinkedIdsRef = useRef(''); // 存储上一次的ID列表字符串
   
-  // 获取已关联发票的ID列表
+  // 获取已关联发票的ID列表（统一转换为字符串格式）
   const linkedInvoiceIds = React.useMemo(() => {
-    return linkedInvoices.map(inv => inv._id || inv.id).filter(Boolean).sort();
+    return linkedInvoices
+      .map(inv => {
+        const id = inv._id || inv.id;
+        return id ? id.toString() : null;
+      })
+      .filter(Boolean)
+      .sort();
   }, [linkedInvoices]);
 
   useEffect(() => {
@@ -56,6 +62,14 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
       fetchInvoices();
       setCategoryFilter('all');
       setSearchTerm('');
+      // 对话框打开时，立即初始化已关联的发票为选中状态
+      if (linkedInvoiceIds.length > 0) {
+        setSelectedInvoices([...linkedInvoiceIds]);
+        prevLinkedIdsRef.current = linkedInvoiceIds.join(',');
+      } else {
+        setSelectedInvoices([]);
+        prevLinkedIdsRef.current = '';
+      }
     } else if (!open) {
       // 对话框关闭时，清空选中状态和重置ref
       setSelectedInvoices([]);
@@ -63,21 +77,19 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
     }
   }, [open]);
   
-  // 当对话框打开时，初始化已关联的发票为选中状态
+  // 当已关联发票列表变化时，更新选中状态（仅在对话框打开时）
   useEffect(() => {
-    if (open) {
+    if (open && linkedInvoiceIds.length > 0) {
       const currentIdsString = linkedInvoiceIds.join(',');
       const prevIdsString = prevLinkedIdsRef.current;
       
       // 只在ID列表改变时更新选中状态
       if (currentIdsString !== prevIdsString) {
-        if (linkedInvoiceIds.length > 0) {
-          setSelectedInvoices(prev => {
-            // 合并已关联的发票ID，避免重复
-            const merged = [...new Set([...prev, ...linkedInvoiceIds])];
-            return merged;
-          });
-        }
+        setSelectedInvoices(prev => {
+          // 合并已关联的发票ID，避免重复
+          const merged = [...new Set([...prev, ...linkedInvoiceIds])];
+          return merged;
+        });
         prevLinkedIdsRef.current = currentIdsString; // 保存当前的ID列表字符串
       }
     }
@@ -101,23 +113,31 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
       });
       if (response.data && response.data.success) {
         const allInvoices = response.data.data || [];
-        // 过滤掉已关联到其他费用申请的发票和排除的发票（但不排除已关联到当前费用项的发票）
+        // 只过滤掉当前费用项中已存在的发票（允许同一发票在不同费用项中使用）
         const availableInvoices = allInvoices.filter(
           invoice => {
             const invoiceId = invoice._id || invoice.id;
-            // 排除已关联到其他费用申请的发票（但保留已关联到当前费用项的发票）
-            const hasRelatedExpense = invoice.relatedExpense && (invoice.relatedExpense._id || invoice.relatedExpense);
-            const isLinkedToCurrent = linkedInvoiceIds.includes(invoiceId);
-            // 排除在排除列表中的发票（但保留已关联的发票）
-            const isExcluded = excludeInvoiceIds.includes(invoiceId) && !isLinkedToCurrent;
-            return (!hasRelatedExpense || isLinkedToCurrent) && !isExcluded;
+            const invoiceIdStr = invoiceId?.toString() || invoiceId;
+            // 只检查是否在当前费用项的排除列表中（已关联到当前费用项的发票保留）
+            const isLinkedToCurrent = linkedInvoiceIds.includes(invoiceIdStr);
+            // 排除在排除列表中的发票（但保留已关联到当前费用项的发票）
+            // 统一转换为字符串进行比较
+            const excludeIdsStr = excludeInvoiceIds.map(id => id?.toString() || id);
+            const isExcluded = excludeIdsStr.includes(invoiceIdStr) && !isLinkedToCurrent;
+            // 不再全局排除已关联到其他费用申请的发票，允许同一发票在不同费用项中使用
+            return !isExcluded;
           }
         );
         
         // 合并已关联的发票（如果它们不在列表中）
         const linkedInvoicesToAdd = linkedInvoices.filter(linkedInv => {
           const linkedId = linkedInv._id || linkedInv.id;
-          return !availableInvoices.some(inv => (inv._id || inv.id) === linkedId);
+          const linkedIdStr = linkedId?.toString() || linkedId;
+          return !availableInvoices.some(inv => {
+            const invId = inv._id || inv.id;
+            const invIdStr = invId?.toString() || invId;
+            return invIdStr === linkedIdStr;
+          });
         });
         
         setInvoices([...availableInvoices, ...linkedInvoicesToAdd]);
@@ -139,27 +159,43 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
   };
 
   const handleToggleInvoice = (invoiceId) => {
+    // 统一转换为字符串格式进行比较
+    const invoiceIdStr = invoiceId?.toString() || invoiceId;
     setSelectedInvoices(prev => {
-      if (prev.includes(invoiceId)) {
-        return prev.filter(id => id !== invoiceId);
+      // 将 prev 中的ID也转换为字符串进行比较
+      const prevStr = prev.map(id => id?.toString() || id);
+      if (prevStr.includes(invoiceIdStr)) {
+        return prev.filter(id => {
+          const idStr = id?.toString() || id;
+          return idStr !== invoiceIdStr;
+        });
       } else {
-        return [...prev, invoiceId];
+        return [...prev, invoiceIdStr];
       }
     });
   };
 
   const handleConfirm = () => {
+    // 统一将 selectedInvoices 转换为字符串数组进行比较
+    const selectedInvoiceIdsStr = selectedInvoices.map(id => id?.toString() || id);
+    
     // 获取选中的发票对象（包括已关联的发票）
     const selectedInvoiceObjects = invoices.filter(inv => {
       const invoiceId = inv._id || inv.id;
-      return selectedInvoices.includes(invoiceId);
+      const invoiceIdStr = invoiceId?.toString() || invoiceId;
+      return selectedInvoiceIdsStr.includes(invoiceIdStr);
     });
     
     // 如果已关联的发票不在 invoices 列表中，也要包含它们
     const linkedInvoicesToAdd = linkedInvoices.filter(linkedInv => {
       const linkedId = linkedInv._id || linkedInv.id;
-      return selectedInvoices.includes(linkedId) && 
-             !selectedInvoiceObjects.some(inv => (inv._id || inv.id) === linkedId);
+      const linkedIdStr = linkedId?.toString() || linkedId;
+      return selectedInvoiceIdsStr.includes(linkedIdStr) && 
+             !selectedInvoiceObjects.some(inv => {
+               const invId = inv._id || inv.id;
+               const invIdStr = invId?.toString() || invId;
+               return invIdStr === linkedIdStr;
+             });
     });
     
     onConfirm([...selectedInvoiceObjects, ...linkedInvoicesToAdd]);
@@ -324,14 +360,17 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
               ) : (
                 filteredInvoices.map((invoice) => {
                   const invoiceId = invoice._id || invoice.id;
-                  const isLinked = linkedInvoiceIds.includes(invoiceId);
-                  const isSelected = selectedInvoices.includes(invoiceId);
+                  const invoiceIdStr = invoiceId?.toString() || invoiceId;
+                  const isLinked = linkedInvoiceIds.includes(invoiceIdStr);
+                  // 统一转换为字符串进行比较
+                  const selectedInvoicesStr = selectedInvoices.map(id => id?.toString() || id);
+                  const isSelected = selectedInvoicesStr.includes(invoiceIdStr);
                   
                   return (
                     <TableRow 
-                      key={invoiceId} 
+                      key={invoiceIdStr} 
                       hover={!isLinked}
-                      onClick={() => !isLinked && handleToggleInvoice(invoiceId)}
+                      onClick={() => !isLinked && handleToggleInvoice(invoiceIdStr)}
                       sx={{ 
                         cursor: isLinked ? 'default' : 'pointer',
                         opacity: isLinked ? 0.7 : 1,
@@ -342,7 +381,7 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
                       <TableCell padding="checkbox">
                         <Checkbox
                           checked={isSelected}
-                          onChange={() => !isLinked && handleToggleInvoice(invoiceId)}
+                          onChange={() => !isLinked && handleToggleInvoice(invoiceIdStr)}
                           onClick={(e) => e.stopPropagation()}
                           disabled={isLinked}
                           indeterminate={isLinked}

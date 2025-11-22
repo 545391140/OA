@@ -516,12 +516,10 @@ const ExpenseList = () => {
               {t('common.edit')}
             </MenuItem>
           )}
-          {selectedExpense?.status === 'draft' && (
-            <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-              <DeleteIcon sx={{ mr: 1 }} />
-              {t('common.delete')}
-            </MenuItem>
-          )}
+          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+            <DeleteIcon sx={{ mr: 1 }} />
+            {t('common.delete')}
+          </MenuItem>
         </Menu>
 
         {/* Delete Confirmation Dialog */}
