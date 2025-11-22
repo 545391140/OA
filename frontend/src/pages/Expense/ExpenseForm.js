@@ -701,7 +701,14 @@ const ExpenseForm = () => {
           travel: expenseData.travel?._id || expenseData.travel || null
         });
         // 后端已经populate了relatedInvoices，直接使用
-        setRelatedInvoices(expenseData.relatedInvoices || []);
+        // 确保发票数据格式统一
+        const invoices = expenseData.relatedInvoices || [];
+        const normalizedInvoices = invoices.map(inv => ({
+          ...inv,
+          _id: inv._id || inv.id || inv,
+          id: inv._id || inv.id || inv
+        }));
+        setRelatedInvoices(normalizedInvoices);
         
         // 如果关联了差旅单，加载差旅信息
         if (expenseData.travel) {
@@ -797,10 +804,19 @@ const ExpenseForm = () => {
       const response = await apiClient.get(`/expenses/${id}`);
       if (response.data && response.data.success) {
         // 后端已经populate了relatedInvoices，直接使用
-        setRelatedInvoices(response.data.data.relatedInvoices || []);
+        const invoices = response.data.data.relatedInvoices || [];
+        // 确保发票数据格式统一
+        const normalizedInvoices = invoices.map(inv => ({
+          ...inv,
+          _id: inv._id || inv.id || inv,
+          id: inv._id || inv.id || inv
+        }));
+        setRelatedInvoices(normalizedInvoices);
+        console.log('Fetched related invoices:', normalizedInvoices.length);
       }
     } catch (error) {
       console.error('Failed to load related invoices:', error);
+      showNotification('加载关联发票失败', 'error');
     } finally {
       setInvoicesLoading(false);
     }
@@ -808,16 +824,46 @@ const ExpenseForm = () => {
 
   const handleAddInvoices = async (selectedInvoices) => {
     try {
+      let successCount = 0;
+      let failCount = 0;
+      
       for (const invoice of selectedInvoices) {
-        await apiClient.post(`/expenses/${id}/link-invoice`, {
-          invoiceId: invoice._id
-        });
+        try {
+          // 确保发票ID是字符串格式
+          const invoiceId = invoice._id || invoice.id || invoice;
+          const invoiceIdStr = invoiceId?.toString() || invoiceId;
+          
+          await apiClient.post(`/expenses/${id}/link-invoice`, {
+            invoiceId: invoiceIdStr
+          });
+          successCount++;
+        } catch (err) {
+          console.error('Failed to link invoice:', err);
+          failCount++;
+          // 如果发票已经关联，不算错误
+          if (err.response?.status === 400 && 
+              err.response?.data?.message?.includes('already linked')) {
+            successCount++;
+            failCount--;
+          }
+        }
       }
-      showNotification(
-        t('expense.invoices.added') || `成功关联 ${selectedInvoices.length} 张发票`,
-        'success'
-      );
-      await fetchRelatedInvoices();
+      
+      if (successCount > 0) {
+        showNotification(
+          t('expense.invoices.added') || `成功关联 ${successCount} 张发票`,
+          'success'
+        );
+        // 重新获取发票列表，确保数据同步
+        await fetchRelatedInvoices();
+      }
+      
+      if (failCount > 0) {
+        showNotification(
+          `关联失败 ${failCount} 张发票`,
+          'warning'
+        );
+      }
     } catch (error) {
       console.error('Failed to link invoices:', error);
       showNotification(
@@ -829,12 +875,17 @@ const ExpenseForm = () => {
 
   const handleRemoveInvoice = async (invoiceId) => {
     try {
-      await apiClient.delete(`/expenses/${id}/unlink-invoice/${invoiceId}`);
+      // 确保发票ID是字符串格式
+      const invoiceIdStr = invoiceId?.toString() || invoiceId;
+      await apiClient.delete(`/expenses/${id}/unlink-invoice/${invoiceIdStr}`);
       showNotification(t('expense.invoices.removed') || '取消关联成功', 'success');
       await fetchRelatedInvoices();
     } catch (error) {
       console.error('Failed to unlink invoice:', error);
-      showNotification(t('expense.invoices.removeError') || '取消关联失败', 'error');
+      showNotification(
+        error.response?.data?.message || t('expense.invoices.removeError') || '取消关联失败',
+        'error'
+      );
     }
   };
 
@@ -929,6 +980,13 @@ const ExpenseForm = () => {
 
     try {
       setSaving(true);
+      
+      // 调试：打印当前状态
+      console.log('=== Saving Expense ===');
+      console.log('isEdit:', isEdit);
+      console.log('selectedTravel:', selectedTravel ? selectedTravel._id : null);
+      console.log('relatedInvoices state:', relatedInvoices);
+      console.log('relatedInvoices count:', relatedInvoices?.length || 0);
       
       // 如果选择了差旅单且有费用项发票，为每个费用项创建费用申请
       if (selectedTravel && !isEdit) {
@@ -1136,11 +1194,14 @@ const ExpenseForm = () => {
         if (selectedTravel) {
           // 如果关联了差旅单，处理费用项发票
           const budgets = extractExpenseBudgets(selectedTravel);
+          let hasExpenseItemInvoices = false;
+          
           for (const budget of budgets) {
             const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
             const invoicesForItem = expenseItemInvoices[expenseItemIdStr] || [];
             
             if (invoicesForItem.length > 0) {
+              hasExpenseItemInvoices = true;
               // 获取当前费用申请关联的费用项
               const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
               const currentExpenseItemId = expenseResponse.data?.data?.expenseItem?._id || expenseResponse.data?.data?.expenseItem;
@@ -1217,59 +1278,221 @@ const ExpenseForm = () => {
               }
             }
           }
+          
+          // 如果费用申请没有关联费用项，或者用户通过"关联发票"按钮添加了发票，也需要处理 relatedInvoices
+          if (!hasExpenseItemInvoices || (isEdit && relatedInvoices && relatedInvoices.length > 0)) {
+            console.log('Processing relatedInvoices for travel-linked expense');
+            const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
+            const currentInvoiceIds = new Set(
+              (expenseResponse.data?.data?.relatedInvoices || [])
+                .map(inv => {
+                  const id = inv._id || inv;
+                  return id ? id.toString() : null;
+                })
+                .filter(Boolean)
+            );
+            console.log('Current invoice IDs from database:', Array.from(currentInvoiceIds));
+            
+            // 处理 relatedInvoices，支持对象和字符串ID两种格式
+            const normalizedRelatedInvoices = (relatedInvoices || []).map(inv => {
+              if (typeof inv === 'string') {
+                return { _id: inv, id: inv };
+              }
+              return {
+                ...inv,
+                _id: inv._id || inv.id || inv,
+                id: inv._id || inv.id || inv
+              };
+            });
+            
+            const newInvoiceIds = new Set(
+              normalizedRelatedInvoices
+                .map(inv => {
+                  const id = inv._id || inv.id;
+                  return id ? id.toString() : null;
+                })
+                .filter(Boolean)
+            );
+            console.log('New invoice IDs from relatedInvoices state:', Array.from(newInvoiceIds));
+            
+            // 添加新关联的发票
+            for (const invoice of normalizedRelatedInvoices) {
+              const invoiceId = invoice._id || invoice.id;
+              if (invoiceId) {
+                const invoiceIdStr = invoiceId.toString();
+                if (!currentInvoiceIds.has(invoiceIdStr)) {
+                  console.log(`Linking new invoice from relatedInvoices: ${invoiceIdStr}`);
+                  try {
+                    await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { 
+                      invoiceId: invoiceIdStr 
+                    });
+                    console.log(`Successfully linked invoice ${invoiceIdStr}`);
+                    currentInvoiceIds.add(invoiceIdStr);
+                  } catch (err) {
+                    console.error('Failed to link invoice:', err);
+                    if (err.response?.status === 400 && 
+                        err.response?.data?.message?.includes('already linked')) {
+                      try {
+                        const checkResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
+                        const latestInvoiceIds = new Set(
+                          (checkResponse.data?.data?.relatedInvoices || [])
+                            .map(inv => {
+                              const id = inv._id || inv;
+                              return id ? id.toString() : null;
+                            })
+                            .filter(Boolean)
+                        );
+                        if (latestInvoiceIds.has(invoiceIdStr)) {
+                          console.log(`Invoice ${invoiceIdStr} already linked, skipping`);
+                          currentInvoiceIds.add(invoiceIdStr);
+                          continue;
+                        }
+                      } catch (checkErr) {
+                        console.error('Failed to check invoice link status:', checkErr);
+                      }
+                    }
+                    showNotification(
+                      `关联发票失败: ${err.response?.data?.message || err.message}`,
+                      'warning'
+                    );
+                  }
+                }
+              }
+            }
+            
+            // 移除取消关联的发票
+            for (const invoiceIdStr of currentInvoiceIds) {
+              if (!newInvoiceIds.has(invoiceIdStr)) {
+                console.log(`Unlinking invoice: ${invoiceIdStr}`);
+                try {
+                  await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceIdStr}`);
+                  console.log(`Successfully unlinked invoice ${invoiceIdStr}`);
+                } catch (err) {
+                  console.error('Failed to unlink invoice:', err);
+                  showNotification(
+                    `取消关联发票失败: ${err.response?.data?.message || err.message}`,
+                    'warning'
+                  );
+                }
+              }
+            }
+          }
         } else {
           // 没有关联差旅单的情况，处理 relatedInvoices
           if (isEdit) {
             // 编辑模式：更新发票关联
+            console.log('Processing relatedInvoices for edit mode:', relatedInvoices);
             const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
-            const currentInvoiceIds = new Set((expenseResponse.data?.data?.relatedInvoices || []).map(inv => inv._id || inv));
-            const newInvoiceIds = new Set((relatedInvoices || []).map(inv => inv._id || inv).filter(Boolean));
+            // 统一使用字符串格式的ID进行比较
+            const currentInvoiceIds = new Set(
+              (expenseResponse.data?.data?.relatedInvoices || [])
+                .map(inv => {
+                  const id = inv._id || inv;
+                  return id ? id.toString() : null;
+                })
+                .filter(Boolean)
+            );
+            console.log('Current invoice IDs from database:', Array.from(currentInvoiceIds));
+            
+            // 处理 relatedInvoices，支持对象和字符串ID两种格式
+            const normalizedRelatedInvoices = (relatedInvoices || []).map(inv => {
+              // 如果 inv 是字符串，转换为对象格式
+              if (typeof inv === 'string') {
+                return { _id: inv, id: inv };
+              }
+              // 如果 inv 是对象，确保有 _id 和 id
+              return {
+                ...inv,
+                _id: inv._id || inv.id || inv,
+                id: inv._id || inv.id || inv
+              };
+            });
+            
+            const newInvoiceIds = new Set(
+              normalizedRelatedInvoices
+                .map(inv => {
+                  const id = inv._id || inv.id;
+                  return id ? id.toString() : null;
+                })
+                .filter(Boolean)
+            );
+            console.log('New invoice IDs from state:', Array.from(newInvoiceIds));
             
             // 添加新关联的发票
-            for (const invoice of relatedInvoices || []) {
+            for (const invoice of normalizedRelatedInvoices) {
               const invoiceId = invoice._id || invoice.id;
-              if (invoiceId && !currentInvoiceIds.has(invoiceId)) {
-                try {
-                  // 确保发票ID是字符串格式
-                  const invoiceIdStr = invoiceId.toString();
-                  await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { 
-                    invoiceId: invoiceIdStr 
-                  });
-                } catch (err) {
-                  console.error('Failed to link invoice:', err);
-                  // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
-                  if (err.response?.status === 400 && 
-                      err.response?.data?.message?.includes('already linked')) {
-                    // 检查是否是关联到当前费用申请
-                    const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
-                    const currentInvoiceIds = new Set(
-                      (expenseResponse.data?.data?.relatedInvoices || [])
-                        .map(inv => (inv._id || inv).toString())
-                    );
-                    if (currentInvoiceIds.has((invoice._id || invoice.id).toString())) {
-                      // 已经关联到当前费用申请，忽略错误
-                      continue;
+              if (invoiceId) {
+                const invoiceIdStr = invoiceId.toString();
+                // 检查是否已经关联（使用字符串格式比较）
+                if (!currentInvoiceIds.has(invoiceIdStr)) {
+                  console.log(`Linking new invoice: ${invoiceIdStr}`);
+                  try {
+                    await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { 
+                      invoiceId: invoiceIdStr 
+                    });
+                    console.log(`Successfully linked invoice ${invoiceIdStr}`);
+                    // 关联成功后，更新 currentInvoiceIds，避免重复关联
+                    currentInvoiceIds.add(invoiceIdStr);
+                  } catch (err) {
+                    console.error('Failed to link invoice:', err);
+                    console.error('Error response:', err.response?.data);
+                    // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
+                    if (err.response?.status === 400 && 
+                        err.response?.data?.message?.includes('already linked')) {
+                      // 重新获取最新数据检查
+                      try {
+                        const checkResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
+                        const latestInvoiceIds = new Set(
+                          (checkResponse.data?.data?.relatedInvoices || [])
+                            .map(inv => {
+                              const id = inv._id || inv;
+                              return id ? id.toString() : null;
+                            })
+                            .filter(Boolean)
+                        );
+                        if (latestInvoiceIds.has(invoiceIdStr)) {
+                          // 已经关联到当前费用申请，忽略错误
+                          console.log(`Invoice ${invoiceIdStr} already linked, skipping`);
+                          currentInvoiceIds.add(invoiceIdStr);
+                          continue;
+                        }
+                      } catch (checkErr) {
+                        console.error('Failed to check invoice link status:', checkErr);
+                      }
                     }
+                    // 其他错误显示通知
+                    showNotification(
+                      `关联发票失败: ${err.response?.data?.message || err.message}`,
+                      'warning'
+                    );
                   }
-                  // 其他错误显示通知
+                } else {
+                  console.log(`Invoice ${invoiceIdStr} already linked, skipping`);
+                }
+              } else {
+                console.warn('Invalid invoice object:', invoice);
+              }
+            }
+            
+            // 移除取消关联的发票
+            console.log('Checking for invoices to unlink...');
+            for (const invoiceIdStr of currentInvoiceIds) {
+              if (!newInvoiceIds.has(invoiceIdStr)) {
+                console.log(`Unlinking invoice: ${invoiceIdStr}`);
+                try {
+                  await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceIdStr}`);
+                  console.log(`Successfully unlinked invoice ${invoiceIdStr}`);
+                } catch (err) {
+                  console.error('Failed to unlink invoice:', err);
                   showNotification(
-                    `关联发票失败: ${err.response?.data?.message || err.message}`,
+                    `取消关联发票失败: ${err.response?.data?.message || err.message}`,
                     'warning'
                   );
                 }
               }
             }
             
-            // 移除取消关联的发票
-            for (const invoiceId of currentInvoiceIds) {
-              if (!newInvoiceIds.has(invoiceId)) {
-                try {
-                  await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceId}`);
-                } catch (err) {
-                  console.error('Failed to unlink invoice:', err);
-                }
-              }
-            }
+            console.log('Invoice linking process completed');
           } else {
             // 新建模式：关联发票
             if (relatedInvoices && relatedInvoices.length > 0) {
@@ -1316,7 +1539,10 @@ const ExpenseForm = () => {
         
         // 如果是编辑模式，重新获取最新数据以更新表单
         if (isEdit) {
+          // 重新获取费用数据，确保发票关联已更新
           await fetchExpenseData();
+          // 同时重新获取发票列表，确保状态同步
+          await fetchRelatedInvoices();
         }
         
         showNotification(
@@ -2154,8 +2380,10 @@ const ExpenseForm = () => {
                 ) : relatedInvoices.length > 0 ? (
                   <Grid item xs={12}>
                     <List>
-                      {relatedInvoices.map((invoice) => (
-                        <ListItem key={invoice._id} divider>
+                      {relatedInvoices.map((invoice) => {
+                        const invoiceId = invoice._id || invoice.id || invoice;
+                        return (
+                        <ListItem key={invoiceId} divider>
                           <ListItemIcon>
                             <Avatar sx={{ bgcolor: 'primary.main' }}>
                               <ReceiptIcon />
@@ -2188,14 +2416,15 @@ const ExpenseForm = () => {
                             }
                           />
                           <IconButton
-                            onClick={() => handleRemoveInvoice(invoice._id)}
+                            onClick={() => handleRemoveInvoice(invoiceId)}
                             color="error"
                             size="small"
                           >
                             <DeleteIcon />
                           </IconButton>
                         </ListItem>
-                      ))}
+                        );
+                      })}
                     </List>
                   </Grid>
                 ) : (
@@ -2346,7 +2575,11 @@ const ExpenseForm = () => {
             open={invoiceSelectDialogOpen}
             onClose={() => setInvoiceSelectDialogOpen(false)}
             onConfirm={handleAddInvoices}
-            excludeInvoiceIds={relatedInvoices.map(inv => inv._id)}
+            excludeInvoiceIds={relatedInvoices.map(inv => {
+              const id = inv._id || inv.id || inv;
+              return id ? id.toString() : null;
+            }).filter(Boolean)}
+            linkedInvoices={relatedInvoices}
           />
         )}
 

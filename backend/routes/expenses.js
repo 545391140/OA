@@ -410,6 +410,8 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
   try {
     const { invoiceId } = req.body;
     
+    console.log(`Linking invoice ${invoiceId} to expense ${req.params.id}`);
+    
     if (!invoiceId) {
       return res.status(400).json({
         success: false,
@@ -420,15 +422,25 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
     const expense = await Expense.findById(req.params.id);
     const invoice = await Invoice.findById(invoiceId);
     
-    if (!expense || !invoice) {
+    if (!expense) {
+      console.log(`Expense ${req.params.id} not found`);
       return res.status(404).json({
         success: false,
-        message: 'Expense or invoice not found'
+        message: 'Expense not found'
+      });
+    }
+    
+    if (!invoice) {
+      console.log(`Invoice ${invoiceId} not found`);
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found'
       });
     }
     
     // 权限检查
     if (expense.employee.toString() !== req.user.id && req.user.role !== 'admin') {
+      console.log(`User ${req.user.id} not authorized to link invoice to expense ${req.params.id}`);
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -437,6 +449,7 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
     
     // 检查发票是否已被关联到其他费用申请
     if (invoice.relatedExpense && invoice.relatedExpense.toString() !== expense._id.toString()) {
+      console.log(`Invoice ${invoiceId} already linked to another expense: ${invoice.relatedExpense}`);
       return res.status(400).json({
         success: false,
         message: 'Invoice already linked to another expense'
@@ -448,18 +461,26 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
     const invoiceIdInExpense = expense.relatedInvoices.some(id => id.toString() === invoiceObjectId);
     
     if (!invoiceIdInExpense) {
+      console.log(`Adding invoice ${invoiceId} to expense ${expense._id}`);
       expense.relatedInvoices.push(invoiceObjectId);
       await expense.save();
+      console.log(`Successfully added invoice to expense. Total invoices: ${expense.relatedInvoices.length}`);
+    } else {
+      console.log(`Invoice ${invoiceId} already in expense.relatedInvoices, skipping`);
     }
     
     // 更新发票（如果还没有关联到当前费用申请）
     if (!invoice.relatedExpense || invoice.relatedExpense.toString() !== expense._id.toString()) {
+      console.log(`Updating invoice ${invoiceId} relatedExpense to ${expense._id}`);
       invoice.relatedExpense = expense._id;
       invoice.matchStatus = 'linked';
       if (expense.travel) {
         invoice.relatedTravel = expense.travel;
       }
       await invoice.save();
+      console.log(`Successfully updated invoice`);
+    } else {
+      console.log(`Invoice ${invoiceId} already linked to expense ${expense._id}, skipping update`);
     }
     
     res.json({
