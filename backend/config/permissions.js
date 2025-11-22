@@ -256,15 +256,15 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'position',
-    label: '职位管理',
+    label: '岗位管理',
     labelEn: 'Position Management',
     labelJa: '職位管理',
     labelKo: '직위 관리',
     permissions: [
-      { code: PERMISSIONS.POSITION_VIEW, label: '查看职位', labelEn: 'View Positions', labelJa: '職位を表示', labelKo: '직위 보기' },
-      { code: PERMISSIONS.POSITION_CREATE, label: '创建职位', labelEn: 'Create Positions', labelJa: '職位を作成', labelKo: '직위 생성' },
-      { code: PERMISSIONS.POSITION_EDIT, label: '编辑职位', labelEn: 'Edit Positions', labelJa: '職位を編集', labelKo: '직위 편집' },
-      { code: PERMISSIONS.POSITION_DELETE, label: '删除职位', labelEn: 'Delete Positions', labelJa: '職位を削除', labelKo: '직위 삭제' }
+      { code: PERMISSIONS.POSITION_VIEW, label: '查看岗位', labelEn: 'View Positions', labelJa: '職位を表示', labelKo: '직위 보기' },
+      { code: PERMISSIONS.POSITION_CREATE, label: '创建岗位', labelEn: 'Create Positions', labelJa: '職位を作成', labelKo: '직위 생성' },
+      { code: PERMISSIONS.POSITION_EDIT, label: '编辑岗位', labelEn: 'Edit Positions', labelJa: '職位を編集', labelKo: '직위 편집' },
+      { code: PERMISSIONS.POSITION_DELETE, label: '删除岗位', labelEn: 'Delete Positions', labelJa: '職位を削除', labelKo: '직위 삭제' }
     ]
   },
   {

@@ -299,6 +299,11 @@ router.post('/', protect, async (req, res) => {
       expenseData.reimbursementNumber = await generateReimbursementNumber();
     }
 
+    // 确保手动创建的费用设置 matchSource 为 manual
+    if (!expenseData.matchSource) {
+      expenseData.matchSource = 'manual';
+    }
+
     const expense = await Expense.create(expenseData);
 
     res.status(201).json({

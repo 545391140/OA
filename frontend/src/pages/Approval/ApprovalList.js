@@ -745,7 +745,7 @@ const ApprovalList = () => {
                 size="small"
                 sx={{ 
                   minWidth: 'auto',
-                  px: 1,
+                  px: 1.5,
                   py: 0.5,
                   textTransform: 'none',
                   lineHeight: 1.3
@@ -760,7 +760,7 @@ const ApprovalList = () => {
                 size="small"
                 sx={{ 
                   minWidth: 'auto',
-                  px: 1,
+                  px: 1.5,
                   py: 0.5,
                   textTransform: 'none',
                   fontWeight: 600,
@@ -777,13 +777,13 @@ const ApprovalList = () => {
             onClick={() => navigate(`/approvals/${item.type}/${item.id}`)}
             sx={{ 
               minWidth: 'auto',
-              px: 1,
+              px: 1.5,
               py: 0.5,
               textTransform: 'none',
               lineHeight: 1.3
             }}
           >
-            {t('approval.viewDetail') || 'Detail'}
+            {t('common.view')}
           </Button>
         </Box>
       </CardContent>

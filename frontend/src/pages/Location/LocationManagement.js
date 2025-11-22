@@ -31,7 +31,8 @@ import {
   Alert,
   CircularProgress,
   LinearProgress,
-  Grid
+  Grid,
+  Menu
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -43,7 +44,8 @@ import {
   LocationCity as CityIcon,
   Public as CountryIcon,
   FilterList as FilterIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -66,6 +68,8 @@ const LocationManagement = () => {
   // 对话框状态
   const [deleteDialog, setDeleteDialog] = useState({ open: false, location: null });
   const [formDialog, setFormDialog] = useState({ open: false, location: null, mode: 'create' });
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -153,24 +157,31 @@ const LocationManagement = () => {
     setTimeout(() => fetchLocations(), 100);
   };
 
-  const handleDelete = (location) => {
-    setDeleteDialog({ open: true, location });
+  const handleMenuOpen = (event, location) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedLocation(location);
   };
 
-  const confirmDelete = async () => {
-    try {
-      await apiClient.delete(`/locations/${deleteDialog.location._id}`);
-      showNotification(t('location.management.deleteSuccess'), 'success');
-      fetchLocations();
-    } catch (err) {
-      console.error('Delete location error:', err);
-      showNotification(t('location.management.deleteError'), 'error');
-    } finally {
-      setDeleteDialog({ open: false, location: null });
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedLocation(null);
+  };
+
+  const handleEdit = () => {
+    if (selectedLocation) {
+      handleOpenEditDialog(selectedLocation);
     }
+    handleMenuClose();
   };
 
-  const handleEdit = (location) => {
+  const handleDelete = () => {
+    if (selectedLocation) {
+      setDeleteDialog({ open: true, location: selectedLocation });
+    }
+    handleMenuClose();
+  };
+
+  const handleOpenEditDialog = (location) => {
     setFormData({
       name: location.name || '',
       code: location.code || '',
@@ -197,6 +208,20 @@ const LocationManagement = () => {
     });
     setFormDialog({ open: true, location, mode: 'edit' });
   };
+
+  const confirmDelete = async () => {
+    try {
+      await apiClient.delete(`/locations/${deleteDialog.location._id}`);
+      showNotification(t('location.management.deleteSuccess'), 'success');
+      fetchLocations();
+    } catch (err) {
+      console.error('Delete location error:', err);
+      showNotification(t('location.management.deleteError'), 'error');
+    } finally {
+      setDeleteDialog({ open: false, location: null });
+    }
+  };
+
 
   const handleAdd = () => {
     setFormData({
@@ -545,24 +570,12 @@ const LocationManagement = () => {
                         </TableCell>
                         {canEdit && (
                           <TableCell align="right">
-                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleEdit(location)}
-                                color="primary"
-                                sx={{ flexShrink: 0 }}
-                              >
-                                <EditIcon />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDelete(location)}
-                                color="error"
-                                sx={{ flexShrink: 0 }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
+                            <IconButton
+                              onClick={(e) => handleMenuOpen(e, location)}
+                              size="small"
+                            >
+                              <MoreVertIcon />
+                            </IconButton>
                           </TableCell>
                         )}
                       </TableRow>
@@ -573,6 +586,22 @@ const LocationManagement = () => {
             </Table>
           </TableContainer>
         </Paper>
+
+        {/* Action Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+        >
+          <MenuItem onClick={handleEdit}>
+            <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.edit')}
+          </MenuItem>
+          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+            <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.delete')}
+          </MenuItem>
+        </Menu>
 
         {/* 删除确认对话框 */}
         <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, location: null })}>

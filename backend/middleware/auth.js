@@ -111,24 +111,82 @@ const protect = async (req, res, next) => {
   }
 };
 
-// Grant access to specific roles
+// Grant access to specific roles or roles with equivalent permissions
+// This middleware checks role first, then falls back to permission check
 const authorize = (...roles) => {
-  return (req, res, next) => {
-    const userRole = req.user.role ? req.user.role.toUpperCase() : '';
-    const allowedRoles = roles.map(r => r.toUpperCase());
-    
-    // Admin role has access to everything
-    if (userRole === 'ADMIN') {
-      return next();
-    }
-    
-    if (!allowedRoles.includes(userRole)) {
+  return async (req, res, next) => {
+    try {
+      const userRole = req.user.role ? req.user.role.toUpperCase() : '';
+      const allowedRoles = roles.map(r => r.toUpperCase());
+      
+      // Admin role has access to everything
+      if (userRole === 'ADMIN') {
+        return next();
+      }
+      
+      // Check if user's role is in the allowed list
+      if (allowedRoles.includes(userRole)) {
+        return next();
+      }
+      
+      // If role doesn't match, check if user has equivalent permissions
+      // This allows custom roles (like CW001) to access routes if they have the right permissions
+      if (!req.user.role) {
+        return res.status(403).json({
+          success: false,
+          message: `User role ${req.user.role} is not authorized to access this route`
+        });
+      }
+
+      const role = await Role.findOne({ code: req.user.role, isActive: true });
+      
+      if (!role) {
+        return res.status(403).json({
+          success: false,
+          message: `Role ${req.user.role} not found or inactive`
+        });
+      }
+
+      // Map roles to their typical permissions for fallback check
+      // If user has finance-like permissions, allow access to finance routes
+      const rolePermissionMap = {
+        'FINANCE': [
+          'travel.standard.view', 'travel.standard.create', 'travel.standard.edit',
+          'expense.item.view', 'expense.item.create', 'expense.item.edit',
+          'location.view', 'location.create', 'location.edit',
+          'job.level.view', 'job.level.create', 'job.level.edit',
+          'city.level.view', 'city.level.create', 'city.level.edit'
+        ],
+        'ADMIN': [] // Admin already handled above
+      };
+
+      // Check if user has permissions equivalent to the required role
+      const userPermissions = role.permissions || [];
+      let hasEquivalentPermissions = false;
+
+      // Check if user has permissions that match finance role
+      if (allowedRoles.includes('FINANCE') && rolePermissionMap.FINANCE) {
+        hasEquivalentPermissions = rolePermissionMap.FINANCE.some(permission => 
+          userPermissions.includes(permission)
+        );
+      }
+
+      if (hasEquivalentPermissions) {
+        return next();
+      }
+      
+      // If no match, deny access
       return res.status(403).json({
         success: false,
         message: `User role ${req.user.role} is not authorized to access this route`
       });
+    } catch (error) {
+      console.error('Authorization check error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error checking authorization'
+      });
     }
-    next();
   };
 };
 

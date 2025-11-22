@@ -33,7 +33,8 @@ import {
   CardContent,
   CardActionArea,
   Pagination,
-  Tooltip
+  Tooltip,
+  Menu
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -46,7 +47,8 @@ import {
   Refresh as RefreshIcon,
   FilterList as FilterIcon,
   Link as LinkIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -69,6 +71,8 @@ const InvoiceList = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, invoice: null });
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   useEffect(() => {
     fetchInvoices();
@@ -128,8 +132,21 @@ const InvoiceList = () => {
     setTimeout(() => fetchInvoices(), 100);
   };
 
-  const handleDelete = (invoice) => {
-    setDeleteDialog({ open: true, invoice });
+  const handleMenuOpen = (event, invoice) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedInvoice(invoice);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedInvoice(null);
+  };
+
+  const handleDelete = () => {
+    if (selectedInvoice) {
+      setDeleteDialog({ open: true, invoice: selectedInvoice });
+    }
+    handleMenuClose();
   };
 
   const confirmDelete = async () => {
@@ -146,11 +163,19 @@ const InvoiceList = () => {
     }
   };
 
-  const handleView = (invoice) => {
-    navigate(`/invoices/${invoice._id}`);
+  const handleView = () => {
+    if (selectedInvoice) {
+      navigate(`/invoices/${selectedInvoice._id}`);
+    }
+    handleMenuClose();
   };
 
-  const handleDownload = async (invoice) => {
+  const handleDownload = async () => {
+    const invoice = selectedInvoice;
+    if (!invoice) {
+      handleMenuClose();
+      return;
+    }
     try {
       const response = await apiClient.get(`/invoices/${invoice._id}/file`, {
         responseType: 'blob'
@@ -168,6 +193,8 @@ const InvoiceList = () => {
     } catch (err) {
       console.error('Download error:', err);
       showNotification(t('invoice.list.downloadError'), 'error');
+    } finally {
+      handleMenuClose();
     }
   };
 
@@ -414,35 +441,12 @@ const InvoiceList = () => {
                       {dayjs(invoice.createdAt).format('YYYY-MM-DD HH:mm')}
                     </TableCell>
                     <TableCell align="right">
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                        <Tooltip title={t('invoice.list.view')}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleView(invoice)}
-                            color="primary"
-                          >
-                            <VisibilityIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={t('invoice.list.download')}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDownload(invoice)}
-                            color="primary"
-                          >
-                            <DownloadIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={t('invoice.list.delete')}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDelete(invoice)}
-                            color="error"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
+                      <IconButton
+                        onClick={(e) => handleMenuOpen(e, invoice)}
+                        size="small"
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))
@@ -463,6 +467,26 @@ const InvoiceList = () => {
           </Box>
         )}
 
+        {/* Action Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+        >
+          <MenuItem onClick={handleView}>
+            <VisibilityIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.view')}
+          </MenuItem>
+          <MenuItem onClick={handleDownload}>
+            <DownloadIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('invoice.list.download')}
+          </MenuItem>
+          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+            <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.delete')}
+          </MenuItem>
+        </Menu>
+
         {/* Delete Dialog */}
         <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, invoice: null })}>
           <DialogTitle>{t('invoice.list.confirmDelete')}</DialogTitle>
@@ -474,7 +498,7 @@ const InvoiceList = () => {
           <DialogActions>
             <Button onClick={() => setDeleteDialog({ open: false, invoice: null })}>{t('common.cancel')}</Button>
             <Button onClick={confirmDelete} color="error" variant="contained">
-              {t('invoice.list.delete')}
+              {t('common.delete')}
             </Button>
           </DialogActions>
         </Dialog>

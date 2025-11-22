@@ -1,14 +1,15 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, checkPermission } = require('../middleware/auth');
+const { PERMISSIONS } = require('../config/permissions');
 const Position = require('../models/Position');
 
 const router = express.Router();
 
 // @desc    Get all positions
 // @route   GET /api/positions
-// @access  Private (Admin only)
-router.get('/', protect, authorize('admin'), async (req, res) => {
+// @access  Private (Requires position.view permission)
+router.get('/', protect, checkPermission(PERMISSIONS.POSITION_VIEW), async (req, res) => {
   try {
     const { isActive, search, department, jobLevel } = req.query;
     
@@ -53,8 +54,8 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
 
 // @desc    Get single position
 // @route   GET /api/positions/:id
-// @access  Private (Admin only)
-router.get('/:id', protect, authorize('admin'), async (req, res) => {
+// @access  Private (Requires position.view permission)
+router.get('/:id', protect, checkPermission(PERMISSIONS.POSITION_VIEW), async (req, res) => {
   try {
     const position = await Position.findById(req.params.id)
       .populate('createdBy', 'firstName lastName')
@@ -82,10 +83,10 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
 
 // @desc    Create new position
 // @route   POST /api/positions
-// @access  Private (Admin only)
+// @access  Private (Requires position.create permission)
 router.post('/', [
   protect,
-  authorize('admin'),
+  checkPermission(PERMISSIONS.POSITION_CREATE),
   body('code').notEmpty().withMessage('Position code is required')
     .matches(/^[A-Z0-9_]+$/).withMessage('Position code must contain only uppercase letters, numbers, and underscores'),
   body('name').notEmpty().withMessage('Position name is required')
@@ -159,10 +160,10 @@ router.post('/', [
 
 // @desc    Update position
 // @route   PUT /api/positions/:id
-// @access  Private (Admin only)
+// @access  Private (Requires position.edit permission)
 router.put('/:id', [
   protect,
-  authorize('admin'),
+  checkPermission(PERMISSIONS.POSITION_EDIT),
   body('name').optional().notEmpty().withMessage('Position name cannot be empty'),
   body('code').optional().matches(/^[A-Z0-9_]+$/).withMessage('Position code must contain only uppercase letters, numbers, and underscores')
 ], async (req, res) => {
@@ -247,8 +248,8 @@ router.put('/:id', [
 
 // @desc    Delete position
 // @route   DELETE /api/positions/:id
-// @access  Private (Admin only)
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+// @access  Private (Requires position.delete permission)
+router.delete('/:id', protect, checkPermission(PERMISSIONS.POSITION_DELETE), async (req, res) => {
   try {
     const position = await Position.findById(req.params.id);
     if (!position) {
@@ -293,8 +294,8 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
 
 // @desc    Toggle position active status
 // @route   PATCH /api/positions/:id/toggle-active
-// @access  Private (Admin only)
-router.patch('/:id/toggle-active', protect, authorize('admin'), async (req, res) => {
+// @access  Private (Requires position.edit permission)
+router.patch('/:id/toggle-active', protect, checkPermission(PERMISSIONS.POSITION_EDIT), async (req, res) => {
   try {
     const position = await Position.findById(req.params.id);
     if (!position) {

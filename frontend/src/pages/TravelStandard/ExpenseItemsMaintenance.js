@@ -27,7 +27,8 @@ import {
   LinearProgress,
   Grid,
   Chip,
-  InputAdornment
+  InputAdornment,
+  Menu
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,7 +37,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Search as SearchIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -55,6 +57,8 @@ const ExpenseItemsMaintenance = () => {
   const [standards, setStandards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, item: null });
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
   
   // 搜索和过滤状态
   const [searchTerm, setSearchTerm] = useState('');
@@ -326,7 +330,70 @@ const ExpenseItemsMaintenance = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleMenuOpen = (event, item) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedItem(item);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedItem(null);
+  };
+
+  const handleEdit = () => {
+    if (selectedItem) {
+      handleOpenEditDialog(selectedItem);
+    }
+    handleMenuClose();
+  };
+
+  const handleDelete = () => {
+    if (selectedItem) {
+      setDeleteDialog({ open: true, item: selectedItem });
+    }
+    handleMenuClose();
+  };
+
+  const handleEnable = async () => {
+    if (!selectedItem) {
+      handleMenuClose();
+      return;
+    }
+    try {
+      await apiClient.put(`/expense-items/item/${selectedItem._id}/enable`);
+      showNotification(t('expenseItem.maintenance.enableSuccess'), 'success');
+      fetchAllData();
+    } catch (err) {
+      showNotification(t('expenseItem.maintenance.operationError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
+    } finally {
+      handleMenuClose();
+    }
+  };
+
+  const handleDisable = async () => {
+    if (!selectedItem) {
+      handleMenuClose();
+      return;
+    }
+    try {
+      await apiClient.put(`/expense-items/item/${selectedItem._id}/disable`);
+      showNotification(t('expenseItem.maintenance.disableSuccess'), 'success');
+      fetchAllData();
+    } catch (err) {
+      showNotification(t('expenseItem.maintenance.operationError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
+    } finally {
+      handleMenuClose();
+    }
+  };
+
+  const handleAddSubItem = () => {
+    if (selectedItem) {
+      handleOpenAddDialog(selectedItem);
+    }
+    handleMenuClose();
+  };
+
+  const confirmDelete = async () => {
     try {
       const { item } = deleteDialog;
       await apiClient.delete(`/expense-items/item/${item._id}`);
@@ -618,71 +685,12 @@ const ExpenseItemsMaintenance = () => {
                     </TableCell>
                     <TableCell align="right">
                       {canEdit && (
-                        <>
-                          {item.status === 'enabled' ? (
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={async () => {
-                                try {
-                                  await apiClient.put(`/expense-items/item/${item._id}/disable`);
-                                  showNotification(t('expenseItem.maintenance.disableSuccess'), 'success');
-                                  fetchAllData();
-                                } catch (err) {
-                                  showNotification(t('expenseItem.maintenance.operationError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
-                                }
-                              }}
-                              title={t('expenseItem.maintenance.actions.disable')}
-                            >
-                              <CancelIcon />
-                            </IconButton>
-                          ) : (
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={async () => {
-                                try {
-                                  await apiClient.put(`/expense-items/item/${item._id}/enable`);
-                                  showNotification(t('expenseItem.maintenance.enableSuccess'), 'success');
-                                  fetchAllData();
-                                } catch (err) {
-                                  showNotification(t('expenseItem.maintenance.operationError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
-                                }
-                              }}
-                              title={t('expenseItem.maintenance.actions.enable')}
-                            >
-                              <CheckCircleIcon />
-                            </IconButton>
-                          )}
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenEditDialog(item)}
-                            title={t('expenseItem.maintenance.actions.edit')}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          {!item.isSystemDefault && (
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => setDeleteDialog({ open: true, item })}
-                              title={t('expenseItem.maintenance.actions.delete')}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          )}
-                          {/* 检查是否为"其他费用"（数据库中存储的是中文值）或是否有子项功能 */}
-                          {(item.itemName === '其他费用' || item.itemName === t('expenseItem.maintenance.otherExpense')) && (
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => handleOpenAddDialog(item)}
-                              title={t('expenseItem.maintenance.addSubItem')}
-                            >
-                              <AddIcon />
-                            </IconButton>
-                          )}
-                        </>
+                        <IconButton
+                          onClick={(e) => handleMenuOpen(e, item)}
+                          size="small"
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
                       )}
                     </TableCell>
                   </TableRow>
@@ -691,6 +699,41 @@ const ExpenseItemsMaintenance = () => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Action Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+        >
+          {selectedItem?.status === 'enabled' ? (
+            <MenuItem onClick={handleDisable}>
+              <CancelIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('expenseItem.maintenance.actions.disable')}
+            </MenuItem>
+          ) : (
+            <MenuItem onClick={handleEnable}>
+              <CheckCircleIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('expenseItem.maintenance.actions.enable')}
+            </MenuItem>
+          )}
+          <MenuItem onClick={handleEdit}>
+            <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.edit')}
+          </MenuItem>
+          {selectedItem && !selectedItem.isSystemDefault && (
+            <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+              <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('common.delete')}
+            </MenuItem>
+          )}
+          {selectedItem && (selectedItem.itemName === '其他费用' || selectedItem.itemName === t('expenseItem.maintenance.otherExpense')) && (
+            <MenuItem onClick={handleAddSubItem}>
+              <AddIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('expenseItem.maintenance.addSubItem')}
+            </MenuItem>
+          )}
+        </Menu>
 
         {/* 新增/编辑费用项对话框 */}
         <Dialog 
@@ -809,7 +852,7 @@ const ExpenseItemsMaintenance = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDeleteDialog({ open: false, item: null })}>{t('common.cancel')}</Button>
-            <Button onClick={handleDelete} color="error" variant="contained">
+            <Button onClick={confirmDelete} color="error" variant="contained">
               {t('common.delete')}
             </Button>
           </DialogActions>

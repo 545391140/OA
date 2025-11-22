@@ -345,12 +345,13 @@ const ExpenseList = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>{t('expense.title') || 'Expense'}</TableCell>
                 <TableCell>{t('expense.reimbursementNumber') || '核销单号'}</TableCell>
+                <TableCell>{t('expense.title') || 'Expense'}</TableCell>
                 <TableCell>{t('expense.category')}</TableCell>
                 <TableCell>{t('expense.vendor')}</TableCell>
                 <TableCell>{t('expense.amount')}</TableCell>
                 <TableCell>{t('expense.date')}</TableCell>
+                <TableCell>{t('expense.generationType') || '生成类型'}</TableCell>
                 <TableCell>{t('expense.status')}</TableCell>
                 <TableCell>{t('expense.receipts') || 'Receipts'}</TableCell>
                 <TableCell>{t('common.actions')}</TableCell>
@@ -359,6 +360,11 @@ const ExpenseList = () => {
             <TableBody>
               {expenses.map((expense) => (
                 <TableRow key={expense._id} hover>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
+                      {expense.reimbursementNumber || '-'}
+                    </Typography>
+                  </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
@@ -378,11 +384,6 @@ const ExpenseList = () => {
                         )}
                       </Box>
                     </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
-                      {expense.reimbursementNumber || '-'}
-                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Box>
@@ -429,6 +430,18 @@ const ExpenseList = () => {
                         {expense.date ? dayjs(expense.date).format('MMM DD, YYYY') : '-'}
                       </Typography>
                     </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={
+                        expense.matchSource === 'auto' || expense.autoMatched === true
+                          ? (t('expense.generationType.ai') || 'AI生成')
+                          : (t('expense.generationType.manual') || '手动生成')
+                      }
+                      color={expense.matchSource === 'auto' || expense.autoMatched === true ? 'primary' : 'default'}
+                      size="small"
+                      variant={expense.matchSource === 'auto' || expense.autoMatched === true ? 'filled' : 'outlined'}
+                    />
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -507,19 +520,19 @@ const ExpenseList = () => {
           onClose={handleMenuClose}
         >
           <MenuItem onClick={handleView}>
-            <ViewIcon sx={{ mr: 1 }} />
-            {t('common.view') || 'View Details'}
+            <ViewIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.view')}
           </MenuItem>
           {(selectedExpense?.status === 'draft' || selectedExpense?.status === 'submitted') && (
             <MenuItem onClick={handleEdit}>
-              <EditIcon sx={{ mr: 1 }} />
+              <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
               {t('common.edit')}
             </MenuItem>
           )}
-            <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-              <DeleteIcon sx={{ mr: 1 }} />
-              {t('common.delete')}
-            </MenuItem>
+          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+            <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.delete')}
+          </MenuItem>
         </Menu>
 
         {/* Delete Confirmation Dialog */}

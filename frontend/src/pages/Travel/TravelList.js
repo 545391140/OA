@@ -628,16 +628,16 @@ const TravelList = () => {
           onClose={handleMenuClose}
         >
           <MenuItem onClick={handleView}>
-            <ViewIcon sx={{ mr: 1 }} />
-            {t('travel.list.viewDetails')}
+            <ViewIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.view')}
           </MenuItem>
           <MenuItem onClick={handleEdit}>
-            <EditIcon sx={{ mr: 1 }} />
-            {t('travel.list.edit')}
+            <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.edit')}
           </MenuItem>
           <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-            <DeleteIcon sx={{ mr: 1 }} />
-            {t('travel.list.delete')}
+            <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
+            {t('common.delete')}
           </MenuItem>
         </Menu>
 
@@ -658,7 +658,7 @@ const TravelList = () => {
               {t('common.cancel')}
             </Button>
             <Button onClick={confirmDelete} color="error" variant="contained">
-              {t('travel.list.delete')}
+              {t('common.delete')}
             </Button>
           </DialogActions>
         </Dialog>

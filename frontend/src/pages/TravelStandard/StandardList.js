@@ -17,7 +17,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Alert
+  Alert,
+  Menu,
+  MenuItem
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -25,7 +27,8 @@ import {
   Delete as DeleteIcon,
   CheckCircle as ActivateIcon,
   Cancel as DeactivateIcon,
-  Visibility as ViewIcon
+  Visibility as ViewIcon,
+  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +46,8 @@ const StandardList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null });
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedStandard, setSelectedStandard] = useState(null);
 
   useEffect(() => {
     fetchStandards();
@@ -128,7 +133,38 @@ const StandardList = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleMenuOpen = (event, standard) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedStandard(standard);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedStandard(null);
+  };
+
+  const handleView = () => {
+    if (selectedStandard) {
+      navigate(`/travel-standards/${selectedStandard._id}`);
+    }
+    handleMenuClose();
+  };
+
+  const handleEdit = () => {
+    if (selectedStandard && canEdit) {
+      navigate(`/travel-standards/${selectedStandard._id}/edit`);
+    }
+    handleMenuClose();
+  };
+
+  const handleDelete = () => {
+    if (selectedStandard) {
+      setDeleteDialog({ open: true, id: selectedStandard._id });
+    }
+    handleMenuClose();
+  };
+
+  const confirmDelete = async () => {
     try {
       await apiClient.delete(`/api/travel-standards/${deleteDialog.id}`);
       setDeleteDialog({ open: false, id: null });
@@ -140,7 +176,12 @@ const StandardList = () => {
     }
   };
 
-  const handleActivate = async (id) => {
+  const handleActivate = async () => {
+    if (!selectedStandard) {
+      handleMenuClose();
+      return;
+    }
+    const id = selectedStandard._id;
     try {
       await apiClient.put(`/api/travel-standards/${id}/activate`);
       showNotification(t('travelStandard.management.activateSuccess'), 'success');
@@ -148,10 +189,17 @@ const StandardList = () => {
     } catch (err) {
       console.error('Activate standard error:', err);
       showNotification(t('travelStandard.management.activateFailed') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
+    } finally {
+      handleMenuClose();
     }
   };
 
-  const handleDeactivate = async (id) => {
+  const handleDeactivate = async () => {
+    if (!selectedStandard) {
+      handleMenuClose();
+      return;
+    }
+    const id = selectedStandard._id;
     try {
       await apiClient.put(`/api/travel-standards/${id}/deactivate`);
       showNotification(t('travelStandard.management.deactivateSuccess'), 'success');
@@ -159,6 +207,8 @@ const StandardList = () => {
     } catch (err) {
       console.error('Deactivate standard error:', err);
       showNotification(t('travelStandard.management.deactivateFailed') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
+    } finally {
+      handleMenuClose();
     }
   };
 
@@ -302,48 +352,11 @@ const StandardList = () => {
                              </TableCell>
                       <TableCell align="right">
                         <IconButton
+                          onClick={(e) => handleMenuOpen(e, standard)}
                           size="small"
-                          onClick={() => navigate(`/travel-standards/${standard._id}`)}
-                          title={t('travelStandard.management.actions.view')}
                         >
-                          <ViewIcon />
+                          <MoreVertIcon />
                         </IconButton>
-                      {canEdit && (
-                        <>
-                          <IconButton
-                            size="small"
-                            onClick={() => navigate(`/travel-standards/${standard._id}/edit`)}
-                            title={t('travelStandard.management.actions.edit')}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          {standard.status === 'active' ? (
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeactivate(standard._id)}
-                            >
-                              <DeactivateIcon />
-                            </IconButton>
-                          ) : (
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={() => handleActivate(standard._id)}
-                            >
-                              <ActivateIcon />
-                            </IconButton>
-                          )}
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => setDeleteDialog({ open: true, id: standard._id })}
-                            disabled={standard.status === 'active'}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </>
-                      )}
                       </TableCell>
                     </TableRow>
                   );
@@ -354,6 +367,45 @@ const StandardList = () => {
         </TableContainer>
       </Paper>
 
+      {/* Action Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleView}>
+          <ViewIcon sx={{ mr: 1.5, fontSize: 20 }} />
+          {t('common.view')}
+        </MenuItem>
+        {canEdit && (
+          <>
+            <MenuItem onClick={handleEdit}>
+              <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('common.edit')}
+            </MenuItem>
+            {selectedStandard?.status === 'active' ? (
+              <MenuItem onClick={handleDeactivate}>
+                <DeactivateIcon sx={{ mr: 1.5, fontSize: 20 }} />
+                {t('travelStandard.management.actions.deactivate')}
+              </MenuItem>
+            ) : (
+              <MenuItem onClick={handleActivate}>
+                <ActivateIcon sx={{ mr: 1.5, fontSize: 20 }} />
+                {t('travelStandard.management.actions.activate')}
+              </MenuItem>
+            )}
+            <MenuItem 
+              onClick={handleDelete} 
+              sx={{ color: 'error.main' }}
+              disabled={selectedStandard?.status === 'active'}
+            >
+              <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('common.delete')}
+            </MenuItem>
+          </>
+        )}
+      </Menu>
+
       {/* 删除确认对话框 */}
       <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null })}>
         <DialogTitle>{t('travelStandard.management.confirmDelete')}</DialogTitle>
@@ -362,7 +414,7 @@ const StandardList = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialog({ open: false, id: null })}>{t('common.cancel')}</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
+          <Button onClick={confirmDelete} color="error" variant="contained">
             {t('common.delete')}
           </Button>
         </DialogActions>
