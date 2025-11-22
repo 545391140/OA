@@ -111,10 +111,27 @@ const ExpenseDetail = () => {
       }
     } catch (error) {
       console.error('Failed to load expense details:', error);
-      showNotification(
-        error.response?.data?.message || t('expense.detail.loadError') || '加载费用详情失败',
-        'error'
-      );
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        expenseId: id
+      });
+      
+      let errorMessage = t('expense.detail.loadError') || '加载费用详情失败';
+      
+      if (error.response?.status === 404) {
+        errorMessage = '费用申请不存在';
+      } else if (error.response?.status === 403) {
+        errorMessage = '无权访问此费用申请';
+      } else if (error.response?.status === 500) {
+        errorMessage = '服务器错误，请稍后重试';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      showNotification(errorMessage, 'error');
       setExpense(null);
     } finally {
       setLoading(false);

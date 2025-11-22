@@ -1247,7 +1247,27 @@ const ExpenseForm = () => {
       }
     } catch (error) {
       console.error('Failed to load expense data:', error);
-      showNotification('Failed to load expense data', 'error');
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        expenseId: id
+      });
+      
+      let errorMessage = '加载费用数据失败';
+      
+      if (error.response?.status === 404) {
+        errorMessage = '费用申请不存在';
+      } else if (error.response?.status === 403) {
+        errorMessage = '无权访问此费用申请';
+      } else if (error.response?.status === 500) {
+        errorMessage = '服务器错误，请稍后重试';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      showNotification(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -1349,7 +1369,27 @@ const ExpenseForm = () => {
       return [];
     } catch (error) {
       console.error('Failed to load related invoices:', error);
-      showNotification('加载关联发票失败', 'error');
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        expenseId: id
+      });
+      
+      // 如果是404或403错误，不显示通知（可能是费用不存在或无权访问，已在fetchExpenseData中处理）
+      if (error.response?.status !== 404 && error.response?.status !== 403) {
+        let errorMessage = '加载关联发票失败';
+        
+        if (error.response?.status === 500) {
+          errorMessage = '服务器错误，请稍后重试';
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
+        showNotification(errorMessage, 'error');
+      }
+      
       return [];
     } finally {
       setInvoicesLoading(false);

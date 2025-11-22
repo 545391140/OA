@@ -112,12 +112,30 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.get('/:id', protect, async (req, res) => {
   try {
-    const expense = await Expense.findById(req.params.id)
-      .populate('employee', 'firstName lastName email')
-      .populate('travel', 'title destination travelNumber')
-      .populate('approvals.approver', 'firstName lastName email')
-      .populate('expenseItem', 'itemName category')
-      .populate('relatedInvoices', 'invoiceNumber invoiceDate amount totalAmount currency vendor category');
+    // 验证ID格式
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid expense ID format'
+      });
+    }
+
+    let expense;
+    try {
+      expense = await Expense.findById(req.params.id)
+        .populate('employee', 'firstName lastName email')
+        .populate('travel', 'title destination travelNumber')
+        .populate('approvals.approver', 'firstName lastName email')
+        .populate('expenseItem', 'itemName category')
+        .populate('relatedInvoices', 'invoiceNumber invoiceDate amount totalAmount currency vendor category');
+    } catch (populateError) {
+      console.error('Populate error:', populateError);
+      // 如果 populate 失败，尝试不使用 populate
+      expense = await Expense.findById(req.params.id);
+      if (expense) {
+        console.warn('Populate failed, returning expense without populated fields');
+      }
+    }
 
     if (!expense) {
       return res.status(404).json({
@@ -127,11 +145,85 @@ router.get('/:id', protect, async (req, res) => {
     }
 
     // 权限检查：只能查看自己的费用申请或管理员
-    if (expense.employee && expense.employee.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
+    // 统一提取 employee ID 并转换为字符串
+    let employeeId = null;
+    if (expense.employee) {
+      if (expense.employee._id) {
+        // populate 后的对象
+        employeeId = expense.employee._id.toString();
+      } else if (mongoose.Types.ObjectId.isValid(expense.employee)) {
+        // ObjectId 对象或有效的 ObjectId 字符串
+        const objId = expense.employee instanceof mongoose.Types.ObjectId 
+          ? expense.employee 
+          : new mongoose.Types.ObjectId(expense.employee);
+        employeeId = objId.toString();
+      } else if (typeof expense.employee === 'object' && expense.employee.toString) {
+        // 其他对象类型
+        employeeId = expense.employee.toString();
+      } else {
+        // 字符串或其他类型，统一转换为字符串
+        employeeId = String(expense.employee);
+      }
+    }
+    
+    // 统一提取 user ID 并转换为字符串
+    let userId = null;
+    if (req.user && req.user.id) {
+      if (mongoose.Types.ObjectId.isValid(req.user.id)) {
+        const userObjId = req.user.id instanceof mongoose.Types.ObjectId 
+          ? req.user.id 
+          : new mongoose.Types.ObjectId(req.user.id);
+        userId = userObjId.toString();
+      } else {
+        userId = String(req.user.id);
+      }
+    }
+    
+    const userRole = req.user?.role || '';
+    const isAdmin = userRole === 'admin' || userRole === 'Administrator';
+    
+    console.log('[GET_EXPENSE] Permission check:', {
+      expenseId: req.params.id,
+      employeeId: employeeId,
+      userId: userId,
+      userRole: userRole,
+      isAdmin: isAdmin,
+      employeeMatch: employeeId === userId,
+      employeeIdType: typeof employeeId,
+      userIdType: typeof userId,
+      employeeValue: expense.employee,
+      userValue: req.user?.id
+    });
+    
+    // 如果没有 employee 字段，允许访问（可能是旧数据或特殊情况）
+    if (!employeeId) {
+      console.warn('[GET_EXPENSE] Expense has no employee field:', req.params.id);
+      // 允许访问，但记录警告
+    } else if (!userId) {
+      console.error('[GET_EXPENSE] User ID is missing:', req.user);
+      return res.status(401).json({
         success: false,
-        message: 'Not authorized'
+        message: 'User authentication required'
       });
+    } else {
+      // 统一转换为字符串后比较
+      const employeeIdStr = String(employeeId);
+      const userIdStr = String(userId);
+      
+      if (employeeIdStr !== userIdStr && !isAdmin) {
+        console.warn('[GET_EXPENSE] Unauthorized access attempt:', {
+          expenseId: req.params.id,
+          employeeId: employeeIdStr,
+          userId: userIdStr,
+          userRole: userRole,
+          exactMatch: employeeIdStr === userIdStr,
+          lengthMatch: employeeIdStr.length === userIdStr.length
+        });
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this expense'
+        });
+      }
     }
 
     // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
@@ -237,8 +329,12 @@ router.put('/:id', protect, async (req, res) => {
       });
     }
 
-    // 权限检查
-    if (expense.employee.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 权限检查：统一 ID 格式进行比较
+    const employeeId = expense.employee?.toString() || String(expense.employee);
+    const userId = req.user?.id?.toString() || String(req.user.id);
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'Administrator';
+    
+    if (employeeId !== userId && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -343,8 +439,12 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    // 权限检查
-    if (expense.employee.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 权限检查：统一 ID 格式进行比较
+    const employeeId = expense.employee?.toString() || String(expense.employee);
+    const userId = req.user?.id?.toString() || String(req.user.id);
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'Administrator';
+    
+    if (employeeId !== userId && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -518,8 +618,12 @@ router.delete('/:id/unlink-invoice/:invoiceId', protect, async (req, res) => {
       });
     }
     
-    // 权限检查
-    if (expense.employee.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 权限检查：统一 ID 格式进行比较
+    const employeeId = expense.employee?.toString() || String(expense.employee);
+    const userId = req.user?.id?.toString() || String(req.user.id);
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'Administrator';
+    
+    if (employeeId !== userId && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized'

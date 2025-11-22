@@ -25,7 +25,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  Tooltip
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -388,12 +389,13 @@ const TravelDetail = () => {
   };
 
   const handleMarkAsCompleted = async () => {
-    if (!window.confirm(t('travel.detail.confirmMarkAsCompleted') || '确定要将此差旅标记为已完成吗？标记后将跳转到费用申请页面。')) {
+    if (!window.confirm(t('travel.detail.confirmMarkAsCompleted') || '确定要将此差旅标记为已完成吗？标记后将自动匹配发票并生成费用申请。')) {
       return;
     }
 
     try {
       setSubmitting(true);
+      // 1. 先将状态改为 completed
       const response = await apiClient.put(`/travel/${id}`, {
         status: 'completed'
       });
@@ -403,8 +405,96 @@ const TravelDetail = () => {
           t('travel.detail.markAsCompletedSuccess') || '差旅已标记为已完成',
           'success'
         );
-        // 跳转到费用申请创建页面，传递差旅ID
-        navigate(`/expenses/new?travelId=${id}`);
+        
+        // 2. 刷新差旅详情以获取最新状态
+        await fetchTravelDetail();
+        
+        // 3. 自动调用费用生成API，匹配发票并生成费用申请
+        try {
+          setGeneratingExpenses(true);
+          const generateResponse = await apiClient.post(`/travel/${id}/generate-expenses`);
+          if (generateResponse.data && generateResponse.data.success) {
+            const generatedCount = generateResponse.data.data.generatedCount || 0;
+            showNotification(
+              t('travel.detail.expenses.generateSuccess') || `成功生成 ${generatedCount} 个费用申请`,
+              'success'
+            );
+            // 刷新费用申请列表
+            await fetchTravelExpenses();
+            // 再次刷新差旅详情以更新状态
+            await fetchTravelDetail();
+          }
+        } catch (generateError) {
+          console.error('Failed to generate expenses:', generateError);
+          console.error('Error response data:', generateError.response?.data);
+          console.error('Error status:', generateError.response?.status);
+          
+          const errorMessage = generateError.response?.data?.message || '';
+          const errorStatus = generateError.response?.status;
+          const errorData = generateError.response?.data?.data || {};
+          
+          // 根据不同的错误情况显示不同的提示
+          let userMessage = '';
+          if (errorStatus === 400) {
+            if (errorMessage.includes('already generated') || errorMessage.includes('Expenses already generated')) {
+              // 费用已经生成过，检查实际费用数量
+              await fetchTravelExpenses();
+              await fetchTravelDetail();
+              
+              // 检查费用列表是否为空
+              const expensesCount = expenses.length;
+              const relatedExpenses = errorData.expenses || [];
+              
+              console.log('Expenses check:', {
+                expensesCount,
+                relatedExpensesCount: relatedExpenses.length,
+                expenseGenerationStatus: errorData.expenseGenerationStatus
+              });
+              
+              // 如果费用列表为空，说明状态不一致，需要重置状态
+              if (expensesCount === 0 && relatedExpenses.length === 0) {
+                console.warn('Expense generation status is completed but no expenses found, resetting status');
+                try {
+                  // 重置费用生成状态为 pending，允许重新生成
+                  await apiClient.put(`/travel/${id}`, {
+                    expenseGenerationStatus: 'pending'
+                  });
+                  showNotification('费用生成状态已重置，请重新点击"生成费用申请"按钮', 'info');
+                  await fetchTravelDetail();
+                } catch (resetError) {
+                  console.error('Failed to reset expense generation status:', resetError);
+                  showNotification('费用生成状态异常，请联系管理员', 'error');
+                }
+              } else {
+                // 费用确实存在，这是正常的，不需要警告
+                userMessage = '费用申请已存在，无需重复生成';
+              }
+            } else if (errorMessage.includes('Expense generation in progress')) {
+              // 正在生成中，提示用户等待
+              const timeout = errorData.timeout || 0;
+              userMessage = `费用申请正在生成中，请稍候...（预计剩余 ${timeout} 秒）`;
+              showNotification(userMessage, 'warning');
+            } else if (errorMessage.includes('Travel has no employee assigned')) {
+              // 差旅单没有分配员工
+              userMessage = '差旅单未分配员工，无法自动生成费用申请';
+              showNotification(userMessage, 'error');
+            } else {
+              // 显示完整的错误消息以便调试
+              userMessage = errorMessage || '自动生成费用申请失败，您可以稍后手动生成';
+              console.warn('Unknown 400 error:', {
+                message: errorMessage,
+                data: errorData,
+                fullResponse: generateError.response?.data
+              });
+              showNotification(userMessage, 'warning');
+            }
+          } else {
+            userMessage = errorMessage || t('travel.detail.expenses.generateError') || '自动生成费用申请失败，您可以稍后手动生成';
+            showNotification(userMessage, 'error');
+          }
+        } finally {
+          setGeneratingExpenses(false);
+        }
       }
     } catch (error) {
       console.error('Failed to mark travel as completed:', error);
@@ -1366,36 +1456,93 @@ const TravelDetail = () => {
                               {formatDate(expense.date)}
                             </Typography>
                           </Grid>
-                          <Grid item xs={6} sm={3}>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<EditIcon />}
-                                onClick={() => navigate(`/expenses/${expense._id}`)}
-                              >
-                                {t('common.edit')}
-                              </Button>
-                              {expense.status === 'draft' && (
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  color="error"
-                                  startIcon={<DeleteIcon />}
-                                  onClick={async () => {
-                                    if (window.confirm(t('travel.detail.expenses.confirmDelete') || '确定删除此费用申请吗？')) {
-                                      try {
-                                        await apiClient.delete(`/expenses/${expense._id}`);
-                                        showNotification(t('travel.detail.expenses.deleteSuccess') || '删除成功', 'success');
-                                        fetchTravelExpenses();
-                                      } catch (error) {
-                                        showNotification(t('travel.detail.expenses.deleteError') || '删除失败', 'error');
+                          <Grid item xs={12} sm={3}>
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+                              {/* 编辑按钮 - 仅草稿和已提交状态可编辑 */}
+                              {(expense.status === 'draft' || expense.status === 'submitted') && (
+                                <Tooltip title={t('common.edit') || '编辑'}>
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => {
+                                      if (!expense._id) {
+                                        showNotification('费用申请ID无效', 'error');
+                                        return;
                                       }
-                                    }
-                                  }}
-                                >
-                                  {t('common.delete')}
-                                </Button>
+                                      navigate(`/expenses/${expense._id}/edit`);
+                                    }}
+                                    sx={{
+                                      border: '1px solid',
+                                      borderColor: 'primary.main',
+                                      borderRadius: 1,
+                                      '&:hover': {
+                                        backgroundColor: 'primary.light',
+                                        borderColor: 'primary.dark'
+                                      }
+                                    }}
+                                  >
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {/* 删除按钮 - 仅草稿状态可删除 */}
+                              {expense.status === 'draft' && (
+                                <Tooltip title={t('common.delete') || '删除'}>
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={async () => {
+                                      if (!expense._id) {
+                                        showNotification('费用申请ID无效', 'error');
+                                        return;
+                                      }
+                                      
+                                      const expenseName = expense.expenseItem?.itemName || expense.title || '此费用申请';
+                                      if (window.confirm(
+                                        t('travel.detail.expenses.confirmDelete') || 
+                                        `确定删除费用申请"${expenseName}"吗？此操作无法撤销。`
+                                      )) {
+                                        try {
+                                          setExpensesLoading(true);
+                                          const response = await apiClient.delete(`/expenses/${expense._id}`);
+                                          
+                                          if (response.data && response.data.success) {
+                                            showNotification(
+                                              t('travel.detail.expenses.deleteSuccess') || '删除成功',
+                                              'success'
+                                            );
+                                            // 刷新费用列表和差旅详情
+                                            await fetchTravelExpenses();
+                                            await fetchTravelDetail();
+                                          } else {
+                                            throw new Error(response.data?.message || '删除失败');
+                                          }
+                                        } catch (error) {
+                                          console.error('Failed to delete expense:', error);
+                                          showNotification(
+                                            error.response?.data?.message || 
+                                            t('travel.detail.expenses.deleteError') || 
+                                            '删除失败',
+                                            'error'
+                                          );
+                                        } finally {
+                                          setExpensesLoading(false);
+                                        }
+                                      }
+                                    }}
+                                    sx={{
+                                      border: '1px solid',
+                                      borderColor: 'error.main',
+                                      borderRadius: 1,
+                                      '&:hover': {
+                                        backgroundColor: 'error.light',
+                                        borderColor: 'error.dark'
+                                      }
+                                    }}
+                                  >
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               )}
                             </Box>
                           </Grid>
