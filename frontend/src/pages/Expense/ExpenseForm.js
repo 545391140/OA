@@ -234,7 +234,7 @@ const ExpenseForm = () => {
 
   // 使用 useRef 防止重复生成费用申请
   const generatingExpensesRef = useRef(false);
-  
+
   useEffect(() => {
     if (isEdit) {
       fetchExpenseData();
@@ -578,7 +578,7 @@ const ExpenseForm = () => {
       console.error('Failed to load travel info:', error);
       // 429 错误是请求频率过高，不显示错误提示，避免干扰用户
       if (error.response?.status !== 429) {
-        showNotification('加载差旅信息失败', 'error');
+      showNotification('加载差旅信息失败', 'error');
       }
     } finally {
       setTravelLoading(false);
@@ -1042,9 +1042,9 @@ const ExpenseForm = () => {
       } else {
         // 发票未被其他费用项使用，可以添加
         invoicesToAdd.push({
-          ...invoice,
-          _id: invoiceId,
-          id: invoiceId
+        ...invoice,
+        _id: invoiceId,
+        id: invoiceId
         });
       }
     });
@@ -1226,7 +1226,7 @@ const ExpenseForm = () => {
         if (expenseData.travel) {
           const travelId = expenseData.travel?._id || expenseData.travel;
           if (travelId) {
-            await loadTravelInfoById(travelId);
+          await loadTravelInfoById(travelId);
           }
         }
         
@@ -1234,11 +1234,11 @@ const ExpenseForm = () => {
         if (expenseData.expenseItem) {
           const expenseItemId = expenseData.expenseItem?._id || expenseData.expenseItem;
           if (expenseItemId) {
-            const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
-            setExpenseItemInvoices(prev => ({
-              ...prev,
-              [expenseItemIdStr]: expenseData.relatedInvoices || []
-            }));
+          const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
+          setExpenseItemInvoices(prev => ({
+            ...prev,
+            [expenseItemIdStr]: expenseData.relatedInvoices || []
+          }));
           }
         }
         
@@ -1407,9 +1407,9 @@ const ExpenseForm = () => {
         const invoiceIdStr = invoiceId?.toString() || invoiceId;
         
         try {
-          await apiClient.post(`/expenses/${id}/link-invoice`, {
+        await apiClient.post(`/expenses/${id}/link-invoice`, {
             invoiceId: invoiceIdStr
-          });
+        });
           successCount++;
         } catch (err) {
           console.error(`✗ 关联发票失败: ${invoiceIdStr}`, err);
@@ -1424,10 +1424,10 @@ const ExpenseForm = () => {
       }
       
       if (successCount > 0) {
-        showNotification(
+      showNotification(
           t('expense.invoices.added') || `成功关联 ${successCount} 张发票`,
-          'success'
-        );
+        'success'
+      );
         // 重新获取发票列表，确保数据同步
         const fetchedInvoices = await fetchRelatedInvoices();
         
@@ -1864,19 +1864,19 @@ const ExpenseForm = () => {
                 const id = inv._id || inv.id;
                 return id ? id.toString() : null;
               }).filter(Boolean));
-              
-              // 添加新关联的发票
-              for (const invoice of invoicesForItem) {
-                const invoiceId = invoice._id || invoice.id;
+                
+                // 添加新关联的发票
+                for (const invoice of invoicesForItem) {
+                  const invoiceId = invoice._id || invoice.id;
                 const invoiceIdStr = invoiceId?.toString() || invoiceId;
                 
                 if (invoiceIdStr && !currentInvoiceIds.has(invoiceIdStr)) {
-                  try {
+                    try {
                     await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { 
                       invoiceId: invoiceIdStr 
                     });
-                  } catch (err) {
-                    console.error('Failed to link invoice:', err);
+                    } catch (err) {
+                      console.error('Failed to link invoice:', err);
                     // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
                     if (err.response?.status === 400 && 
                         err.response?.data?.message?.includes('already linked')) {
@@ -1904,38 +1904,38 @@ const ExpenseForm = () => {
                       `关联发票失败: ${err.response?.data?.message || err.message}`,
                       'warning'
                     );
+                    }
                   }
                 }
-              }
-              
-              // 移除取消关联的发票
+                
+                // 移除取消关联的发票
               for (const invoiceIdStr of currentInvoiceIds) {
                 if (!newInvoiceIds.has(invoiceIdStr)) {
-                  try {
+                    try {
                     await apiClient.delete(`/expenses/${savedExpenseId}/unlink-invoice/${invoiceIdStr}`);
-                  } catch (err) {
-                    console.error('Failed to unlink invoice:', err);
+                    } catch (err) {
+                      console.error('Failed to unlink invoice:', err);
+                    }
                   }
                 }
-              }
-              
-              // 更新报销金额（如果有修改）
-              const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemIdStr];
-              if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
-                const invoiceTotalAmount = invoicesForItem.reduce((sum, inv) => {
-                  return sum + (inv.totalAmount || inv.amount || 0);
-                }, 0);
                 
-                // 如果报销金额与发票总金额不同，更新费用申请的金额
-                if (reimbursementAmount !== invoiceTotalAmount) {
-                  try {
-                    await apiClient.put(`/expenses/${savedExpenseId}`, {
-                      amount: reimbursementAmount
-                    });
-                  } catch (err) {
-                    console.error('Failed to update reimbursement amount:', err);
+                // 更新报销金额（如果有修改）
+                const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemIdStr];
+                if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
+                  const invoiceTotalAmount = invoicesForItem.reduce((sum, inv) => {
+                    return sum + (inv.totalAmount || inv.amount || 0);
+                  }, 0);
+                  
+                  // 如果报销金额与发票总金额不同，更新费用申请的金额
+                  if (reimbursementAmount !== invoiceTotalAmount) {
+                    try {
+                      await apiClient.put(`/expenses/${savedExpenseId}`, {
+                        amount: reimbursementAmount
+                      });
+                    } catch (err) {
+                      console.error('Failed to update reimbursement amount:', err);
+                    }
                   }
-                }
               }
             }
           }
@@ -2110,13 +2110,13 @@ const ExpenseForm = () => {
                 
                 // 检查是否已经关联（使用字符串格式比较）
                 if (!currentInvoiceIds.has(invoiceIdStr)) {
-                  try {
+                try {
                     await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { 
                       invoiceId: invoiceIdStr 
                     });
                     // 关联成功后，更新 currentInvoiceIds，避免重复关联
                     currentInvoiceIds.add(invoiceIdStr);
-                  } catch (err) {
+                } catch (err) {
                     console.error(`✗ 关联发票失败 ${invoiceIdStr}:`, err);
                     // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
                     if (err.response?.status === 400 && 
@@ -2230,7 +2230,7 @@ const ExpenseForm = () => {
         
         // 延迟导航，确保数据已更新
         setTimeout(() => {
-          navigate('/expenses');
+        navigate('/expenses');
         }, 100);
       }
     } catch (error) {

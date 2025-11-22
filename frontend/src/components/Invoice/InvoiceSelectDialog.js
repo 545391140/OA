@@ -85,11 +85,11 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
       
       // 只在ID列表改变时更新选中状态
       if (currentIdsString !== prevIdsString) {
-        setSelectedInvoices(prev => {
-          // 合并已关联的发票ID，避免重复
-          const merged = [...new Set([...prev, ...linkedInvoiceIds])];
-          return merged;
-        });
+          setSelectedInvoices(prev => {
+            // 合并已关联的发票ID，避免重复
+            const merged = [...new Set([...prev, ...linkedInvoiceIds])];
+            return merged;
+          });
         prevLinkedIdsRef.current = currentIdsString; // 保存当前的ID列表字符串
       }
     }

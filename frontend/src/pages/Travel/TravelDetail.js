@@ -88,7 +88,7 @@ const TravelDetail = () => {
 
   // 使用 useRef 防止重复请求
   const expensesFetchedRef = useRef(false);
-  
+
   useEffect(() => {
     // 只有当差旅状态为 completed 且还没有加载过费用时才加载
     if (travel && travel.status === 'completed' && !expensesFetchedRef.current) {
@@ -179,7 +179,7 @@ const TravelDetail = () => {
         showNotification('无权访问此差旅的费用申请', 'error');
       } else {
         // 其他错误显示通用错误信息
-        showNotification(t('travel.detail.expenses.loadError') || '加载费用申请失败', 'error');
+      showNotification(t('travel.detail.expenses.loadError') || '加载费用申请失败', 'error');
       }
       
       // 请求失败时重置标记，允许重试
@@ -1462,7 +1462,7 @@ const TravelDetail = () => {
                               {(expense.status === 'draft' || expense.status === 'submitted') && (
                                 <Tooltip title={t('common.edit') || '编辑'}>
                                   <IconButton
-                                    size="small"
+                                size="small"
                                     color="primary"
                                     onClick={() => {
                                       if (!expense._id) {
@@ -1489,9 +1489,9 @@ const TravelDetail = () => {
                               {expense.status === 'draft' && (
                                 <Tooltip title={t('common.delete') || '删除'}>
                                   <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={async () => {
+                                  size="small"
+                                  color="error"
+                                  onClick={async () => {
                                       if (!expense._id) {
                                         showNotification('费用申请ID无效', 'error');
                                         return;
@@ -1502,7 +1502,7 @@ const TravelDetail = () => {
                                         t('travel.detail.expenses.confirmDelete') || 
                                         `确定删除费用申请"${expenseName}"吗？此操作无法撤销。`
                                       )) {
-                                        try {
+                                      try {
                                           setExpensesLoading(true);
                                           const response = await apiClient.delete(`/expenses/${expense._id}`);
                                           
@@ -1517,7 +1517,7 @@ const TravelDetail = () => {
                                           } else {
                                             throw new Error(response.data?.message || '删除失败');
                                           }
-                                        } catch (error) {
+                                      } catch (error) {
                                           console.error('Failed to delete expense:', error);
                                           showNotification(
                                             error.response?.data?.message || 
@@ -1527,9 +1527,9 @@ const TravelDetail = () => {
                                           );
                                         } finally {
                                           setExpensesLoading(false);
-                                        }
                                       }
-                                    }}
+                                    }
+                                  }}
                                     sx={{
                                       border: '1px solid',
                                       borderColor: 'error.main',

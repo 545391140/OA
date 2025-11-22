@@ -2,6 +2,8 @@
 const express = require('express');
 const { protect } = require('../middleware/auth');
 const Travel = require('../models/Travel');
+const { buildDataScopeQuery, checkDataAccess } = require('../utils/dataScope');
+const Role = require('../models/Role');
 
 const router = express.Router();
 
@@ -38,14 +40,12 @@ const generateTravelNumber = async () => {
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    // 核心逻辑：管理员可以看到所有差旅申请，普通用户只能看到自己的
-    let query = {};
+    // 获取用户角色和数据权限
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const dataScopeQuery = await buildDataScopeQuery(req.user, role, 'employee');
     
-    // 如果不是管理员，只查询当前用户的申请
-    if (req.user.role !== 'admin') {
-      query.employee = req.user.id;
-    }
-    // 如果是管理员，不添加 employee 过滤条件，查询所有申请
+    // 构建查询条件（应用数据权限）
+    let query = { ...dataScopeQuery };
     
     // 分页参数
     const page = parseInt(req.query.page) || 1;
@@ -145,52 +145,17 @@ router.get('/:id', protect, async (req, res) => {
       );
     }
 
-    // 权限检查：只能查看自己的申请或管理员
-    // 如果是管理员，允许访问所有申请（包括employee为null的情况）
-    if (req.user.role === 'admin') {
-      return res.json({
-        success: true,
-        data: travel
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    
+    if (!hasAccess) {
+      console.warn('[GET_TRAVEL] Data access denied:', {
+        travelId: req.params.id,
+        userId: req.user.id,
+        userRole: req.user.role,
+        dataScope: role?.dataScope || 'self'
       });
-    }
-    
-    let employeeId;
-    if (!travel.employee) {
-      // 如果没有employee字段，在开发模式下允许访问，否则返回错误
-      const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-      if (isDevMode) {
-        console.warn('Travel request missing employee field, allowing access in dev mode:', req.params.id);
-        return res.json({
-          success: true,
-          data: travel
-        });
-      } else {
-        console.error('Travel request missing employee field:', req.params.id);
-        return res.status(500).json({
-          success: false,
-          message: 'Travel request data is incomplete'
-        });
-      }
-    }
-    
-    // 处理 employee 可能是 ObjectId 或 populated 对象的情况
-    if (travel.employee._id) {
-      // Populated对象（有 _id 属性）
-      employeeId = travel.employee._id.toString();
-    } else if (travel.employee.id) {
-      // Populated对象（可能有 id 属性）
-      employeeId = String(travel.employee.id);
-    } else if (typeof travel.employee === 'object' && travel.employee.toString) {
-      // ObjectId 对象
-      employeeId = travel.employee.toString();
-    } else {
-      // 字符串或其他格式
-      employeeId = String(travel.employee);
-    }
-    
-    const userId = req.user.id.toString();
-    
-    if (employeeId !== userId) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this travel request'
@@ -363,44 +328,21 @@ router.put('/:id', protect, async (req, res) => {
       });
     }
 
-    // 检查权限：只能更新自己的申请或管理员
-    // 如果是管理员，允许更新所有申请（包括employee为null的情况）
-    if (req.user.role === 'admin') {
-      // 管理员可以更新，继续执行
-    } else {
-      // 非管理员需要检查权限
-      let employeeId;
-      if (!travel.employee) {
-        // 如果没有employee字段，在开发模式下允许更新，否则返回错误
-        const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-        if (!isDevMode) {
-          console.error('Travel request missing employee field:', req.params.id);
-          return res.status(500).json({
-            success: false,
-            message: 'Travel request data is incomplete'
-          });
-        }
-      } else {
-        // 处理 employee 可能是 ObjectId 或 populated 对象的情况
-        if (travel.employee._id) {
-          employeeId = travel.employee._id.toString();
-        } else if (travel.employee.id) {
-          employeeId = String(travel.employee.id);
-        } else if (typeof travel.employee === 'object' && travel.employee.toString) {
-          employeeId = travel.employee.toString();
-        } else {
-          employeeId = String(travel.employee);
-        }
-        
-        const userId = req.user.id.toString();
-        
-        if (employeeId !== userId) {
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    
+    if (!hasAccess) {
+      console.warn('[PUT_TRAVEL] Data access denied:', {
+        travelId: req.params.id,
+        userId: req.user.id,
+        userRole: req.user.role,
+        dataScope: role?.dataScope || 'self'
+      });
           return res.status(403).json({
             success: false,
             message: 'Not authorized to update this travel request'
           });
-        }
-      }
     }
 
     // 处理日期字段转换
@@ -707,43 +649,21 @@ router.delete('/:id', protect, async (req, res) => {
     }
 
     // 检查权限：只能删除自己的申请或管理员
-    // 如果是管理员，允许删除所有申请（包括employee为null的情况）
-    if (req.user.role === 'admin') {
-      // 管理员可以删除，继续执行
-    } else {
-      // 非管理员需要检查权限
-      let employeeId;
-      if (!travel.employee) {
-        // 如果没有employee字段，在开发模式下允许删除，否则返回错误
-        const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-        if (!isDevMode) {
-          console.error('Travel request missing employee field:', req.params.id);
-          return res.status(500).json({
-            success: false,
-            message: 'Travel request data is incomplete'
-          });
-        }
-      } else {
-        // 处理 employee 可能是 ObjectId 或 populated 对象的情况
-        if (travel.employee._id) {
-          employeeId = travel.employee._id.toString();
-        } else if (travel.employee.id) {
-          employeeId = String(travel.employee.id);
-        } else if (typeof travel.employee === 'object' && travel.employee.toString) {
-          employeeId = travel.employee.toString();
-        } else {
-          employeeId = String(travel.employee);
-        }
-        
-        const userId = req.user.id.toString();
-        
-        if (employeeId !== userId) {
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    
+    if (!hasAccess) {
+      console.warn('[DELETE_TRAVEL] Data access denied:', {
+        travelId: req.params.id,
+        userId: req.user.id,
+        userRole: req.user.role,
+        dataScope: role?.dataScope || 'self'
+      });
           return res.status(403).json({
             success: false,
             message: 'Not authorized to delete this travel request'
           });
-        }
-      }
     }
 
     // 只能删除草稿状态的申请
@@ -800,22 +720,21 @@ router.post('/:id/submit', protect, async (req, res) => {
 
     // 检查权限：只能提交自己的申请
     let employeeId;
-    if (travel.employee) {
-      if (travel.employee._id) {
-        employeeId = travel.employee._id.toString();
-      } else if (travel.employee.toString) {
-        employeeId = travel.employee.toString();
-      } else {
-        employeeId = String(travel.employee);
-      }
-      
-      const userId = req.user.id.toString();
-      if (employeeId !== userId && req.user.role !== 'admin') {
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    
+    if (!hasAccess) {
+      console.warn('[SUBMIT_TRAVEL] Data access denied:', {
+        travelId: req.params.id,
+        userId: req.user.id,
+        userRole: req.user.role,
+        dataScope: role?.dataScope || 'self'
+      });
         return res.status(403).json({
           success: false,
           message: 'Not authorized to submit this travel request'
         });
-      }
     }
 
     // 只能提交草稿状态的申请
@@ -943,7 +862,19 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
       });
     }
     
-    // 权限检查：只能为自己的差旅生成费用申请
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    
+    if (!hasAccess) {
+      console.log(`[GENERATE_EXPENSES] Data access denied by user ${req.user.id}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized'
+      });
+    }
+    
+    // 检查是否有employee字段
     let employeeId;
     if (travel.employee) {
       if (travel.employee._id) {
@@ -960,17 +891,6 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Travel has no employee assigned'
-      });
-    }
-    
-    const userId = req.user.id.toString();
-    console.log(`[GENERATE_EXPENSES] Employee ID: ${employeeId}, User ID: ${userId}`);
-    
-    if (employeeId !== userId && req.user.role !== 'admin') {
-      console.log(`[GENERATE_EXPENSES] Unauthorized access attempt by user ${userId}`);
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized'
       });
     }
     
@@ -1017,15 +937,15 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
         // 如果还在超时时间内，返回错误
         const remainingSeconds = Math.round((generatingTimeout - timeSinceUpdate) / 1000);
         console.log(`[GENERATE_EXPENSES] Travel ${req.params.id} is still generating, remaining time: ${remainingSeconds}s`);
-        return res.status(400).json({
-          success: false,
+      return res.status(400).json({
+        success: false,
           message: 'Expense generation in progress',
           data: {
             timeout: remainingSeconds, // 剩余秒数
             startedAt: updatedAt,
             elapsedSeconds: Math.round(timeSinceUpdate / 1000)
           }
-        });
+      });
       }
     }
     
@@ -1034,14 +954,14 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
     const expenseMatchService = require('../services/expenseMatchService');
     
     try {
-      const result = await expenseMatchService.autoGenerateExpenses(travel);
+    const result = await expenseMatchService.autoGenerateExpenses(travel);
       console.log(`[GENERATE_EXPENSES] Successfully generated ${result.generatedCount} expenses`);
-      
-      res.json({
-        success: true,
-        message: `Successfully generated ${result.generatedCount} expense(s)`,
-        data: result
-      });
+    
+    res.json({
+      success: true,
+      message: `Successfully generated ${result.generatedCount} expense(s)`,
+      data: result
+    });
     } catch (serviceError) {
       console.error(`[GENERATE_EXPENSES] Service error:`, serviceError);
       console.error(`[GENERATE_EXPENSES] Service error stack:`, serviceError.stack);
@@ -1094,22 +1014,12 @@ router.get('/:id/expenses', protect, async (req, res) => {
     
     console.log(`[GET_TRAVEL_EXPENSES] Travel found: ${travel.travelNumber || travelId}`);
     
-    // 权限检查
-    let employeeId;
-    if (travel.employee) {
-      if (travel.employee._id) {
-        employeeId = travel.employee._id.toString();
-      } else if (typeof travel.employee === 'object' && travel.employee.toString) {
-        employeeId = travel.employee.toString();
-      } else {
-        employeeId = String(travel.employee);
-      }
-    }
+    // 数据权限检查：使用数据权限范围检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
     
-    const userId = req.user.id.toString();
-    
-    if (employeeId && employeeId !== userId && req.user.role !== 'admin') {
-      console.log(`[GET_TRAVEL_EXPENSES] Unauthorized access attempt by user ${userId} for travel ${travelId}`);
+    if (!hasAccess) {
+      console.log(`[GET_TRAVEL_EXPENSES] Data access denied by user ${req.user.id} for travel ${travelId}`);
       return res.status(403).json({
         success: false,
         message: 'Not authorized'

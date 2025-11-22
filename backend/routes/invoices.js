@@ -5,6 +5,9 @@ const Invoice = require('../models/Invoice');
 const Expense = require('../models/Expense');
 const Travel = require('../models/Travel');
 const ocrService = require('../services/ocrService');
+const { buildDataScopeQuery, checkDataAccess } = require('../utils/dataScope');
+const Role = require('../models/Role');
+const User = require('../models/User');
 const path = require('path');
 const fs = require('fs');
 const config = require('../config');
@@ -28,12 +31,13 @@ router.get('/', protect, async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // 构建查询条件
-    // 管理员可以看到所有发票，普通用户只能看到自己上传的发票
-    const query = {};
-    if (req.user.role !== 'admin' && req.user.role !== 'Administrator') {
-      query.uploadedBy = req.user.id;
-    }
+    // 获取用户角色和数据权限
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { buildInvoiceDataScopeQuery } = require('../utils/invoiceDataScope');
+    const dataScopeQuery = await buildInvoiceDataScopeQuery(req.user, role);
+    
+    // 构建查询条件（应用数据权限）
+    const query = { ...dataScopeQuery };
 
     if (status) {
       query.status = status;
@@ -165,8 +169,12 @@ router.get('/:id/preview', protect, async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 数据权限检查：使用发票数据权限检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
+    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: '无权访问此文件'
@@ -227,8 +235,12 @@ router.get('/:id/file', protect, async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 数据权限检查：使用发票数据权限检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
+    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: '无权访问此文件'
@@ -274,8 +286,18 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
 
-    // 检查权限：只能查看自己的发票或管理员
-    if (invoice.uploadedBy._id.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 数据权限检查：使用发票数据权限检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
+    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    
+    if (!hasAccess) {
+      console.warn('[GET_INVOICE] Data access denied:', {
+        invoiceId: req.params.id,
+        userId: req.user.id,
+        userRole: req.user.role,
+        dataScope: role?.dataScope || 'self'
+      });
       return res.status(403).json({
         success: false,
         message: '无权访问此发票'
@@ -1116,8 +1138,12 @@ router.put('/:id', protect, upload.single('file'), async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 数据权限检查：使用发票数据权限检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
+    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: '无权修改此发票'
@@ -1315,8 +1341,12 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 数据权限检查：使用发票数据权限检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
+    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: '无权删除此发票'
@@ -1367,8 +1397,12 @@ router.post('/:id/link', protect, async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 数据权限检查：使用发票数据权限检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
+    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: '无权操作此发票'
@@ -1432,8 +1466,12 @@ router.post('/:id/recognize', protect, async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 数据权限检查：使用发票数据权限检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
+    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: '无权操作此发票'
@@ -1506,8 +1544,12 @@ router.post('/:id/apply-ocr', protect, async (req, res) => {
       });
     }
 
-    // 检查权限
-    if (invoice.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    // 数据权限检查：使用发票数据权限检查
+    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
+    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: '无权操作此发票'

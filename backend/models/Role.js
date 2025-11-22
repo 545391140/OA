@@ -33,6 +33,13 @@ const RoleSchema = new mongoose.Schema({
     max: 100,
     comment: 'Role level for hierarchy (higher number = higher authority)'
   },
+  // 数据权限范围
+  dataScope: {
+    type: String,
+    enum: ['self', 'all', 'department', 'subDepartment'],
+    default: 'self',
+    comment: 'Data access scope: self (本人数据), all (全部数据), department (本部门数据), subDepartment (本部门及下属部门数据)'
+  },
   isSystem: {
     type: Boolean,
     default: false,

@@ -75,7 +75,8 @@ const RoleManagement = () => {
     nameEn: '',
     description: '',
     permissions: [],
-    level: 0
+    level: 0,
+    dataScope: 'self' // 数据权限范围：self(本人数据), all(全部数据), department(本部门数据), subDepartment(本部门及下属部门数据)
   });
   const [saving, setSaving] = useState(false);
 
@@ -167,7 +168,8 @@ const RoleManagement = () => {
       nameEn: role.nameEn || '',
       description: role.description || '',
       permissions: role.permissions || [],
-      level: role.level || 0
+      level: role.level || 0,
+      dataScope: role.dataScope || 'self'
     });
     setFormDialog({ open: true, role, mode: 'edit' });
   };
@@ -328,6 +330,7 @@ const RoleManagement = () => {
                 <TableCell>{t('role.management.tableHeaders.description')}</TableCell>
                 <TableCell>{t('role.management.tableHeaders.permissionsCount')}</TableCell>
                 <TableCell>{t('role.management.tableHeaders.level')}</TableCell>
+                <TableCell>{t('role.management.tableHeaders.dataScope') || '数据权限'}</TableCell>
                 <TableCell>{t('role.management.tableHeaders.isSystem')}</TableCell>
                 <TableCell>{t('role.management.tableHeaders.status')}</TableCell>
                 <TableCell>{t('role.management.tableHeaders.createdAt')}</TableCell>
@@ -337,7 +340,7 @@ const RoleManagement = () => {
             <TableBody>
               {filteredRoles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
                     {loading ? <CircularProgress /> : t('role.management.noData')}
                   </TableCell>
                 </TableRow>
@@ -364,6 +367,24 @@ const RoleManagement = () => {
                       <Chip label={role.permissions?.length || 0} size="small" />
                     </TableCell>
                     <TableCell>{role.level || 0}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={
+                          role.dataScope === 'self' ? (t('role.dataScope.self') || '本人数据') :
+                          role.dataScope === 'all' ? (t('role.dataScope.all') || '全部数据') :
+                          role.dataScope === 'department' ? (t('role.dataScope.department') || '本部门数据') :
+                          role.dataScope === 'subDepartment' ? (t('role.dataScope.subDepartment') || '本部门及下属部门数据') :
+                          (t('role.dataScope.self') || '本人数据')
+                        }
+                        size="small"
+                        color={
+                          role.dataScope === 'all' ? 'primary' :
+                          role.dataScope === 'subDepartment' ? 'info' :
+                          role.dataScope === 'department' ? 'success' :
+                          'default'
+                        }
+                      />
+                    </TableCell>
                     <TableCell>
                       {role.isSystem ? (
                         <Chip label={t('role.management.yes')} color="primary" size="small" />
@@ -520,6 +541,28 @@ const RoleManagement = () => {
                     onChange={(permissions) => setFormData({ ...formData, permissions })}
                     disabled={saving}
                   />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>{t('role.dataScope') || '数据权限范围'}</InputLabel>
+                  <Select
+                    value={formData.dataScope}
+                    label={t('role.dataScope') || '数据权限范围'}
+                    onChange={(e) => setFormData({ ...formData, dataScope: e.target.value })}
+                    disabled={saving}
+                  >
+                    <MenuItem value="self">{t('role.dataScope.self') || '本人数据'}</MenuItem>
+                    <MenuItem value="all">{t('role.dataScope.all') || '全部数据'}</MenuItem>
+                    <MenuItem value="department">{t('role.dataScope.department') || '本部门数据'}</MenuItem>
+                    <MenuItem value="subDepartment">{t('role.dataScope.subDepartment') || '本部门及下属部门数据'}</MenuItem>
+                  </Select>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {formData.dataScope === 'self' && (t('role.dataScope.selfHint') || '只能查看和操作自己的数据')}
+                    {formData.dataScope === 'all' && (t('role.dataScope.allHint') || '可以查看和操作所有数据')}
+                    {formData.dataScope === 'department' && (t('role.dataScope.departmentHint') || '可以查看和操作本部门的数据')}
+                    {formData.dataScope === 'subDepartment' && (t('role.dataScope.subDepartmentHint') || '可以查看和操作本部门及所有下属部门的数据')}
+                  </Typography>
                 </FormControl>
               </Grid>
             </Grid>
