@@ -286,19 +286,37 @@ const ExpenseList = () => {
     }
   }, [page, rowsPerPage, statusFilter, categoryFilter, searchTerm, showNotification, t]);
 
+  // 使用 useRef 跟踪是否是首次加载和路由变化，避免重复请求
+  const isInitialMount = React.useRef(true);
+  const prevPathnameRef = React.useRef(location.pathname);
+  
   useEffect(() => {
+    // 首次加载时执行
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevPathnameRef.current = location.pathname;
+      fetchExpenses();
+      return;
+    }
+    
+    // 后续依赖变化时执行
     fetchExpenses();
   }, [fetchExpenses]);
 
   // 监听路由变化，当从编辑页面返回时刷新数据
-  const prevPathnameRef = React.useRef(location.pathname);
+  // 注意：只有当路径从非 /expenses 变为 /expenses 时才刷新（避免首次加载时重复调用）
   useEffect(() => {
+    // 跳过首次渲染（避免与第一个 useEffect 重复）
+    if (isInitialMount.current) {
+      return;
+    }
+    
     // 只有当路径从非 /expenses 变为 /expenses 时才刷新（表示从其他页面返回）
     if (location.pathname === '/expenses' && prevPathnameRef.current !== '/expenses') {
       fetchExpenses();
     }
     prevPathnameRef.current = location.pathname;
-  }, [location.pathname]);
+  }, [location.pathname, fetchExpenses]);
 
   // 搜索防抖
   useEffect(() => {

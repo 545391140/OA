@@ -2,6 +2,7 @@
 const express = require('express');
 const { protect } = require('../middleware/auth');
 const Travel = require('../models/Travel');
+const User = require('../models/User');
 const { buildDataScopeQuery, checkDataAccess } = require('../utils/dataScope');
 const Role = require('../models/Role');
 
@@ -71,25 +72,75 @@ router.get('/', protect, async (req, res) => {
     const total = await Travel.countDocuments(query);
     
     // 查询数据：只选择列表需要的字段，使用 lean() 提高性能
+    // 优化：先查询主数据，再批量查询关联数据，避免嵌套 populate 的 N+1 问题
     const travels = await Travel.find(query)
-      .select('title travelNumber status estimatedCost currency startDate endDate destination destinationAddress outbound inbound createdAt employee purpose tripDescription comment')
-      .populate('employee', 'firstName lastName email')
-      .populate({
-        path: 'approvals.approver',
-        select: 'firstName lastName email',
-        options: { limit: 1 } // 只populate第一个审批人（用于显示审批状态）
-      })
+      .select('title travelNumber status estimatedCost currency startDate endDate destination destinationAddress outbound inbound createdAt employee purpose tripDescription comment approvals')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
 
-    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    // 步骤 1：收集所有唯一的 employee ID 和 approver ID
+    const employeeIds = [...new Set(
+      travels
+        .map(t => t.employee)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    // 收集所有审批人 ID（从嵌套的 approvals 数组中）
+    const approverIds = [...new Set(
+      travels
+        .flatMap(t => (t.approvals || []).map(a => a.approver))
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [employees, approvers] = await Promise.all([
+      employeeIds.length > 0
+        ? User.find({ _id: { $in: employeeIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([]),
+      approverIds.length > 0
+        ? User.find({ _id: { $in: approverIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表（提升查找性能）
+    const employeeMap = new Map(employees.map(e => [e._id.toString(), e]));
+    const approverMap = new Map(approvers.map(a => [a._id.toString(), a]));
+
+    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
     travels.forEach(travel => {
+      // Populate employee
+      if (travel.employee) {
+        const employeeId = travel.employee.toString ? travel.employee.toString() : travel.employee;
+        travel.employee = employeeMap.get(employeeId) || null;
+      }
+      
+      // Populate approvals.approver（只保留第一个审批人用于显示状态）
       if (travel.approvals && Array.isArray(travel.approvals)) {
+        // 只处理第一个审批人（用于列表显示）
+        if (travel.approvals.length > 0 && travel.approvals[0].approver) {
+          const approverId = travel.approvals[0].approver.toString 
+            ? travel.approvals[0].approver.toString() 
+            : travel.approvals[0].approver;
+          travel.approvals[0].approver = approverMap.get(approverId) || null;
+        }
+        
+        // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
         travel.approvals = travel.approvals.filter(
           approval => approval.approver !== null && approval.approver !== undefined
         );
+        
+        // 只保留第一个审批人用于列表显示
+        if (travel.approvals.length > 1) {
+          travel.approvals = [travel.approvals[0]];
+        }
       }
     });
 

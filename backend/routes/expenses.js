@@ -4,7 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const { protect } = require('../middleware/auth');
 const Expense = require('../models/Expense');
+const ExpenseItem = require('../models/ExpenseItem');
 const Invoice = require('../models/Invoice');
+const Travel = require('../models/Travel');
 const User = require('../models/User');
 const { buildDataScopeQuery, checkDataAccess } = require('../utils/dataScope');
 const Role = require('../models/Role');
@@ -89,27 +91,130 @@ router.get('/', protect, async (req, res) => {
     // 排除大字段：receipts（收据文件数组）、ocrData（OCR原始数据）、description（可能很长）
     // 列表页需要的字段：_id, title, amount, date, category, status, currency, reimbursementNumber, 
     //                   employee, travel, expenseItem, relatedInvoices, approvals, createdAt, updatedAt
+    // 优化：先查询主数据，再批量查询关联数据，避免嵌套 populate 和数组 populate 的 N+1 问题
     const expenses = await Expense.find(query)
       .select('title amount date category status currency reimbursementNumber matchSource employee travel expenseItem relatedInvoices approvals createdAt updatedAt')
-      .populate('employee', 'firstName lastName email')
-      .populate('travel', 'title destination')
-      .populate('approvals.approver', 'firstName lastName email')
-      .populate('expenseItem', 'itemName category')
-      .populate('relatedInvoices', 'invoiceNumber invoiceDate amount totalAmount currency vendor category')
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit)
       .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能，减少内存占用
 
-    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    // 步骤 1：收集所有需要 populate 的唯一 ID
+    const employeeIds = [...new Set(
+      expenses
+        .map(e => e.employee)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const travelIds = [...new Set(
+      expenses
+        .map(e => e.travel)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const expenseItemIds = [...new Set(
+      expenses
+        .map(e => e.expenseItem)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    // 收集所有审批人 ID（从嵌套的 approvals 数组中）
+    const approverIds = [...new Set(
+      expenses
+        .flatMap(e => (e.approvals || []).map(a => a.approver))
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    // 收集所有发票 ID（从 relatedInvoices 数组中）
+    const invoiceIds = [...new Set(
+      expenses
+        .flatMap(e => (e.relatedInvoices || []))
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [employees, travels, expenseItems, approvers, invoices] = await Promise.all([
+      employeeIds.length > 0
+        ? User.find({ _id: { $in: employeeIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([]),
+      travelIds.length > 0
+        ? Travel.find({ _id: { $in: travelIds } })
+            .select('title destination')
+            .lean()
+        : Promise.resolve([]),
+      expenseItemIds.length > 0
+        ? ExpenseItem.find({ _id: { $in: expenseItemIds } })
+            .select('itemName category')
+            .lean()
+        : Promise.resolve([]),
+      approverIds.length > 0
+        ? User.find({ _id: { $in: approverIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([]),
+      invoiceIds.length > 0
+        ? Invoice.find({ _id: { $in: invoiceIds } })
+            .select('invoiceNumber invoiceDate amount totalAmount currency vendor category')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表（提升查找性能）
+    const employeeMap = new Map(employees.map(e => [e._id.toString(), e]));
+    const travelMap = new Map(travels.map(t => [t._id.toString(), t]));
+    const expenseItemMap = new Map(expenseItems.map(ei => [ei._id.toString(), ei]));
+    const approverMap = new Map(approvers.map(a => [a._id.toString(), a]));
+    const invoiceMap = new Map(invoices.map(inv => [inv._id.toString(), inv]));
+
+    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
     expenses.forEach(expense => {
-      if (expense.approvals && Array.isArray(expense.approvals)) {
-        expense.approvals = expense.approvals.filter(
-          approval => approval.approver !== null && approval.approver !== undefined
-        );
+      // Populate employee
+      if (expense.employee) {
+        const employeeId = expense.employee.toString ? expense.employee.toString() : expense.employee;
+        expense.employee = employeeMap.get(employeeId) || null;
       }
-      // 注意：如果 travel 关联的差旅被删除，populate 会将 travel 设置为 null
-      // 这是正常行为，前端需要处理 null 值
+      
+      // Populate travel
+      if (expense.travel) {
+        const travelId = expense.travel.toString ? expense.travel.toString() : expense.travel;
+        expense.travel = travelMap.get(travelId) || null;
+      }
+      
+      // Populate expenseItem
+      if (expense.expenseItem) {
+        const expenseItemId = expense.expenseItem.toString ? expense.expenseItem.toString() : expense.expenseItem;
+        expense.expenseItem = expenseItemMap.get(expenseItemId) || null;
+      }
+      
+      // Populate approvals.approver（嵌套数组）
+      if (expense.approvals && Array.isArray(expense.approvals)) {
+        expense.approvals = expense.approvals
+          .map(approval => {
+            if (approval.approver) {
+              const approverId = approval.approver.toString ? approval.approver.toString() : approval.approver;
+              approval.approver = approverMap.get(approverId) || null;
+            }
+            return approval;
+          })
+          .filter(approval => approval.approver !== null && approval.approver !== undefined);
+      }
+      
+      // Populate relatedInvoices（数组）
+      if (expense.relatedInvoices && Array.isArray(expense.relatedInvoices)) {
+        expense.relatedInvoices = expense.relatedInvoices
+          .map(invoiceId => {
+            const id = invoiceId.toString ? invoiceId.toString() : invoiceId;
+            return invoiceMap.get(id) || null;
+          })
+          .filter(inv => inv !== null && inv !== undefined);
+      }
     });
 
     res.json({
