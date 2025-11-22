@@ -118,4 +118,7 @@ UserSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
+// Index for better query performance
+UserSchema.index({ department: 1, isActive: 1 }); // 复合索引：用于数据权限查询（buildDataScopeQuery）
+
 module.exports = mongoose.model('User', UserSchema);

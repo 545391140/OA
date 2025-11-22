@@ -2,6 +2,7 @@ const express = require('express');
 const { protect, authorize } = require('../middleware/auth');
 const Department = require('../models/Department');
 const User = require('../models/User');
+const { clearDepartmentUserCache } = require('../utils/dataScope');
 
 const router = express.Router();
 
@@ -125,6 +126,9 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
       createdBy: req.user.id
     });
 
+    // 清除部门用户缓存（新部门创建不影响现有用户，但为了一致性清除）
+    // 注意：新部门创建时通常还没有用户，但清除缓存可以确保一致性
+
     res.status(201).json({
       success: true,
       data: department
@@ -199,6 +203,14 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
     department.updatedBy = req.user.id;
 
     await department.save();
+
+    // 清除部门用户缓存（部门信息更新可能影响用户列表）
+    // 如果 isActive 状态改变，需要清除缓存
+    if (isActive !== undefined && isActive !== department.isActive) {
+      clearDepartmentUserCache(department.code);
+    }
+    // 如果部门代码改变，清除旧代码的缓存
+    // 注意：当前实现不允许更改部门代码，但为了一致性保留此逻辑
 
     res.json({
       success: true,

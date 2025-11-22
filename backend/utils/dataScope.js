@@ -13,6 +13,110 @@ const DATA_SCOPE = {
 };
 
 /**
+ * 部门用户列表缓存
+ * 缓存结构：{ departmentCode: { userIds: [...], timestamp: Date } }
+ * TTL: 5分钟（300000毫秒）
+ */
+const departmentUserCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5分钟
+
+/**
+ * 获取缓存的部门用户ID列表
+ * @param {String} departmentCode - 部门代码
+ * @returns {Array|null} 用户ID列表，如果缓存不存在或过期则返回null
+ */
+function getCachedDepartmentUsers(departmentCode) {
+  if (!departmentCode) return null;
+  
+  const cached = departmentUserCache.get(departmentCode);
+  if (!cached) return null;
+  
+  // 检查缓存是否过期
+  const now = Date.now();
+  if (now - cached.timestamp > CACHE_TTL) {
+    departmentUserCache.delete(departmentCode);
+    return null;
+  }
+  
+  return cached.userIds;
+}
+
+/**
+ * 设置部门用户ID列表缓存
+ * @param {String} departmentCode - 部门代码
+ * @param {Array} userIds - 用户ID列表
+ */
+function setCachedDepartmentUsers(departmentCode, userIds) {
+  if (!departmentCode) return;
+  
+  departmentUserCache.set(departmentCode, {
+    userIds: userIds,
+    timestamp: Date.now()
+  });
+}
+
+/**
+ * 清除部门用户缓存（当用户或部门信息更新时调用）
+ * @param {String} departmentCode - 部门代码（可选，如果不提供则清除所有缓存）
+ */
+function clearDepartmentUserCache(departmentCode = null) {
+  if (departmentCode) {
+    departmentUserCache.delete(departmentCode);
+  } else {
+    departmentUserCache.clear();
+  }
+}
+
+/**
+ * 获取部门的所有用户ID（带缓存）
+ * @param {String} departmentCode - 部门代码
+ * @returns {Promise<Array>} 用户ID列表
+ */
+async function getDepartmentUserIds(departmentCode) {
+  if (!departmentCode) return [];
+  
+  // 先检查缓存
+  const cached = getCachedDepartmentUsers(departmentCode);
+  if (cached !== null) {
+    return cached;
+  }
+  
+  // 缓存未命中，查询数据库
+  const usersInDepartment = await User.find({
+    department: departmentCode,
+    isActive: true
+  }).select('_id').lean();
+  
+  const userIds = usersInDepartment.map(u => u._id.toString());
+  
+  // 存入缓存
+  setCachedDepartmentUsers(departmentCode, userIds);
+  
+  return userIds;
+}
+
+/**
+ * 获取多个部门的所有用户ID（带缓存）
+ * @param {Array<String>} departmentCodes - 部门代码数组
+ * @returns {Promise<Array>} 用户ID列表（去重）
+ */
+async function getMultipleDepartmentUserIds(departmentCodes) {
+  if (!departmentCodes || departmentCodes.length === 0) return [];
+  
+  const userIdSets = await Promise.all(
+    departmentCodes.map(code => getDepartmentUserIds(code))
+  );
+  
+  // 合并并去重
+  const allUserIds = new Set();
+  userIdSets.forEach(userIds => {
+    userIds.forEach(id => allUserIds.add(id));
+  });
+  
+  return Array.from(allUserIds);
+}
+
+/**
  * 获取用户的数据权限范围
  * @param {Object} user - 用户对象
  * @param {Object} role - 角色对象（可选，如果不提供则从用户获取）
@@ -128,15 +232,10 @@ async function buildDataScopeQuery(user, role = null, employeeField = 'employee'
     case DATA_SCOPE.DEPARTMENT:
       // 本部门数据
       if (dataScope.departmentCode) {
-        // 查询员工部门匹配的数据
-        // 需要先找到该部门的所有员工
-        const usersInDepartment = await User.find({
-          department: dataScope.departmentCode,
-          isActive: true
-        }).select('_id');
+        // 使用缓存的部门用户查询
+        const userIds = await getDepartmentUserIds(dataScope.departmentCode);
         
-        if (usersInDepartment.length > 0) {
-          const userIds = usersInDepartment.map(u => u._id.toString());
+        if (userIds.length > 0) {
           query[employeeField] = { $in: userIds };
         } else {
           // 如果没有找到员工，只能查看本人数据
@@ -151,23 +250,19 @@ async function buildDataScopeQuery(user, role = null, employeeField = 'employee'
     case DATA_SCOPE.SUB_DEPARTMENT:
       // 本部门及下属部门数据
       if (dataScope.departmentIds && dataScope.departmentIds.length > 0) {
-        // 获取所有相关部门的代码
+        // 获取所有相关部门的代码（带缓存）
         const departments = await Department.find({
           _id: { $in: dataScope.departmentIds },
           isActive: true
-        }).select('code');
+        }).select('code').lean();
         
         const departmentCodes = departments.map(d => d.code);
         
         if (departmentCodes.length > 0) {
-          // 找到这些部门的所有员工
-          const usersInDepartments = await User.find({
-            department: { $in: departmentCodes },
-            isActive: true
-          }).select('_id');
+          // 使用缓存的多个部门用户查询
+          const userIds = await getMultipleDepartmentUserIds(departmentCodes);
           
-          if (usersInDepartments.length > 0) {
-            const userIds = usersInDepartments.map(u => u._id.toString());
+          if (userIds.length > 0) {
             query[employeeField] = { $in: userIds };
           } else {
             // 如果没有找到员工，只能查看本人数据
@@ -255,6 +350,7 @@ module.exports = {
   DATA_SCOPE,
   getUserDataScope,
   buildDataScopeQuery,
-  checkDataAccess
+  checkDataAccess,
+  clearDepartmentUserCache // 导出清除缓存函数，供外部调用
 };
 

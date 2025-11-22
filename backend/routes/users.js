@@ -4,6 +4,7 @@ const { protect, authorize } = require('../middleware/auth');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const Position = require('../models/Position');
+const { clearDepartmentUserCache } = require('../utils/dataScope');
 
 const router = express.Router();
 
@@ -184,6 +185,11 @@ router.post('/', [
       .select('-password')
       .populate('manager', 'firstName lastName email');
 
+    // 清除部门用户缓存（如果用户有部门）
+    if (department) {
+      clearDepartmentUserCache(department);
+    }
+
     res.status(201).json({
       success: true,
       data: userResponse
@@ -273,6 +279,10 @@ router.put('/:id', [
     // Don't allow updating password through this endpoint (use separate password reset endpoint)
     delete updateData.password;
 
+    // 记录旧部门（如果部门被更改，需要清除旧部门的缓存）
+    const oldDepartment = user.department;
+    const newDepartment = updateData.department;
+
     user = await User.findByIdAndUpdate(
       req.params.id,
       updateData,
@@ -280,6 +290,19 @@ router.put('/:id', [
     )
       .select('-password')
       .populate('manager', 'firstName lastName email');
+
+    // 清除部门用户缓存（如果部门被更改或 isActive 状态改变）
+    if (oldDepartment && oldDepartment !== newDepartment) {
+      clearDepartmentUserCache(oldDepartment);
+    }
+    if (newDepartment && newDepartment !== oldDepartment) {
+      clearDepartmentUserCache(newDepartment);
+    }
+    // 如果 isActive 状态改变，也需要清除缓存
+    if (updateData.isActive !== undefined && updateData.isActive !== user.isActive) {
+      if (oldDepartment) clearDepartmentUserCache(oldDepartment);
+      if (newDepartment) clearDepartmentUserCache(newDepartment);
+    }
 
     res.json({
       success: true,

@@ -215,6 +215,8 @@ const ExpenseSchema = new mongoose.Schema({
 // Index for better query performance
 ExpenseSchema.index({ employee: 1, status: 1 });
 ExpenseSchema.index({ date: -1 });
+ExpenseSchema.index({ employee: 1, date: -1 }); // 复合索引：用于按员工和日期查询（看板月度支出、类别分布）
+ExpenseSchema.index({ employee: 1, status: 1, date: -1 }); // 三字段复合索引：用于按员工、状态和日期查询
 ExpenseSchema.index({ category: 1 });
 ExpenseSchema.index({ 'approvals.approver': 1, 'approvals.status': 1 });
 ExpenseSchema.index({ expenseItem: 1 });

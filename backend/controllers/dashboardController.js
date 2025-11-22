@@ -521,12 +521,12 @@ exports.getDashboardData = async (req, res) => {
     const expenseQueryForAggregate = convertEmployeeToObjectId({ ...expenseQuery });
 
     // 并行获取所有数据，使用 Promise.allSettled 避免一个失败导致全部失败
+    // 合并月度支出和类别分布的查询（使用相同的日期范围时）
     const results = await Promise.allSettled([
       getDashboardStatsData(user, role, travelQuery, expenseQuery, expenseQueryForAggregate),
       getRecentTravelsData(travelQuery, 5),
       getRecentExpensesData(expenseQuery, 5),
-      getMonthlySpendingData(expenseQueryForAggregate, 6),
-      getCategoryBreakdownData(expenseQueryForAggregate, 'month'),
+      getMonthlySpendingAndCategoryData(expenseQueryForAggregate, 6, 'month'),
       getPendingTasksData(userId, userRole)
     ]);
 
@@ -534,9 +534,10 @@ exports.getDashboardData = async (req, res) => {
     const stats = results[0].status === 'fulfilled' ? results[0].value : {};
     const recentTravels = results[1].status === 'fulfilled' ? results[1].value : [];
     const recentExpenses = results[2].status === 'fulfilled' ? results[2].value : [];
-    const monthlySpending = results[3].status === 'fulfilled' ? results[3].value : [];
-    const categoryBreakdown = results[4].status === 'fulfilled' ? results[4].value : [];
-    const pendingTasks = results[5].status === 'fulfilled' ? results[5].value : [];
+    const monthlyAndCategoryData = results[3].status === 'fulfilled' ? results[3].value : { monthlySpending: [], categoryBreakdown: [] };
+    const monthlySpending = monthlyAndCategoryData.monthlySpending || [];
+    const categoryBreakdown = monthlyAndCategoryData.categoryBreakdown || [];
+    const pendingTasks = results[4].status === 'fulfilled' ? results[4].value : [];
 
     // 记录任何失败的结果（仅在开发环境）
     if (process.env.NODE_ENV === 'development') {
@@ -610,30 +611,42 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
   const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const lastMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
 
+  // 合并当前月和上月的聚合查询为一个，减少数据库查询次数
   const [
     totalTravelRequests,
     pendingApprovals,
     approvedRequests,
-    monthlySpending,
-    lastMonthSpending,
+    monthlySpendingData,
     totalExpenses
   ] = await Promise.all([
     Travel.countDocuments(travelQuery),
     Travel.countDocuments({ ...travelQuery, status: 'submitted' }),
     Travel.countDocuments({ ...travelQuery, status: 'approved' }),
     Expense.aggregate([
-      { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: currentMonth } }) },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]),
-    Expense.aggregate([
-      { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: lastMonth, $lt: currentMonth } }) },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
+      { 
+        $match: Object.assign({}, expenseQueryForAggregate, { 
+          date: { $gte: lastMonth } 
+        }) 
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $gte: ['$date', currentMonth] },
+              'currentMonth',
+              'lastMonth'
+            ]
+          },
+          total: { $sum: '$amount' }
+        }
+      }
     ]),
     Expense.countDocuments(expenseQuery)
   ]);
 
-  const currentMonthTotal = monthlySpending[0]?.total || 0;
-  const lastMonthTotal = lastMonthSpending[0]?.total || 0;
+  // 从合并的聚合结果中分离当前月和上月的数据
+  const currentMonthTotal = monthlySpendingData.find(item => item._id === 'currentMonth')?.total || 0;
+  const lastMonthTotal = monthlySpendingData.find(item => item._id === 'lastMonth')?.total || 0;
   const spendingTrend = lastMonthTotal > 0 
     ? ((currentMonthTotal - lastMonthTotal) / lastMonthTotal * 100).toFixed(1)
     : 0;
@@ -665,28 +678,176 @@ async function getRecentExpensesData(expenseQuery, limit) {
     .lean();
 }
 
-async function getMonthlySpendingData(expenseQueryForAggregate, months) {
+/**
+ * 合并查询：一次性获取月度支出趋势和类别分布数据
+ * 当类别分布的日期范围在月度支出的范围内时，合并为一个聚合查询，减少数据库查询次数
+ */
+async function getMonthlySpendingAndCategoryData(expenseQueryForAggregate, months, period) {
   try {
     const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - months, 1, 0, 0, 0, 0);
-    const matchQuery = Object.assign({}, expenseQueryForAggregate, { date: { $gte: startDate } });
     
-    const monthlyData = await Expense.aggregate([
-      { $match: matchQuery },
-      {
-        $group: {
-          _id: { year: { $year: '$date' }, month: { $month: '$date' } },
-          total: { $sum: '$amount' }
+    // 计算月度支出查询的日期范围（过去N个月）
+    const monthlyStartDate = new Date(now.getFullYear(), now.getMonth() - months, 1, 0, 0, 0, 0);
+    
+    // 计算类别分布查询的日期范围
+    let categoryStartDate;
+    if (period === 'month') {
+      categoryStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    } else if (period === 'quarter') {
+      categoryStartDate = new Date(now.getFullYear(), now.getMonth() - 3, 1, 0, 0, 0, 0);
+    } else if (period === 'year') {
+      categoryStartDate = new Date(now.getFullYear() - 1, now.getMonth(), 1, 0, 0, 0, 0);
+    } else {
+      categoryStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    }
+    
+    // 如果类别分布的日期范围在月度支出的范围内，可以合并查询
+    const canMerge = categoryStartDate >= monthlyStartDate;
+    
+    if (canMerge) {
+      // 合并查询：一次性获取所有数据，然后在内存中分别处理
+      const allData = await Expense.aggregate([
+        { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: monthlyStartDate } }) },
+        {
+          $facet: {
+            monthlyData: [
+              {
+                $group: {
+                  _id: { year: { $year: '$date' }, month: { $month: '$date' } },
+                  total: { $sum: '$amount' }
+                }
+              },
+              { $sort: { '_id.year': 1, '_id.month': 1 } }
+            ],
+            categoryData: [
+              { $match: { date: { $gte: categoryStartDate } } },
+              {
+                $group: {
+                  _id: '$category',
+                  total: { $sum: '$amount' },
+                  count: { $sum: 1 }
+                }
+              },
+              { $sort: { total: -1 } }
+            ]
+          }
         }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } }
-    ]);
+      ]);
 
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return monthlyData.map(item => ({
-      month: monthNames[item._id.month - 1],
-      amount: parseFloat(item.total.toFixed(2))
-    }));
+      const monthlyData = allData[0]?.monthlyData || [];
+      const categoryData = allData[0]?.categoryData || [];
+
+      // 处理月度支出数据
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthlySpending = monthlyData.map(item => ({
+        month: monthNames[item._id.month - 1],
+        amount: parseFloat(item.total.toFixed(2))
+      }));
+
+      // 处理类别分布数据
+      const categoryColors = {
+        transportation: '#8884d8',
+        accommodation: '#82ca9d',
+        meals: '#ffc658',
+        entertainment: '#ff7300',
+        communication: '#8dd3c7',
+        office_supplies: '#a4de6c',
+        training: '#ffb347',
+        other: '#d0d0d0'
+      };
+
+      const totalAmount = categoryData.reduce((sum, item) => sum + item.total, 0);
+      const categoryBreakdown = categoryData.length === 0 ? [] : categoryData.map(item => {
+        const categoryName = item._id || 'other';
+        const percentage = totalAmount > 0 ? parseFloat(((item.total / totalAmount) * 100).toFixed(1)) : 0;
+        return {
+          name: categoryName,
+          value: percentage,
+          amount: parseFloat(item.total.toFixed(2)),
+          count: item.count,
+          percentage: percentage,
+          color: categoryColors[categoryName] || categoryColors.other
+        };
+      });
+
+      return {
+        monthlySpending,
+        categoryBreakdown
+      };
+    } else {
+      // 日期范围不重叠，分别查询
+      const [monthlyData, categoryData] = await Promise.all([
+        Expense.aggregate([
+          { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: monthlyStartDate } }) },
+          {
+            $group: {
+              _id: { year: { $year: '$date' }, month: { $month: '$date' } },
+              total: { $sum: '$amount' }
+            }
+          },
+          { $sort: { '_id.year': 1, '_id.month': 1 } }
+        ]),
+        Expense.aggregate([
+          { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: categoryStartDate } }) },
+          { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+          { $sort: { total: -1 } }
+        ])
+      ]);
+
+      // 处理月度支出数据
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthlySpending = monthlyData.map(item => ({
+        month: monthNames[item._id.month - 1],
+        amount: parseFloat(item.total.toFixed(2))
+      }));
+
+      // 处理类别分布数据
+      const categoryColors = {
+        transportation: '#8884d8',
+        accommodation: '#82ca9d',
+        meals: '#ffc658',
+        entertainment: '#ff7300',
+        communication: '#8dd3c7',
+        office_supplies: '#a4de6c',
+        training: '#ffb347',
+        other: '#d0d0d0'
+      };
+
+      const totalAmount = categoryData.reduce((sum, item) => sum + item.total, 0);
+      const categoryBreakdown = categoryData.length === 0 ? [] : categoryData.map(item => {
+        const categoryName = item._id || 'other';
+        const percentage = totalAmount > 0 ? parseFloat(((item.total / totalAmount) * 100).toFixed(1)) : 0;
+        return {
+          name: categoryName,
+          value: percentage,
+          amount: parseFloat(item.total.toFixed(2)),
+          count: item.count,
+          percentage: percentage,
+          color: categoryColors[categoryName] || categoryColors.other
+        };
+      });
+
+      return {
+        monthlySpending,
+        categoryBreakdown
+      };
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[MONTHLY_SPENDING_AND_CATEGORY_DATA] Error:', error);
+    }
+    return {
+      monthlySpending: [],
+      categoryBreakdown: []
+    };
+  }
+}
+
+// 保留原函数以保持向后兼容（如果其他地方有调用）
+async function getMonthlySpendingData(expenseQueryForAggregate, months) {
+  try {
+    const result = await getMonthlySpendingAndCategoryData(expenseQueryForAggregate, months, 'month');
+    return result.monthlySpending;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('[MONTHLY_SPENDING_DATA] Error:', error);
@@ -697,55 +858,8 @@ async function getMonthlySpendingData(expenseQueryForAggregate, months) {
 
 async function getCategoryBreakdownData(expenseQueryForAggregate, period) {
   try {
-    const now = new Date();
-    let startDate;
-    if (period === 'month') {
-      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-    } else if (period === 'quarter') {
-      startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1, 0, 0, 0, 0);
-    } else if (period === 'year') {
-      startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1, 0, 0, 0, 0);
-    } else {
-      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-    }
-
-    const matchQuery = Object.assign({}, expenseQueryForAggregate, { date: { $gte: startDate } });
-    
-    const categoryData = await Expense.aggregate([
-      { $match: matchQuery },
-      { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
-      { $sort: { total: -1 } }
-    ]);
-
-    if (categoryData.length === 0) {
-      return [];
-    }
-
-    const categoryColors = {
-      transportation: '#8884d8',
-      accommodation: '#82ca9d',
-      meals: '#ffc658',
-      entertainment: '#ff7300',
-      communication: '#8dd3c7',
-      office_supplies: '#a4de6c',
-      training: '#ffb347',
-      other: '#d0d0d0'
-    };
-
-    const totalAmount = categoryData.reduce((sum, item) => sum + item.total, 0);
-
-    return categoryData.map(item => {
-      const categoryName = item._id || 'other';
-      const percentage = totalAmount > 0 ? parseFloat(((item.total / totalAmount) * 100).toFixed(1)) : 0;
-      return {
-        name: categoryName,
-        value: percentage,
-        amount: parseFloat(item.total.toFixed(2)),
-        count: item.count,
-        percentage: percentage,
-        color: categoryColors[categoryName] || categoryColors.other
-      };
-    });
+    const result = await getMonthlySpendingAndCategoryData(expenseQueryForAggregate, 6, period);
+    return result.categoryBreakdown;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('[CATEGORY_BREAKDOWN] Error:', error);

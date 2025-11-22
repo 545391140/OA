@@ -236,6 +236,7 @@ const TravelSchema = new mongoose.Schema({
 
 // Index for better query performance
 TravelSchema.index({ employee: 1, status: 1 });
+TravelSchema.index({ employee: 1, createdAt: -1 }); // 复合索引：用于按员工和创建时间排序（看板最近差旅）
 TravelSchema.index({ 'approvals.approver': 1, 'approvals.status': 1 });
 TravelSchema.index({ travelNumber: 1 }, { unique: true }); // 差旅单号唯一索引
 TravelSchema.index({ createdAt: -1 }); // 用于排序
