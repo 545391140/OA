@@ -725,7 +725,8 @@
       "actions": {
         "view": "詳細を見る",
         "edit": "編集",
-        "delete": "削除"
+        "delete": "削除",
+        "activate": "有効化"
       }
     },
     "form": {
@@ -918,6 +919,7 @@
     },
     "categories": {
       "all": "すべてのカテゴリ",
+      "general": "一般",
       "transportation": "交通費",
       "accommodation": "宿泊費",
       "meals": "食事代",
@@ -928,6 +930,8 @@
       "training": "研修費",
       "other": "その他"
     },
+    "invoiceTotalAmount": "インボイス総額",
+    "reimbursementAmount": "精算金額",
     "relatedInvoices": "関連する請求書",
     "addInvoices": "請求書フォルダから請求書を追加",
     "noRelatedInvoices": "関連する請求書がありません",
@@ -1539,6 +1543,7 @@
   "invoice": {
     "title": "インボイスフォルダ",
     "upload": "インボイスアップロード",
+    "noNumber": "インボイス番号なし",
     "list": {
       "title": "インボイスフォルダ",
       "uploadInvoice": "インボイスアップロード",

@@ -760,7 +760,8 @@
       "actions": {
         "view": "세부 정보 보기",
         "edit": "편집",
-        "delete": "삭제"
+        "delete": "삭제",
+        "activate": "활성화"
       }
     },
     "form": {
@@ -953,6 +954,7 @@
     },
     "categories": {
       "all": "모든 카테고리",
+      "general": "일반",
       "transportation": "교통비",
       "accommodation": "숙박비",
       "meals": "식비",
@@ -963,6 +965,8 @@
       "training": "교육비",
       "other": "기타"
     },
+    "invoiceTotalAmount": "인보이스 총액",
+    "reimbursementAmount": "정산 금액",
     "relatedInvoices": "관련 송장",
     "addInvoices": "송장 폴더에서 송장 추가",
     "noRelatedInvoices": "관련 송장 없음",
@@ -1574,6 +1578,7 @@
   "invoice": {
     "title": "인보이스 폴더",
     "upload": "인보이스 업로드",
+    "noNumber": "인보이스 번호 없음",
     "list": {
       "title": "인보이스 폴더",
       "uploadInvoice": "인보이스 업로드",

@@ -774,7 +774,8 @@
       "actions": {
         "view": "View Details",
         "edit": "Edit",
-        "delete": "Delete"
+        "delete": "Delete",
+        "activate": "Activate"
       }
     },
     "form": {
@@ -1099,6 +1100,7 @@
     },
     "categories": {
       "all": "All Categories",
+      "general": "General",
       "transportation": "Transportation",
       "accommodation": "Accommodation",
       "meals": "Meals",
@@ -1109,6 +1111,8 @@
       "training": "Training",
       "other": "Other"
     },
+    "invoiceTotalAmount": "Invoice Total Amount",
+    "reimbursementAmount": "Reimbursement Amount",
     "relatedInvoices": "Related Invoices",
     "addInvoices": "Add Invoices from Invoice Folder",
     "noRelatedInvoices": "No related invoices",
@@ -1816,6 +1820,7 @@
   "invoice": {
     "title": "Invoice Folder",
     "upload": "Upload Invoice",
+    "noNumber": "No Invoice Number",
     "list": {
       "title": "Invoice Folder",
       "uploadInvoice": "Upload Invoice",

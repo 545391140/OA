@@ -255,8 +255,25 @@ const ExpenseList = () => {
     return icons[category] || '📄';
   }, []);
 
+  // 使用 ref 跟踪是否正在加载，避免并发请求
+  const isLoadingRef = React.useRef(false);
+  // 使用 ref 跟踪是否是首次加载
+  const isInitialMount = React.useRef(true);
+  // 使用 ref 跟踪上一次的路由路径
+  const prevPathnameRef = React.useRef(location.pathname);
+  // 使用 ref 存储上一次的搜索词，用于防抖判断
+  const prevSearchTermRef = React.useRef(searchTerm);
+  // 使用 ref 存储 fetchExpenses 函数，避免依赖变化导致 useEffect 重复执行
+  const fetchExpensesRef = React.useRef(null);
+  
   const fetchExpenses = useCallback(async () => {
+    // 如果正在加载，跳过本次请求
+    if (isLoadingRef.current) {
+      return;
+    }
+    
     try {
+      isLoadingRef.current = true;
       setLoading(true);
       const params = {
         page: page + 1,
@@ -283,28 +300,29 @@ const ExpenseList = () => {
       setExpenses([]);
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   }, [page, rowsPerPage, statusFilter, categoryFilter, searchTerm, showNotification, t]);
 
-  // 使用 useRef 跟踪是否是首次加载和路由变化，避免重复请求
-  const isInitialMount = React.useRef(true);
-  const prevPathnameRef = React.useRef(location.pathname);
-  
+  // 更新 ref 中的函数引用
+  fetchExpensesRef.current = fetchExpenses;
+
+  // 主数据获取：处理 page, rowsPerPage, statusFilter, categoryFilter 的变化
   useEffect(() => {
     // 首次加载时执行
     if (isInitialMount.current) {
       isInitialMount.current = false;
       prevPathnameRef.current = location.pathname;
-      fetchExpenses();
+      prevSearchTermRef.current = searchTerm;
+      fetchExpensesRef.current?.();
       return;
     }
     
-    // 后续依赖变化时执行
-    fetchExpenses();
-  }, [fetchExpenses]);
+    // 后续依赖变化时执行（排除搜索词变化，搜索词由单独的useEffect处理）
+    fetchExpensesRef.current?.();
+  }, [page, rowsPerPage, statusFilter, categoryFilter]); // 移除 fetchExpenses 依赖
 
   // 监听路由变化，当从编辑页面返回时刷新数据
-  // 注意：只有当路径从非 /expenses 变为 /expenses 时才刷新（避免首次加载时重复调用）
   useEffect(() => {
     // 跳过首次渲染（避免与第一个 useEffect 重复）
     if (isInitialMount.current) {
@@ -313,23 +331,36 @@ const ExpenseList = () => {
     
     // 只有当路径从非 /expenses 变为 /expenses 时才刷新（表示从其他页面返回）
     if (location.pathname === '/expenses' && prevPathnameRef.current !== '/expenses') {
-      fetchExpenses();
+      fetchExpensesRef.current?.();
     }
     prevPathnameRef.current = location.pathname;
-  }, [location.pathname, fetchExpenses]);
+  }, [location.pathname]); // 移除 fetchExpenses 依赖
 
-  // 搜索防抖
+  // 搜索防抖：只在 searchTerm 变化时执行
   useEffect(() => {
+    // 跳过首次渲染
+    if (isInitialMount.current) {
+      prevSearchTermRef.current = searchTerm;
+      return;
+    }
+    
+    // 如果搜索词没有变化，跳过
+    if (prevSearchTermRef.current === searchTerm) {
+      return;
+    }
+    
+    prevSearchTermRef.current = searchTerm;
+    
     const timer = setTimeout(() => {
       if (page === 0) {
-        fetchExpenses();
+        fetchExpensesRef.current?.();
       } else {
         setPage(0);
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, fetchExpenses, page]);
+  }, [searchTerm, page]); // 移除 fetchExpenses 依赖
 
   // 使用 useCallback 优化事件处理函数
   const handleMenuOpen = useCallback((event, expense) => {

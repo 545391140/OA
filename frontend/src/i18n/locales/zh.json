@@ -817,7 +817,8 @@
       "actions": {
         "view": "查看详情",
         "edit": "编辑",
-        "delete": "删除"
+        "delete": "删除",
+        "activate": "激活"
       }
     },
     "form": {
@@ -1147,6 +1148,7 @@
     },
     "categories": {
       "all": "全部分类",
+      "general": "一般",
       "transportation": "交通",
       "accommodation": "住宿",
       "meals": "餐饮",
@@ -1157,6 +1159,8 @@
       "training": "培训",
       "other": "其他"
     },
+    "invoiceTotalAmount": "发票总金额",
+    "reimbursementAmount": "报销金额",
     "relatedInvoices": "关联发票",
     "addInvoices": "从发票夹添加发票",
     "noRelatedInvoices": "暂无关联发票",
@@ -1895,6 +1899,7 @@
   "invoice": {
     "title": "发票夹",
     "upload": "上传发票",
+    "noNumber": "无发票号",
     "list": {
       "title": "发票夹",
       "uploadInvoice": "上传发票",
