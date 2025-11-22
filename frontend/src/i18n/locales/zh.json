@@ -1174,6 +1174,11 @@
     "saved": "费用申请已保存为草稿",
     "submitted": "费用申请已提交",
     "saveError": "保存费用申请失败",
+    "saveDraft": "保存草稿",
+    "submitExpense": "提交费用申请",
+    "uploadReceipts": "上传收据",
+    "chooseFiles": "选择文件",
+    "supportedFormats": "支持格式：JPG, PNG, PDF（最大10MB/文件）",
     "invoices": {
       "added": "成功关联 {count} 张发票",
       "addError": "关联发票失败",

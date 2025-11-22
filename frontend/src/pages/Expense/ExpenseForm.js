@@ -3155,7 +3155,7 @@ const ExpenseForm = () => {
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                 <Typography variant="h6">
-                  Receipts
+                  {t('expense.receipts')}
                 </Typography>
                 <Button
                   startIcon={<UploadIcon />}
@@ -3163,7 +3163,7 @@ const ExpenseForm = () => {
                   variant="outlined"
                   size="small"
                 >
-                  Upload Receipts
+                  {t('expense.uploadReceipts')}
                 </Button>
               </Box>
               <Divider sx={{ mb: 2 }} />
@@ -3217,7 +3217,7 @@ const ExpenseForm = () => {
                   onClick={() => navigate('/expenses')}
                   disabled={saving}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   variant="contained"
@@ -3225,7 +3225,7 @@ const ExpenseForm = () => {
                   onClick={() => handleSave('draft')}
                   disabled={saving}
                 >
-                  {saving ? <CircularProgress size={20} /> : 'Save Draft'}
+                  {saving ? <CircularProgress size={20} /> : t('expense.saveDraft')}
                 </Button>
                 <Button
                   variant="contained"
@@ -3234,7 +3234,7 @@ const ExpenseForm = () => {
                   onClick={handleSubmit}
                   disabled={saving}
                 >
-                  {saving ? <CircularProgress size={20} /> : 'Submit Expense'}
+                  {saving ? <CircularProgress size={20} /> : t('expense.submitExpense')}
                 </Button>
               </Box>
             </Grid>
@@ -3266,17 +3266,17 @@ const ExpenseForm = () => {
                   startIcon={<UploadIcon />}
                   size="large"
                 >
-                  Choose Files
+                  {t('expense.chooseFiles')}
                 </Button>
               </label>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                Supported formats: JPG, PNG, PDF (Max 10MB per file)
+                {t('expense.supportedFormats')}
               </Typography>
             </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setUploadDialogOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </DialogActions>
         </Dialog>

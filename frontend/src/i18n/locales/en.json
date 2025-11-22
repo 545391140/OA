@@ -1115,6 +1115,11 @@
     "saved": "Expense saved as draft",
     "submitted": "Expense submitted successfully",
     "saveError": "Failed to save expense",
+    "saveDraft": "Save Draft",
+    "submitExpense": "Submit Expense",
+    "uploadReceipts": "Upload Receipts",
+    "chooseFiles": "Choose Files",
+    "supportedFormats": "Supported formats: JPG, PNG, PDF (Max 10MB per file)",
     "invoices": {
       "added": "Successfully linked {count} invoices",
       "addError": "Failed to link invoices",

@@ -969,6 +969,11 @@
     "saved": "비용이 초안으로 저장되었습니다",
     "submitted": "비용이 성공적으로 제출되었습니다",
     "saveError": "비용 저장 실패",
+    "saveDraft": "초안으로 저장",
+    "submitExpense": "비용 제출",
+    "uploadReceipts": "영수증 업로드",
+    "chooseFiles": "파일 선택",
+    "supportedFormats": "지원 형식: JPG, PNG, PDF (최대 10MB/파일)",
     "invoices": {
       "added": "{count}개의 송장을 성공적으로 연결했습니다",
       "addError": "송장 연결 실패",

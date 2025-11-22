@@ -934,6 +934,11 @@
     "saved": "経費が下書きとして保存されました",
     "submitted": "経費が正常に提出されました",
     "saveError": "経費の保存に失敗しました",
+    "saveDraft": "下書きとして保存",
+    "submitExpense": "経費を提出",
+    "uploadReceipts": "領収書をアップロード",
+    "chooseFiles": "ファイルを選択",
+    "supportedFormats": "対応形式：JPG, PNG, PDF（最大10MB/ファイル）",
     "invoices": {
       "added": "{count}件の請求書を正常にリンクしました",
       "addError": "請求書のリンクに失敗しました",
