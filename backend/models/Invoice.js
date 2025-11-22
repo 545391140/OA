@@ -235,6 +235,22 @@ const InvoiceSchema = new mongoose.Schema({
     enum: ['pending', 'verified', 'linked', 'archived'],
     default: 'pending'
   },
+  // 新增字段：匹配状态
+  matchStatus: {
+    type: String,
+    enum: ['unmatched', 'matched', 'linked'],
+    default: 'unmatched'
+  },
+  // 新增字段：匹配的差旅ID（用于匹配算法）
+  matchedTravelId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Travel'
+  },
+  // 新增字段：匹配的费用项ID
+  matchedExpenseItemId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'ExpenseItem'
+  },
   
   // 备注
   notes: {
@@ -263,6 +279,9 @@ InvoiceSchema.index({ relatedExpense: 1 });
 InvoiceSchema.index({ relatedTravel: 1 });
 InvoiceSchema.index({ invoiceNumber: 1 });
 InvoiceSchema.index({ 'vendor.name': 'text', notes: 'text' }); // 全文搜索
+InvoiceSchema.index({ matchStatus: 1 });
+InvoiceSchema.index({ matchedTravelId: 1 });
+InvoiceSchema.index({ matchedExpenseItemId: 1 });
 
 module.exports = mongoose.model('Invoice', InvoiceSchema);
 

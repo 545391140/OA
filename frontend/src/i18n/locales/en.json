@@ -38,7 +38,9 @@
     "dateFormat": "YYYY-MM-DD",
     "actions": "Actions",
     "all": "All",
-    "reset": "Reset"
+    "reset": "Reset",
+    "submitting": "Submitting...",
+    "sheet": "sheet"
   },
   "notifications": {
     "title": "Notifications",
@@ -375,6 +377,9 @@
     "endDate": "End Date",
     "tripDescription": "Trip Description",
     "currency": "Currency",
+    "employee": "Employee",
+    "outbound": "Outbound",
+    "inbound": "Inbound",
     "departments": {
       "hr": "Human Resources Department",
       "it": "Information Technology Department",
@@ -603,11 +608,34 @@
       "approvalError": "Approval failed",
       "confirmApprove": "Confirm Approval",
       "confirmReject": "Confirm Rejection",
+      "markAsCompleted": "Mark as Completed",
+      "confirmMarkAsCompleted": "Are you sure you want to mark this travel as completed? Expenses will be automatically generated after marking.",
+      "markAsCompletedSuccess": "Travel marked as completed",
+      "markAsCompletedError": "Failed to mark as completed",
       "totalBudget": "Total",
       "budgetInfo": "Budget Information",
       "outbound": "Outbound",
       "inbound": "Inbound",
-      "multiCity": "Multi-City"
+      "multiCity": "Multi-City",
+      "expenses": {
+        "title": "Expenses",
+        "generate": "Generate Expenses",
+        "generating": "Generating...",
+        "generateSuccess": "Expenses generated successfully",
+        "generateError": "Failed to generate expenses",
+        "loadError": "Failed to load expenses",
+        "noExpenses": "No expenses",
+        "notGenerated": "Expenses not generated yet",
+        "noExpensesGenerated": "No matching invoices found, please create expense manually",
+        "alreadyGenerated": "Expenses already generated",
+        "invoiceCount": "Related Invoices",
+        "invoices": "invoices",
+        "autoMatched": "Auto Matched",
+        "confirmDelete": "Are you sure you want to delete this expense?",
+        "deleteSuccess": "Deleted successfully",
+        "deleteError": "Failed to delete",
+        "count": "expenses"
+      }
     }
   },
   "travelStandard": {
@@ -1033,6 +1061,7 @@
     "tags": "Tags",
     "status": "Status",
     "statuses": {
+      "all": "All Status",
       "draft": "Draft",
       "submitted": "Submitted",
       "approved": "Approved",
@@ -1041,14 +1070,51 @@
       "cancelled": "Cancelled"
     },
     "categories": {
+      "all": "All Categories",
       "transportation": "Transportation",
       "accommodation": "Accommodation",
       "meals": "Meals",
       "entertainment": "Entertainment",
       "communication": "Communication",
+      "officeSupplies": "Office Supplies",
       "office_supplies": "Office Supplies",
       "training": "Training",
       "other": "Other"
+    },
+    "relatedInvoices": "Related Invoices",
+    "addInvoices": "Add Invoices from Invoice Folder",
+    "noRelatedInvoices": "No related invoices",
+    "saved": "Expense saved as draft",
+    "submitted": "Expense submitted successfully",
+    "saveError": "Failed to save expense",
+    "invoices": {
+      "added": "Successfully linked {count} invoices",
+      "addError": "Failed to link invoices",
+      "removed": "Successfully unlinked invoice",
+      "removeError": "Failed to unlink invoice"
+    },
+    "selectInvoices": "Select Invoices",
+    "noAvailableInvoices": "No available invoices",
+    "selectTravel": "Select Travel Request",
+    "relatedTravel": "Related Travel Request",
+    "relatedTravelInfo": "This expense is related to a travel request",
+    "travelNumber": "Travel Request Number",
+    "searchTravelNumber": "Search travel request number...",
+    "deleteSuccess": "Expense deleted successfully",
+    "deleteError": "Failed to delete expense",
+    "list": {
+      "noExpenses": "No expenses found",
+      "createFirst": "Create your first expense to get started",
+      "tryAdjusting": "Try adjusting your search criteria",
+      "loadError": "Failed to load expenses",
+      "confirmDelete": "Are you sure you want to delete the expense",
+      "deleteWarning": "This action cannot be undone."
+    },
+    "detail": {
+      "loadError": "Failed to load expense details",
+      "confirmDelete": "Are you sure you want to delete the expense",
+      "createdOn": "Created on",
+      "noReceipts": "No receipts uploaded"
     }
   },
   "approval": {
@@ -1540,6 +1606,7 @@
         "archived": "Archived"
       },
       "categories": {
+        "all": "All Categories",
         "transportation": "Transportation",
         "accommodation": "Accommodation",
         "meals": "Meals",

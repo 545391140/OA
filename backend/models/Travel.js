@@ -210,7 +210,26 @@ const TravelSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
+  // 新增字段：关联的费用申请（自动生成）
+  relatedExpenses: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'Expense'
+  }],
+  // 新增字段：费用申请生成状态
+  expenseGenerationStatus: {
+    type: String,
+    enum: ['pending', 'generating', 'completed', 'failed'],
+    default: 'pending'
+  },
+  // 新增字段：费用申请生成时间
+  expenseGeneratedAt: {
+    type: Date
+  },
+  // 新增字段：费用申请生成错误信息
+  expenseGenerationError: {
+    type: String
+  }
 }, {
   timestamps: true
 });
@@ -221,5 +240,67 @@ TravelSchema.index({ 'approvals.approver': 1, 'approvals.status': 1 });
 TravelSchema.index({ travelNumber: 1 }, { unique: true }); // 差旅单号唯一索引
 TravelSchema.index({ createdAt: -1 }); // 用于排序
 TravelSchema.index({ title: 1 }); // 标题索引，用于搜索
+TravelSchema.index({ expenseGenerationStatus: 1 });
+
+// 监听差旅状态变更，自动生成费用申请
+// 注意：使用 post('save') 可能会在某些情况下导致无限循环
+// 建议通过API接口手动触发，或在状态更新时显式调用
+// 这里提供一个可选的后置钩子，但建议谨慎使用
+TravelSchema.post('save', async function(doc) {
+  // 只在状态变为 completed 且费用申请生成状态为 pending 时触发
+  // 检查是否是新建文档（通过检查createdAt和updatedAt是否相同）
+  const isNewDocument = doc.createdAt && doc.updatedAt && 
+    Math.abs(new Date(doc.createdAt) - new Date(doc.updatedAt)) < 1000;
+  
+  if (doc.status === 'completed' && 
+      doc.expenseGenerationStatus === 'pending' &&
+      !isNewDocument) {
+    
+    // 使用标记避免重复触发
+    if (doc._autoGeneratingExpenses) {
+      return;
+    }
+    doc._autoGeneratingExpenses = true;
+    
+    // 异步执行，不阻塞保存操作
+    setImmediate(async () => {
+      try {
+        const expenseMatchService = require('../services/expenseMatchService');
+        // 重新查询文档以确保获取最新数据
+        const Travel = mongoose.model('Travel');
+        const travel = await Travel.findById(doc._id)
+          .populate('employee', 'firstName lastName email');
+        
+        if (travel && travel.status === 'completed' && 
+            travel.expenseGenerationStatus === 'pending') {
+          await expenseMatchService.autoGenerateExpenses(travel);
+          console.log(`Auto-generated expenses for travel ${travel.travelNumber || travel._id}`);
+        }
+      } catch (error) {
+        console.error('Failed to auto-generate expenses:', error);
+        // 更新错误状态（使用updateOne避免触发save hook）
+        try {
+          const Travel = mongoose.model('Travel');
+          await Travel.updateOne(
+            { _id: doc._id },
+            {
+              $set: {
+                expenseGenerationStatus: 'failed',
+                expenseGenerationError: error.message
+              }
+            }
+          );
+        } catch (updateError) {
+          console.error('Failed to update travel error status:', updateError);
+        }
+      } finally {
+        // 清除标记
+        if (doc._autoGeneratingExpenses) {
+          delete doc._autoGeneratingExpenses;
+        }
+      }
+    });
+  }
+});
 
 module.exports = mongoose.model('Travel', TravelSchema);

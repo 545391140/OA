@@ -157,7 +157,50 @@ const ExpenseSchema = new mongoose.Schema({
   tags: [{
     type: String,
     trim: true
-  }]
+  }],
+  // 新增字段：关联费用项
+  expenseItem: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'ExpenseItem',
+    required: false
+  },
+  // 新增字段：关联的发票（从发票夹匹配）
+  relatedInvoices: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'Invoice'
+  }],
+  // 新增字段：自动匹配标记
+  autoMatched: {
+    type: Boolean,
+    default: false
+  },
+  // 新增字段：匹配来源（用于追踪）
+  matchSource: {
+    type: String,
+    enum: ['auto', 'manual'],
+    default: 'manual'
+  },
+  // 新增字段：匹配规则记录（用于审计）
+  matchRules: {
+    expenseItemId: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'ExpenseItem'
+    },
+    travelId: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Travel'
+    },
+    matchedInvoices: [{
+      type: mongoose.Schema.ObjectId,
+      ref: 'Invoice'
+    }],
+    matchedAt: Date,
+    confidence: {
+      type: Number,
+      min: 0,
+      max: 100
+    }
+  }
 }, {
   timestamps: true
 });
@@ -167,6 +210,9 @@ ExpenseSchema.index({ employee: 1, status: 1 });
 ExpenseSchema.index({ date: -1 });
 ExpenseSchema.index({ category: 1 });
 ExpenseSchema.index({ 'approvals.approver': 1, 'approvals.status': 1 });
+ExpenseSchema.index({ expenseItem: 1 });
+ExpenseSchema.index({ travel: 1 });
+ExpenseSchema.index({ autoMatched: 1 });
 
 // Calculate local amount before saving
 ExpenseSchema.pre('save', function(next) {

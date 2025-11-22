@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -29,7 +29,14 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Avatar
+  Avatar,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Table,
+  TableBody,
+  TableCell,
+  TableRow
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -42,12 +49,20 @@ import {
   Business as BusinessIcon,
   Person as PersonIcon,
   CalendarToday as CalendarIcon,
-  LocationOn as LocationIcon
+  LocationOn as LocationIcon,
+  Flight as FlightIcon,
+  Train as TrainIcon,
+  DirectionsCar as CarIcon,
+  DirectionsBus as BusIcon,
+  ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import InvoiceSelectDialog from '../../components/Invoice/InvoiceSelectDialog';
+import ExpenseSelectDialog from '../../components/Expense/ExpenseSelectDialog';
+import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
 const ExpenseForm = () => {
@@ -56,6 +71,8 @@ const ExpenseForm = () => {
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const travelId = searchParams.get('travelId');
   const isEdit = Boolean(id);
 
   const [formData, setFormData] = useState({
@@ -84,6 +101,22 @@ const ExpenseForm = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [invoiceSelectDialogOpen, setInvoiceSelectDialogOpen] = useState(false);
+  const [relatedInvoices, setRelatedInvoices] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  // 自动生成的费用申请相关状态
+  const [generatedExpenses, setGeneratedExpenses] = useState([]);
+  const [expenseSelectDialogOpen, setExpenseSelectDialogOpen] = useState(false);
+  const [generatingExpenses, setGeneratingExpenses] = useState(false);
+  // 差旅单相关状态
+  const [selectedTravel, setSelectedTravel] = useState(null);
+  const [travelOptions, setTravelOptions] = useState([]);
+  const [travelLoading, setTravelLoading] = useState(false);
+  const [expenseItems, setExpenseItems] = useState([]);
+  const [expenseItemsLoading, setExpenseItemsLoading] = useState(false);
+  // 每个费用项的发票管理
+  const [expenseItemInvoices, setExpenseItemInvoices] = useState({}); // { expenseItemId: [invoices] }
+  const [expenseItemInvoiceDialogs, setExpenseItemInvoiceDialogs] = useState({}); // { expenseItemId: open }
 
   const currencies = [
     { value: 'USD', label: 'USD - US Dollar' },
@@ -174,46 +207,490 @@ const ExpenseForm = () => {
   useEffect(() => {
     if (isEdit) {
       fetchExpenseData();
+      // 编辑模式下也加载差旅单列表（用于 Autocomplete）
+      fetchTravelOptions();
+    } else if (travelId) {
+      // 如果是从差旅页面跳转过来的，自动生成费用申请
+      generateExpensesFromTravel();
+    } else {
+      // 新建费用申请时，加载差旅单列表和费用项列表
+      fetchTravelOptions();
+      fetchExpenseItemsList();
+    }
+  }, [id, isEdit, travelId]);
+
+  useEffect(() => {
+    if (selectedTravel) {
+      loadTravelInfo(selectedTravel);
+    }
+  }, [selectedTravel]);
+
+  // 编辑模式下，如果费用申请关联了差旅单，加载差旅信息
+  useEffect(() => {
+    if (isEdit && id && formData.travel) {
+      loadTravelInfoById(formData.travel);
+    }
+  }, [isEdit, id, formData.travel]);
+
+  useEffect(() => {
+    if (isEdit && id) {
+      fetchRelatedInvoices();
     }
   }, [id, isEdit]);
+
+  const generateExpensesFromTravel = async () => {
+    try {
+      setGeneratingExpenses(true);
+      // 调用生成费用申请的API
+      const response = await apiClient.post(`/travel/${travelId}/generate-expenses`);
+      if (response.data && response.data.success) {
+        const generatedCount = response.data.data.generatedCount || 0;
+        const expenses = response.data.data.expenses || [];
+        
+        if (generatedCount > 0 && expenses.length > 0) {
+          // 如果有生成的费用申请
+          showNotification(
+            t('travel.detail.expenses.generateSuccess') || `成功生成 ${generatedCount} 个费用申请`,
+            'success'
+          );
+          
+          // 获取费用申请的详细信息
+          const expensesWithDetails = await Promise.all(
+            expenses.map(async (expense) => {
+              try {
+                const detailResponse = await apiClient.get(`/expenses/${expense._id}`);
+                return detailResponse.data?.data || expense;
+              } catch (err) {
+                console.error(`Failed to fetch expense ${expense._id}:`, err);
+                return expense;
+              }
+            })
+          );
+          
+          setGeneratedExpenses(expensesWithDetails);
+          
+          if (expensesWithDetails.length === 1) {
+            // 如果只生成了一个费用申请，直接加载到表单中
+            loadExpenseToForm(expensesWithDetails[0]);
+          } else {
+            // 如果生成了多个费用申请，显示选择对话框
+            setExpenseSelectDialogOpen(true);
+          }
+        } else {
+          // 如果没有生成费用申请，提示用户手动创建
+          showNotification(
+            t('travel.detail.expenses.noExpensesGenerated') || '未找到匹配的发票，请手动创建费用申请',
+            'info'
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Failed to generate expenses from travel:', error);
+      console.error('Error details:', error.response?.data);
+      
+      // 如果已经生成过，尝试获取已生成的费用申请列表
+      if (error.response?.status === 400 && error.response?.data?.data?.expenses) {
+        const existingExpenses = error.response.data.data.expenses;
+        if (existingExpenses.length > 0) {
+          // 获取费用申请的详细信息
+          const expensesWithDetails = await Promise.all(
+            existingExpenses.map(async (expenseId) => {
+              try {
+                const detailResponse = await apiClient.get(`/expenses/${expenseId}`);
+                return detailResponse.data?.data;
+              } catch (err) {
+                console.error(`Failed to fetch expense ${expenseId}:`, err);
+                return null;
+              }
+            })
+          );
+          
+          const validExpenses = expensesWithDetails.filter(exp => exp !== null);
+          setGeneratedExpenses(validExpenses);
+          
+          if (validExpenses.length === 1) {
+            // 如果只有一个费用申请，直接加载到表单中
+            loadExpenseToForm(validExpenses[0]);
+          } else if (validExpenses.length > 1) {
+            // 如果有多个费用申请，显示选择对话框
+            setExpenseSelectDialogOpen(true);
+          } else {
+            showNotification(
+              t('travel.detail.expenses.alreadyGenerated') || '费用申请已生成',
+              'info'
+            );
+          }
+          return;
+        }
+      }
+      // 显示详细的错误信息
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          t('travel.detail.expenses.generateError') || 
+                          '生成费用申请失败';
+      showNotification(errorMessage, 'error');
+      
+      // 如果是服务器错误，记录详细信息
+      if (error.response?.status >= 500) {
+        console.error('Server error details:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: errorMessage
+        });
+      }
+    } finally {
+      setGeneratingExpenses(false);
+    }
+  };
+
+  const loadExpenseToForm = (expenseData) => {
+    // 加载费用申请数据到表单中
+    setFormData({
+      title: expenseData.title || '',
+      description: expenseData.description || '',
+      category: expenseData.category || '',
+      subcategory: expenseData.subcategory || '',
+      amount: expenseData.amount || '',
+      currency: expenseData.currency || 'USD',
+      date: expenseData.date ? dayjs(expenseData.date) : dayjs(),
+      vendor: expenseData.vendor || { name: '', address: '', taxId: '' },
+      project: expenseData.project || '',
+      costCenter: expenseData.costCenter || '',
+      isBillable: expenseData.isBillable || false,
+      client: expenseData.client || '',
+      tags: expenseData.tags || [],
+      notes: expenseData.notes || '',
+      receipts: expenseData.receipts || []
+    });
+    setRelatedInvoices(expenseData.relatedInvoices || []);
+    // 更新URL为编辑模式
+    navigate(`/expenses/${expenseData._id}`, { replace: true });
+  };
+
+  const handleSelectExpense = (expense) => {
+    loadExpenseToForm(expense);
+    setExpenseSelectDialogOpen(false);
+  };
+
+  // 获取差旅单列表
+  const fetchTravelOptions = async () => {
+    try {
+      setTravelLoading(true);
+      const response = await apiClient.get('/travel', {
+        params: {
+          status: 'completed', // 只显示已完成的差旅
+          limit: 100
+        }
+      });
+      if (response.data && response.data.success) {
+        setTravelOptions(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch travel options:', error);
+    } finally {
+      setTravelLoading(false);
+    }
+  };
+
+  // 获取费用项列表
+  const fetchExpenseItemsList = async () => {
+    try {
+      setExpenseItemsLoading(true);
+      const response = await apiClient.get('/expense-items');
+      if (response.data && response.data.success) {
+        setExpenseItems(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch expense items:', error);
+    } finally {
+      setExpenseItemsLoading(false);
+    }
+  };
+
+  // 加载差旅信息
+  const loadTravelInfo = async (travel) => {
+    try {
+      const response = await apiClient.get(`/travel/${travel._id || travel}`);
+      if (response.data && response.data.success) {
+        const travelData = response.data.data;
+        setSelectedTravel(travelData);
+        
+        // 填充表单基本信息
+        setFormData(prev => ({
+          ...prev,
+          travel: travelData._id,
+          currency: travelData.currency || prev.currency,
+          date: travelData.endDate ? dayjs(travelData.endDate) : prev.date,
+          title: travelData.title || `${travelData.travelNumber || ''} 费用申请`,
+          description: travelData.purpose || travelData.tripDescription || prev.description
+        }));
+
+        // 初始化费用项发票管理
+        const budgets = extractExpenseBudgets(travelData);
+        const initialInvoices = {};
+        budgets.forEach(budget => {
+          initialInvoices[budget.expenseItemId] = [];
+        });
+        setExpenseItemInvoices(initialInvoices);
+      }
+    } catch (error) {
+      console.error('Failed to load travel info:', error);
+      showNotification('加载差旅信息失败', 'error');
+    }
+  };
+
+  // 提取差旅单的费用预算（与后端逻辑一致）
+  const extractExpenseBudgets = (travel) => {
+    const budgets = [];
+    
+    const extractAmount = (budgetItem) => {
+      if (typeof budgetItem === 'number') {
+        return budgetItem;
+      }
+      if (typeof budgetItem === 'object' && budgetItem !== null) {
+        return parseFloat(budgetItem.subtotal) || 
+               parseFloat(budgetItem.amount) || 
+               parseFloat(budgetItem.total) || 
+               0;
+      }
+      return 0;
+    };
+    
+    // 去程预算
+    if (travel.outboundBudget && typeof travel.outboundBudget === 'object') {
+      Object.keys(travel.outboundBudget).forEach(expenseItemId => {
+        const budgetItem = travel.outboundBudget[expenseItemId];
+        const amount = extractAmount(budgetItem);
+        if (amount > 0) {
+          budgets.push({
+            expenseItemId: expenseItemId,
+            route: 'outbound',
+            amount: amount,
+            budgetItem: budgetItem
+          });
+        }
+      });
+    }
+    
+    // 返程预算
+    if (travel.inboundBudget && typeof travel.inboundBudget === 'object') {
+      Object.keys(travel.inboundBudget).forEach(expenseItemId => {
+        const budgetItem = travel.inboundBudget[expenseItemId];
+        const amount = extractAmount(budgetItem);
+        if (amount > 0) {
+          budgets.push({
+            expenseItemId: expenseItemId,
+            route: 'inbound',
+            amount: amount,
+            budgetItem: budgetItem
+          });
+        }
+      });
+    }
+    
+    // 多程行程预算
+    if (travel.multiCityRoutesBudget && Array.isArray(travel.multiCityRoutesBudget)) {
+      travel.multiCityRoutesBudget.forEach((routeBudget, index) => {
+        if (routeBudget && typeof routeBudget === 'object') {
+          Object.keys(routeBudget).forEach(expenseItemId => {
+            const budgetItem = routeBudget[expenseItemId];
+            const amount = extractAmount(budgetItem);
+            if (amount > 0) {
+              budgets.push({
+                expenseItemId: expenseItemId,
+                route: `multiCity-${index}`,
+                amount: amount,
+                budgetItem: budgetItem
+              });
+            }
+          });
+        }
+      });
+    }
+    
+    return budgets;
+  };
+
+  // 合并相同费用项的预算
+  const mergeExpenseBudgetsByItem = (budgets) => {
+    const merged = {};
+    
+    budgets.forEach(budget => {
+      const expenseItemId = budget.expenseItemId;
+      if (!merged[expenseItemId]) {
+        merged[expenseItemId] = {
+          expenseItemId: expenseItemId,
+          routes: [],
+          totalAmount: 0,
+          budgets: []
+        };
+      }
+      merged[expenseItemId].routes.push(budget.route);
+      merged[expenseItemId].totalAmount += budget.amount || 0;
+      merged[expenseItemId].budgets.push(budget);
+    });
+    
+    return Object.values(merged);
+  };
+
+  // 为费用项添加发票
+  const handleAddInvoicesForExpenseItem = (expenseItemId, selectedInvoices) => {
+    setExpenseItemInvoices(prev => ({
+      ...prev,
+      [expenseItemId]: [...(prev[expenseItemId] || []), ...selectedInvoices]
+    }));
+    setExpenseItemInvoiceDialogs(prev => ({
+      ...prev,
+      [expenseItemId]: false
+    }));
+    showNotification(`成功为费用项添加 ${selectedInvoices.length} 张发票`, 'success');
+  };
+
+  // 移除费用项的发票
+  const handleRemoveInvoiceFromExpenseItem = (expenseItemId, invoiceId) => {
+    setExpenseItemInvoices(prev => ({
+      ...prev,
+      [expenseItemId]: (prev[expenseItemId] || []).filter(inv => inv._id !== invoiceId)
+    }));
+    showNotification('发票已移除', 'success');
+  };
 
   const fetchExpenseData = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockData = {
-        title: 'Business Lunch with Client',
-        description: 'Lunch meeting with key client to discuss project requirements',
-        category: 'meals',
-        subcategory: 'Business Meal',
-        amount: 85.50,
-        currency: 'USD',
-        date: dayjs('2024-01-15'),
-        vendor: {
-          name: 'Restaurant ABC',
-          address: '123 Main St, City, State',
-          taxId: 'TAX123456'
-        },
-        project: 'Client A Engagement',
-        costCenter: 'Sales',
-        isBillable: true,
-        client: 'Client A',
-        tags: ['client-related', 'meeting'],
-        notes: 'Important client discussion about upcoming project',
-        receipts: [
-          {
-            filename: 'receipt_001.jpg',
-            originalName: 'Restaurant Receipt.jpg',
-            size: 1024000,
-            uploadedAt: '2024-01-15T14:30:00Z'
-          }
-        ]
-      };
-      setFormData(mockData);
+      const response = await apiClient.get(`/expenses/${id}`);
+      if (response.data && response.data.success) {
+        const expenseData = response.data.data;
+        setFormData({
+          title: expenseData.title || '',
+          description: expenseData.description || '',
+          category: expenseData.category || '',
+          subcategory: expenseData.subcategory || '',
+          amount: expenseData.amount || '',
+          currency: expenseData.currency || 'USD',
+          date: expenseData.date ? dayjs(expenseData.date) : dayjs(),
+          vendor: expenseData.vendor || { name: '', address: '', taxId: '' },
+          project: expenseData.project || '',
+          costCenter: expenseData.costCenter || '',
+          isBillable: expenseData.isBillable || false,
+          client: expenseData.client || '',
+          tags: expenseData.tags || [],
+          notes: expenseData.notes || '',
+          receipts: expenseData.receipts || [],
+          travel: expenseData.travel?._id || expenseData.travel || null
+        });
+        // 后端已经populate了relatedInvoices，直接使用
+        setRelatedInvoices(expenseData.relatedInvoices || []);
+        
+        // 如果关联了差旅单，加载差旅信息
+        if (expenseData.travel) {
+          const travelId = expenseData.travel._id || expenseData.travel;
+          await loadTravelInfoById(travelId);
+        }
+        
+        // 如果关联了费用项，初始化费用项发票管理
+        if (expenseData.expenseItem) {
+          const expenseItemId = expenseData.expenseItem._id || expenseData.expenseItem;
+          setExpenseItemInvoices({
+            [expenseItemId]: expenseData.relatedInvoices || []
+          });
+        }
+        
+        // 加载费用项列表（用于显示费用项名称）
+        await fetchExpenseItemsList();
+      }
     } catch (error) {
+      console.error('Failed to load expense data:', error);
       showNotification('Failed to load expense data', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 根据ID加载差旅信息（用于编辑模式）
+  const loadTravelInfoById = async (travelId) => {
+    try {
+      const response = await apiClient.get(`/travel/${travelId}`);
+      if (response.data && response.data.success) {
+        const travelData = response.data.data;
+        setSelectedTravel(travelData);
+        
+        // 确保差旅单在选项中（用于 Autocomplete 匹配）
+        setTravelOptions(prev => {
+          const exists = prev.some(opt => opt._id === travelData._id);
+          if (!exists) {
+            return [...prev, travelData];
+          }
+          return prev;
+        });
+        
+        // 初始化费用项发票管理
+        const budgets = extractExpenseBudgets(travelData);
+        const initialInvoices = {};
+        budgets.forEach(budget => {
+          initialInvoices[budget.expenseItemId] = [];
+        });
+        
+        // 如果费用申请关联了费用项，将发票添加到对应的费用项
+        const expenseResponse = await apiClient.get(`/expenses/${id}`);
+        if (expenseResponse.data?.data?.expenseItem) {
+          const expenseItemId = expenseResponse.data.data.expenseItem._id || expenseResponse.data.data.expenseItem;
+          if (expenseResponse.data.data.relatedInvoices) {
+            initialInvoices[expenseItemId] = expenseResponse.data.data.relatedInvoices || [];
+          }
+        }
+        
+        setExpenseItemInvoices(initialInvoices);
+      }
+    } catch (error) {
+      console.error('Failed to load travel info:', error);
+    }
+  };
+
+  const fetchRelatedInvoices = async () => {
+    try {
+      setInvoicesLoading(true);
+      const response = await apiClient.get(`/expenses/${id}`);
+      if (response.data && response.data.success) {
+        // 后端已经populate了relatedInvoices，直接使用
+        setRelatedInvoices(response.data.data.relatedInvoices || []);
+      }
+    } catch (error) {
+      console.error('Failed to load related invoices:', error);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
+  const handleAddInvoices = async (selectedInvoices) => {
+    try {
+      for (const invoice of selectedInvoices) {
+        await apiClient.post(`/expenses/${id}/link-invoice`, {
+          invoiceId: invoice._id
+        });
+      }
+      showNotification(
+        t('expense.invoices.added') || `成功关联 ${selectedInvoices.length} 张发票`,
+        'success'
+      );
+      await fetchRelatedInvoices();
+    } catch (error) {
+      console.error('Failed to link invoices:', error);
+      showNotification(
+        error.response?.data?.message || t('expense.invoices.addError') || '关联发票失败',
+        'error'
+      );
+    }
+  };
+
+  const handleRemoveInvoice = async (invoiceId) => {
+    try {
+      await apiClient.delete(`/expenses/${id}/unlink-invoice/${invoiceId}`);
+      showNotification(t('expense.invoices.removed') || '取消关联成功', 'success');
+      await fetchRelatedInvoices();
+    } catch (error) {
+      console.error('Failed to unlink invoice:', error);
+      showNotification(t('expense.invoices.removeError') || '取消关联失败', 'error');
     }
   };
 
@@ -304,38 +781,235 @@ const ExpenseForm = () => {
     try {
       setSaving(true);
       
+      // 如果选择了差旅单且有费用项发票，为每个费用项创建费用申请
+      if (selectedTravel && !isEdit) {
+        const budgets = extractExpenseBudgets(selectedTravel);
+        const expensesToCreate = [];
+        
+        for (const budget of budgets) {
+          const itemInvoices = expenseItemInvoices[budget.expenseItemId] || [];
+          if (itemInvoices.length > 0) {
+            const expenseItem = expenseItems.find(item => item._id === budget.expenseItemId);
+            const totalAmount = itemInvoices.reduce((sum, inv) => 
+              sum + (inv.totalAmount || inv.amount || 0), 0
+            );
+            
+            // 从发票中提取商户信息
+            const vendor = itemInvoices[0]?.vendor || { name: '', address: '', taxId: '' };
+            
+            const expenseData = {
+              travel: selectedTravel._id,
+              expenseItem: budget.expenseItemId,
+              title: `${selectedTravel.title || selectedTravel.travelNumber || '差旅'} - ${expenseItem?.itemName || budget.expenseItemId}`,
+              description: `${formData.description || ''} ${budget.route === 'outbound' ? '去程' : budget.route === 'inbound' ? '返程' : '多程'}`.trim(),
+              category: mapExpenseItemCategoryToExpenseCategory(expenseItem?.category || 'other'),
+              amount: totalAmount,
+              currency: selectedTravel.currency || formData.currency || 'USD',
+              date: selectedTravel.endDate || formData.date?.toISOString() || new Date().toISOString(),
+              status: status,
+              vendor: vendor,
+              relatedInvoices: itemInvoices.map(inv => inv._id),
+              costCenter: formData.costCenter || '',
+              isBillable: formData.isBillable || false,
+              client: formData.client || '',
+              tags: formData.tags || [],
+              notes: formData.notes || '',
+              receipts: (formData.receipts || []).map(receipt => ({
+                filename: receipt.filename || receipt.originalName,
+                originalName: receipt.originalName || receipt.filename,
+                path: receipt.path || '',
+                size: receipt.size || 0,
+                mimeType: receipt.mimeType || receipt.type || '',
+                uploadedAt: receipt.uploadedAt || new Date().toISOString()
+              })).filter(receipt => receipt.filename)
+            };
+            
+            if (formData.project && formData.project.trim() !== '') {
+              expenseData.project = formData.project;
+            }
+            
+            expensesToCreate.push(expenseData);
+          }
+        }
+        
+        if (expensesToCreate.length > 0) {
+          // 批量创建费用申请
+          const createdExpenses = [];
+          for (const expenseData of expensesToCreate) {
+            try {
+              const response = await apiClient.post('/expenses', expenseData);
+              if (response.data && response.data.success) {
+                createdExpenses.push(response.data.data);
+                
+                // 关联发票
+                if (expenseData.relatedInvoices && expenseData.relatedInvoices.length > 0) {
+                  for (const invoiceId of expenseData.relatedInvoices) {
+                    try {
+                      await apiClient.post(`/expenses/${response.data.data._id}/link-invoice`, {
+                        invoiceId: invoiceId
+                      });
+                    } catch (err) {
+                      console.error('Failed to link invoice:', err);
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Failed to create expense:', error);
+            }
+          }
+          
+          if (createdExpenses.length > 0) {
+            showNotification(
+              `成功创建 ${createdExpenses.length} 个费用申请`,
+              'success'
+            );
+            navigate('/expenses');
+            return;
+          }
+        } else {
+          showNotification('请至少为一个费用项添加发票', 'warning');
+          return;
+        }
+      }
+      
+      // 原有的保存逻辑（编辑模式或没有选择差旅单）
       const submitData = {
-        ...formData,
-        status,
-        amount: parseFloat(formData.amount)
+        title: formData.title || '',
+        description: formData.description || '',
+        category: formData.category,
+        subcategory: formData.subcategory || '',
+        amount: parseFloat(formData.amount) || 0,
+        currency: formData.currency || 'USD',
+        date: formData.date ? (formData.date.toISOString ? formData.date.toISOString() : new Date(formData.date).toISOString()) : new Date().toISOString(),
+        status: status,
+        vendor: {
+          name: formData.vendor?.name || '',
+          address: formData.vendor?.address || '',
+          taxId: formData.vendor?.taxId || ''
+        },
+        // 如果关联了差旅单，添加travel字段
+        ...(selectedTravel && { travel: selectedTravel._id }),
+        costCenter: formData.costCenter || '',
+        isBillable: formData.isBillable || false,
+        client: formData.client || '',
+        tags: formData.tags || [],
+        notes: formData.notes || '',
+        receipts: (formData.receipts || []).map(receipt => ({
+          filename: receipt.filename || receipt.originalName,
+          originalName: receipt.originalName || receipt.filename,
+          path: receipt.path || '',
+          size: receipt.size || 0,
+          mimeType: receipt.mimeType || receipt.type || '',
+          uploadedAt: receipt.uploadedAt || new Date().toISOString()
+        })).filter(receipt => receipt.filename)
       };
 
-      // Mock API call - replace with actual implementation
-      console.log('Saving expense:', submitData);
+      if (formData.project && formData.project.trim() !== '') {
+        submitData.project = formData.project;
+      }
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 如果关联了差旅单，添加travel字段（新建和编辑模式都支持）
+      if (selectedTravel) {
+        submitData.travel = selectedTravel._id;
+      }
+      
+      // 编辑模式下，如果关联了费用项和发票，更新发票关联
+      if (isEdit && selectedTravel) {
+        // 获取当前费用申请关联的费用项
+        const expenseResponse = await apiClient.get(`/expenses/${id}`);
+        if (expenseResponse.data?.data?.expenseItem) {
+          const expenseItemId = expenseResponse.data.data.expenseItem._id || expenseResponse.data.data.expenseItem;
+          const invoicesForItem = expenseItemInvoices[expenseItemId] || [];
+          
+          // 更新发票关联
+          const currentInvoiceIds = new Set((expenseResponse.data.data.relatedInvoices || []).map(inv => inv._id || inv));
+          const newInvoiceIds = new Set(invoicesForItem.map(inv => inv._id || inv));
+          
+          // 添加新关联的发票
+          for (const invoice of invoicesForItem) {
+            const invoiceId = invoice._id || invoice;
+            if (!currentInvoiceIds.has(invoiceId)) {
+              try {
+                await apiClient.post(`/expenses/${id}/link-invoice`, { invoiceId });
+              } catch (err) {
+                console.error('Failed to link invoice:', err);
+              }
+            }
+          }
+          
+          // 移除取消关联的发票
+          for (const invoiceId of currentInvoiceIds) {
+            if (!newInvoiceIds.has(invoiceId)) {
+              try {
+                await apiClient.delete(`/expenses/${id}/unlink-invoice/${invoiceId}`);
+              } catch (err) {
+                console.error('Failed to unlink invoice:', err);
+              }
+            }
+          }
+        }
+      }
 
-      showNotification(
-        status === 'draft' ? 'Expense saved as draft' : 'Expense submitted successfully',
-        'success'
-      );
-      
-      navigate('/expenses');
+      let response;
+      if (isEdit) {
+        response = await apiClient.put(`/expenses/${id}`, submitData);
+      } else {
+        response = await apiClient.post('/expenses', submitData);
+      }
+
+      if (response.data && response.data.success) {
+        showNotification(
+          status === 'draft' 
+            ? (t('expense.saved') || '费用申请已保存为草稿')
+            : (t('expense.submitted') || '费用申请已提交'),
+          'success'
+        );
+        navigate('/expenses');
+      }
     } catch (error) {
-      showNotification('Failed to save expense', 'error');
+      console.error('Failed to save expense:', error);
+      console.error('Error details:', error.response?.data);
+      showNotification(
+        error.response?.data?.message || error.message || (t('expense.saveError') || '保存费用申请失败'),
+        'error'
+      );
     } finally {
       setSaving(false);
     }
   };
 
+  // 费用项分类到费用分类的映射
+  const mapExpenseItemCategoryToExpenseCategory = (expenseItemCategory) => {
+    const mapping = {
+      'transport': 'transportation',
+      'transportation': 'transportation',
+      'accommodation': 'accommodation',
+      'meal': 'meals',
+      'meals': 'meals',
+      'entertainment': 'entertainment',
+      'communication': 'communication',
+      'office_supplies': 'office_supplies',
+      'training': 'training',
+      'other': 'other',
+      'allowance': 'other',
+      'general': 'other'
+    };
+    return mapping[expenseItemCategory] || 'other';
+  };
+
   const handleSubmit = () => handleSave('submitted');
 
-  if (loading) {
+  if (loading || generatingExpenses) {
     return (
       <Container maxWidth="xl">
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4, gap: 2 }}>
           <CircularProgress />
+          {generatingExpenses && (
+            <Typography variant="body2" color="text.secondary">
+              {t('expense.generatingExpenses') || '正在自动匹配发票并生成费用申请...'}
+            </Typography>
+          )}
         </Box>
       </Container>
     );
@@ -350,6 +1024,408 @@ const ExpenseForm = () => {
 
         <Paper sx={{ p: 3 }}>
           <Grid container spacing={3}>
+            {/* 差旅单选择（新建时显示选择器，编辑时显示已关联的差旅信息） */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                {isEdit && selectedTravel 
+                  ? (t('expense.relatedTravel') || '关联差旅单')
+                  : (t('expense.selectTravel') || '选择差旅单')}
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+            </Grid>
+            {!isEdit && (
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  options={travelOptions}
+                  getOptionLabel={(option) => 
+                    `${option.travelNumber || ''} - ${option.title || ''} (${option.employee?.firstName || ''} ${option.employee?.lastName || ''})`
+                  }
+                  isOptionEqualToValue={(option, value) => {
+                    // 使用 _id 进行比较，因为对象结构可能不完全一致
+                    return option?._id === value?._id;
+                  }}
+                  loading={travelLoading}
+                  value={selectedTravel}
+                  onChange={(event, newValue) => {
+                    setSelectedTravel(newValue);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label={t('expense.travelNumber') || '差旅单号'}
+                      placeholder={t('expense.searchTravelNumber') || '搜索差旅单号...'}
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {travelLoading ? <CircularProgress size={20} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+            )}
+            {isEdit && selectedTravel && (
+              <Grid item xs={12}>
+                <Alert severity="info">
+                  {t('expense.relatedTravelInfo') || '此费用申请关联了差旅单'}：{selectedTravel.travelNumber || selectedTravel._id}
+                </Alert>
+              </Grid>
+            )}
+
+            {/* 差旅基本信息显示 */}
+            {selectedTravel && (
+              <>
+                <Grid item xs={12}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        {t('expense.travelInfo') || '差旅基本信息'}
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                          <Table size="small">
+                            <TableBody>
+                              <TableRow>
+                                <TableCell><strong>{t('travel.travelNumber') || '差旅单号'}</strong></TableCell>
+                                <TableCell>{selectedTravel.travelNumber || '-'}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell><strong>{t('travel.employee') || '申请人'}</strong></TableCell>
+                                <TableCell>
+                                  {selectedTravel.employee?.firstName || ''} {selectedTravel.employee?.lastName || ''}
+                                </TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell><strong>{t('travel.startDate') || '开始日期'}</strong></TableCell>
+                                <TableCell>
+                                  {selectedTravel.startDate ? dayjs(selectedTravel.startDate).format('YYYY-MM-DD') : '-'}
+                                </TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell><strong>{t('travel.endDate') || '结束日期'}</strong></TableCell>
+                                <TableCell>
+                                  {selectedTravel.endDate ? dayjs(selectedTravel.endDate).format('YYYY-MM-DD') : '-'}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Table size="small">
+                            <TableBody>
+                              <TableRow>
+                                <TableCell><strong>{t('travel.destination') || '目的地'}</strong></TableCell>
+                                <TableCell>
+                                  {typeof selectedTravel.destination === 'object' 
+                                    ? selectedTravel.destination?.name || selectedTravel.destinationAddress || '-'
+                                    : selectedTravel.destination || selectedTravel.destinationAddress || '-'}
+                                </TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell><strong>{t('travel.purpose') || '出差目的'}</strong></TableCell>
+                                <TableCell>{selectedTravel.purpose || selectedTravel.tripDescription || '-'}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell><strong>{t('travel.currency') || '币种'}</strong></TableCell>
+                                <TableCell>{selectedTravel.currency || 'USD'}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell><strong>{t('travel.status') || '状态'}</strong></TableCell>
+                                <TableCell>
+                                  <Chip 
+                                    label={selectedTravel.status || 'draft'} 
+                                    size="small"
+                                    color={selectedTravel.status === 'completed' ? 'success' : 'default'}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* 行程信息显示 */}
+                <Grid item xs={12}>
+                  <Accordion>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="h6">
+                        {t('expense.travelRoutes') || '行程信息'}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Grid container spacing={2}>
+                        {/* 去程 */}
+                        {selectedTravel.outbound && (
+                          <Grid item xs={12} md={6}>
+                            <Card variant="outlined">
+                              <CardContent>
+                                <Typography variant="subtitle1" gutterBottom>
+                                  {t('travel.outbound') || '去程'}
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                  {selectedTravel.outbound.transportation === 'flight' && <FlightIcon />}
+                                  {selectedTravel.outbound.transportation === 'train' && <TrainIcon />}
+                                  {selectedTravel.outbound.transportation === 'car' && <CarIcon />}
+                                  {selectedTravel.outbound.transportation === 'bus' && <BusIcon />}
+                                  <Typography variant="body2">
+                                    {selectedTravel.outbound.date ? dayjs(selectedTravel.outbound.date).format('YYYY-MM-DD') : '-'}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {typeof selectedTravel.outbound.departure === 'object' 
+                                    ? selectedTravel.outbound.departure?.name || '-'
+                                    : selectedTravel.outbound.departure || '-'}
+                                  {' → '}
+                                  {typeof selectedTravel.outbound.destination === 'object'
+                                    ? selectedTravel.outbound.destination?.name || '-'
+                                    : selectedTravel.outbound.destination || '-'}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        )}
+
+                        {/* 返程 */}
+                        {selectedTravel.inbound && (
+                          <Grid item xs={12} md={6}>
+                            <Card variant="outlined">
+                              <CardContent>
+                                <Typography variant="subtitle1" gutterBottom>
+                                  {t('travel.inbound') || '返程'}
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                  {selectedTravel.inbound.transportation === 'flight' && <FlightIcon />}
+                                  {selectedTravel.inbound.transportation === 'train' && <TrainIcon />}
+                                  {selectedTravel.inbound.transportation === 'car' && <CarIcon />}
+                                  {selectedTravel.inbound.transportation === 'bus' && <BusIcon />}
+                                  <Typography variant="body2">
+                                    {selectedTravel.inbound.date ? dayjs(selectedTravel.inbound.date).format('YYYY-MM-DD') : '-'}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {typeof selectedTravel.inbound.departure === 'object'
+                                    ? selectedTravel.inbound.departure?.name || '-'
+                                    : selectedTravel.inbound.departure || '-'}
+                                  {' → '}
+                                  {typeof selectedTravel.inbound.destination === 'object'
+                                    ? selectedTravel.inbound.destination?.name || '-'
+                                    : selectedTravel.inbound.destination || '-'}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        )}
+
+                        {/* 多程行程 */}
+                        {selectedTravel.multiCityRoutes && selectedTravel.multiCityRoutes.length > 0 && (
+                          <Grid item xs={12}>
+                            <Typography variant="subtitle1" gutterBottom>
+                              {t('travel.multiCityRoutes') || '多程行程'}
+                            </Typography>
+                            {selectedTravel.multiCityRoutes.map((route, index) => (
+                              <Card key={`multiCity-${index}-${route.date || index}`} variant="outlined" sx={{ mb: 1 }}>
+                                <CardContent>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                    {route.transportation === 'flight' && <FlightIcon />}
+                                    {route.transportation === 'train' && <TrainIcon />}
+                                    {route.transportation === 'car' && <CarIcon />}
+                                    {route.transportation === 'bus' && <BusIcon />}
+                                    <Typography variant="body2">
+                                      {route.date ? dayjs(route.date).format('YYYY-MM-DD') : '-'}
+                                    </Typography>
+                                  </Box>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {typeof route.departure === 'object'
+                                      ? route.departure?.name || '-'
+                                      : route.departure || '-'}
+                                    {' → '}
+                                    {typeof route.destination === 'object'
+                                      ? route.destination?.name || '-'
+                                      : route.destination || '-'}
+                                  </Typography>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </Grid>
+                        )}
+                      </Grid>
+                    </AccordionDetails>
+                  </Accordion>
+                </Grid>
+
+                {/* 费用项发票管理（新建和编辑模式都显示，如果关联了差旅单） */}
+                {selectedTravel && extractExpenseBudgets(selectedTravel).length > 0 && (
+                  <Grid item xs={12}>
+                    <Typography variant="h6" gutterBottom>
+                      {t('expense.expenseItemsInvoices') || '费用项发票管理'}
+                    </Typography>
+                    <Divider sx={{ mb: 2 }} />
+                    {mergeExpenseBudgetsByItem(extractExpenseBudgets(selectedTravel)).map((mergedBudget) => {
+                      const expenseItem = expenseItems.find(item => item._id === mergedBudget.expenseItemId);
+                      const itemInvoices = expenseItemInvoices[mergedBudget.expenseItemId] || [];
+                      
+                      // 格式化行程标签
+                      const routeLabels = mergedBudget.routes.map(route => {
+                        if (route === 'outbound') return t('travel.outbound') || '去程';
+                        if (route === 'inbound') return t('travel.inbound') || '返程';
+                        if (route.startsWith('multiCity-')) {
+                          const index = parseInt(route.replace('multiCity-', ''));
+                          return `${t('travel.multiCity') || '多程'}${index + 1}`;
+                        }
+                        return route;
+                      }).join('、');
+                      
+                      return (
+                        <Accordion key={mergedBudget.expenseItemId} sx={{ mb: 2 }}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pr: 2 }}>
+                              <Box>
+                                <Typography variant="subtitle1">
+                                  {expenseItem?.itemName || mergedBudget.expenseItemId}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {t('expense.routes') || '行程'}：{routeLabels}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Chip 
+                                  label={`${selectedTravel.currency} ${mergedBudget.totalAmount?.toLocaleString() || 0}`}
+                                  size="small"
+                                  variant="outlined"
+                                  color="info"
+                                />
+                                <Chip 
+                                  label={`${itemInvoices.length} ${t('common.sheet') || '张'}发票`}
+                                  size="small"
+                                  color={itemInvoices.length > 0 ? 'primary' : 'default'}
+                                />
+                              </Box>
+                            </Box>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Box sx={{ mb: 2 }}>
+                              <Grid container spacing={2}>
+                                <Grid item xs={12} md={6}>
+                                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                                    {t('expense.totalBudgetAmount') || '总预算金额'}：{selectedTravel.currency} {mergedBudget.totalAmount?.toLocaleString() || 0}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                                    {t('expense.applicableRoutes') || '适用行程'}：{routeLabels}
+                                  </Typography>
+                                </Grid>
+                                <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                  <Button
+                                    startIcon={<AddIcon />}
+                                    onClick={() => setExpenseItemInvoiceDialogs(prev => ({
+                                      ...prev,
+                                      [mergedBudget.expenseItemId]: true
+                                    }))}
+                                    variant="outlined"
+                                    size="small"
+                                  >
+                                    {t('expense.addInvoices') || '添加发票'}
+                                  </Button>
+                                </Grid>
+                              </Grid>
+                            </Box>
+                            
+                            {/* 显示各行程的预算明细 */}
+                            <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                              <Typography variant="caption" color="text.secondary" gutterBottom>
+                                {t('expense.budgetDetails') || '预算明细'}：
+                              </Typography>
+                              {mergedBudget.budgets.map((budget) => {
+                                const routeLabel = budget.route === 'outbound' ? t('travel.outbound') || '去程' :
+                                                 budget.route === 'inbound' ? t('travel.inbound') || '返程' :
+                                                 budget.route.startsWith('multiCity-') ? 
+                                                 `${t('travel.multiCity') || '多程'}${parseInt(budget.route.replace('multiCity-', '')) + 1}` :
+                                                 budget.route;
+                                return (
+                                  <Typography key={`${mergedBudget.expenseItemId}-${budget.route}`} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    {routeLabel}：{selectedTravel.currency} {budget.amount?.toLocaleString() || 0}
+                                  </Typography>
+                                );
+                              })}
+                            </Box>
+                            
+                            {itemInvoices.length > 0 ? (
+                              <List>
+                                {itemInvoices.map((invoice) => (
+                                  <ListItem key={invoice._id} divider>
+                                    <ListItemIcon>
+                                      <Avatar sx={{ bgcolor: 'primary.main' }}>
+                                        <ReceiptIcon />
+                                      </Avatar>
+                                    </ListItemIcon>
+                                    <ListItemText
+                                      primaryTypographyProps={{ component: 'div' }}
+                                      secondaryTypographyProps={{ component: 'div' }}
+                                      primary={
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <Typography variant="body2" fontWeight={600}>
+                                            {invoice.invoiceNumber || t('invoice.noNumber') || '无发票号'}
+                                          </Typography>
+                                          <Chip
+                                            label={invoice.vendor?.name || '-'}
+                                            size="small"
+                                            variant="outlined"
+                                          />
+                                        </Box>
+                                      }
+                                      secondary={
+                                        <Box sx={{ mt: 0.5 }}>
+                                          <Typography variant="caption" color="text.secondary" sx={{ mr: 2 }}>
+                                            {invoice.currency} {invoice.totalAmount?.toLocaleString() || invoice.amount?.toLocaleString() || 0}
+                                          </Typography>
+                                          <Typography variant="caption" color="text.secondary">
+                                            {invoice.invoiceDate ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD') : '-'}
+                                          </Typography>
+                                        </Box>
+                                      }
+                                    />
+                                    <IconButton
+                                      onClick={() => handleRemoveInvoiceFromExpenseItem(mergedBudget.expenseItemId, invoice._id)}
+                                      color="error"
+                                      size="small"
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </ListItem>
+                                ))}
+                              </List>
+                            ) : (
+                              <Box sx={{ py: 2, textAlign: 'center', color: 'text.secondary' }}>
+                                <Typography variant="body2">
+                                  {t('expense.noInvoicesForExpenseItem') || '暂无发票'}
+                                </Typography>
+                              </Box>
+                            )}
+                            {/* 费用项发票选择对话框 */}
+                            <InvoiceSelectDialog
+                              open={expenseItemInvoiceDialogs[mergedBudget.expenseItemId] || false}
+                              onClose={() => setExpenseItemInvoiceDialogs(prev => ({
+                                ...prev,
+                                [mergedBudget.expenseItemId]: false
+                              }))}
+                              onConfirm={(selectedInvoices) => handleAddInvoicesForExpenseItem(mergedBudget.expenseItemId, selectedInvoices)}
+                              excludeInvoiceIds={itemInvoices.map(inv => inv._id)}
+                            />
+                          </AccordionDetails>
+                        </Accordion>
+                      );
+                    })}
+                  </Grid>
+                )}
+              </>
+            )}
+
             {/* Basic Information */}
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
@@ -612,6 +1688,91 @@ const ExpenseForm = () => {
               />
             </Grid>
 
+            {/* Related Invoices - 仅在编辑模式且没有关联差旅单时显示 */}
+            {isEdit && !selectedTravel && (
+              <>
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                    <Typography variant="h6">
+                      {t('expense.relatedInvoices') || '关联发票'}
+                    </Typography>
+                    <Button
+                      startIcon={<AddIcon />}
+                      onClick={() => setInvoiceSelectDialogOpen(true)}
+                      variant="outlined"
+                      size="small"
+                    >
+                      {t('expense.addInvoices') || '从发票夹添加发票'}
+                    </Button>
+                  </Box>
+                  <Divider sx={{ mb: 2 }} />
+                </Grid>
+
+                {invoicesLoading ? (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                      <CircularProgress size={24} />
+                    </Box>
+                  </Grid>
+                ) : relatedInvoices.length > 0 ? (
+                  <Grid item xs={12}>
+                    <List>
+                      {relatedInvoices.map((invoice) => (
+                        <ListItem key={invoice._id} divider>
+                          <ListItemIcon>
+                            <Avatar sx={{ bgcolor: 'primary.main' }}>
+                              <ReceiptIcon />
+                            </Avatar>
+                          </ListItemIcon>
+                          <ListItemText
+                            primaryTypographyProps={{ component: 'div' }}
+                            secondaryTypographyProps={{ component: 'div' }}
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="body2" fontWeight={600}>
+                                  {invoice.invoiceNumber || t('invoice.noNumber') || '无发票号'}
+                                </Typography>
+                                <Chip
+                                  label={invoice.vendor?.name || '-'}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              </Box>
+                            }
+                            secondary={
+                              <Box sx={{ mt: 0.5 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ mr: 2 }}>
+                                  {invoice.currency} {invoice.totalAmount?.toLocaleString() || invoice.amount?.toLocaleString() || 0}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {invoice.invoiceDate ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD') : '-'}
+                                </Typography>
+                              </Box>
+                            }
+                          />
+                          <IconButton
+                            onClick={() => handleRemoveInvoice(invoice._id)}
+                            color="error"
+                            size="small"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Grid>
+                ) : (
+                  <Grid item xs={12}>
+                    <Box sx={{ py: 2, textAlign: 'center', color: 'text.secondary' }}>
+                      <Typography variant="body2">
+                        {t('expense.noRelatedInvoices') || '暂无关联发票'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+              </>
+            )}
+
             {/* Receipts */}
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
@@ -741,6 +1902,24 @@ const ExpenseForm = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Invoice Select Dialog */}
+        {isEdit && (
+          <InvoiceSelectDialog
+            open={invoiceSelectDialogOpen}
+            onClose={() => setInvoiceSelectDialogOpen(false)}
+            onConfirm={handleAddInvoices}
+            excludeInvoiceIds={relatedInvoices.map(inv => inv._id)}
+          />
+        )}
+
+        {/* Expense Select Dialog - 当有多个自动生成的费用申请时显示 */}
+        <ExpenseSelectDialog
+          open={expenseSelectDialogOpen}
+          onClose={() => setExpenseSelectDialogOpen(false)}
+          expenses={generatedExpenses}
+          onSelect={handleSelectExpense}
+        />
       </Box>
     </Container>
   );

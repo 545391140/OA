@@ -60,20 +60,21 @@ echo "旧服务已停止"
 ENDSSH
 echo -e "${GREEN}✅ 旧服务已停止${NC}"
 
-# 3. 准备本地文件（确保前端已构建）
+# 3. 准备本地文件（强制重新构建最新版本）
 echo ""
-echo -e "${YELLOW}[步骤 3/6] 检查本地构建...${NC}"
+echo -e "${YELLOW}[步骤 3/6] 构建本地最新版本...${NC}"
 cd /Users/liuzhijian/Documents/Code/OA
 
-# 检查前端是否已构建
-if [ ! -d "frontend/build" ] || [ ! -f "frontend/build/index.html" ]; then
-    echo "   前端未构建，开始构建..."
-    cd frontend
-    npm run build
-    cd ..
+# 强制重新构建前端（确保使用最新代码）
+echo "   正在构建前端最新版本..."
+cd frontend
+npm run build
+cd ..
+if [ -d "frontend/build" ] && [ -f "frontend/build/index.html" ]; then
     echo -e "${GREEN}✅ 前端构建完成${NC}"
 else
-    echo -e "${GREEN}✅ 前端已构建${NC}"
+    echo -e "${RED}❌ 前端构建失败${NC}"
+    exit 1
 fi
 
 # 4. 使用rsync增量同步文件到服务器（只上传修改的文件）

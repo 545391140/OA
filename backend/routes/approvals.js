@@ -21,6 +21,15 @@ router.get('/', protect, async (req, res) => {
       .populate('employee', 'firstName lastName email')
       .populate('approvals.approver', 'firstName lastName email');
 
+    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    pendingTravels.forEach(travel => {
+      if (travel.approvals && Array.isArray(travel.approvals)) {
+        travel.approvals = travel.approvals.filter(
+          approval => approval.approver !== null && approval.approver !== undefined
+        );
+      }
+    });
+
     // Get expenses pending approval
     const pendingExpenses = await Expense.find({
       'approvals.approver': req.user.id,
@@ -28,6 +37,9 @@ router.get('/', protect, async (req, res) => {
     })
       .populate('employee', 'firstName lastName email')
       .populate('travel', 'title destination');
+
+    // 注意：如果 travel 关联的差旅被删除，populate 会将 travel 设置为 null
+    // 这是正常行为，前端需要处理 null 值
 
     res.json({
       success: true,
@@ -311,6 +323,15 @@ router.get('/history', protect, async (req, res) => {
       .limit(50)
       .lean();
 
+    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    travelHistory.forEach(travel => {
+      if (travel.approvals && Array.isArray(travel.approvals)) {
+        travel.approvals = travel.approvals.filter(
+          approval => approval.approver !== null && approval.approver !== undefined
+        );
+      }
+    });
+
     // Get expense approvals history
     const expenseHistory = await Expense.find({
       'approvals.approver': { $in: [approverId, approverIdString] },
@@ -323,6 +344,17 @@ router.get('/history', protect, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
+
+    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    expenseHistory.forEach(expense => {
+      if (expense.approvals && Array.isArray(expense.approvals)) {
+        expense.approvals = expense.approvals.filter(
+          approval => approval.approver !== null && approval.approver !== undefined
+        );
+      }
+      // 注意：如果 travel 关联的差旅被删除，populate 会将 travel 设置为 null
+      // 这是正常行为，前端需要处理 null 值
+    });
 
     console.log('=== Approval History API ===');
     console.log('Approver ID:', approverId);

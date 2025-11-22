@@ -7,7 +7,9 @@ const NotificationContext = createContext();
 const notificationReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_NOTIFICATION':
-      return [...state, { ...action.payload, id: Date.now() }];
+      // 使用时间戳 + 随机数确保唯一性
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      return [...state, { ...action.payload, id: uniqueId }];
     case 'REMOVE_NOTIFICATION':
       return state.filter(notification => notification.id !== action.payload);
     case 'CLEAR_ALL':

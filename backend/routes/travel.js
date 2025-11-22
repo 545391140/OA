@@ -84,6 +84,15 @@ router.get('/', protect, async (req, res) => {
       .limit(limit)
       .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
 
+    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    travels.forEach(travel => {
+      if (travel.approvals && Array.isArray(travel.approvals)) {
+        travel.approvals = travel.approvals.filter(
+          approval => approval.approver !== null && approval.approver !== undefined
+        );
+      }
+    });
+
     console.log(`[TRAVEL_LIST] User ${req.user.id} (role: ${req.user.role}) fetched ${travels.length} travels (page: ${page}, limit: ${limit}, total: ${total})`);
 
     res.json({
@@ -127,6 +136,13 @@ router.get('/:id', protect, async (req, res) => {
         success: false,
         message: 'Travel request not found'
       });
+    }
+
+    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    if (travel.approvals && Array.isArray(travel.approvals)) {
+      travel.approvals = travel.approvals.filter(
+        approval => approval.approver !== null && approval.approver !== undefined
+      );
     }
 
     // 权限检查：只能查看自己的申请或管理员
@@ -902,6 +918,120 @@ router.post('/:id/submit', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
+    });
+  }
+});
+
+// @desc    Generate expenses for travel
+// @route   POST /api/travel/:id/generate-expenses
+// @access  Private
+router.post('/:id/generate-expenses', protect, async (req, res) => {
+  try {
+    const travel = await Travel.findById(req.params.id)
+      .populate('employee', 'firstName lastName email');
+    
+    if (!travel) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel not found'
+      });
+    }
+    
+    // 权限检查：只能为自己的差旅生成费用申请
+    const employeeId = travel.employee._id ? travel.employee._id.toString() : travel.employee.toString();
+    const userId = req.user.id.toString();
+    
+    if (employeeId !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized'
+      });
+    }
+    
+    // 检查是否已经生成过
+    if (travel.expenseGenerationStatus === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Expenses already generated',
+        data: {
+          expenses: travel.relatedExpenses
+        }
+      });
+    }
+    
+    // 检查是否正在生成中
+    if (travel.expenseGenerationStatus === 'generating') {
+      return res.status(400).json({
+        success: false,
+        message: 'Expense generation in progress'
+      });
+    }
+    
+    // 执行自动生成
+    const expenseMatchService = require('../services/expenseMatchService');
+    const result = await expenseMatchService.autoGenerateExpenses(travel);
+    
+    res.json({
+      success: true,
+      message: `Successfully generated ${result.generatedCount} expense(s)`,
+      data: result
+    });
+    
+  } catch (error) {
+    console.error('Generate expenses error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to generate expenses'
+    });
+  }
+});
+
+// @desc    Get travel expenses
+// @route   GET /api/travel/:id/expenses
+// @access  Private
+router.get('/:id/expenses', protect, async (req, res) => {
+  try {
+    const travel = await Travel.findById(req.params.id)
+      .populate('employee', 'firstName lastName email');
+    
+    if (!travel) {
+      return res.status(404).json({
+        success: false,
+        message: 'Travel not found'
+      });
+    }
+    
+    // 权限检查
+    const employeeId = travel.employee._id ? travel.employee._id.toString() : travel.employee.toString();
+    const userId = req.user.id.toString();
+    
+    if (employeeId !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized'
+      });
+    }
+    
+    // 获取费用申请的详细信息
+    const Expense = require('../models/Expense');
+    const expenses = await Expense.find({
+      _id: { $in: travel.relatedExpenses || [] }
+    })
+      .populate('expenseItem', 'itemName category')
+      .populate('relatedInvoices', 'invoiceNumber invoiceDate amount vendor category')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      count: expenses.length,
+      data: expenses
+    });
+    
+  } catch (error) {
+    console.error('Get travel expenses error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get expenses'
     });
   }
 });

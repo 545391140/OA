@@ -12,6 +12,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   Chip,
   IconButton,
   Menu,
@@ -46,6 +47,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
 const ExpenseList = () => {
@@ -62,27 +64,30 @@ const ExpenseList = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [total, setTotal] = useState(0);
 
   const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'draft', label: 'Draft' },
-    { value: 'submitted', label: 'Submitted' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'cancelled', label: 'Cancelled' }
+    { value: 'all', label: t('expense.statuses.all') || 'All Status' },
+    { value: 'draft', label: t('expense.statuses.draft') || 'Draft' },
+    { value: 'submitted', label: t('expense.statuses.submitted') || 'Submitted' },
+    { value: 'approved', label: t('expense.statuses.approved') || 'Approved' },
+    { value: 'rejected', label: t('expense.statuses.rejected') || 'Rejected' },
+    { value: 'paid', label: t('expense.statuses.paid') || 'Paid' },
+    { value: 'cancelled', label: t('expense.statuses.cancelled') || 'Cancelled' }
   ];
 
   const categoryOptions = [
-    { value: 'all', label: 'All Categories' },
-    { value: 'transportation', label: 'Transportation' },
-    { value: 'accommodation', label: 'Accommodation' },
-    { value: 'meals', label: 'Meals' },
-    { value: 'entertainment', label: 'Entertainment' },
-    { value: 'communication', label: 'Communication' },
-    { value: 'office_supplies', label: 'Office Supplies' },
-    { value: 'training', label: 'Training' },
-    { value: 'other', label: 'Other' }
+    { value: 'all', label: t('expense.categories.all') || 'All Categories' },
+    { value: 'transportation', label: t('expense.categories.transportation') || 'Transportation' },
+    { value: 'accommodation', label: t('expense.categories.accommodation') || 'Accommodation' },
+    { value: 'meals', label: t('expense.categories.meals') || 'Meals' },
+    { value: 'entertainment', label: t('expense.categories.entertainment') || 'Entertainment' },
+    { value: 'communication', label: t('expense.categories.communication') || 'Communication' },
+    { value: 'office_supplies', label: t('expense.categories.officeSupplies') || 'Office Supplies' },
+    { value: 'training', label: t('expense.categories.training') || 'Training' },
+    { value: 'other', label: t('expense.categories.other') || 'Other' }
   ];
 
   const getStatusColor = (status) => {
@@ -113,104 +118,47 @@ const ExpenseList = () => {
 
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [page, rowsPerPage, statusFilter, categoryFilter]);
+
+  // 搜索防抖
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (page === 0) {
+        fetchExpenses();
+      } else {
+        setPage(0);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const fetchExpenses = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockData = [
-        {
-          id: 1,
-          title: 'Business Lunch with Client',
-          description: 'Lunch meeting with key client to discuss project requirements',
-          category: 'meals',
-          subcategory: 'Business Meal',
-          amount: 85.50,
-          currency: 'USD',
-          date: '2024-01-15',
-          status: 'approved',
-          vendor: {
-            name: 'Restaurant ABC',
-            address: '123 Main St, City, State'
-          },
-          project: 'Client A Engagement',
-          costCenter: 'Sales',
-          isBillable: true,
-          client: 'Client A',
-          tags: ['client-related', 'meeting'],
-          createdAt: '2024-01-15T14:30:00Z',
-          employee: {
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@company.com'
-          },
-          receipts: [
-            {
-              filename: 'receipt_001.jpg',
-              originalName: 'Restaurant Receipt.jpg',
-              size: 1024000
-            }
-          ]
-        },
-        {
-          id: 2,
-          title: 'Flight to Tokyo',
-          description: 'Business class flight for client meeting',
-          category: 'transportation',
-          subcategory: 'Flight',
-          amount: 1200.00,
-          currency: 'USD',
-          date: '2024-01-20',
-          status: 'submitted',
-          vendor: {
-            name: 'Japan Airlines',
-            address: 'Tokyo, Japan'
-          },
-          project: 'Client B Engagement',
-          costCenter: 'Sales',
-          isBillable: true,
-          client: 'Client B',
-          tags: ['travel', 'client-related'],
-          createdAt: '2024-01-20T09:15:00Z',
-          employee: {
-            firstName: 'Jane',
-            lastName: 'Smith',
-            email: 'jane.smith@company.com'
-          },
-          receipts: []
-        },
-        {
-          id: 3,
-          title: 'Office Supplies',
-          description: 'Stationery and office materials',
-          category: 'office_supplies',
-          subcategory: 'Stationery',
-          amount: 45.75,
-          currency: 'USD',
-          date: '2024-01-25',
-          status: 'draft',
-          vendor: {
-            name: 'Office Depot',
-            address: '456 Business Ave, City, State'
-          },
-          project: 'Internal Development',
-          costCenter: 'Operations',
-          isBillable: false,
-          client: 'Internal',
-          tags: ['office', 'supplies'],
-          createdAt: '2024-01-25T16:45:00Z',
-          employee: {
-            firstName: 'Mike',
-            lastName: 'Johnson',
-            email: 'mike.johnson@company.com'
-          },
-          receipts: []
-        }
-      ];
-      setExpenses(mockData);
+      const params = {
+        page: page + 1,
+        limit: rowsPerPage,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        category: categoryFilter !== 'all' ? categoryFilter : undefined,
+        search: searchTerm || undefined
+      };
+
+      const response = await apiClient.get('/expenses', { params });
+      
+      if (response.data && response.data.success) {
+        setExpenses(response.data.data || []);
+        setTotal(response.data.count || 0);
+      } else {
+        throw new Error('Failed to load expenses');
+      }
     } catch (error) {
-      showNotification('Failed to load expenses', 'error');
+      console.error('Failed to load expenses:', error);
+      showNotification(
+        error.response?.data?.message || t('expense.list.loadError') || '加载费用申请失败',
+        'error'
+      );
+      setExpenses([]);
     } finally {
       setLoading(false);
     }
@@ -227,43 +175,58 @@ const ExpenseList = () => {
   };
 
   const handleView = () => {
-    navigate(`/expenses/${selectedExpense.id}`);
+    if (!selectedExpense || !selectedExpense._id) {
+      return;
+    }
+    navigate(`/expenses/${selectedExpense._id}`);
     handleMenuClose();
   };
 
   const handleEdit = () => {
-    navigate(`/expenses/${selectedExpense.id}/edit`);
+    if (!selectedExpense || !selectedExpense._id) {
+      return;
+    }
+    navigate(`/expenses/${selectedExpense._id}/edit`);
     handleMenuClose();
   };
 
   const handleDelete = () => {
     setDeleteDialogOpen(true);
-    handleMenuClose();
+    // 不要在这里关闭菜单和清空 selectedExpense，因为删除对话框需要它
+    setAnchorEl(null); // 只关闭菜单
   };
 
   const confirmDelete = async () => {
+    // 添加空值检查
+    if (!selectedExpense || !selectedExpense._id) {
+      showNotification(
+        t('expense.deleteError') || '删除费用申请失败：未选择费用申请',
+        'error'
+      );
+      setDeleteDialogOpen(false);
+      setSelectedExpense(null);
+      return;
+    }
+
     try {
-      // Mock API call - replace with actual implementation
-      console.log('Deleting expense:', selectedExpense.id);
-      
-      setExpenses(prev => prev.filter(expense => expense.id !== selectedExpense.id));
-      showNotification('Expense deleted successfully', 'success');
+      await apiClient.delete(`/expenses/${selectedExpense._id}`);
+      showNotification(
+        t('expense.deleteSuccess') || '费用申请删除成功',
+        'success'
+      );
+      // 刷新列表
+      await fetchExpenses();
     } catch (error) {
-      showNotification('Failed to delete expense', 'error');
+      console.error('Failed to delete expense:', error);
+      showNotification(
+        error.response?.data?.message || t('expense.deleteError') || '删除费用申请失败',
+        'error'
+      );
     } finally {
       setDeleteDialogOpen(false);
       setSelectedExpense(null);
     }
   };
-
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expense.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expense.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || expense.status === statusFilter;
-    const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
 
   if (loading) {
     return (
@@ -288,7 +251,7 @@ const ExpenseList = () => {
             startIcon={<AddIcon />}
             onClick={() => navigate('/expenses/new')}
           >
-            New Expense
+            {t('expense.newExpense') || 'New Expense'}
           </Button>
         </Box>
 
@@ -316,7 +279,10 @@ const ExpenseList = () => {
                 <Select
                   value={statusFilter}
                   label={t('expense.status')}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(0);
+                  }}
                 >
                   {statusOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
@@ -332,7 +298,10 @@ const ExpenseList = () => {
                 <Select
                   value={categoryFilter}
                   label={t('expense.category')}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  onChange={(e) => {
+                    setCategoryFilter(e.target.value);
+                    setPage(0);
+                  }}
                 >
                   {categoryOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
@@ -350,10 +319,11 @@ const ExpenseList = () => {
                   setSearchTerm('');
                   setStatusFilter('all');
                   setCategoryFilter('all');
+                  setPage(0);
                 }}
                 fullWidth
               >
-                Clear
+                {t('common.reset') || 'Clear'}
               </Button>
             </Grid>
           </Grid>
@@ -364,19 +334,19 @@ const ExpenseList = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Expense</TableCell>
-                <TableCell>Category</TableCell>
-                <TableCell>Vendor</TableCell>
-                <TableCell>Amount</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Receipts</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>{t('expense.title') || 'Expense'}</TableCell>
+                <TableCell>{t('expense.category')}</TableCell>
+                <TableCell>{t('expense.vendor')}</TableCell>
+                <TableCell>{t('expense.amount')}</TableCell>
+                <TableCell>{t('expense.date')}</TableCell>
+                <TableCell>{t('expense.status')}</TableCell>
+                <TableCell>{t('expense.receipts') || 'Receipts'}</TableCell>
+                <TableCell>{t('common.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredExpenses.map((expense) => (
-                <TableRow key={expense.id} hover>
+              {expenses.map((expense) => (
+                <TableRow key={expense._id} hover>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
@@ -384,10 +354,10 @@ const ExpenseList = () => {
                       </Avatar>
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                          {expense.title}
+                          {expense.title || expense.expenseItem?.itemName || t('expense.untitled')}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {expense.description}
+                          {expense.description || '-'}
                         </Typography>
                         {expense.project && (
                           <Typography variant="caption" color="primary">
@@ -400,7 +370,7 @@ const ExpenseList = () => {
                   <TableCell>
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {expense.category.charAt(0).toUpperCase() + expense.category.slice(1)}
+                        {expense.category ? (expense.category.charAt(0).toUpperCase() + expense.category.slice(1)) : '-'}
                       </Typography>
                       {expense.subcategory && (
                         <Typography variant="caption" color="text.secondary">
@@ -414,9 +384,9 @@ const ExpenseList = () => {
                       <BusinessIcon color="action" fontSize="small" />
                       <Box>
                         <Typography variant="body2">
-                          {expense.vendor.name}
+                          {expense.vendor?.name || '-'}
                         </Typography>
-                        {expense.vendor.address && (
+                        {expense.vendor?.address && (
                           <Typography variant="caption" color="text.secondary">
                             {expense.vendor.address}
                           </Typography>
@@ -428,7 +398,7 @@ const ExpenseList = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <MoneyIcon color="action" fontSize="small" />
                       <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {expense.currency} {expense.amount.toLocaleString()}
+                        {expense.currency || 'USD'} {(expense.amount || 0).toLocaleString()}
                       </Typography>
                     </Box>
                     {expense.isBillable && (
@@ -439,13 +409,13 @@ const ExpenseList = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <CalendarIcon color="action" fontSize="small" />
                       <Typography variant="body2">
-                        {dayjs(expense.date).format('MMM DD, YYYY')}
+                        {expense.date ? dayjs(expense.date).format('MMM DD, YYYY') : '-'}
                       </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={expense.status}
+                      label={t(`expense.statuses.${expense.status}`) || expense.status}
                       color={getStatusColor(expense.status)}
                       size="small"
                     />
@@ -454,7 +424,7 @@ const ExpenseList = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <ReceiptIcon color="action" fontSize="small" />
                       <Typography variant="body2">
-                        {expense.receipts.length}
+                        {(expense.receipts?.length || 0) + (expense.relatedInvoices?.length || 0)}
                       </Typography>
                     </Box>
                   </TableCell>
@@ -472,15 +442,15 @@ const ExpenseList = () => {
           </Table>
         </TableContainer>
 
-        {filteredExpenses.length === 0 && (
+        {expenses.length === 0 && !loading && (
           <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
             <Typography variant="h6" color="text.secondary">
-              No expenses found
+              {t('expense.list.noExpenses') || 'No expenses found'}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
-                ? 'Try adjusting your search criteria'
-                : 'Create your first expense to get started'
+                ? (t('expense.list.tryAdjusting') || 'Try adjusting your search criteria')
+                : (t('expense.list.createFirst') || 'Create your first expense to get started')
               }
             </Typography>
             {!searchTerm && statusFilter === 'all' && categoryFilter === 'all' && (
@@ -490,10 +460,27 @@ const ExpenseList = () => {
                 onClick={() => navigate('/expenses/new')}
                 sx={{ mt: 2 }}
               >
-                Create Expense
+                {t('expense.newExpense') || 'Create Expense'}
               </Button>
             )}
           </Paper>
+        )}
+
+        {/* Pagination */}
+        {total > 0 && (
+          <TablePagination
+            component="div"
+            count={total}
+            page={page}
+            onPageChange={(event, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(event) => {
+              setRowsPerPage(parseInt(event.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 20, 50, 100]}
+            labelRowsPerPage={t('common.rowsPerPage') || 'Rows per page:'}
+          />
         )}
 
         {/* Action Menu */}
@@ -504,36 +491,46 @@ const ExpenseList = () => {
         >
           <MenuItem onClick={handleView}>
             <ViewIcon sx={{ mr: 1 }} />
-            View Details
+            {t('common.view') || 'View Details'}
           </MenuItem>
-          <MenuItem onClick={handleEdit}>
-            <EditIcon sx={{ mr: 1 }} />
-            Edit
-          </MenuItem>
-          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-            <DeleteIcon sx={{ mr: 1 }} />
-            Delete
-          </MenuItem>
+          {selectedExpense?.status === 'draft' && (
+            <MenuItem onClick={handleEdit}>
+              <EditIcon sx={{ mr: 1 }} />
+              {t('common.edit')}
+            </MenuItem>
+          )}
+          {selectedExpense?.status === 'draft' && (
+            <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+              <DeleteIcon sx={{ mr: 1 }} />
+              {t('common.delete')}
+            </MenuItem>
+          )}
         </Menu>
 
         {/* Delete Confirmation Dialog */}
         <Dialog
           open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
+          onClose={() => {
+            setDeleteDialogOpen(false);
+            setSelectedExpense(null);
+          }}
         >
-          <DialogTitle>{t('dialogs.confirmDelete')}</DialogTitle>
+          <DialogTitle>{t('dialogs.confirmDelete') || '确认删除'}</DialogTitle>
           <DialogContent>
             <Typography>
-              Are you sure you want to delete the expense "{selectedExpense?.title}"? 
-              This action cannot be undone.
+              {t('expense.list.confirmDelete') || '确定要删除费用申请'} "{selectedExpense?.title || selectedExpense?.expenseItem?.itemName || t('expense.untitled') || '未命名费用'}"? 
+              {t('expense.list.deleteWarning') || '此操作无法撤销。'}
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
+            <Button onClick={() => {
+              setDeleteDialogOpen(false);
+              setSelectedExpense(null);
+            }}>
+              {t('common.cancel')}
             </Button>
             <Button onClick={confirmDelete} color="error" variant="contained">
-              Delete
+              {t('common.delete')}
             </Button>
           </DialogActions>
         </Dialog>

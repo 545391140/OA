@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const User = require('../models/User');
+const Role = require('../models/Role');
 
 // Protect routes
 const protect = async (req, res, next) => {
@@ -131,4 +132,55 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+// Check if user has specific permission(s)
+// Usage: checkPermission('user.view', 'user.create')
+const checkPermission = (...requiredPermissions) => {
+  return async (req, res, next) => {
+    try {
+      // Admin role has access to everything
+      if (req.user.role && req.user.role.toUpperCase() === 'ADMIN') {
+        return next();
+      }
+
+      // Get user's role and its permissions
+      if (!req.user.role) {
+        return res.status(403).json({
+          success: false,
+          message: 'User has no role assigned'
+        });
+      }
+
+      const role = await Role.findOne({ code: req.user.role, isActive: true });
+      
+      if (!role) {
+        return res.status(403).json({
+          success: false,
+          message: `Role ${req.user.role} not found or inactive`
+        });
+      }
+
+      // Check if user's role has at least one of the required permissions
+      const userPermissions = role.permissions || [];
+      const hasPermission = requiredPermissions.some(permission => 
+        userPermissions.includes(permission)
+      );
+
+      if (!hasPermission) {
+        return res.status(403).json({
+          success: false,
+          message: `User does not have required permission(s): ${requiredPermissions.join(', ')}`
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Permission check error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error checking permissions'
+      });
+    }
+  };
+};
+
+module.exports = { protect, authorize, checkPermission };

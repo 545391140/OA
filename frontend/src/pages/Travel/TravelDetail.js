@@ -48,7 +48,11 @@ import {
   AccessTime as AccessTimeIcon,
   PersonOutline as PersonOutlineIcon,
   Label as LabelIcon,
-  Schedule as ScheduleIcon
+  Schedule as ScheduleIcon,
+  Receipt as ReceiptIcon,
+  Add as AddIcon,
+  Visibility as VisibilityIcon,
+  AutoAwesome as AutoAwesomeIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -72,11 +76,20 @@ const TravelDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [expenseItems, setExpenseItems] = useState({});
   const [budgetValidation, setBudgetValidation] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [expensesLoading, setExpensesLoading] = useState(false);
+  const [generatingExpenses, setGeneratingExpenses] = useState(false);
 
   useEffect(() => {
     fetchExpenseItems();
     fetchTravelDetail();
   }, [id]);
+
+  useEffect(() => {
+    if (travel && travel.status === 'completed') {
+      fetchTravelExpenses();
+    }
+  }, [travel]);
 
   const fetchExpenseItems = async () => {
     try {
@@ -94,6 +107,46 @@ const TravelDetail = () => {
     }
   };
 
+  const fetchTravelExpenses = async () => {
+    try {
+      setExpensesLoading(true);
+      const response = await apiClient.get(`/travel/${id}/expenses`);
+      if (response.data && response.data.success) {
+        setExpenses(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load travel expenses:', error);
+      showNotification(t('travel.detail.expenses.loadError') || '加载费用申请失败', 'error');
+    } finally {
+      setExpensesLoading(false);
+    }
+  };
+
+  const handleGenerateExpenses = async () => {
+    try {
+      setGeneratingExpenses(true);
+      const response = await apiClient.post(`/travel/${id}/generate-expenses`);
+      if (response.data && response.data.success) {
+        showNotification(
+          t('travel.detail.expenses.generateSuccess') || `成功生成 ${response.data.data.generatedCount} 个费用申请`,
+          'success'
+        );
+        // 刷新费用申请列表
+        await fetchTravelExpenses();
+        // 刷新差旅详情
+        await fetchTravelDetail();
+      }
+    } catch (error) {
+      console.error('Failed to generate expenses:', error);
+      showNotification(
+        error.response?.data?.message || t('travel.detail.expenses.generateError') || '生成费用申请失败',
+        'error'
+      );
+    } finally {
+      setGeneratingExpenses(false);
+    }
+  };
+
   const fetchTravelDetail = async () => {
     try {
       setLoading(true);
@@ -101,29 +154,6 @@ const TravelDetail = () => {
       
       if (response.data && response.data.success) {
         const travelData = response.data.data;
-        
-        // 调试：打印预算数据
-        console.log('=== 差旅详情数据 ===');
-        console.log('estimatedBudget:', travelData.estimatedBudget);
-        console.log('outboundBudget:', JSON.stringify(travelData.outboundBudget, null, 2));
-        console.log('inboundBudget:', JSON.stringify(travelData.inboundBudget, null, 2));
-        console.log('multiCityRoutesBudget:', JSON.stringify(travelData.multiCityRoutesBudget, null, 2));
-        
-        // 详细分析预算数据结构
-        if (travelData.outboundBudget) {
-          console.log('=== 去程预算结构分析 ===');
-          Object.entries(travelData.outboundBudget).forEach(([key, item]) => {
-            console.log(`Key: ${key}`, {
-              itemId: item?.itemId,
-              itemName: item?.itemName,
-              quantity: item?.quantity,
-              unitPrice: item?.unitPrice,
-              subtotal: item?.subtotal,
-              fullItem: item
-            });
-          });
-        }
-        
         setTravel(travelData);
         
         // 延迟验证，确保travel state已更新
@@ -269,16 +299,6 @@ const TravelDetail = () => {
     const difference = Math.abs(calculatedTotal - estimatedBudget);
     const isValid = difference < 0.01; // 允许0.01的误差（浮点数精度问题）
     
-    console.log('预算验证:', {
-      去程: outboundTotal,
-      返程: inboundTotal,
-      多程: multiCityTotal,
-      计算总和: calculatedTotal,
-      预算总额: estimatedBudget,
-      差异: difference,
-      验证通过: isValid
-    });
-    
     return {
       isValid,
       message: isValid ? '' : `预算总额与明细之和不一致，差异：${formatCurrency(difference)}`,
@@ -297,6 +317,36 @@ const TravelDetail = () => {
 
   const handleEdit = () => {
     navigate(`/travel/${id}/edit`);
+  };
+
+  const handleMarkAsCompleted = async () => {
+    if (!window.confirm(t('travel.detail.confirmMarkAsCompleted') || '确定要将此差旅标记为已完成吗？标记后将跳转到费用申请页面。')) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const response = await apiClient.put(`/travel/${id}`, {
+        status: 'completed'
+      });
+
+      if (response.data && response.data.success) {
+        showNotification(
+          t('travel.detail.markAsCompletedSuccess') || '差旅已标记为已完成',
+          'success'
+        );
+        // 跳转到费用申请创建页面，传递差旅ID
+        navigate(`/expenses/new?travelId=${id}`);
+      }
+    } catch (error) {
+      console.error('Failed to mark travel as completed:', error);
+      showNotification(
+        error.response?.data?.message || t('travel.detail.markAsCompletedError') || '标记失败',
+        'error'
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -465,6 +515,19 @@ const TravelDetail = () => {
                 {t('travel.detail.reject')}
             </Button>
             </>
+          )}
+          
+          {/* 标记为已完成按钮 - 仅已批准状态，申请人或管理员可见 */}
+          {(user?.role === 'admin' || travel.employee?._id === user?.id) && 
+           travel.status === 'approved' && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<CheckCircleIcon />}
+              onClick={handleMarkAsCompleted}
+            >
+              {t('travel.detail.markAsCompleted') || '标记为已完成'}
+            </Button>
           )}
           </Box>
         </Box>
@@ -1147,6 +1210,170 @@ const TravelDetail = () => {
               </Box>
             )}
           </Paper>
+
+          {/* 费用申请区域 */}
+          {travel.status === 'completed' && (
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ReceiptIcon color="primary" fontSize="small" />
+                  {t('travel.detail.expenses.title') || '费用申请'}
+                </Typography>
+                {travel.expenseGenerationStatus === 'pending' && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AutoAwesomeIcon />}
+                    onClick={handleGenerateExpenses}
+                    disabled={generatingExpenses}
+                  >
+                    {generatingExpenses 
+                      ? (t('travel.detail.expenses.generating') || '生成中...')
+                      : (t('travel.detail.expenses.generate') || '生成费用申请')
+                    }
+                  </Button>
+                )}
+                {travel.expenseGenerationStatus === 'generating' && (
+                  <Chip
+                    label={t('travel.detail.expenses.generating') || '生成中...'}
+                    color="info"
+                    size="small"
+                  />
+                )}
+                {travel.expenseGenerationStatus === 'completed' && expenses.length > 0 && (
+                  <Chip
+                    label={`${expenses.length} ${t('travel.detail.expenses.count') || '个费用申请'}`}
+                    color="success"
+                    size="small"
+                  />
+                )}
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+
+              {expensesLoading ? (
+                <Box sx={{ py: 4, textAlign: 'center' }}>
+                  <LinearProgress />
+                </Box>
+              ) : expenses.length > 0 ? (
+                <Box>
+                  {expenses.map((expense) => (
+                    <Card key={expense._id} variant="outlined" sx={{ mb: 2 }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight={600}>
+                              {expense.expenseItem?.itemName || expense.title}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {expense.description}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={t(`expense.statuses.${expense.status}`) || expense.status}
+                            size="small"
+                            color={expense.status === 'draft' ? 'default' : expense.status === 'submitted' ? 'info' : 'success'}
+                          />
+                        </Box>
+                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {t('expense.amount') || '金额'}
+                            </Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              {expense.currency} {expense.amount?.toLocaleString() || 0}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {t('travel.detail.expenses.invoiceCount') || '关联发票'}
+                            </Typography>
+                            <Typography variant="body2">
+                              {expense.relatedInvoices?.length || 0} {t('travel.detail.expenses.invoices') || '张'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {t('expense.date') || '日期'}
+                            </Typography>
+                            <Typography variant="body2">
+                              {formatDate(expense.date)}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<EditIcon />}
+                                onClick={() => navigate(`/expenses/${expense._id}`)}
+                              >
+                                {t('common.edit')}
+                              </Button>
+                              {expense.status === 'draft' && (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  startIcon={<DeleteIcon />}
+                                  onClick={async () => {
+                                    if (window.confirm(t('travel.detail.expenses.confirmDelete') || '确定删除此费用申请吗？')) {
+                                      try {
+                                        await apiClient.delete(`/expenses/${expense._id}`);
+                                        showNotification(t('travel.detail.expenses.deleteSuccess') || '删除成功', 'success');
+                                        fetchTravelExpenses();
+                                      } catch (error) {
+                                        showNotification(t('travel.detail.expenses.deleteError') || '删除失败', 'error');
+                                      }
+                                    }
+                                  }}
+                                >
+                                  {t('common.delete')}
+                                </Button>
+                              )}
+                            </Box>
+                          </Grid>
+                        </Grid>
+                        {expense.autoMatched && (
+                          <Box sx={{ mt: 1, pt: 1, borderTop: 1, borderColor: 'divider' }}>
+                            <Chip
+                              label={t('travel.detail.expenses.autoMatched') || '自动匹配'}
+                              size="small"
+                              color="info"
+                              icon={<AutoAwesomeIcon />}
+                            />
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+              ) : travel.expenseGenerationStatus === 'completed' ? (
+                <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+                  <ReceiptIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                  <Typography variant="body2">
+                    {t('travel.detail.expenses.noExpenses') || '暂无费用申请'}
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ py: 4, textAlign: 'center', color: 'text.secondary' }}>
+                  <ReceiptIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                  <Typography variant="body2" sx={{ mb: 2 }}>
+                    {t('travel.detail.expenses.notGenerated') || '尚未生成费用申请'}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<AutoAwesomeIcon />}
+                    onClick={handleGenerateExpenses}
+                    disabled={generatingExpenses}
+                  >
+                    {generatingExpenses 
+                      ? (t('travel.detail.expenses.generating') || '生成中...')
+                      : (t('travel.detail.expenses.generate') || '生成费用申请')
+                    }
+                  </Button>
+                </Box>
+              )}
+            </Paper>
+          )}
         </Grid>
       </Grid>
 

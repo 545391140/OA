@@ -38,7 +38,8 @@
     "nA": "해당 없음",
     "dateFormat": "YYYY-MM-DD",
     "all": "전체",
-    "reset": "재설정"
+    "reset": "재설정",
+    "submitting": "제출 중..."
   },
   "navigation": {
     "dashboard": "대시보드",
@@ -595,11 +596,32 @@
       "approvalError": "승인 실패",
       "confirmApprove": "승인 확인",
       "confirmReject": "거부 확인",
+      "markAsCompleted": "완료로 표시",
+      "confirmMarkAsCompleted": "이 출장을 완료로 표시하시겠습니까? 표시 후 비용 신청이 자동으로 생성됩니다.",
+      "markAsCompletedSuccess": "출장이 완료로 표시되었습니다",
+      "markAsCompletedError": "표시 실패",
       "totalBudget": "총액",
       "budgetInfo": "예산 정보",
       "outbound": "출발",
       "inbound": "귀국",
-      "multiCity": "다구간"
+      "multiCity": "다구간",
+      "expenses": {
+        "title": "비용 신청",
+        "generate": "비용 신청 생성",
+        "generating": "생성 중...",
+        "generateSuccess": "비용 신청이 성공적으로 생성되었습니다",
+        "generateError": "비용 신청 생성 실패",
+        "loadError": "비용 신청 로드 실패",
+        "noExpenses": "비용 신청 없음",
+        "notGenerated": "비용 신청이 아직 생성되지 않았습니다",
+        "invoiceCount": "관련 송장",
+        "invoices": "장",
+        "autoMatched": "자동 매칭",
+        "confirmDelete": "이 비용 신청을 삭제하시겠습니까?",
+        "deleteSuccess": "삭제 성공",
+        "deleteError": "삭제 실패",
+        "count": "개의 비용 신청"
+      }
     }
   },
   "travelStandard": {
@@ -893,6 +915,7 @@
     "tags": "태그",
     "status": "상태",
     "statuses": {
+      "all": "모든 상태",
       "draft": "초안",
       "submitted": "제출됨",
       "approved": "승인됨",
@@ -901,14 +924,51 @@
       "cancelled": "취소됨"
     },
     "categories": {
+      "all": "모든 카테고리",
       "transportation": "교통비",
       "accommodation": "숙박비",
       "meals": "식비",
       "entertainment": "오락비",
       "communication": "통신비",
+      "officeSupplies": "사무용품",
       "office_supplies": "사무용품",
       "training": "교육비",
       "other": "기타"
+    },
+    "relatedInvoices": "관련 송장",
+    "addInvoices": "송장 폴더에서 송장 추가",
+    "noRelatedInvoices": "관련 송장 없음",
+    "saved": "비용이 초안으로 저장되었습니다",
+    "submitted": "비용이 성공적으로 제출되었습니다",
+    "saveError": "비용 저장 실패",
+    "invoices": {
+      "added": "{count}개의 송장을 성공적으로 연결했습니다",
+      "addError": "송장 연결 실패",
+      "removed": "송장 연결이 성공적으로 해제되었습니다",
+      "removeError": "송장 연결 해제 실패"
+    },
+    "selectInvoices": "송장 선택",
+    "noAvailableInvoices": "사용 가능한 송장이 없습니다",
+    "selectTravel": "출장 신청 선택",
+    "relatedTravel": "관련 출장 신청",
+    "relatedTravelInfo": "이 비용은 출장 신청과 관련되어 있습니다",
+    "travelNumber": "출장 신청 번호",
+    "searchTravelNumber": "출장 신청 번호 검색...",
+    "deleteSuccess": "비용이 성공적으로 삭제되었습니다",
+    "deleteError": "비용 삭제 실패",
+    "list": {
+      "noExpenses": "비용을 찾을 수 없습니다",
+      "createFirst": "첫 번째 비용을 생성하여 시작하세요",
+      "tryAdjusting": "검색 조건을 조정해보세요",
+      "loadError": "비용 로드 실패",
+      "confirmDelete": "이 비용을 삭제하시겠습니까",
+      "deleteWarning": "이 작업은 취소할 수 없습니다."
+    },
+    "detail": {
+      "loadError": "비용 세부 정보 로드 실패",
+      "confirmDelete": "이 비용을 삭제하시겠습니까",
+      "createdOn": "생성일",
+      "noReceipts": "영수증이 업로드되지 않았습니다"
     }
   },
   "approval": {

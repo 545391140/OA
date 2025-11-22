@@ -38,7 +38,8 @@
     "nA": "該当なし",
     "dateFormat": "YYYY-MM-DD",
     "all": "すべて",
-    "reset": "リセット"
+    "reset": "リセット",
+    "submitting": "送信中..."
   },
   "navigation": {
     "dashboard": "ダッシュボード",
@@ -560,11 +561,32 @@
       "approvalError": "承認に失敗しました",
       "confirmApprove": "承認を確認",
       "confirmReject": "却下を確認",
+      "markAsCompleted": "完了としてマーク",
+      "confirmMarkAsCompleted": "この出張を完了としてマークしてもよろしいですか？マーク後、費用申請が自動生成されます。",
+      "markAsCompletedSuccess": "出張が完了としてマークされました",
+      "markAsCompletedError": "マークに失敗しました",
       "totalBudget": "合計",
       "budgetInfo": "予算情報",
       "outbound": "往路",
       "inbound": "復路",
-      "multiCity": "複数都市"
+      "multiCity": "複数都市",
+      "expenses": {
+        "title": "費用申請",
+        "generate": "費用申請を生成",
+        "generating": "生成中...",
+        "generateSuccess": "費用申請が正常に生成されました",
+        "generateError": "費用申請の生成に失敗しました",
+        "loadError": "費用申請の読み込みに失敗しました",
+        "noExpenses": "費用申請がありません",
+        "notGenerated": "費用申請はまだ生成されていません",
+        "invoiceCount": "関連する請求書",
+        "invoices": "件",
+        "autoMatched": "自動マッチ",
+        "confirmDelete": "この費用申請を削除してもよろしいですか？",
+        "deleteSuccess": "削除成功",
+        "deleteError": "削除に失敗しました",
+        "count": "件の費用申請"
+      }
     }
   },
   "travelStandard": {
@@ -858,6 +880,7 @@
     "tags": "タグ",
     "status": "ステータス",
     "statuses": {
+      "all": "すべてのステータス",
       "draft": "下書き",
       "submitted": "提出済み",
       "approved": "承認済み",
@@ -866,14 +889,51 @@
       "cancelled": "キャンセル"
     },
     "categories": {
+      "all": "すべてのカテゴリ",
       "transportation": "交通費",
       "accommodation": "宿泊費",
       "meals": "食事代",
       "entertainment": "娯楽費",
       "communication": "通信費",
+      "officeSupplies": "事務用品",
       "office_supplies": "事務用品",
       "training": "研修費",
       "other": "その他"
+    },
+    "relatedInvoices": "関連する請求書",
+    "addInvoices": "請求書フォルダから請求書を追加",
+    "noRelatedInvoices": "関連する請求書がありません",
+    "saved": "経費が下書きとして保存されました",
+    "submitted": "経費が正常に提出されました",
+    "saveError": "経費の保存に失敗しました",
+    "invoices": {
+      "added": "{count}件の請求書を正常にリンクしました",
+      "addError": "請求書のリンクに失敗しました",
+      "removed": "請求書のリンクを正常に解除しました",
+      "removeError": "請求書のリンク解除に失敗しました"
+    },
+    "selectInvoices": "請求書を選択",
+    "noAvailableInvoices": "利用可能な請求書がありません",
+    "selectTravel": "出張申請を選択",
+    "relatedTravel": "関連する出張申請",
+    "relatedTravelInfo": "この経費は出張申請に関連しています",
+    "travelNumber": "出張申請番号",
+    "searchTravelNumber": "出張申請番号を検索...",
+    "deleteSuccess": "経費が正常に削除されました",
+    "deleteError": "経費の削除に失敗しました",
+    "list": {
+      "noExpenses": "経費が見つかりません",
+      "createFirst": "最初の経費を作成して開始してください",
+      "tryAdjusting": "検索条件を調整してみてください",
+      "loadError": "経費の読み込みに失敗しました",
+      "confirmDelete": "この経費を削除してもよろしいですか",
+      "deleteWarning": "この操作は元に戻せません。"
+    },
+    "detail": {
+      "loadError": "経費詳細の読み込みに失敗しました",
+      "confirmDelete": "この経費を削除してもよろしいですか",
+      "createdOn": "作成日",
+      "noReceipts": "領収書がアップロードされていません"
     }
   },
   "approval": {

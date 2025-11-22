@@ -43,6 +43,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
 const ExpenseDetail = () => {
@@ -101,79 +102,20 @@ const ExpenseDetail = () => {
   const fetchExpenseDetail = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockData = {
-        id: parseInt(id),
-        title: 'Business Lunch with Client',
-        description: 'Lunch meeting with key client to discuss project requirements and upcoming deliverables. This was an important strategic meeting to maintain our relationship with our top client.',
-        category: 'meals',
-        subcategory: 'Business Meal',
-        amount: 85.50,
-        currency: 'USD',
-        date: '2024-01-15',
-        status: 'approved',
-        createdAt: '2024-01-15T14:30:00Z',
-        updatedAt: '2024-01-16T10:15:00Z',
-        vendor: {
-          name: 'Restaurant ABC',
-          address: '123 Main Street, Downtown, City, State 12345',
-          taxId: 'TAX123456789',
-          phone: '+1 (555) 123-4567',
-          email: 'info@restaurantabc.com'
-        },
-        project: 'Client A Engagement',
-        costCenter: 'Sales',
-        isBillable: true,
-        client: 'Client A',
-        tags: ['client-related', 'meeting', 'strategic'],
-        notes: 'Important client discussion about upcoming project milestones and budget allocation. The client expressed satisfaction with our current progress.',
-        employee: {
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john.doe@company.com',
-          department: 'Sales',
-          position: 'Senior Sales Manager'
-        },
-        receipts: [
-          {
-            filename: 'receipt_001.jpg',
-            originalName: 'Restaurant ABC Receipt.jpg',
-            size: 1024000,
-            uploadedAt: '2024-01-15T14:45:00Z',
-            type: 'image/jpeg'
-          },
-          {
-            filename: 'invoice_001.pdf',
-            originalName: 'Restaurant ABC Invoice.pdf',
-            size: 512000,
-            uploadedAt: '2024-01-15T14:50:00Z',
-            type: 'application/pdf'
-          }
-        ],
-        approvals: [
-          {
-            approver: {
-              firstName: 'Sarah',
-              lastName: 'Wilson',
-              email: 'sarah.wilson@company.com',
-              position: 'Sales Director'
-            },
-            level: 1,
-            status: 'approved',
-            comments: 'Approved. This is a legitimate business expense for client relationship management.',
-            approvedAt: '2024-01-16T09:30:00Z'
-          }
-        ],
-        payment: {
-          method: 'Company Credit Card',
-          transactionId: 'TXN123456789',
-          paidAt: '2024-01-20T15:30:00Z',
-          status: 'completed'
-        }
-      };
-      setExpense(mockData);
+      const response = await apiClient.get(`/expenses/${id}`);
+      
+      if (response.data && response.data.success) {
+        setExpense(response.data.data);
+      } else {
+        throw new Error('Failed to load expense details');
+      }
     } catch (error) {
-      showNotification('Failed to load expense details', 'error');
+      console.error('Failed to load expense details:', error);
+      showNotification(
+        error.response?.data?.message || t('expense.detail.loadError') || '加载费用详情失败',
+        'error'
+      );
+      setExpense(null);
     } finally {
       setLoading(false);
     }
@@ -183,9 +125,25 @@ const ExpenseDetail = () => {
     navigate(`/expenses/${id}/edit`);
   };
 
-  const handleDelete = () => {
-    // Implement delete functionality
-    showNotification('Delete functionality not implemented yet', 'info');
+  const handleDelete = async () => {
+    if (!window.confirm(t('expense.detail.confirmDelete') || `确定要删除费用申请 "${expense?.title || expense?.expenseItem?.itemName}" 吗？此操作无法撤销。`)) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/expenses/${id}`);
+      showNotification(
+        t('expense.deleteSuccess') || '费用申请删除成功',
+        'success'
+      );
+      navigate('/expenses');
+    } catch (error) {
+      console.error('Failed to delete expense:', error);
+      showNotification(
+        error.response?.data?.message || t('expense.deleteError') || '删除费用申请失败',
+        'error'
+      );
+    }
   };
 
   const handleDownloadReceipt = (receipt) => {
@@ -225,38 +183,49 @@ const ExpenseDetail = () => {
           </IconButton>
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h4" gutterBottom>
-              {expense.title}
+              {expense.title || expense.expenseItem?.itemName || t('expense.untitled')}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Chip
-                label={expense.status}
+                label={t(`expense.statuses.${expense.status}`) || expense.status}
                 color={getStatusColor(expense.status)}
                 size="small"
               />
               <Typography variant="body2" color="text.secondary">
-                Created on {dayjs(expense.createdAt).format('MMM DD, YYYY')}
+                {t('expense.detail.createdOn') || 'Created on'} {dayjs(expense.createdAt).format('MMM DD, YYYY')}
               </Typography>
               {expense.isBillable && (
                 <Chip label={t('expense.billable')} color="success" size="small" />
               )}
+              {expense.autoMatched && (
+                <Chip 
+                  label={t('travel.detail.expenses.autoMatched') || 'Auto Matched'} 
+                  color="info" 
+                  size="small" 
+                />
+              )}
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon />}
-              onClick={handleEdit}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
-            >
-              Delete
-            </Button>
+            {expense.status === 'draft' && (
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={handleEdit}
+                >
+                  {t('common.edit')}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={handleDelete}
+                >
+                  {t('common.delete')}
+                </Button>
+              </>
+            )}
           </Box>
         </Box>
 
@@ -403,14 +372,39 @@ const ExpenseDetail = () => {
               </Grid>
             </Paper>
 
+            {/* Related Invoices */}
+            {expense.relatedInvoices && expense.relatedInvoices.length > 0 && (
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  {t('expense.relatedInvoices') || 'Related Invoices'}
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <List>
+                  {expense.relatedInvoices.map((invoice) => (
+                    <ListItem key={invoice._id} divider>
+                      <ListItemIcon>
+                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                          <ReceiptIcon />
+                        </Avatar>
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={invoice.invoiceNumber || t('invoice.noNumber') || 'No Invoice Number'}
+                        secondary={`${invoice.currency} ${(invoice.totalAmount || invoice.amount || 0).toLocaleString()} • ${invoice.vendor?.name || '-'} • ${invoice.invoiceDate ? dayjs(invoice.invoiceDate).format('MMM DD, YYYY') : '-'}`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+            )}
+
             {/* Receipts */}
             <Paper sx={{ p: 3, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Receipts & Attachments
+                {t('expense.receipts') || 'Receipts & Attachments'}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               
-              {expense.receipts.length > 0 ? (
+              {expense.receipts && expense.receipts.length > 0 ? (
                 <List>
                   {expense.receipts.map((receipt, index) => (
                     <ListItem key={index} divider>
@@ -420,26 +414,30 @@ const ExpenseDetail = () => {
                         </Avatar>
                       </ListItemIcon>
                       <ListItemText
-                        primary={receipt.originalName}
-                        secondary={`${(receipt.size / 1024 / 1024).toFixed(2)} MB • ${dayjs(receipt.uploadedAt).format('MMM DD, YYYY HH:mm')}`}
+                        primary={receipt.originalName || receipt.filename}
+                        secondary={`${receipt.size ? (receipt.size / 1024 / 1024).toFixed(2) + ' MB' : ''} • ${receipt.uploadedAt ? dayjs(receipt.uploadedAt).format('MMM DD, YYYY HH:mm') : ''}`}
                       />
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                          onClick={() => handleDownloadReceipt(receipt)}
-                          size="small"
-                        >
-                          <DownloadIcon />
-                        </IconButton>
-                        <IconButton size="small">
-                          <ViewIcon />
-                        </IconButton>
+                        {receipt.path && (
+                          <>
+                            <IconButton
+                              onClick={() => handleDownloadReceipt(receipt)}
+                              size="small"
+                            >
+                              <DownloadIcon />
+                            </IconButton>
+                            <IconButton size="small">
+                              <ViewIcon />
+                            </IconButton>
+                          </>
+                        )}
                       </Box>
                     </ListItem>
                   ))}
                 </List>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  No receipts uploaded
+                  {t('expense.detail.noReceipts') || 'No receipts uploaded'}
                 </Typography>
               )}
             </Paper>
@@ -520,11 +518,13 @@ const ExpenseDetail = () => {
                     >
                       <Box>
                         <Typography variant="subtitle2">
-                          {approval.approver.firstName} {approval.approver.lastName}
+                          {approval.approver?.firstName || ''} {approval.approver?.lastName || t('travel.detail.unknownApprover')}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {approval.approver.position}
-                        </Typography>
+                        {approval.approver?.position && (
+                          <Typography variant="caption" color="text.secondary">
+                            {approval.approver.position}
+                          </Typography>
+                        )}
                       </Box>
                     </StepLabel>
                     <StepContent>

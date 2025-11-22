@@ -47,6 +47,15 @@ exports.getTravels = async (req, res) => {
       .populate('approvals.approver', 'firstName lastName email')
       .sort({ createdAt: -1 });
 
+    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    travels.forEach(travel => {
+      if (travel.approvals && Array.isArray(travel.approvals)) {
+        travel.approvals = travel.approvals.filter(
+          approval => approval.approver !== null && approval.approver !== undefined
+        );
+      }
+    });
+
     res.json({
       success: true,
       count: travels.length,
@@ -121,9 +130,17 @@ exports.getTravelById = async (req, res) => {
                     lastName: approverDoc.lastName,
                     email: approverDoc.email
                   };
+                } else {
+                  // 如果找不到审批人，设置为 null（后续会被过滤）
+                  approval.approver = null;
                 }
               }
             }
+            
+            // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+            travel.approvals = travel.approvals.filter(
+              approval => approval.approver !== null && approval.approver !== undefined
+            );
           }
         } catch (approverError) {
           console.error('Error populating approvers:', approverError.message);

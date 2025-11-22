@@ -249,24 +249,9 @@ const StandardForm = () => {
         expenseStandards: validExpenseStandards
       };
 
-      console.log('[FRONTEND] Submit payload:', JSON.stringify({
-        ...payload,
-        conditionGroupsLength: payload.conditionGroups?.length,
-        expenseStandardsLength: payload.expenseStandards?.length,
-        expenseStandards: payload.expenseStandards?.map(es => ({
-          ...es,
-          expenseItemId: es.expenseItemId?.toString() || es.expenseItemId
-        }))
-      }, null, 2));
-
       let response;
       if (isEdit) {
         const { standardCode, ...updateData } = payload;
-        console.log('[FRONTEND] Update data (without standardCode):', JSON.stringify({
-          ...updateData,
-          conditionGroupsLength: updateData.conditionGroups?.length,
-          expenseStandardsLength: updateData.expenseStandards?.length
-        }, null, 2));
         response = await apiClient.put(`/travel-standards/${id}`, updateData);
       } else {
         response = await apiClient.post('/travel-standards', payload);
