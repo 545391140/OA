@@ -918,6 +918,11 @@ const ExpenseForm = () => {
   };
 
   const handleSave = async (status = 'draft') => {
+    // 防止重复提交
+    if (saving) {
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
@@ -929,11 +934,17 @@ const ExpenseForm = () => {
       if (selectedTravel && !isEdit) {
         const budgets = extractExpenseBudgets(selectedTravel);
         const expensesToCreate = [];
+        // 用于跟踪已经处理的费用项，避免重复创建
+        const processedExpenseItems = new Set();
         
         for (const budget of budgets) {
           const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
           const itemInvoices = expenseItemInvoices[expenseItemIdStr] || expenseItemInvoices[budget.expenseItemId] || [];
-          if (itemInvoices.length > 0) {
+          
+          // 如果该费用项已经有发票，且还没有处理过，创建费用申请
+          if (itemInvoices.length > 0 && !processedExpenseItems.has(expenseItemIdStr)) {
+            processedExpenseItems.add(expenseItemIdStr);
+            
             const expenseItem = expenseItems.find(item => item._id === budget.expenseItemId);
             const invoiceTotalAmount = itemInvoices.reduce((sum, inv) => 
               sum + (inv.totalAmount || inv.amount || 0), 0
@@ -947,11 +958,29 @@ const ExpenseForm = () => {
             // 从发票中提取商户信息
             const vendor = itemInvoices[0]?.vendor || { name: '', address: '', taxId: '' };
             
+            // 合并去程和返程的描述
+            const routeDescriptions = budgets
+              .filter(b => b.expenseItemId?.toString() === expenseItemIdStr)
+              .map(b => {
+                if (b.route === 'outbound') return '去程';
+                if (b.route === 'inbound') return '返程';
+                if (b.route.startsWith('multiCity-')) {
+                  const index = parseInt(b.route.replace('multiCity-', '')) + 1;
+                  return `多程${index}`;
+                }
+                return '';
+              })
+              .filter(Boolean);
+            
+            const routeDescription = routeDescriptions.length > 0 
+              ? routeDescriptions.join('、')
+              : '';
+            
             const expenseData = {
               travel: selectedTravel._id,
               expenseItem: budget.expenseItemId,
               title: `${selectedTravel.title || selectedTravel.travelNumber || '差旅'} - ${expenseItem?.itemName || budget.expenseItemId}`,
-              description: `${formData.description || ''} ${budget.route === 'outbound' ? '去程' : budget.route === 'inbound' ? '返程' : '多程'}`.trim(),
+              description: `${formData.description || ''} ${routeDescription ? `(${routeDescription})` : ''}`.trim(),
               category: mapExpenseItemCategoryToExpenseCategory(expenseItem?.category || 'other'),
               amount: reimbursementAmount,
               currency: selectedTravel.currency || formData.currency || 'USD',
@@ -994,12 +1023,37 @@ const ExpenseForm = () => {
                 // 关联发票
                 if (expenseData.relatedInvoices && expenseData.relatedInvoices.length > 0) {
                   for (const invoiceId of expenseData.relatedInvoices) {
+                    // 确保发票ID是字符串格式（在循环开始处定义，以便在 catch 块中使用）
+                    const invoiceIdStr = invoiceId?.toString() || invoiceId;
                     try {
                       await apiClient.post(`/expenses/${response.data.data._id}/link-invoice`, {
-                        invoiceId: invoiceId
+                        invoiceId: invoiceIdStr
                       });
                     } catch (err) {
                       console.error('Failed to link invoice:', err);
+                      // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
+                      if (err.response?.status === 400 && 
+                          err.response?.data?.message?.includes('already linked')) {
+                        // 检查是否是关联到当前费用申请
+                        try {
+                          const expenseResponse = await apiClient.get(`/expenses/${response.data.data._id}`);
+                          const currentInvoiceIds = new Set(
+                            (expenseResponse.data?.data?.relatedInvoices || [])
+                              .map(inv => (inv._id || inv).toString())
+                          );
+                          if (currentInvoiceIds.has(invoiceIdStr)) {
+                            // 已经关联到当前费用申请，忽略错误
+                            continue;
+                          }
+                        } catch (checkErr) {
+                          console.error('Failed to check invoice link status:', checkErr);
+                        }
+                      }
+                      // 其他错误显示通知
+                      showNotification(
+                        `关联发票失败: ${err.response?.data?.message || err.message}`,
+                        'warning'
+                      );
                     }
                   }
                 }
@@ -1014,16 +1068,20 @@ const ExpenseForm = () => {
               `成功创建 ${createdExpenses.length} 个费用申请`,
               'success'
             );
+            setSaving(false); // 重置保存状态
             navigate('/expenses');
             return;
           }
         } else {
+          // 如果选择了差旅单但没有为费用项添加发票，不允许创建费用申请
           showNotification('请至少为一个费用项添加发票', 'warning');
+          setSaving(false); // 重置保存状态
           return;
         }
       }
       
       // 原有的保存逻辑（编辑模式或没有选择差旅单）
+      // 注意：如果选择了差旅单且在新建模式下，上面的代码已经处理并返回了
       const submitData = {
         title: formData.title || '',
         description: formData.description || '',
@@ -1097,9 +1155,32 @@ const ExpenseForm = () => {
                   const invoiceId = invoice._id || invoice.id;
                   if (invoiceId && !currentInvoiceIds.has(invoiceId)) {
                     try {
-                      await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { invoiceId });
+                      // 确保发票ID是字符串格式
+                      const invoiceIdStr = invoiceId.toString();
+                      await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { 
+                        invoiceId: invoiceIdStr 
+                      });
                     } catch (err) {
                       console.error('Failed to link invoice:', err);
+                      // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
+                      if (err.response?.status === 400 && 
+                          err.response?.data?.message?.includes('already linked')) {
+                        // 检查是否是关联到当前费用申请
+                        const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
+                        const currentInvoiceIds = new Set(
+                          (expenseResponse.data?.data?.relatedInvoices || [])
+                            .map(inv => (inv._id || inv).toString())
+                        );
+                        if (currentInvoiceIds.has((invoice._id || invoice.id).toString())) {
+                          // 已经关联到当前费用申请，忽略错误
+                          continue;
+                        }
+                      }
+                      // 其他错误显示通知
+                      showNotification(
+                        `关联发票失败: ${err.response?.data?.message || err.message}`,
+                        'warning'
+                      );
                     }
                   }
                 }
@@ -1149,9 +1230,32 @@ const ExpenseForm = () => {
               const invoiceId = invoice._id || invoice.id;
               if (invoiceId && !currentInvoiceIds.has(invoiceId)) {
                 try {
-                  await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { invoiceId });
+                  // 确保发票ID是字符串格式
+                  const invoiceIdStr = invoiceId.toString();
+                  await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { 
+                    invoiceId: invoiceIdStr 
+                  });
                 } catch (err) {
                   console.error('Failed to link invoice:', err);
+                  // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
+                  if (err.response?.status === 400 && 
+                      err.response?.data?.message?.includes('already linked')) {
+                    // 检查是否是关联到当前费用申请
+                    const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
+                    const currentInvoiceIds = new Set(
+                      (expenseResponse.data?.data?.relatedInvoices || [])
+                        .map(inv => (inv._id || inv).toString())
+                    );
+                    if (currentInvoiceIds.has((invoice._id || invoice.id).toString())) {
+                      // 已经关联到当前费用申请，忽略错误
+                      continue;
+                    }
+                  }
+                  // 其他错误显示通知
+                  showNotification(
+                    `关联发票失败: ${err.response?.data?.message || err.message}`,
+                    'warning'
+                  );
                 }
               }
             }
@@ -1173,14 +1277,46 @@ const ExpenseForm = () => {
                 const invoiceId = invoice._id || invoice.id;
                 if (invoiceId) {
                   try {
-                    await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { invoiceId });
+                    // 确保发票ID是字符串格式
+                    const invoiceIdStr = invoiceId.toString();
+                    await apiClient.post(`/expenses/${savedExpenseId}/link-invoice`, { 
+                      invoiceId: invoiceIdStr 
+                    });
                   } catch (err) {
                     console.error('Failed to link invoice:', err);
+                    // 如果发票已经关联到当前费用申请，忽略错误（幂等操作）
+                    if (err.response?.status === 400 && 
+                        err.response?.data?.message?.includes('already linked')) {
+                      // 检查是否是关联到当前费用申请
+                      try {
+                        const expenseResponse = await apiClient.get(`/expenses/${savedExpenseId}`);
+                        const currentInvoiceIds = new Set(
+                          (expenseResponse.data?.data?.relatedInvoices || [])
+                            .map(inv => (inv._id || inv).toString())
+                        );
+                        if (currentInvoiceIds.has((invoice._id || invoice.id).toString())) {
+                          // 已经关联到当前费用申请，忽略错误
+                          continue;
+                        }
+                      } catch (checkErr) {
+                        console.error('Failed to check invoice link status:', checkErr);
+                      }
+                    }
+                    // 其他错误显示通知
+                    showNotification(
+                      `关联发票失败: ${err.response?.data?.message || err.message}`,
+                      'warning'
+                    );
                   }
                 }
               }
             }
           }
+        }
+        
+        // 如果是编辑模式，重新获取最新数据以更新表单
+        if (isEdit) {
+          await fetchExpenseData();
         }
         
         showNotification(
@@ -1189,7 +1325,11 @@ const ExpenseForm = () => {
             : (t('expense.submitted') || '费用申请已提交'),
           'success'
         );
-        navigate('/expenses');
+        
+        // 延迟导航，确保数据已更新
+        setTimeout(() => {
+          navigate('/expenses');
+        }, 100);
       }
     } catch (error) {
       console.error('Failed to save expense:', error);

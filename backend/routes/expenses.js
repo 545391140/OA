@@ -6,6 +6,34 @@ const Invoice = require('../models/Invoice');
 
 const router = express.Router();
 
+// 生成核销单号
+const generateReimbursementNumber = async () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const datePrefix = `EXP-${year}${month}${day}`;
+  
+  // 查找今天最大的序号
+  const todayExpenses = await Expense.find({
+    reimbursementNumber: { $regex: `^${datePrefix}` }
+  }).sort({ reimbursementNumber: -1 }).limit(1);
+  
+  let sequence = 1;
+  if (todayExpenses.length > 0 && todayExpenses[0].reimbursementNumber) {
+    const lastNumber = todayExpenses[0].reimbursementNumber;
+    const parts = lastNumber.split('-');
+    if (parts.length === 3) {
+      const lastSequence = parseInt(parts[2] || '0');
+      sequence = lastSequence + 1;
+    }
+  }
+  
+  // 生成4位序号
+  const sequenceStr = String(sequence).padStart(4, '0');
+  return `${datePrefix}-${sequenceStr}`;
+};
+
 // @desc    Get all expenses
 // @route   GET /api/expenses
 // @access  Private
@@ -86,7 +114,7 @@ router.get('/:id', protect, async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id)
       .populate('employee', 'firstName lastName email')
-      .populate('travel', 'title destination')
+      .populate('travel', 'title destination travelNumber')
       .populate('approvals.approver', 'firstName lastName email')
       .populate('expenseItem', 'itemName category')
       .populate('relatedInvoices', 'invoiceNumber invoiceDate amount totalAmount currency vendor category');
@@ -99,7 +127,7 @@ router.get('/:id', protect, async (req, res) => {
     }
 
     // 权限检查：只能查看自己的费用申请或管理员
-    if (expense.employee.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (expense.employee && expense.employee.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized'
@@ -123,7 +151,8 @@ router.get('/:id', protect, async (req, res) => {
     console.error('Get expense error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -171,6 +200,11 @@ router.post('/', protect, async (req, res) => {
         const { file, ...receiptData } = receipt;
         return receiptData;
       });
+    }
+
+    // 自动生成核销单号（如果没有提供）
+    if (!expenseData.reimbursementNumber) {
+      expenseData.reimbursementNumber = await generateReimbursementNumber();
     }
 
     const expense = await Expense.create(expenseData);
@@ -249,17 +283,42 @@ router.put('/:id', protect, async (req, res) => {
 
     // 更新费用申请
     Object.keys(updateData).forEach(key => {
-      if (key !== 'employee' && key !== '_id' && key !== 'createdAt' && key !== 'updatedAt' && key !== '__v') {
+      // 不允许更新 employee、_id、createdAt、updatedAt、__v 和 reimbursementNumber（核销单号一旦生成不可修改）
+      if (key !== 'employee' && key !== '_id' && key !== 'createdAt' && key !== 'updatedAt' && key !== '__v' && key !== 'reimbursementNumber') {
         expense[key] = updateData[key];
       }
     });
+    
+    // 如果费用申请还没有核销单号，自动生成一个
+    if (!expense.reimbursementNumber) {
+      expense.reimbursementNumber = await generateReimbursementNumber();
+    }
 
     await expense.save();
 
-    res.json({
-      success: true,
-      data: expense
-    });
+    // 重新查询并 populate 关联数据，确保返回完整的数据
+    // 使用 lean() 和手动 populate 以避免某些关联文档不存在时的错误
+    try {
+      const updatedExpense = await Expense.findById(expense._id)
+        .populate('employee', 'firstName lastName email')
+        .populate('travel', 'title destination travelNumber')
+        .populate('approvals.approver', 'firstName lastName email')
+        .populate('expenseItem', 'itemName category')
+        .populate('relatedInvoices', 'invoiceNumber invoiceDate amount totalAmount currency vendor category');
+
+      res.json({
+        success: true,
+        data: updatedExpense
+      });
+    } catch (populateError) {
+      // 如果 populate 失败，返回未 populate 的数据
+      console.error('Populate error:', populateError);
+      const updatedExpense = await Expense.findById(expense._id);
+      res.json({
+        success: true,
+        data: updatedExpense
+      });
+    }
   } catch (error) {
     console.error('Update expense error:', error);
     res.status(500).json({
@@ -376,28 +435,32 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
       });
     }
     
-    // 检查发票是否已被关联
-    if (invoice.relatedExpense) {
+    // 检查发票是否已被关联到其他费用申请
+    if (invoice.relatedExpense && invoice.relatedExpense.toString() !== expense._id.toString()) {
       return res.status(400).json({
         success: false,
         message: 'Invoice already linked to another expense'
       });
     }
     
-    // 关联发票
+    // 关联发票（如果还没有关联）
     const invoiceObjectId = typeof invoiceId === 'string' ? invoiceId : invoiceId.toString();
-    if (!expense.relatedInvoices.includes(invoiceObjectId)) {
+    const invoiceIdInExpense = expense.relatedInvoices.some(id => id.toString() === invoiceObjectId);
+    
+    if (!invoiceIdInExpense) {
       expense.relatedInvoices.push(invoiceObjectId);
       await expense.save();
     }
     
-    // 更新发票
-    invoice.relatedExpense = expense._id;
-    invoice.matchStatus = 'linked';
-    if (expense.travel) {
-      invoice.relatedTravel = expense.travel;
+    // 更新发票（如果还没有关联到当前费用申请）
+    if (!invoice.relatedExpense || invoice.relatedExpense.toString() !== expense._id.toString()) {
+      invoice.relatedExpense = expense._id;
+      invoice.matchStatus = 'linked';
+      if (expense.travel) {
+        invoice.relatedTravel = expense.travel;
+      }
+      await invoice.save();
     }
-    await invoice.save();
     
     res.json({
       success: true,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -55,6 +55,7 @@ const ExpenseList = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +120,16 @@ const ExpenseList = () => {
   useEffect(() => {
     fetchExpenses();
   }, [page, rowsPerPage, statusFilter, categoryFilter]);
+
+  // 监听路由变化，当从编辑页面返回时刷新数据
+  const prevPathnameRef = React.useRef(location.pathname);
+  useEffect(() => {
+    // 只有当路径从非 /expenses 变为 /expenses 时才刷新（表示从其他页面返回）
+    if (location.pathname === '/expenses' && prevPathnameRef.current !== '/expenses') {
+      fetchExpenses();
+    }
+    prevPathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   // 搜索防抖
   useEffect(() => {
@@ -335,6 +346,7 @@ const ExpenseList = () => {
             <TableHead>
               <TableRow>
                 <TableCell>{t('expense.title') || 'Expense'}</TableCell>
+                <TableCell>{t('expense.reimbursementNumber') || '核销单号'}</TableCell>
                 <TableCell>{t('expense.category')}</TableCell>
                 <TableCell>{t('expense.vendor')}</TableCell>
                 <TableCell>{t('expense.amount')}</TableCell>
@@ -366,6 +378,11 @@ const ExpenseList = () => {
                         )}
                       </Box>
                     </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
+                      {expense.reimbursementNumber || '-'}
+                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Box>

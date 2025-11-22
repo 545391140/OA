@@ -200,6 +200,13 @@ const ExpenseSchema = new mongoose.Schema({
       min: 0,
       max: 100
     }
+  },
+  // 新增字段：核销单号（自动生成）
+  reimbursementNumber: {
+    type: String,
+    unique: true,
+    trim: true,
+    uppercase: true
   }
 }, {
   timestamps: true
@@ -213,6 +220,7 @@ ExpenseSchema.index({ 'approvals.approver': 1, 'approvals.status': 1 });
 ExpenseSchema.index({ expenseItem: 1 });
 ExpenseSchema.index({ travel: 1 });
 ExpenseSchema.index({ autoMatched: 1 });
+ExpenseSchema.index({ reimbursementNumber: 1 }); // 核销单号索引
 
 // Calculate local amount before saving
 ExpenseSchema.pre('save', function(next) {

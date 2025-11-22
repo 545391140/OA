@@ -7,6 +7,36 @@ const User = require('../models/User');
 const notificationService = require('./notificationService');
 
 /**
+ * 生成核销单号
+ */
+async function generateReimbursementNumber() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const datePrefix = `EXP-${year}${month}${day}`;
+  
+  // 查找今天最大的序号
+  const todayExpenses = await Expense.find({
+    reimbursementNumber: { $regex: `^${datePrefix}` }
+  }).sort({ reimbursementNumber: -1 }).limit(1);
+  
+  let sequence = 1;
+  if (todayExpenses.length > 0 && todayExpenses[0].reimbursementNumber) {
+    const lastNumber = todayExpenses[0].reimbursementNumber;
+    const parts = lastNumber.split('-');
+    if (parts.length === 3) {
+      const lastSequence = parseInt(parts[2] || '0');
+      sequence = lastSequence + 1;
+    }
+  }
+  
+  // 生成4位序号
+  const sequenceStr = String(sequence).padStart(4, '0');
+  return `${datePrefix}-${sequenceStr}`;
+}
+
+/**
  * 费用项分类到费用分类的映射
  */
 function mapExpenseItemCategoryToExpenseCategory(expenseItemCategory) {
@@ -528,6 +558,7 @@ async function autoGenerateExpenses(travel) {
         currency: travel.currency || 'CNY',
         date: travel.endDate || new Date(),
         status: 'draft',  // 草稿状态，等待用户编辑
+        reimbursementNumber: await generateReimbursementNumber(), // 自动生成核销单号
         relatedInvoices: result.matchedInvoices.map(inv => inv._id),
         autoMatched: true,
         matchSource: 'auto',
