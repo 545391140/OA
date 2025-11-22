@@ -41,7 +41,8 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
     const users = await User.find(query)
       .select('-password')
       .populate('manager', 'firstName lastName email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
 
     res.json({
       success: true,

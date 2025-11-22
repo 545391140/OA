@@ -21,10 +21,14 @@ const generateReimbursementNumber = async () => {
   const day = String(today.getDate()).padStart(2, '0');
   const datePrefix = `EXP-${year}${month}${day}`;
   
-  // 查找今天最大的序号
+  // 查找今天最大的序号（优化：只查询需要的字段，使用 lean()）
   const todayExpenses = await Expense.find({
     reimbursementNumber: { $regex: `^${datePrefix}` }
-  }).sort({ reimbursementNumber: -1 }).limit(1);
+  })
+    .select('reimbursementNumber')
+    .sort({ reimbursementNumber: -1 })
+    .limit(1)
+    .lean();
   
   let sequence = 1;
   if (todayExpenses.length > 0 && todayExpenses[0].reimbursementNumber) {
@@ -81,8 +85,12 @@ router.get('/', protect, async (req, res) => {
     // 查询总数
     const total = await Expense.countDocuments(query);
     
-    // 查询数据
+    // 查询数据：只选择列表需要的字段，使用 lean() 提高性能
+    // 排除大字段：receipts（收据文件数组）、ocrData（OCR原始数据）、description（可能很长）
+    // 列表页需要的字段：_id, title, amount, date, category, status, currency, reimbursementNumber, 
+    //                   employee, travel, expenseItem, relatedInvoices, approvals, createdAt, updatedAt
     const expenses = await Expense.find(query)
+      .select('title amount date category status currency reimbursementNumber matchSource employee travel expenseItem relatedInvoices approvals createdAt updatedAt')
       .populate('employee', 'firstName lastName email')
       .populate('travel', 'title destination')
       .populate('approvals.approver', 'firstName lastName email')
@@ -90,7 +98,8 @@ router.get('/', protect, async (req, res) => {
       .populate('relatedInvoices', 'invoiceNumber invoiceDate amount totalAmount currency vendor category')
       .sort({ date: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能，减少内存占用
 
     // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
     expenses.forEach(expense => {

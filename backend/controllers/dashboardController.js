@@ -455,15 +455,15 @@ exports.getPendingTasks = async (req, res) => {
       });
     }
 
-    // 获取即将开始的差旅
-    const upcomingTravels = await Travel.find({
+    // 获取即将开始的差旅（优化：直接使用 countDocuments 而不是 find().countDocuments()）
+    const upcomingTravels = await Travel.countDocuments({
       employee: userId,
       status: 'approved',
       startDate: {
         $gte: new Date(),
         $lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天内
       }
-    }).countDocuments();
+    });
 
     if (upcomingTravels > 0) {
       tasks.push({
@@ -527,7 +527,7 @@ exports.getDashboardData = async (req, res) => {
       getRecentTravelsData(travelQuery, 5),
       getRecentExpensesData(expenseQuery, 5),
       getMonthlySpendingAndCategoryData(expenseQueryForAggregate, 6, 'month'),
-      getPendingTasksData(userId, userRole)
+      getPendingTasksData(userId, userRole, travelQuery)
     ]);
 
     // 处理结果，如果失败则使用默认值
@@ -629,6 +629,12 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
         }) 
       },
       {
+        $project: {
+          date: 1,
+          amount: 1
+        }
+      },
+      {
         $group: {
           _id: {
             $cond: [
@@ -709,6 +715,13 @@ async function getMonthlySpendingAndCategoryData(expenseQueryForAggregate, month
       const allData = await Expense.aggregate([
         { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: monthlyStartDate } }) },
         {
+          $project: {
+            date: 1,
+            amount: 1,
+            category: 1
+          }
+        },
+        {
           $facet: {
             monthlyData: [
               {
@@ -780,6 +793,12 @@ async function getMonthlySpendingAndCategoryData(expenseQueryForAggregate, month
         Expense.aggregate([
           { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: monthlyStartDate } }) },
           {
+            $project: {
+              date: 1,
+              amount: 1
+            }
+          },
+          {
             $group: {
               _id: { year: { $year: '$date' }, month: { $month: '$date' } },
               total: { $sum: '$amount' }
@@ -789,6 +808,12 @@ async function getMonthlySpendingAndCategoryData(expenseQueryForAggregate, month
         ]),
         Expense.aggregate([
           { $match: Object.assign({}, expenseQueryForAggregate, { date: { $gte: categoryStartDate } }) },
+          {
+            $project: {
+              category: 1,
+              amount: 1
+            }
+          },
           { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
           { $sort: { total: -1 } }
         ])
@@ -868,11 +893,18 @@ async function getCategoryBreakdownData(expenseQueryForAggregate, period) {
   }
 }
 
-async function getPendingTasksData(userId, userRole) {
+async function getPendingTasksData(userId, userRole, travelQuery = null) {
   const tasks = [];
 
+  // 如果有数据权限查询条件，使用它；否则使用默认查询
+  const baseTravelQuery = travelQuery || {};
+
   if (userRole === 'admin' || userRole === 'manager') {
-    const pendingTravels = await Travel.countDocuments({ status: 'submitted' });
+    // 使用数据权限查询条件（如果有）
+    const pendingTravels = await Travel.countDocuments({ 
+      ...baseTravelQuery, 
+      status: 'submitted' 
+    });
     if (pendingTravels > 0) {
       tasks.push({
         type: 'approval',
@@ -883,6 +915,7 @@ async function getPendingTasksData(userId, userRole) {
     }
   }
 
+  // 用户自己的草稿（不受数据权限限制，因为查询条件中已经包含 employee）
   const draftTravels = await Travel.countDocuments({ employee: userId, status: 'draft' });
   if (draftTravels > 0) {
     tasks.push({

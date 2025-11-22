@@ -159,8 +159,9 @@ router.get('/expenses', protect, async (req, res) => {
       match.category = category;
     }
 
-    // 查询费用数据
+    // 查询费用数据（优化：只选择需要的字段）
     const expenses = await Expense.find(match)
+      .select('amount date category createdAt employee')
       .populate('employee', 'firstName lastName department')
       .lean();
 
@@ -223,9 +224,18 @@ async function getSummaryStats(dateMatch, departmentMatch) {
   const travelMatch = { ...dateMatch };
   const expenseMatch = { ...dateMatch };
 
-  // 差旅统计
+  // 差旅统计（优化：添加 $project 只选择需要的字段）
   const travelPipeline = [
     { $match: travelMatch },
+    {
+      $project: {
+        estimatedBudget: 1,
+        estimatedCost: 1,
+        employee: 1,
+        status: 1,
+        createdAt: 1
+      }
+    },
     {
       $lookup: {
         from: 'users',
@@ -249,9 +259,16 @@ async function getSummaryStats(dateMatch, departmentMatch) {
   const totalTravel = travelStats[0]?.totalTravel || 0;
   const totalTravelCount = travelStats[0]?.totalTravelCount || 0;
 
-  // 费用统计
+  // 费用统计（优化：添加 $project 只选择需要的字段）
   const expensePipeline = [
     { $match: expenseMatch },
+    {
+      $project: {
+        amount: 1,
+        employee: 1,
+        createdAt: 1
+      }
+    },
     {
       $lookup: {
         from: 'users',
@@ -298,11 +315,21 @@ async function getSummaryStats(dateMatch, departmentMatch) {
 
   const currentMonthExpenses = await Expense.aggregate([
     { $match: { createdAt: { $gte: currentMonthStart }, ...expenseMatch } },
+    {
+      $project: {
+        amount: 1
+      }
+    },
     { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
   ]);
 
   const lastMonthExpenses = await Expense.aggregate([
     { $match: { createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd }, ...expenseMatch } },
+    {
+      $project: {
+        amount: 1
+      }
+    },
     { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
   ]);
 
@@ -353,9 +380,18 @@ async function getSummaryStats(dateMatch, departmentMatch) {
 
 // 辅助函数：获取月度数据
 async function getMonthlyData(dateMatch, departmentMatch) {
-  // 差旅数据聚合
+  // 差旅数据聚合（优化：添加 $project 只选择需要的字段）
   const travelPipeline = [
     { $match: dateMatch },
+    {
+      $project: {
+        estimatedBudget: 1,
+        estimatedCost: 1,
+        status: 1,
+        createdAt: 1,
+        employee: 1
+      }
+    },
     {
       $lookup: {
         from: 'users',
@@ -387,9 +423,16 @@ async function getMonthlyData(dateMatch, departmentMatch) {
 
   const travelData = await Travel.aggregate(travelPipeline);
   
-  // 费用数据聚合
+  // 费用数据聚合（优化：添加 $project 只选择需要的字段）
   const expensePipeline = [
     { $match: dateMatch },
+    {
+      $project: {
+        amount: 1,
+        createdAt: 1,
+        employee: 1
+      }
+    },
     {
       $lookup: {
         from: 'users',
@@ -458,6 +501,13 @@ async function getCategoryData(dateMatch, departmentMatch) {
   const pipeline = [
     { $match: dateMatch },
     {
+      $project: {
+        category: 1,
+        amount: 1,
+        employee: 1
+      }
+    },
+    {
       $lookup: {
         from: 'users',
         localField: 'employee',
@@ -499,9 +549,15 @@ async function getCategoryData(dateMatch, departmentMatch) {
 
 // 辅助函数：获取部门数据
 async function getDepartmentData(dateMatch) {
-  // 费用数据聚合
+  // 费用数据聚合（优化：添加 $project 只选择需要的字段）
   const expensePipeline = [
     { $match: dateMatch },
+    {
+      $project: {
+        amount: 1,
+        employee: 1
+      }
+    },
     {
       $lookup: {
         from: 'users',
@@ -520,9 +576,16 @@ async function getDepartmentData(dateMatch) {
     }
   ];
 
-  // 差旅数据聚合
+  // 差旅数据聚合（优化：添加 $project 只选择需要的字段）
   const travelPipeline = [
     { $match: dateMatch },
+    {
+      $project: {
+        estimatedBudget: 1,
+        estimatedCost: 1,
+        employee: 1
+      }
+    },
     {
       $lookup: {
         from: 'users',
@@ -574,6 +637,14 @@ async function getTravelData(dateMatch, departmentMatch) {
   const pipeline = [
     { $match: dateMatch },
     {
+      $project: {
+        destination: 1,
+        estimatedBudget: 1,
+        estimatedCost: 1,
+        employee: 1
+      }
+    },
+    {
       $lookup: {
         from: 'users',
         localField: 'employee',
@@ -618,6 +689,14 @@ async function getTravelData(dateMatch, departmentMatch) {
 async function getExpenseData(dateMatch, departmentMatch) {
   const pipeline = [
     { $match: dateMatch },
+    {
+      $project: {
+        vendor: 1,
+        amount: 1,
+        category: 1,
+        employee: 1
+      }
+    },
     {
       $lookup: {
         from: 'users',

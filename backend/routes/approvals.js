@@ -13,13 +13,15 @@ const router = express.Router();
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    // Get travel requests pending approval
+    // Get travel requests pending approval（优化：使用 select 和 lean）
     const pendingTravels = await Travel.find({
       'approvals.approver': req.user.id,
       'approvals.status': 'pending'
     })
+      .select('title travelNumber status startDate endDate destination employee approvals createdAt')
       .populate('employee', 'firstName lastName email')
-      .populate('approvals.approver', 'firstName lastName email');
+      .populate('approvals.approver', 'firstName lastName email')
+      .lean();
 
     // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
     pendingTravels.forEach(travel => {
@@ -30,13 +32,15 @@ router.get('/', protect, async (req, res) => {
       }
     });
 
-    // Get expenses pending approval
+    // Get expenses pending approval（优化：使用 select 和 lean）
     const pendingExpenses = await Expense.find({
       'approvals.approver': req.user.id,
       'approvals.status': 'pending'
     })
+      .select('title amount date category status currency reimbursementNumber employee travel approvals createdAt')
       .populate('employee', 'firstName lastName email')
-      .populate('travel', 'title destination');
+      .populate('travel', 'title destination')
+      .lean();
 
     // 注意：如果 travel 关联的差旅被删除，populate 会将 travel 设置为 null
     // 这是正常行为，前端需要处理 null 值
@@ -436,6 +440,16 @@ router.get('/statistics', protect, async (req, res) => {
         pipeline.push({ $match: { createdAt: dateMatch } });
       }
       
+      // 优化：添加 $project 只选择需要的字段
+      pipeline.push({
+        $project: {
+          status: 1,
+          estimatedBudget: 1,
+          estimatedCost: 1,
+          createdAt: 1
+        }
+      });
+      
       // 按申请的整体status分组统计
       pipeline.push({
         $group: {
@@ -560,6 +574,16 @@ router.get('/statistics', protect, async (req, res) => {
       if (Object.keys(dateMatch).length > 0) {
         pipeline.push({ $match: { createdAt: dateMatch } });
       }
+      
+      // 优化：添加 $project 只选择需要的字段
+      pipeline.push({
+        $project: {
+          status: 1,
+          totalAmount: 1,
+          amount: 1,
+          createdAt: 1
+        }
+      });
       
       // 按申请的整体status分组统计
       pipeline.push({
@@ -716,10 +740,16 @@ router.get('/approver-workload', protect, async (req, res) => {
 
     const matchStage = Object.keys(dateMatch).length > 0 ? { createdAt: dateMatch } : {};
 
-    // 聚合查询差旅审批人工作量
+    // 聚合查询差旅审批人工作量（优化：添加 $project 只选择需要的字段）
     const travelWorkload = await Travel.aggregate([
       {
         $match: matchStage
+      },
+      {
+        $project: {
+          approvals: 1,
+          createdAt: 1
+        }
       },
       {
         $unwind: '$approvals'
@@ -782,10 +812,16 @@ router.get('/approver-workload', protect, async (req, res) => {
       }
     ]);
 
-    // 聚合查询费用审批人工作量
+    // 聚合查询费用审批人工作量（优化：添加 $project 只选择需要的字段）
     const expenseWorkload = await Expense.aggregate([
       {
         $match: matchStage
+      },
+      {
+        $project: {
+          approvals: 1,
+          createdAt: 1
+        }
       },
       {
         $unwind: '$approvals'
@@ -966,6 +1002,14 @@ router.get('/trend', protect, async (req, res) => {
         pipeline.push({ $match: { createdAt: dateMatch } });
       }
       
+      // 优化：添加 $project 只选择需要的字段
+      pipeline.push({
+        $project: {
+          approvals: 1,
+          createdAt: 1
+        }
+      });
+      
       pipeline.push(
         { $unwind: '$approvals' },
         {
@@ -1065,6 +1109,15 @@ router.get('/travel-statistics/:employeeId', protect, async (req, res) => {
             $gte: yearStart,
             $lte: yearEnd
           }
+        }
+      },
+      {
+        // 优化：添加 $project 只选择需要的字段
+        $project: {
+          estimatedBudget: 1,
+          estimatedCost: 1,
+          startDate: 1,
+          endDate: 1
         }
       },
       {

@@ -36,7 +36,8 @@ router.get('/', protect, checkPermission(PERMISSIONS.POSITION_VIEW), async (req,
     const positions = await Position.find(query)
       .populate('createdBy', 'firstName lastName')
       .populate('updatedBy', 'firstName lastName')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
 
     res.json({
       success: true,

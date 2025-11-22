@@ -47,7 +47,8 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
     const roles = await Role.find(query)
       .populate('createdBy', 'firstName lastName')
       .populate('updatedBy', 'firstName lastName')
-      .sort({ level: -1, createdAt: -1 });
+      .sort({ level: -1, createdAt: -1 })
+      .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
 
     res.json({
       success: true,
