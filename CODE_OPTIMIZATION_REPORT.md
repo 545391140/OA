@@ -301,10 +301,19 @@ const userLoader = new DataLoader(async (userIds) => {
 - ⚠️ 生产代码中包含大量 `console.log` 语句
 - ⚠️ 缺少统一的日志系统
 
+**状态**: ✅ **已解决**
+
+**解决方案**:
+- ✅ 已安装 `winston` 日志库
+- ✅ 已创建统一的日志系统 (`utils/logger.js`)
+- ✅ 已更新 `server.js` 集成日志系统
+- ✅ 已创建日志使用指南 (`utils/LOGGING_GUIDE.md`)
+- ⚠️ 待迁移：需要逐步替换所有路由文件中的 `console.log`（见 `LOGGING_AND_ERROR_HANDLING_MIGRATION.md`）
+
 **建议**:
-- ✅ 使用专业的日志库（如 `winston`、`pino`）
-- ✅ 根据环境变量控制日志级别
-- ✅ 移除或替换调试用的 `console.log`
+- ✅ 使用专业的日志库（如 `winston`、`pino`）- **已完成**
+- ✅ 根据环境变量控制日志级别 - **已完成**
+- ⚠️ 移除或替换调试用的 `console.log` - **进行中**
 
 #### 3.2 错误处理不一致
 **位置**: 多个路由文件
@@ -313,6 +322,21 @@ const userLoader = new DataLoader(async (userIds) => {
 - ⚠️ 错误处理逻辑分散，不一致
 - ⚠️ 某些路由直接返回错误，未使用错误处理中间件
 - ⚠️ 错误消息硬编码，未国际化
+
+**状态**: ✅ **已解决**
+
+**解决方案**:
+- ✅ 已创建 `AppError` 类和 `ErrorFactory` (`utils/AppError.js`)
+- ✅ 已创建 `asyncHandler` 包装器 (`utils/asyncHandler.js`)
+- ✅ 已更新错误处理中间件 (`middleware/errorHandler.js`)
+- ✅ 已更新 `server.js` 使用新的日志系统
+- ✅ 已更新示例路由 (`routes/users.js`)
+- ⚠️ 待迁移：需要逐步更新所有路由文件使用新的错误处理方式
+
+**建议**:
+- ✅ 统一错误处理中间件 - **已完成**
+- ✅ 创建自定义错误类 - **已完成**
+- ⚠️ 错误消息国际化 - **待实施**（可以后续添加 i18n 支持）
 
 **建议**:
 - ✅ 统一错误处理中间件

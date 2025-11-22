@@ -7,6 +7,9 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
+// 导入日志系统（必须在其他模块之前加载）
+const logger = require('./utils/logger');
+
 const connectDB = require('./config/database');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -144,10 +147,14 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging middleware
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+// Logging middleware - 使用 winston 流
+app.use(morgan('combined', {
+  stream: logger.stream,
+  skip: (req, res) => {
+    // 跳过健康检查端点的日志
+    return req.url === '/health';
+  }
+}));
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -279,8 +286,8 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  logger.info(`📊 Health check: http://localhost:${PORT}/health`);
 });
 
 module.exports = app;

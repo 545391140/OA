@@ -30,7 +30,8 @@
     "sharp": "^0.34.5",
     "tesseract.js": "^6.0.1",
     "uuid": "^9.0.1",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "winston": "^3.18.3"
   },
   "devDependencies": {
     "jest": "^29.7.0",

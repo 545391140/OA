@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const { protect } = require('../middleware/auth');
+const asyncHandler = require('../utils/asyncHandler');
+const logger = require('../utils/logger');
+const { ErrorFactory } = require('../utils/AppError');
 const Expense = require('../models/Expense');
 const ExpenseItem = require('../models/ExpenseItem');
 const Invoice = require('../models/Invoice');
@@ -50,8 +53,7 @@ const generateReimbursementNumber = async () => {
 // @desc    Get all expenses
 // @route   GET /api/expenses
 // @access  Private
-router.get('/', protect, async (req, res) => {
-  try {
+router.get('/', protect, asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
@@ -225,26 +227,15 @@ router.get('/', protect, async (req, res) => {
       totalPages: Math.ceil(total / limit),
       data: expenses
     });
-  } catch (error) {
-    console.error('Get expenses error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-});
+}));
 
 // @desc    Get single expense
 // @route   GET /api/expenses/:id
 // @access  Private
-router.get('/:id', protect, async (req, res) => {
-  try {
+router.get('/:id', protect, asyncHandler(async (req, res) => {
     // 验证ID格式
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid expense ID format'
-      });
+      throw ErrorFactory.badRequest('Invalid expense ID format');
     }
 
     let expense;
@@ -256,11 +247,11 @@ router.get('/:id', protect, async (req, res) => {
         .populate('expenseItem', 'itemName category')
         .populate('relatedInvoices', 'invoiceNumber invoiceDate amount totalAmount currency vendor category');
     } catch (populateError) {
-      console.error('Populate error:', populateError);
+      logger.error('Populate error:', populateError);
       // 如果 populate 失败，尝试不使用 populate
       expense = await Expense.findById(req.params.id);
       if (expense) {
-        console.warn('Populate failed, returning expense without populated fields');
+        logger.warn('Populate failed, returning expense without populated fields');
       }
     }
 
@@ -295,21 +286,12 @@ router.get('/:id', protect, async (req, res) => {
       success: true,
       data: expense
     });
-  } catch (error) {
-    console.error('Get expense error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
-});
+}));
 
 // @desc    Create new expense
 // @route   POST /api/expenses
 // @access  Private
-router.post('/', protect, async (req, res) => {
-  try {
+router.post('/', protect, asyncHandler(async (req, res) => {
     // 处理日期字段
     const expenseData = {
       ...req.body,
@@ -387,7 +369,7 @@ router.post('/', protect, async (req, res) => {
         });
       } else {
         // 没有匹配的工作流，使用默认逻辑
-        console.log('No matching workflow found for expense, using default approval logic');
+        logger.debug('No matching workflow found for expense, using default approval logic');
         
         if (expenseAmount > 10000) {
           approvals.push({
@@ -448,7 +430,7 @@ router.post('/', protect, async (req, res) => {
           }
         });
       } catch (notifyError) {
-        console.error('Failed to send approval notifications:', notifyError);
+        logger.error('Failed to send approval notifications:', notifyError);
         // 通知失败不影响创建流程
       }
     }
@@ -457,28 +439,16 @@ router.post('/', protect, async (req, res) => {
       success: true,
       data: expense
     });
-  } catch (error) {
-    console.error('Create expense error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
-});
+}));
 
 // @desc    Update expense
 // @route   PUT /api/expenses/:id
 // @access  Private
-router.put('/:id', protect, async (req, res) => {
-  try {
+router.put('/:id', protect, asyncHandler(async (req, res) => {
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: 'Expense not found'
-      });
+      throw ErrorFactory.notFound('Expense not found');
     }
 
     // 数据权限检查：使用数据权限范围检查
@@ -486,10 +456,7 @@ router.put('/:id', protect, async (req, res) => {
     const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
     if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized'
-      });
+      throw ErrorFactory.forbidden('Not authorized');
     }
 
     // 处理更新数据
@@ -534,11 +501,11 @@ router.put('/:id', protect, async (req, res) => {
 
     // 如果是从草稿状态提交审批，触发审批流程
     if (isSubmitting) {
-      console.log('[EXPENSE_SUBMIT] Detected status change from draft to submitted');
+      logger.debug('[EXPENSE_SUBMIT] Detected status change from draft to submitted');
       
       // 只能提交草稿状态的申请
       if (expense.status !== 'draft') {
-        console.log('[EXPENSE_SUBMIT] Expense status is not draft:', expense.status);
+        logger.debug('[EXPENSE_SUBMIT] Expense status is not draft:', expense.status);
         return res.status(400).json({
           success: false,
           message: 'Can only submit draft expense requests'
@@ -547,7 +514,7 @@ router.put('/:id', protect, async (req, res) => {
 
       // 获取员工信息（用于匹配审批流程）
       const employee = await User.findById(expense.employee).select('department jobLevel manager');
-      console.log('[EXPENSE_SUBMIT] Employee info:', {
+      logger.debug('[EXPENSE_SUBMIT] Employee info:', {
         id: expense.employee,
         department: employee?.department,
         jobLevel: employee?.jobLevel,
@@ -556,7 +523,7 @@ router.put('/:id', protect, async (req, res) => {
       
       // 使用审批工作流服务匹配审批流程
       const expenseAmount = expense.amount || 0;
-      console.log('[EXPENSE_SUBMIT] Matching workflow for amount:', expenseAmount);
+      logger.debug('[EXPENSE_SUBMIT] Matching workflow for amount:', expenseAmount);
       
       const workflow = await approvalWorkflowService.matchWorkflow({
         type: 'expense',
@@ -568,17 +535,17 @@ router.put('/:id', protect, async (req, res) => {
       let approvals = [];
       
       if (workflow) {
-        console.log('[EXPENSE_SUBMIT] Workflow matched:', workflow.name);
+        logger.debug('[EXPENSE_SUBMIT] Workflow matched:', workflow.name);
         // 使用匹配的工作流生成审批人
         approvals = await approvalWorkflowService.generateApprovers({
           workflow,
           requesterId: expense.employee,
           department: employee?.department || req.user.department
         });
-        console.log('[EXPENSE_SUBMIT] Generated approvers from workflow:', approvals.length);
+        logger.debug('[EXPENSE_SUBMIT] Generated approvers from workflow:', approvals.length);
       } else {
         // 没有匹配的工作流，使用默认逻辑
-        console.log('[EXPENSE_SUBMIT] No matching workflow found, using default approval logic');
+        logger.debug('[EXPENSE_SUBMIT] No matching workflow found, using default approval logic');
         
         if (expenseAmount > 10000) {
           approvals.push({
@@ -614,14 +581,14 @@ router.put('/:id', protect, async (req, res) => {
             }
           });
         }
-        console.log('[EXPENSE_SUBMIT] Generated approvers from default logic:', approvals.length);
+        logger.debug('[EXPENSE_SUBMIT] Generated approvers from default logic:', approvals.length);
       }
 
       // 设置审批流程
       updateData.approvals = approvals;
-      console.log('[EXPENSE_SUBMIT] Final approvals to set:', JSON.stringify(approvals, null, 2));
+      logger.debug('[EXPENSE_SUBMIT] Final approvals to set:', JSON.stringify(approvals, null, 2));
     } else {
-      console.log('[EXPENSE_SUBMIT] Not submitting - isSubmitting:', isSubmitting, 'originalStatus:', originalStatus, 'newStatus:', updateData.status);
+      logger.debug('[EXPENSE_SUBMIT] Not submitting - isSubmitting:', isSubmitting, 'originalStatus:', originalStatus, 'newStatus:', updateData.status);
     }
 
     // 更新费用申请
@@ -642,7 +609,7 @@ router.put('/:id', protect, async (req, res) => {
     // 确保审批流程被正确设置（如果是从草稿状态提交审批）
     if (isSubmitting && updateData.approvals && updateData.approvals.length > 0) {
       expense.approvals = updateData.approvals;
-      console.log('[EXPENSE_SUBMIT] Set approvals on expense object:', expense.approvals.length);
+      logger.debug('[EXPENSE_SUBMIT] Set approvals on expense object:', expense.approvals.length);
     }
     
     // 如果费用申请还没有核销单号，自动生成一个
@@ -652,11 +619,11 @@ router.put('/:id', protect, async (req, res) => {
 
     await expense.save();
     
-    console.log('[EXPENSE_SUBMIT] Expense saved. Status:', expense.status, 'Approvals count:', expense.approvals?.length || 0);
+    logger.info('[EXPENSE_SUBMIT] Expense saved. Status:', expense.status, 'Approvals count:', expense.approvals?.length || 0);
 
     // 如果是从草稿状态提交审批，发送审批通知
     if (isSubmitting && expense.approvals && expense.approvals.length > 0) {
-      console.log('[EXPENSE_SUBMIT] Sending approval notifications to:', expense.approvals.map(a => a.approver.toString()));
+      logger.debug('[EXPENSE_SUBMIT] Sending approval notifications to:', expense.approvals.map(a => a.approver.toString()));
       try {
         const approverIds = [...new Set(expense.approvals.map(a => a.approver.toString()))];
         const requester = await User.findById(expense.employee).select('firstName lastName');
@@ -673,7 +640,7 @@ router.put('/:id', protect, async (req, res) => {
           }
         });
       } catch (notifyError) {
-        console.error('Failed to send approval notifications:', notifyError);
+        logger.error('Failed to send approval notifications:', notifyError);
         // 通知失败不影响提交流程
       }
     }
@@ -694,35 +661,23 @@ router.put('/:id', protect, async (req, res) => {
       });
     } catch (populateError) {
       // 如果 populate 失败，返回未 populate 的数据
-      console.error('Populate error:', populateError);
+      logger.error('Populate error:', populateError);
       const updatedExpense = await Expense.findById(expense._id);
       res.json({
         success: true,
         data: updatedExpense
       });
     }
-  } catch (error) {
-    console.error('Update expense error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
-});
+}));
 
 // @desc    Delete expense
 // @route   DELETE /api/expenses/:id
 // @access  Private
-router.delete('/:id', protect, async (req, res) => {
-  try {
+router.delete('/:id', protect, asyncHandler(async (req, res) => {
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: 'Expense not found'
-      });
+      throw ErrorFactory.notFound('Expense not found');
     }
 
     // 数据权限检查：使用数据权限范围检查
@@ -730,18 +685,12 @@ router.delete('/:id', protect, async (req, res) => {
     const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
     if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized'
-      });
+      throw ErrorFactory.forbidden('Not authorized');
     }
 
     // 检查状态：只有草稿状态可以删除
     if (expense.status !== 'draft') {
-      return res.status(400).json({
-        success: false,
-        message: 'Only draft expenses can be deleted'
-      });
+      throw ErrorFactory.badRequest('Only draft expenses can be deleted');
     }
 
     // 取消关联的发票
@@ -775,52 +724,36 @@ router.delete('/:id', protect, async (req, res) => {
     // 删除费用申请
     await Expense.findByIdAndDelete(req.params.id);
 
+    logger.info('Expense deleted successfully:', { expenseId: req.params.id });
     res.json({
       success: true,
       message: 'Expense deleted successfully'
     });
-  } catch (error) {
-    console.error('Delete expense error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server error'
-    });
-  }
-});
+}));
 
 // @desc    Link invoice to expense
 // @route   POST /api/expenses/:id/link-invoice
 // @access  Private
-router.post('/:id/link-invoice', protect, async (req, res) => {
-  try {
+router.post('/:id/link-invoice', protect, asyncHandler(async (req, res) => {
     const { invoiceId } = req.body;
     
-    console.log(`Linking invoice ${invoiceId} to expense ${req.params.id}`);
+    logger.info(`Linking invoice ${invoiceId} to expense ${req.params.id}`);
     
     if (!invoiceId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invoice ID is required'
-      });
+      throw ErrorFactory.badRequest('Invoice ID is required');
     }
     
     const expense = await Expense.findById(req.params.id);
     const invoice = await Invoice.findById(invoiceId);
     
     if (!expense) {
-      console.log(`Expense ${req.params.id} not found`);
-      return res.status(404).json({
-        success: false,
-        message: 'Expense not found'
-      });
+      logger.warn(`Expense ${req.params.id} not found`);
+      throw ErrorFactory.notFound('Expense not found');
     }
     
     if (!invoice) {
-      console.log(`Invoice ${invoiceId} not found`);
-      return res.status(404).json({
-        success: false,
-        message: 'Invoice not found'
-      });
+      logger.warn(`Invoice ${invoiceId} not found`);
+      throw ErrorFactory.notFound('Invoice not found');
     }
     
     // 数据权限检查：使用数据权限范围检查
@@ -839,12 +772,12 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
     const invoiceIdInExpense = expense.relatedInvoices.some(id => id.toString() === invoiceObjectId);
     
     if (!invoiceIdInExpense) {
-      console.log(`Adding invoice ${invoiceId} to expense ${expense._id}`);
+      logger.debug(`Adding invoice ${invoiceId} to expense ${expense._id}`);
       expense.relatedInvoices.push(invoiceObjectId);
       await expense.save();
-      console.log(`Successfully added invoice to expense. Total invoices: ${expense.relatedInvoices.length}`);
+      logger.info(`Successfully added invoice to expense. Total invoices: ${expense.relatedInvoices.length}`);
     } else {
-      console.log(`Invoice ${invoiceId} already in expense.relatedInvoices, skipping`);
+      logger.debug(`Invoice ${invoiceId} already in expense.relatedInvoices, skipping`);
       // 如果发票已经在当前费用申请中，直接返回成功（幂等操作）
       return res.json({
         success: true,
@@ -860,16 +793,16 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
     // 注意：由于 Invoice 模型的 relatedExpense 字段是单一值，我们只更新为当前费用申请
     // 但不会阻止发票在其他费用申请中使用（通过 expense.relatedInvoices 数组）
     if (!invoice.relatedExpense || invoice.relatedExpense.toString() !== expense._id.toString()) {
-      console.log(`Updating invoice ${invoiceId} relatedExpense to ${expense._id}`);
+      logger.debug(`Updating invoice ${invoiceId} relatedExpense to ${expense._id}`);
       invoice.relatedExpense = expense._id;
       invoice.matchStatus = 'linked';
       if (expense.travel) {
         invoice.relatedTravel = expense.travel;
       }
       await invoice.save();
-      console.log(`Successfully updated invoice`);
+      logger.info(`Successfully updated invoice`);
     } else {
-      console.log(`Invoice ${invoiceId} already linked to expense ${expense._id}, skipping update`);
+      logger.debug(`Invoice ${invoiceId} already linked to expense ${expense._id}, skipping update`);
     }
     
     res.json({
@@ -882,7 +815,7 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Link invoice error:', error);
+    logger.error('Link invoice error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to link invoice'
@@ -893,16 +826,12 @@ router.post('/:id/link-invoice', protect, async (req, res) => {
 // @desc    Unlink invoice from expense
 // @route   DELETE /api/expenses/:id/unlink-invoice/:invoiceId
 // @access  Private
-router.delete('/:id/unlink-invoice/:invoiceId', protect, async (req, res) => {
-  try {
+router.delete('/:id/unlink-invoice/:invoiceId', protect, asyncHandler(async (req, res) => {
     const expense = await Expense.findById(req.params.id);
     const invoice = await Invoice.findById(req.params.invoiceId);
     
     if (!expense || !invoice) {
-      return res.status(404).json({
-        success: false,
-        message: 'Expense or invoice not found'
-      });
+      throw ErrorFactory.notFound('Expense or invoice not found');
     }
     
     // 数据权限检查：使用数据权限范围检查
@@ -910,10 +839,7 @@ router.delete('/:id/unlink-invoice/:invoiceId', protect, async (req, res) => {
     const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
     if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized'
-      });
+      throw ErrorFactory.forbidden('Not authorized');
     }
     
     // 取消关联
@@ -934,7 +860,7 @@ router.delete('/:id/unlink-invoice/:invoiceId', protect, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Unlink invoice error:', error);
+    logger.error('Unlink invoice error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to unlink invoice'
@@ -945,15 +871,11 @@ router.delete('/:id/unlink-invoice/:invoiceId', protect, async (req, res) => {
 // @desc    Get expense receipt file
 // @route   GET /api/expenses/:id/receipts/:receiptPath
 // @access  Private
-router.get('/:id/receipts/*', protect, async (req, res) => {
-  try {
+router.get('/:id/receipts/*', protect, asyncHandler(async (req, res) => {
     const expense = await Expense.findById(req.params.id);
     
     if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: 'Expense not found'
-      });
+      throw ErrorFactory.notFound('Expense not found');
     }
     
     // 数据权限检查：使用数据权限范围检查
@@ -961,10 +883,7 @@ router.get('/:id/receipts/*', protect, async (req, res) => {
     const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
     
     if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this file'
-      });
+      throw ErrorFactory.forbidden('Not authorized to access this file');
     }
     
     // 获取收据路径（从URL中提取）
@@ -974,10 +893,7 @@ router.get('/:id/receipts/*', protect, async (req, res) => {
     const receipt = expense.receipts?.find(r => r.path === receiptPath || r.path?.endsWith(receiptPath));
     
     if (!receipt || !receipt.path) {
-      return res.status(404).json({
-        success: false,
-        message: 'Receipt not found'
-      });
+      throw ErrorFactory.notFound('Receipt not found');
     }
     
     // 构建文件路径
@@ -986,10 +902,7 @@ router.get('/:id/receipts/*', protect, async (req, res) => {
       : path.resolve(__dirname, '..', receipt.path);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        message: 'File not found'
-      });
+      throw ErrorFactory.notFound('Receipt file not found on server');
     }
     
     // 设置响应头
@@ -998,13 +911,6 @@ router.get('/:id/receipts/*', protect, async (req, res) => {
     
     // 发送文件
     res.sendFile(filePath);
-  } catch (error) {
-    console.error('Get expense receipt error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to get receipt file'
-    });
-  }
-});
+}));
 
 module.exports = router;

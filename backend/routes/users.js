@@ -1,6 +1,9 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
+const asyncHandler = require('../utils/asyncHandler');
+const logger = require('../utils/logger');
+const { ErrorFactory } = require('../utils/AppError');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const Position = require('../models/Position');
@@ -61,39 +64,34 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
 // @desc    Get single user
 // @route   GET /api/users/:id
 // @access  Private
-router.get('/:id', protect, async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id)
-      .select('-password')
-      .populate('manager', 'firstName lastName email');
+router.get('/:id', protect, asyncHandler(async (req, res) => {
+  logger.info('Fetching user:', { userId: req.params.id, requestedBy: req.user.id });
+  
+  const user = await User.findById(req.params.id)
+    .select('-password')
+    .populate('manager', 'firstName lastName email');
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Check if requester is admin or the user themselves
-    if (req.user.role !== 'admin' && req.user.id !== user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this user'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: user
-    });
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server error'
-    });
+  if (!user) {
+    logger.warn('User not found:', { userId: req.params.id });
+    throw ErrorFactory.notFound('User not found');
   }
-});
+
+  // Check if requester is admin or the user themselves
+  if (req.user.role !== 'admin' && req.user.id !== user._id.toString()) {
+    logger.warn('Unauthorized access attempt:', { 
+      userId: req.params.id, 
+      requesterId: req.user.id,
+      requesterRole: req.user.role 
+    });
+    throw ErrorFactory.forbidden('Not authorized to access this user');
+  }
+
+  logger.info('User fetched successfully:', { userId: user.id });
+  res.json({
+    success: true,
+    data: user
+  });
+}));
 
 // @desc    Create new user
 // @route   POST /api/users
