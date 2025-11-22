@@ -510,7 +510,7 @@ const ExpenseList = () => {
             <ViewIcon sx={{ mr: 1 }} />
             {t('common.view') || 'View Details'}
           </MenuItem>
-          {selectedExpense?.status === 'draft' && (
+          {(selectedExpense?.status === 'draft' || selectedExpense?.status === 'submitted') && (
             <MenuItem onClick={handleEdit}>
               <EditIcon sx={{ mr: 1 }} />
               {t('common.edit')}
