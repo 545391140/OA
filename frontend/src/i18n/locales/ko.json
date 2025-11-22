@@ -1269,6 +1269,7 @@
     "expenseStats": "비용 통계",
     "categoryBreakdown": "비용 카테고리 분석",
     "totalTravelRequests": "총 출장 신청",
+    "totalExpenses": "총 비용 신청",
     "approvedRequests": "승인된 신청",
     "vsLastMonth": "전월 대비",
     "amount": "금액",

@@ -1234,6 +1234,7 @@
     "expenseStats": "経費統計",
     "categoryBreakdown": "経費カテゴリー内訳",
     "totalTravelRequests": "総出張申請数",
+    "totalExpenses": "総経費申請数",
     "approvedRequests": "承認済み申請",
     "vsLastMonth": "前月比",
     "amount": "金額",

@@ -50,7 +50,8 @@ const Dashboard = () => {
       pendingApprovals: 0,
       monthlySpending: 0,
       approvedRequests: 0,
-      spendingTrend: 0
+      spendingTrend: 0,
+      totalExpenses: 0
     },
     recentTravels: [],
     recentExpenses: [],
@@ -223,7 +224,7 @@ const Dashboard = () => {
 
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={2.4}>
           <StatCard
             title={t('dashboard.totalTravelRequests')}
             value={dashboardData.stats.totalTravelRequests}
@@ -231,15 +232,15 @@ const Dashboard = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={2.4}>
           <StatCard
-            title={t('dashboard.pendingApprovals')}
-            value={dashboardData.stats.pendingApprovals}
-            icon={<ApprovalIcon />}
+            title={t('dashboard.totalExpenses')}
+            value={dashboardData.stats.totalExpenses}
+            icon={<ExpenseIcon />}
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={2.4}>
           <StatCard
             title={t('dashboard.monthlySpending')}
             value={formatCurrency(dashboardData.stats.monthlySpending)}
@@ -249,7 +250,15 @@ const Dashboard = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={2.4}>
+          <StatCard
+            title={t('dashboard.pendingApprovals')}
+            value={dashboardData.stats.pendingApprovals}
+            icon={<ApprovalIcon />}
+            loading={loading}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={2.4}>
           <StatCard
             title={t('dashboard.approvedRequests')}
             value={dashboardData.stats.approvedRequests}
