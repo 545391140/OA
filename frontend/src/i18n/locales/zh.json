@@ -1208,7 +1208,197 @@
       "loadError": "加载费用详情失败",
       "confirmDelete": "确定要删除费用申请",
       "createdOn": "创建于",
-      "noReceipts": "未上传收据"
+      "noReceipts": "未上传收据",
+      "expenseInformation": "费用信息",
+      "description": "描述",
+      "amount": "金额",
+      "expenseDate": "费用日期",
+      "category": "类别",
+      "projectCostCenter": "项目与成本中心",
+      "vendorInformation": "供应商信息",
+      "vendorName": "供应商名称",
+      "taxId": "税号",
+      "address": "地址",
+      "phone": "电话",
+      "email": "邮箱",
+      "expenseNotFound": "费用申请不存在",
+      "downloading": "正在下载",
+      "employeeInformation": "员工信息",
+      "approvalStatus": "审批状态",
+      "paymentInformation": "支付信息",
+      "paymentMethod": "支付方式",
+      "transactionId": "交易ID",
+      "paymentDate": "支付日期",
+      "notFound": "费用申请不存在",
+      "noPermission": "无权访问此费用申请",
+      "serverError": "服务器错误，请稍后重试",
+      "additionalNotes": "附加备注",
+      "tags": "标签",
+      "exchangeRate": "汇率"
+    },
+    "expenseItem": "费用项",
+    "expenseItemCode": "费用项代码",
+    "paymentReference": "支付参考号",
+    "paidBy": "支付人",
+    "paymentMethods": {
+      "cash": "现金",
+      "credit_card": "信用卡",
+      "bank_transfer": "银行转账",
+      "company_card": "公司卡"
+    },
+    "activityHistory": "活动历史",
+    "created": "创建",
+    "updated": "更新",
+    "lastUpdated": "最后更新",
+    "submitted": "已提交",
+    "approved": "已批准",
+    "paid": "已支付",
+    "receipt": {
+      "preview": "收据预览",
+      "previewNotSupported": "此文件类型不支持预览",
+      "downloadSuccess": "下载成功",
+      "downloadError": "下载失败",
+      "previewError": "预览失败"
+    },
+    "currencies": {
+      "USD": "美元",
+      "CNY": "人民币",
+      "JPY": "日元",
+      "KRW": "韩元",
+      "EUR": "欧元"
+    },
+    "subcategories": {
+      "transportation": {
+        "flight": "航班",
+        "train": "火车",
+        "taxi": "出租车",
+        "rentalCar": "租车",
+        "publicTransport": "公共交通",
+        "parking": "停车",
+        "fuel": "燃油"
+      },
+      "accommodation": {
+        "hotel": "酒店",
+        "airbnb": "爱彼迎",
+        "hostel": "青年旅社",
+        "apartmentRental": "公寓租赁"
+      },
+      "meals": {
+        "breakfast": "早餐",
+        "lunch": "午餐",
+        "dinner": "晚餐",
+        "coffeeTea": "咖啡/茶",
+        "snacks": "零食",
+        "businessMeal": "商务餐"
+      },
+      "entertainment": {
+        "clientEntertainment": "客户娱乐",
+        "teamBuilding": "团队建设",
+        "conference": "会议",
+        "event": "活动"
+      },
+      "communication": {
+        "phone": "电话",
+        "internet": "网络",
+        "mobileData": "移动数据",
+        "postage": "邮费",
+        "courier": "快递"
+      },
+      "office_supplies": {
+        "stationery": "文具",
+        "printing": "打印",
+        "software": "软件",
+        "hardware": "硬件",
+        "books": "书籍"
+      },
+      "training": {
+        "course": "课程",
+        "workshop": "研讨会",
+        "certification": "认证",
+        "conference": "会议",
+        "onlineTraining": "在线培训"
+      },
+      "other": {
+        "miscellaneous": "杂项",
+        "bankFees": "银行费用",
+        "insurance": "保险",
+        "medical": "医疗",
+        "other": "其他"
+      }
+    },
+    "projects": {
+      "projectAlpha": "项目Alpha",
+      "projectBeta": "项目Beta",
+      "projectGamma": "项目Gamma",
+      "clientAEngagement": "客户A项目",
+      "clientBEngagement": "客户B项目",
+      "internalDevelopment": "内部开发"
+    },
+    "costCenters": {
+      "sales": "销售",
+      "marketing": "市场",
+      "engineering": "工程",
+      "operations": "运营",
+      "hr": "人力资源",
+      "finance": "财务",
+      "legal": "法务"
+    },
+    "clients": {
+      "clientA": "客户A",
+      "clientB": "客户B",
+      "clientC": "客户C",
+      "internal": "内部",
+      "prospectA": "潜在客户A",
+      "prospectB": "潜在客户B"
+    },
+    "tags": {
+      "urgent": "紧急",
+      "clientRelated": "客户相关",
+      "travel": "差旅",
+      "training": "培训",
+      "equipment": "设备",
+      "software": "软件",
+      "hardware": "硬件",
+      "meeting": "会议",
+      "conference": "会议"
+    },
+    "form": {
+      "titleRequired": "标题为必填项",
+      "categoryRequired": "类别为必填项",
+      "dateRequired": "日期为必填项",
+      "vendorNameRequired": "供应商名称为必填项",
+      "filesUploaded": "{count} 个文件上传成功",
+      "generatingExpenses": "正在自动匹配发票并生成费用申请...",
+      "expenseGenerationInProgress": "费用申请正在生成中，请稍候...（预计还需 {timeout} 秒）",
+      "expenseGenerationFailed": "生成费用申请失败，请稍后重试",
+      "expensesAlreadyGenerated": "费用申请已生成，正在加载...",
+      "loadedGeneratedExpense": "已加载已生成的费用申请",
+      "foundExpenses": "已找到 {count} 个费用申请，请选择要编辑的申请",
+      "expenseGeneratedButCannotLoad": "费用申请已生成，但无法加载详情",
+      "expenseGeneratedButNotFound": "费用申请已生成，但未找到关联的费用申请",
+      "loadTravelInfoFailed": "加载差旅信息失败",
+      "loadExpenseDataFailed": "加载费用数据失败",
+      "expenseNotFound": "费用申请不存在",
+      "noPermission": "无权访问此费用申请",
+      "serverError": "服务器错误，请稍后重试",
+      "loadRelatedInvoicesFailed": "加载关联发票失败",
+      "linkInvoicesFailed": "关联失败 {count} 张发票",
+      "invoiceAlreadyLinked": "发票已被费用项\"{expenseItemName}\"使用",
+      "invoicesAlreadyLinked": "{count}张发票已被其他费用项使用：{messages}，已跳过重复添加",
+      "successfullyAddedInvoices": "成功添加 {count} 张发票（已跳过 {duplicateCount} 张重复发票）",
+      "successfullyAddedInvoicesForExpenseItem": "成功为费用项添加 {count} 张发票",
+      "invoiceRemoved": "发票已移除",
+      "routeOutbound": "去程",
+      "routeInbound": "返程",
+      "routeMultiCity": "多程{index}",
+      "expenseTitle": "{travelTitle} - {expenseItemName}",
+      "batchCreateSuccess": "成功创建 {count} 个费用申请",
+      "batchCreateFailed": "创建费用申请失败：{error}",
+      "saveDraftSuccess": "费用申请已保存为草稿",
+      "submitSuccess": "费用申请已提交",
+      "saveFailed": "保存费用申请失败",
+      "noExpenseItems": "请至少添加一个费用项",
+      "autoMatchedInvoices": "已自动匹配 {count} 张发票到费用项"
     }
   },
   "approval": {

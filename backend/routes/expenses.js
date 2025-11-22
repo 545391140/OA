@@ -1,5 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
 const { protect } = require('../middleware/auth');
 const Expense = require('../models/Expense');
 const Invoice = require('../models/Invoice');
@@ -657,6 +659,72 @@ router.delete('/:id/unlink-invoice/:invoiceId', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to unlink invoice'
+    });
+  }
+});
+
+// @desc    Get expense receipt file
+// @route   GET /api/expenses/:id/receipts/:receiptPath
+// @access  Private
+router.get('/:id/receipts/*', protect, async (req, res) => {
+  try {
+    const expense = await Expense.findById(req.params.id);
+    
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found'
+      });
+    }
+    
+    // 权限检查：统一 ID 格式进行比较
+    const employeeId = expense.employee?.toString() || String(expense.employee);
+    const userId = req.user?.id?.toString() || String(req.user.id);
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'Administrator';
+    
+    if (employeeId !== userId && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this file'
+      });
+    }
+    
+    // 获取收据路径（从URL中提取）
+    const receiptPath = req.params[0]; // Express捕获的*部分
+    
+    // 查找匹配的收据
+    const receipt = expense.receipts?.find(r => r.path === receiptPath || r.path?.endsWith(receiptPath));
+    
+    if (!receipt || !receipt.path) {
+      return res.status(404).json({
+        success: false,
+        message: 'Receipt not found'
+      });
+    }
+    
+    // 构建文件路径
+    const filePath = path.isAbsolute(receipt.path) 
+      ? receipt.path 
+      : path.resolve(__dirname, '..', receipt.path);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found'
+      });
+    }
+    
+    // 设置响应头
+    res.setHeader('Content-Type', receipt.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(receipt.originalName || receipt.filename || 'receipt')}"`);
+    
+    // 发送文件
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Get expense receipt error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get receipt file'
     });
   }
 });

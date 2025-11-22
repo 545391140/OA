@@ -147,89 +147,122 @@ const ExpenseForm = () => {
   const [expenseItemReimbursementAmounts, setExpenseItemReimbursementAmounts] = useState({}); // { expenseItemId: amount }
 
   const currencies = [
-    { value: 'USD', label: 'USD - US Dollar' },
-    { value: 'CNY', label: 'CNY - Chinese Yuan' },
-    { value: 'JPY', label: 'JPY - Japanese Yen' },
-    { value: 'KRW', label: 'KRW - Korean Won' },
-    { value: 'EUR', label: 'EUR - Euro' }
+    { value: 'USD', label: `USD - ${t('expense.currencies.USD')}` },
+    { value: 'CNY', label: `CNY - ${t('expense.currencies.CNY')}` },
+    { value: 'JPY', label: `JPY - ${t('expense.currencies.JPY')}` },
+    { value: 'KRW', label: `KRW - ${t('expense.currencies.KRW')}` },
+    { value: 'EUR', label: `EUR - ${t('expense.currencies.EUR')}` }
   ];
 
   const categories = [
-    { value: 'transportation', label: 'Transportation' },
-    { value: 'accommodation', label: 'Accommodation' },
-    { value: 'meals', label: 'Meals' },
-    { value: 'entertainment', label: 'Entertainment' },
-    { value: 'communication', label: 'Communication' },
-    { value: 'office_supplies', label: 'Office Supplies' },
-    { value: 'training', label: 'Training' },
-    { value: 'other', label: 'Other' }
+    { value: 'transportation', label: t('expense.categories.transportation') },
+    { value: 'accommodation', label: t('expense.categories.accommodation') },
+    { value: 'meals', label: t('expense.categories.meals') },
+    { value: 'entertainment', label: t('expense.categories.entertainment') },
+    { value: 'communication', label: t('expense.categories.communication') },
+    { value: 'office_supplies', label: t('expense.categories.office_supplies') },
+    { value: 'training', label: t('expense.categories.training') },
+    { value: 'other', label: t('expense.categories.other') }
   ];
 
   const subcategories = {
     transportation: [
-      'Flight', 'Train', 'Taxi', 'Rental Car', 'Public Transport', 'Parking', 'Fuel'
+      t('expense.subcategories.transportation.flight'),
+      t('expense.subcategories.transportation.train'),
+      t('expense.subcategories.transportation.taxi'),
+      t('expense.subcategories.transportation.rentalCar'),
+      t('expense.subcategories.transportation.publicTransport'),
+      t('expense.subcategories.transportation.parking'),
+      t('expense.subcategories.transportation.fuel')
     ],
     accommodation: [
-      'Hotel', 'Airbnb', 'Hostel', 'Apartment Rental'
+      t('expense.subcategories.accommodation.hotel'),
+      t('expense.subcategories.accommodation.airbnb'),
+      t('expense.subcategories.accommodation.hostel'),
+      t('expense.subcategories.accommodation.apartmentRental')
     ],
     meals: [
-      'Breakfast', 'Lunch', 'Dinner', 'Coffee/Tea', 'Snacks', 'Business Meal'
+      t('expense.subcategories.meals.breakfast'),
+      t('expense.subcategories.meals.lunch'),
+      t('expense.subcategories.meals.dinner'),
+      t('expense.subcategories.meals.coffeeTea'),
+      t('expense.subcategories.meals.snacks'),
+      t('expense.subcategories.meals.businessMeal')
     ],
     entertainment: [
-      'Client Entertainment', 'Team Building', 'Conference', 'Event'
+      t('expense.subcategories.entertainment.clientEntertainment'),
+      t('expense.subcategories.entertainment.teamBuilding'),
+      t('expense.subcategories.entertainment.conference'),
+      t('expense.subcategories.entertainment.event')
     ],
     communication: [
-      'Phone', 'Internet', 'Mobile Data', 'Postage', 'Courier'
+      t('expense.subcategories.communication.phone'),
+      t('expense.subcategories.communication.internet'),
+      t('expense.subcategories.communication.mobileData'),
+      t('expense.subcategories.communication.postage'),
+      t('expense.subcategories.communication.courier')
     ],
     office_supplies: [
-      'Stationery', 'Printing', 'Software', 'Hardware', 'Books'
+      t('expense.subcategories.office_supplies.stationery'),
+      t('expense.subcategories.office_supplies.printing'),
+      t('expense.subcategories.office_supplies.software'),
+      t('expense.subcategories.office_supplies.hardware'),
+      t('expense.subcategories.office_supplies.books')
     ],
     training: [
-      'Course', 'Workshop', 'Certification', 'Conference', 'Online Training'
+      t('expense.subcategories.training.course'),
+      t('expense.subcategories.training.workshop'),
+      t('expense.subcategories.training.certification'),
+      t('expense.subcategories.training.conference'),
+      t('expense.subcategories.training.onlineTraining')
     ],
     other: [
-      'Miscellaneous', 'Bank Fees', 'Insurance', 'Medical', 'Other'
+      t('expense.subcategories.other.miscellaneous'),
+      t('expense.subcategories.other.bankFees'),
+      t('expense.subcategories.other.insurance'),
+      t('expense.subcategories.other.medical'),
+      t('expense.subcategories.other.other')
     ]
   };
 
   const projects = [
-    'Project Alpha',
-    'Project Beta',
-    'Project Gamma',
-    'Client A Engagement',
-    'Client B Engagement',
-    'Internal Development'
+    t('expense.projects.projectAlpha'),
+    t('expense.projects.projectBeta'),
+    t('expense.projects.projectGamma'),
+    t('expense.projects.clientAEngagement'),
+    t('expense.projects.clientBEngagement'),
+    t('expense.projects.internalDevelopment')
   ];
 
   const costCenters = [
-    'Sales',
-    'Marketing',
-    'Engineering',
-    'Operations',
-    'HR',
-    'Finance',
-    'Legal'
+    t('expense.costCenters.sales'),
+    t('expense.costCenters.marketing'),
+    t('expense.costCenters.engineering'),
+    t('expense.costCenters.operations'),
+    t('expense.costCenters.hr'),
+    t('expense.costCenters.finance'),
+    t('expense.costCenters.legal')
   ];
 
   const clients = [
-    'Client A',
-    'Client B',
-    'Client C',
-    'Internal',
-    'Prospect A',
-    'Prospect B'
+    t('expense.clients.clientA'),
+    t('expense.clients.clientB'),
+    t('expense.clients.clientC'),
+    t('expense.clients.internal'),
+    t('expense.clients.prospectA'),
+    t('expense.clients.prospectB')
   ];
 
   const commonTags = [
-    'urgent',
-    'client-related',
-    'travel',
-    'training',
-    'equipment',
-    'software',
-    'hardware',
-    'meeting',
-    'conference'
+    t('expense.tags.urgent'),
+    t('expense.tags.clientRelated'),
+    t('expense.tags.travel'),
+    t('expense.tags.training'),
+    t('expense.tags.equipment'),
+    t('expense.tags.software'),
+    t('expense.tags.hardware'),
+    t('expense.tags.meeting'),
+    t('expense.tags.conference')
   ];
 
   // 使用 useRef 防止重复生成费用申请
@@ -313,7 +346,7 @@ const ExpenseForm = () => {
         if (generatedCount > 0 && expenses.length > 0) {
           // 如果有生成的费用申请
           showNotification(
-            t('travel.detail.expenses.generateSuccess') || `成功生成 ${generatedCount} 个费用申请`,
+            t('travel.detail.expenses.generateSuccess', { count: generatedCount }),
             'success'
           );
           
@@ -354,7 +387,7 @@ const ExpenseForm = () => {
       console.error('Error status:', error.response?.status);
       
       const errorData = error.response?.data || {};
-      const errorMessage = errorData.message || error.message || '生成费用申请失败';
+      const errorMessage = errorData.message || error.message || t('expense.form.expenseGenerationFailed');
       
       // 如果错误是 "Expense generation in progress"，等待后重试
       if (error.response?.status === 400 && 
@@ -362,7 +395,7 @@ const ExpenseForm = () => {
            errorMessage.includes('generation in progress'))) {
         const timeout = errorData.data?.timeout || 3;
         showNotification(
-          `费用申请正在生成中，请稍候...（预计还需 ${timeout} 秒）`,
+          t('expense.form.expenseGenerationInProgress', { timeout }),
           'info'
         );
         // 等待3秒后重试一次
@@ -373,7 +406,7 @@ const ExpenseForm = () => {
             // 如果重试仍然失败，显示错误
             const retryErrorMessage = retryError.response?.data?.message || 
                                 retryError.message || 
-                                '生成费用申请失败，请稍后重试';
+                                t('expense.form.expenseGenerationFailed');
             showNotification(retryErrorMessage, 'error');
           }
         }, 3000);
@@ -389,7 +422,7 @@ const ExpenseForm = () => {
         
         if (existingExpenses.length > 0) {
           showNotification(
-            '费用申请已生成，正在加载...',
+            t('expense.form.expensesAlreadyGenerated'),
             'info'
           );
           // 获取费用申请的详细信息
@@ -413,26 +446,26 @@ const ExpenseForm = () => {
             // 如果只有一个费用申请，直接加载到表单中
             loadExpenseToForm(validExpenses[0]);
             showNotification(
-              '已加载已生成的费用申请',
+              t('expense.form.loadedGeneratedExpense'),
               'success'
             );
           } else if (validExpenses.length > 1) {
             // 如果有多个费用申请，显示选择对话框
             setExpenseSelectDialogOpen(true);
             showNotification(
-              `已找到 ${validExpenses.length} 个费用申请，请选择要编辑的申请`,
+              t('expense.form.foundExpenses', { count: validExpenses.length }),
               'info'
             );
           } else {
             showNotification(
-              '费用申请已生成，但无法加载详情',
+              t('expense.form.expenseGeneratedButCannotLoad'),
               'warning'
             );
           }
           return;
         } else {
           showNotification(
-            '费用申请已生成，但未找到关联的费用申请',
+            t('expense.form.expenseGeneratedButNotFound'),
             'warning'
           );
           return;
@@ -856,7 +889,7 @@ const ExpenseForm = () => {
 
         const totalMatched = Object.values(matchedInvoices).reduce((sum, invs) => sum + invs.length, 0);
         showNotification(
-          `已自动匹配 ${totalMatched} 张发票到费用项`,
+          t('expense.form.autoMatchedInvoices', { count: totalMatched }),
           'success'
         );
       }
@@ -1053,13 +1086,13 @@ const ExpenseForm = () => {
     if (duplicateInvoices.length > 0) {
       const duplicateMessages = duplicateInvoices.map(dup => {
         const invoiceNumber = dup.invoice.invoiceNumber || `ID: ${dup.invoice._id || dup.invoice.id}`;
-        const expenseItemName = dup.usedBy?.itemName || dup.usedBy?._id || '未知费用项';
-        return `发票"${invoiceNumber}"已被费用项"${expenseItemName}"使用`;
+        const expenseItemName = dup.usedBy?.itemName || dup.usedBy?._id || t('travel.form.unknownExpenseItem');
+        return t('expense.form.invoiceAlreadyLinked', { invoiceNumber, expenseItemName });
       });
       
       const message = duplicateInvoices.length === 1
-        ? duplicateMessages[0] + '，已跳过重复添加'
-        : `${duplicateInvoices.length}张发票已被其他费用项使用：${duplicateMessages.join('；')}，已跳过重复添加`;
+        ? duplicateMessages[0] + t('expense.form.invoicesAlreadyLinked', { count: 0, messages: '' }).split('：')[1] || ''
+        : t('expense.form.invoicesAlreadyLinked', { count: duplicateInvoices.length, messages: duplicateMessages.join('；') });
       
       showNotification(message, 'warning');
     }
@@ -1191,7 +1224,7 @@ const ExpenseForm = () => {
       };
     });
     
-    showNotification('发票已移除', 'success');
+    showNotification(t('expense.form.invoiceRemoved'), 'success');
   };
 
   const fetchExpenseData = async () => {
@@ -1255,14 +1288,14 @@ const ExpenseForm = () => {
         expenseId: id
       });
       
-      let errorMessage = '加载费用数据失败';
+      let errorMessage = t('expense.form.loadExpenseDataFailed');
       
       if (error.response?.status === 404) {
-        errorMessage = '费用申请不存在';
+        errorMessage = t('expense.form.expenseNotFound');
       } else if (error.response?.status === 403) {
-        errorMessage = '无权访问此费用申请';
+        errorMessage = t('expense.form.noPermission');
       } else if (error.response?.status === 500) {
-        errorMessage = '服务器错误，请稍后重试';
+        errorMessage = t('expense.form.serverError');
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       }
@@ -1527,7 +1560,7 @@ const ExpenseForm = () => {
     }));
 
     setUploadDialogOpen(false);
-    showNotification(`${files.length} file(s) uploaded successfully`, 'success');
+    showNotification(t('expense.form.filesUploaded', { count: files.length }), 'success');
   };
 
   const removeReceipt = (index) => {
@@ -1541,11 +1574,11 @@ const ExpenseForm = () => {
     const newErrors = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('expense.form.titleRequired');
     }
 
     if (!formData.category) {
-      newErrors.category = 'Category is required';
+      newErrors.category = t('expense.form.categoryRequired');
     }
 
     if (!formData.amount || formData.amount <= 0) {
@@ -1553,11 +1586,11 @@ const ExpenseForm = () => {
     }
 
     if (!formData.date) {
-      newErrors.date = 'Date is required';
+      newErrors.date = t('expense.form.dateRequired');
     }
 
     if (!formData.vendor.name.trim()) {
-      newErrors.vendorName = 'Vendor name is required';
+      newErrors.vendorName = t('expense.form.vendorNameRequired');
     }
 
     setErrors(newErrors);
@@ -1651,11 +1684,11 @@ const ExpenseForm = () => {
             const routeDescriptions = budgets
               .filter(b => b.expenseItemId?.toString() === expenseItemIdStr)
               .map(b => {
-                if (b.route === 'outbound') return '去程';
-                if (b.route === 'inbound') return '返程';
+                if (b.route === 'outbound') return t('expense.form.routeOutbound');
+                if (b.route === 'inbound') return t('expense.form.routeInbound');
                 if (b.route.startsWith('multiCity-')) {
                   const index = parseInt(b.route.replace('multiCity-', '')) + 1;
-                  return `多程${index}`;
+                  return t('expense.form.routeMultiCity', { index });
                 }
                 return '';
               })
@@ -1668,7 +1701,10 @@ const ExpenseForm = () => {
             const expenseData = {
               travel: selectedTravel._id,
               expenseItem: budget.expenseItemId,
-              title: `${selectedTravel.title || selectedTravel.travelNumber || '差旅'} - ${expenseItem?.itemName || budget.expenseItemId}`,
+              title: t('expense.form.expenseTitle', {
+                travelTitle: selectedTravel.title || selectedTravel.travelNumber || t('travel.title'),
+                expenseItemName: expenseItem?.itemName || budget.expenseItemId
+              }),
               description: `${formData.description || ''} ${routeDescription ? `(${routeDescription})` : ''}`.trim(),
               category: mapExpenseItemCategoryToExpenseCategory(expenseItem?.category || 'other'),
               amount: reimbursementAmount,
@@ -1754,7 +1790,7 @@ const ExpenseForm = () => {
           
           if (createdExpenses.length > 0) {
             showNotification(
-              `成功创建 ${createdExpenses.length} 个费用申请`,
+              t('expense.form.batchCreateSuccess', { count: createdExpenses.length }),
               'success'
             );
             setSaving(false); // 重置保存状态
@@ -1763,7 +1799,7 @@ const ExpenseForm = () => {
           }
         } else {
           // 如果选择了差旅单但没有为费用项添加发票，不允许创建费用申请
-          showNotification('请至少为一个费用项添加发票', 'warning');
+          showNotification(t('expense.form.noExpenseItems'), 'warning');
           setSaving(false); // 重置保存状态
           return;
         }
@@ -1850,7 +1886,7 @@ const ExpenseForm = () => {
                   });
                 } catch (err) {
                   console.error('Failed to update expense item:', err);
-                  showNotification('更新费用项关联失败', 'error');
+                  showNotification(t('expense.saveError'), 'error');
                   // 继续处理发票关联，即使费用项更新失败
                 }
               }
@@ -2768,7 +2804,7 @@ const ExpenseForm = () => {
             {/* Basic Information */}
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
-                Basic Information
+                {t('expense.detail.expenseInformation')}
               </Typography>
               <Divider sx={{ mb: 2 }} />
             </Grid>
@@ -2776,7 +2812,7 @@ const ExpenseForm = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Title *"
+                label={`${t('expense.title')} *`}
                 value={formData.title}
                 onChange={(e) => handleChange('title', e.target.value)}
                 error={!!errors.title}
@@ -2789,7 +2825,7 @@ const ExpenseForm = () => {
                 <InputLabel>{t('user.currency')} *</InputLabel>
                 <Select
                   value={formData.currency}
-                  label="Currency *"
+                  label={`${t('user.currency')} *`}
                   onChange={(e) => handleChange('currency', e.target.value)}
                 >
                   {currencies.map((currency) => (
@@ -2819,7 +2855,7 @@ const ExpenseForm = () => {
                 <InputLabel>{t('expense.category')} *</InputLabel>
                 <Select
                   value={formData.category}
-                  label="Category *"
+                  label={`${t('expense.category')} *`}
                   onChange={(e) => {
                     handleChange('category', e.target.value);
                     handleChange('subcategory', ''); // Reset subcategory
@@ -2856,7 +2892,7 @@ const ExpenseForm = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Amount *"
+                label={`${t('expense.amount')} *`}
                 type="number"
                 value={formData.amount}
                 onChange={(e) => handleChange('amount', e.target.value)}
@@ -2875,7 +2911,7 @@ const ExpenseForm = () => {
             {/* Date and Vendor */}
             <Grid item xs={12} md={6}>
               <DatePicker
-                label="Date *"
+                label={`${t('expense.date')} *`}
                 value={formData.date}
                 onChange={(date) => handleChange('date', date)}
                 slotProps={{
@@ -2891,7 +2927,7 @@ const ExpenseForm = () => {
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Vendor Name *"
+                label={`${t('expense.detail.vendorName')} *`}
                 value={formData.vendor.name}
                 onChange={(e) => handleChange('vendor.name', e.target.value)}
                 error={!!errors.vendorName}

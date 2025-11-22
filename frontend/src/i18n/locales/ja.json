@@ -961,7 +961,197 @@
       "loadError": "経費詳細の読み込みに失敗しました",
       "confirmDelete": "この経費を削除してもよろしいですか",
       "createdOn": "作成日",
-      "noReceipts": "領収書がアップロードされていません"
+      "noReceipts": "領収書がアップロードされていません",
+      "expenseInformation": "経費情報",
+      "description": "説明",
+      "amount": "金額",
+      "expenseDate": "経費日付",
+      "category": "カテゴリ",
+      "projectCostCenter": "プロジェクトとコストセンター",
+      "vendorInformation": "ベンダー情報",
+      "vendorName": "ベンダー名",
+      "taxId": "税番号",
+      "address": "住所",
+      "phone": "電話",
+      "email": "メール",
+      "expenseNotFound": "経費が見つかりません",
+      "downloading": "ダウンロード中",
+      "employeeInformation": "従業員情報",
+      "approvalStatus": "承認ステータス",
+      "paymentInformation": "支払い情報",
+      "paymentMethod": "支払い方法",
+      "transactionId": "取引ID",
+      "paymentDate": "支払い日",
+      "notFound": "経費が見つかりません",
+      "noPermission": "この経費にアクセスする権限がありません",
+      "serverError": "サーバーエラー、後でもう一度お試しください",
+      "additionalNotes": "追加メモ",
+      "tags": "タグ",
+      "exchangeRate": "為替レート"
+    },
+    "expenseItem": "費用項目",
+    "expenseItemCode": "費用項目コード",
+    "paymentReference": "支払い参照番号",
+    "paidBy": "支払い者",
+    "paymentMethods": {
+      "cash": "現金",
+      "credit_card": "クレジットカード",
+      "bank_transfer": "銀行振込",
+      "company_card": "会社カード"
+    },
+    "activityHistory": "アクティビティ履歴",
+    "created": "作成",
+    "updated": "更新",
+    "lastUpdated": "最終更新",
+    "submitted": "提出済み",
+    "approved": "承認済み",
+    "paid": "支払済み",
+    "receipt": {
+      "preview": "領収書プレビュー",
+      "previewNotSupported": "このファイルタイプはプレビューをサポートしていません",
+      "downloadSuccess": "ダウンロード成功",
+      "downloadError": "ダウンロード失敗",
+      "previewError": "プレビュー失敗"
+    },
+    "currencies": {
+      "USD": "米ドル",
+      "CNY": "人民元",
+      "JPY": "日本円",
+      "KRW": "韓国ウォン",
+      "EUR": "ユーロ"
+    },
+    "subcategories": {
+      "transportation": {
+        "flight": "飛行機",
+        "train": "電車",
+        "taxi": "タクシー",
+        "rentalCar": "レンタカー",
+        "publicTransport": "公共交通",
+        "parking": "駐車",
+        "fuel": "燃料"
+      },
+      "accommodation": {
+        "hotel": "ホテル",
+        "airbnb": "エアビーアンドビー",
+        "hostel": "ホステル",
+        "apartmentRental": "アパートレンタル"
+      },
+      "meals": {
+        "breakfast": "朝食",
+        "lunch": "昼食",
+        "dinner": "夕食",
+        "coffeeTea": "コーヒー/紅茶",
+        "snacks": "スナック",
+        "businessMeal": "ビジネスミール"
+      },
+      "entertainment": {
+        "clientEntertainment": "クライアントエンターテインメント",
+        "teamBuilding": "チームビルディング",
+        "conference": "会議",
+        "event": "イベント"
+      },
+      "communication": {
+        "phone": "電話",
+        "internet": "インターネット",
+        "mobileData": "モバイルデータ",
+        "postage": "郵便料金",
+        "courier": "宅配便"
+      },
+      "office_supplies": {
+        "stationery": "文房具",
+        "printing": "印刷",
+        "software": "ソフトウェア",
+        "hardware": "ハードウェア",
+        "books": "書籍"
+      },
+      "training": {
+        "course": "コース",
+        "workshop": "ワークショップ",
+        "certification": "認定",
+        "conference": "会議",
+        "onlineTraining": "オンライントレーニング"
+      },
+      "other": {
+        "miscellaneous": "その他",
+        "bankFees": "銀行手数料",
+        "insurance": "保険",
+        "medical": "医療",
+        "other": "その他"
+      }
+    },
+    "projects": {
+      "projectAlpha": "プロジェクトAlpha",
+      "projectBeta": "プロジェクトBeta",
+      "projectGamma": "プロジェクトGamma",
+      "clientAEngagement": "クライアントAプロジェクト",
+      "clientBEngagement": "クライアントBプロジェクト",
+      "internalDevelopment": "内部開発"
+    },
+    "costCenters": {
+      "sales": "営業",
+      "marketing": "マーケティング",
+      "engineering": "エンジニアリング",
+      "operations": "運用",
+      "hr": "人事",
+      "finance": "財務",
+      "legal": "法務"
+    },
+    "clients": {
+      "clientA": "クライアントA",
+      "clientB": "クライアントB",
+      "clientC": "クライアントC",
+      "internal": "内部",
+      "prospectA": "見込み客A",
+      "prospectB": "見込み客B"
+    },
+    "tags": {
+      "urgent": "緊急",
+      "clientRelated": "クライアント関連",
+      "travel": "出張",
+      "training": "研修",
+      "equipment": "設備",
+      "software": "ソフトウェア",
+      "hardware": "ハードウェア",
+      "meeting": "会議",
+      "conference": "会議"
+    },
+    "form": {
+      "titleRequired": "タイトルは必須です",
+      "categoryRequired": "カテゴリは必須です",
+      "dateRequired": "日付は必須です",
+      "vendorNameRequired": "ベンダー名は必須です",
+      "filesUploaded": "{count}個のファイルが正常にアップロードされました",
+      "generatingExpenses": "請求書を自動的にマッチングして経費を生成しています...",
+      "expenseGenerationInProgress": "経費生成中、お待ちください...（推定残り{timeout}秒）",
+      "expenseGenerationFailed": "経費の生成に失敗しました。後でもう一度お試しください",
+      "expensesAlreadyGenerated": "経費は既に生成されています。読み込み中...",
+      "loadedGeneratedExpense": "生成された経費を読み込みました",
+      "foundExpenses": "{count}件の経費が見つかりました。編集する経費を選択してください",
+      "expenseGeneratedButCannotLoad": "経費は生成されましたが、詳細を読み込めません",
+      "expenseGeneratedButNotFound": "経費は生成されましたが、関連する経費が見つかりません",
+      "loadTravelInfoFailed": "出張情報の読み込みに失敗しました",
+      "loadExpenseDataFailed": "経費データの読み込みに失敗しました",
+      "expenseNotFound": "経費が見つかりません",
+      "noPermission": "この経費にアクセスする権限がありません",
+      "serverError": "サーバーエラー、後でもう一度お試しください",
+      "loadRelatedInvoicesFailed": "関連請求書の読み込みに失敗しました",
+      "linkInvoicesFailed": "{count}件の請求書のリンクに失敗しました",
+      "invoiceAlreadyLinked": "請求書は既に費用項目\"{expenseItemName}\"にリンクされています",
+      "invoicesAlreadyLinked": "{count}件の請求書は既に他の費用項目にリンクされています：{messages}、重複追加をスキップしました",
+      "successfullyAddedInvoices": "{count}件の請求書を正常に追加しました（{duplicateCount}件の重複請求書をスキップ）",
+      "successfullyAddedInvoicesForExpenseItem": "費用項目に{count}件の請求書を正常に追加しました",
+      "invoiceRemoved": "請求書を削除しました",
+      "routeOutbound": "往路",
+      "routeInbound": "復路",
+      "routeMultiCity": "多都市{index}",
+      "expenseTitle": "{travelTitle} - {expenseItemName}",
+      "batchCreateSuccess": "{count}件の経費を正常に作成しました",
+      "batchCreateFailed": "経費の作成に失敗しました：{error}",
+      "saveDraftSuccess": "経費が下書きとして保存されました",
+      "submitSuccess": "経費が正常に提出されました",
+      "saveFailed": "経費の保存に失敗しました",
+      "noExpenseItems": "少なくとも1つの費用項目を追加してください",
+      "autoMatchedInvoices": "{count}件の請求書を費用項目に自動的にマッチングしました"
     }
   },
   "approval": {

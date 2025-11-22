@@ -996,7 +996,197 @@
       "loadError": "비용 세부 정보 로드 실패",
       "confirmDelete": "이 비용을 삭제하시겠습니까",
       "createdOn": "생성일",
-      "noReceipts": "영수증이 업로드되지 않았습니다"
+      "noReceipts": "영수증이 업로드되지 않았습니다",
+      "expenseInformation": "비용 정보",
+      "description": "설명",
+      "amount": "금액",
+      "expenseDate": "비용 날짜",
+      "category": "카테고리",
+      "projectCostCenter": "프로젝트 및 비용 센터",
+      "vendorInformation": "공급업체 정보",
+      "vendorName": "공급업체 이름",
+      "taxId": "세무 번호",
+      "address": "주소",
+      "phone": "전화",
+      "email": "이메일",
+      "expenseNotFound": "비용을 찾을 수 없습니다",
+      "downloading": "다운로드 중",
+      "employeeInformation": "직원 정보",
+      "approvalStatus": "승인 상태",
+      "paymentInformation": "결제 정보",
+      "paymentMethod": "결제 방법",
+      "transactionId": "거래 ID",
+      "paymentDate": "결제 날짜",
+      "notFound": "비용을 찾을 수 없습니다",
+      "noPermission": "이 비용에 액세스할 권한이 없습니다",
+      "serverError": "서버 오류, 나중에 다시 시도하세요",
+      "additionalNotes": "추가 메모",
+      "tags": "태그",
+      "exchangeRate": "환율"
+    },
+    "expenseItem": "비용 항목",
+    "expenseItemCode": "비용 항목 코드",
+    "paymentReference": "결제 참조 번호",
+    "paidBy": "결제자",
+    "paymentMethods": {
+      "cash": "현금",
+      "credit_card": "신용 카드",
+      "bank_transfer": "은행 이체",
+      "company_card": "회사 카드"
+    },
+    "activityHistory": "활동 기록",
+    "created": "생성됨",
+    "updated": "업데이트됨",
+    "lastUpdated": "마지막 업데이트",
+    "submitted": "제출됨",
+    "approved": "승인됨",
+    "paid": "지급됨",
+    "receipt": {
+      "preview": "영수증 미리보기",
+      "previewNotSupported": "이 파일 유형은 미리보기를 지원하지 않습니다",
+      "downloadSuccess": "다운로드 성공",
+      "downloadError": "다운로드 실패",
+      "previewError": "미리보기 실패"
+    },
+    "currencies": {
+      "USD": "미국 달러",
+      "CNY": "중국 위안",
+      "JPY": "일본 엔",
+      "KRW": "한국 원",
+      "EUR": "유로"
+    },
+    "subcategories": {
+      "transportation": {
+        "flight": "항공편",
+        "train": "기차",
+        "taxi": "택시",
+        "rentalCar": "렌터카",
+        "publicTransport": "대중 교통",
+        "parking": "주차",
+        "fuel": "연료"
+      },
+      "accommodation": {
+        "hotel": "호텔",
+        "airbnb": "에어비앤비",
+        "hostel": "호스텔",
+        "apartmentRental": "아파트 임대"
+      },
+      "meals": {
+        "breakfast": "아침 식사",
+        "lunch": "점심 식사",
+        "dinner": "저녁 식사",
+        "coffeeTea": "커피/차",
+        "snacks": "간식",
+        "businessMeal": "비즈니스 식사"
+      },
+      "entertainment": {
+        "clientEntertainment": "고객 엔터테인먼트",
+        "teamBuilding": "팀 빌딩",
+        "conference": "회의",
+        "event": "이벤트"
+      },
+      "communication": {
+        "phone": "전화",
+        "internet": "인터넷",
+        "mobileData": "모바일 데이터",
+        "postage": "우편 요금",
+        "courier": "택배"
+      },
+      "office_supplies": {
+        "stationery": "문구류",
+        "printing": "인쇄",
+        "software": "소프트웨어",
+        "hardware": "하드웨어",
+        "books": "도서"
+      },
+      "training": {
+        "course": "과정",
+        "workshop": "워크샵",
+        "certification": "인증",
+        "conference": "회의",
+        "onlineTraining": "온라인 교육"
+      },
+      "other": {
+        "miscellaneous": "기타",
+        "bankFees": "은행 수수료",
+        "insurance": "보험",
+        "medical": "의료",
+        "other": "기타"
+      }
+    },
+    "projects": {
+      "projectAlpha": "프로젝트 Alpha",
+      "projectBeta": "프로젝트 Beta",
+      "projectGamma": "프로젝트 Gamma",
+      "clientAEngagement": "클라이언트 A 프로젝트",
+      "clientBEngagement": "클라이언트 B 프로젝트",
+      "internalDevelopment": "내부 개발"
+    },
+    "costCenters": {
+      "sales": "영업",
+      "marketing": "마케팅",
+      "engineering": "엔지니어링",
+      "operations": "운영",
+      "hr": "인사",
+      "finance": "재무",
+      "legal": "법무"
+    },
+    "clients": {
+      "clientA": "클라이언트 A",
+      "clientB": "클라이언트 B",
+      "clientC": "클라이언트 C",
+      "internal": "내부",
+      "prospectA": "잠재 고객 A",
+      "prospectB": "잠재 고객 B"
+    },
+    "tags": {
+      "urgent": "긴급",
+      "clientRelated": "클라이언트 관련",
+      "travel": "출장",
+      "training": "교육",
+      "equipment": "장비",
+      "software": "소프트웨어",
+      "hardware": "하드웨어",
+      "meeting": "회의",
+      "conference": "회의"
+    },
+    "form": {
+      "titleRequired": "제목은 필수입니다",
+      "categoryRequired": "카테고리는 필수입니다",
+      "dateRequired": "날짜는 필수입니다",
+      "vendorNameRequired": "공급업체 이름은 필수입니다",
+      "filesUploaded": "{count}개의 파일이 성공적으로 업로드되었습니다",
+      "generatingExpenses": "송장을 자동으로 매칭하고 비용을 생성하는 중...",
+      "expenseGenerationInProgress": "비용 생성 중, 잠시만 기다려주세요... (예상 남은 시간 {timeout}초)",
+      "expenseGenerationFailed": "비용 생성에 실패했습니다. 나중에 다시 시도하세요",
+      "expensesAlreadyGenerated": "비용이 이미 생성되었습니다. 로드 중...",
+      "loadedGeneratedExpense": "생성된 비용을 로드했습니다",
+      "foundExpenses": "{count}개의 비용을 찾았습니다. 편집할 비용을 선택하세요",
+      "expenseGeneratedButCannotLoad": "비용이 생성되었지만 세부 정보를 로드할 수 없습니다",
+      "expenseGeneratedButNotFound": "비용이 생성되었지만 관련 비용을 찾을 수 없습니다",
+      "loadTravelInfoFailed": "출장 정보 로드 실패",
+      "loadExpenseDataFailed": "비용 데이터 로드 실패",
+      "expenseNotFound": "비용을 찾을 수 없습니다",
+      "noPermission": "이 비용에 액세스할 권한이 없습니다",
+      "serverError": "서버 오류, 나중에 다시 시도하세요",
+      "loadRelatedInvoicesFailed": "관련 송장 로드 실패",
+      "linkInvoicesFailed": "{count}개의 송장 연결 실패",
+      "invoiceAlreadyLinked": "송장이 이미 비용 항목\"{expenseItemName}\"에 연결되어 있습니다",
+      "invoicesAlreadyLinked": "{count}개의 송장이 이미 다른 비용 항목에 연결되어 있습니다: {messages}, 중복 추가를 건너뛰었습니다",
+      "successfullyAddedInvoices": "{count}개의 송장을 성공적으로 추가했습니다 (중복 송장 {duplicateCount}개 건너뜀)",
+      "successfullyAddedInvoicesForExpenseItem": "비용 항목에 {count}개의 송장을 성공적으로 추가했습니다",
+      "invoiceRemoved": "송장이 제거되었습니다",
+      "routeOutbound": "출발",
+      "routeInbound": "귀환",
+      "routeMultiCity": "다중 도시 {index}",
+      "expenseTitle": "{travelTitle} - {expenseItemName}",
+      "batchCreateSuccess": "{count}개의 비용을 성공적으로 생성했습니다",
+      "batchCreateFailed": "비용 생성 실패: {error}",
+      "saveDraftSuccess": "비용이 초안으로 저장되었습니다",
+      "submitSuccess": "비용이 성공적으로 제출되었습니다",
+      "saveFailed": "비용 저장 실패",
+      "noExpenseItems": "최소한 하나의 비용 항목을 추가하세요",
+      "autoMatchedInvoices": "{count}개의 송장을 비용 항목에 자동으로 매칭했습니다"
     }
   },
   "approval": {

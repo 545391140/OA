@@ -1142,7 +1142,197 @@
       "loadError": "Failed to load expense details",
       "confirmDelete": "Are you sure you want to delete the expense",
       "createdOn": "Created on",
-      "noReceipts": "No receipts uploaded"
+      "noReceipts": "No receipts uploaded",
+      "expenseInformation": "Expense Information",
+      "description": "Description",
+      "amount": "Amount",
+      "expenseDate": "Expense Date",
+      "category": "Category",
+      "projectCostCenter": "Project & Cost Center",
+      "vendorInformation": "Vendor Information",
+      "vendorName": "Vendor Name",
+      "taxId": "Tax ID",
+      "address": "Address",
+      "phone": "Phone",
+      "email": "Email",
+      "expenseNotFound": "Expense not found",
+      "downloading": "Downloading",
+      "employeeInformation": "Employee Information",
+      "approvalStatus": "Approval Status",
+      "paymentInformation": "Payment Information",
+      "paymentMethod": "Payment Method",
+      "transactionId": "Transaction ID",
+      "paymentDate": "Payment Date",
+      "notFound": "Expense not found",
+      "noPermission": "You do not have permission to access this expense",
+      "serverError": "Server error, please try again later",
+      "additionalNotes": "Additional Notes",
+      "tags": "Tags",
+      "exchangeRate": "Exchange Rate"
+    },
+    "expenseItem": "Expense Item",
+    "expenseItemCode": "Expense Item Code",
+    "paymentReference": "Payment Reference",
+    "paidBy": "Paid By",
+    "paymentMethods": {
+      "cash": "Cash",
+      "credit_card": "Credit Card",
+      "bank_transfer": "Bank Transfer",
+      "company_card": "Company Card"
+    },
+    "activityHistory": "Activity History",
+    "created": "Created",
+    "updated": "Updated",
+    "lastUpdated": "Last Updated",
+    "submitted": "Submitted",
+    "approved": "Approved",
+    "paid": "Paid",
+    "receipt": {
+      "preview": "Receipt Preview",
+      "previewNotSupported": "Preview not supported for this file type",
+      "downloadSuccess": "Download successful",
+      "downloadError": "Download failed",
+      "previewError": "Preview failed"
+    },
+    "currencies": {
+      "USD": "US Dollar",
+      "CNY": "Chinese Yuan",
+      "JPY": "Japanese Yen",
+      "KRW": "Korean Won",
+      "EUR": "Euro"
+    },
+    "subcategories": {
+      "transportation": {
+        "flight": "Flight",
+        "train": "Train",
+        "taxi": "Taxi",
+        "rentalCar": "Rental Car",
+        "publicTransport": "Public Transport",
+        "parking": "Parking",
+        "fuel": "Fuel"
+      },
+      "accommodation": {
+        "hotel": "Hotel",
+        "airbnb": "Airbnb",
+        "hostel": "Hostel",
+        "apartmentRental": "Apartment Rental"
+      },
+      "meals": {
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner",
+        "coffeeTea": "Coffee/Tea",
+        "snacks": "Snacks",
+        "businessMeal": "Business Meal"
+      },
+      "entertainment": {
+        "clientEntertainment": "Client Entertainment",
+        "teamBuilding": "Team Building",
+        "conference": "Conference",
+        "event": "Event"
+      },
+      "communication": {
+        "phone": "Phone",
+        "internet": "Internet",
+        "mobileData": "Mobile Data",
+        "postage": "Postage",
+        "courier": "Courier"
+      },
+      "office_supplies": {
+        "stationery": "Stationery",
+        "printing": "Printing",
+        "software": "Software",
+        "hardware": "Hardware",
+        "books": "Books"
+      },
+      "training": {
+        "course": "Course",
+        "workshop": "Workshop",
+        "certification": "Certification",
+        "conference": "Conference",
+        "onlineTraining": "Online Training"
+      },
+      "other": {
+        "miscellaneous": "Miscellaneous",
+        "bankFees": "Bank Fees",
+        "insurance": "Insurance",
+        "medical": "Medical",
+        "other": "Other"
+      }
+    },
+    "projects": {
+      "projectAlpha": "Project Alpha",
+      "projectBeta": "Project Beta",
+      "projectGamma": "Project Gamma",
+      "clientAEngagement": "Client A Engagement",
+      "clientBEngagement": "Client B Engagement",
+      "internalDevelopment": "Internal Development"
+    },
+    "costCenters": {
+      "sales": "Sales",
+      "marketing": "Marketing",
+      "engineering": "Engineering",
+      "operations": "Operations",
+      "hr": "HR",
+      "finance": "Finance",
+      "legal": "Legal"
+    },
+    "clients": {
+      "clientA": "Client A",
+      "clientB": "Client B",
+      "clientC": "Client C",
+      "internal": "Internal",
+      "prospectA": "Prospect A",
+      "prospectB": "Prospect B"
+    },
+    "tags": {
+      "urgent": "Urgent",
+      "clientRelated": "Client Related",
+      "travel": "Travel",
+      "training": "Training",
+      "equipment": "Equipment",
+      "software": "Software",
+      "hardware": "Hardware",
+      "meeting": "Meeting",
+      "conference": "Conference"
+    },
+    "form": {
+      "titleRequired": "Title is required",
+      "categoryRequired": "Category is required",
+      "dateRequired": "Date is required",
+      "vendorNameRequired": "Vendor name is required",
+      "filesUploaded": "{count} file(s) uploaded successfully",
+      "generatingExpenses": "Automatically matching invoices and generating expenses...",
+      "expenseGenerationInProgress": "Expense generation in progress, please wait... (estimated {timeout} seconds remaining)",
+      "expenseGenerationFailed": "Failed to generate expenses, please try again later",
+      "expensesAlreadyGenerated": "Expenses already generated, loading...",
+      "loadedGeneratedExpense": "Loaded generated expense",
+      "foundExpenses": "Found {count} expenses, please select the expense to edit",
+      "expenseGeneratedButCannotLoad": "Expense generated but cannot load details",
+      "expenseGeneratedButNotFound": "Expense generated but related expenses not found",
+      "loadTravelInfoFailed": "Failed to load travel information",
+      "loadExpenseDataFailed": "Failed to load expense data",
+      "expenseNotFound": "Expense not found",
+      "noPermission": "You do not have permission to access this expense",
+      "serverError": "Server error, please try again later",
+      "loadRelatedInvoicesFailed": "Failed to load related invoices",
+      "linkInvoicesFailed": "Failed to link {count} invoices",
+      "invoiceAlreadyLinked": "Invoice already linked to expense item \"{expenseItemName}\"",
+      "invoicesAlreadyLinked": "{count} invoices already linked to other expense items: {messages}, skipped duplicate additions",
+      "successfullyAddedInvoices": "Successfully added {count} invoices (skipped {duplicateCount} duplicate invoices)",
+      "successfullyAddedInvoicesForExpenseItem": "Successfully added {count} invoices for expense item",
+      "invoiceRemoved": "Invoice removed",
+      "routeOutbound": "Outbound",
+      "routeInbound": "Inbound",
+      "routeMultiCity": "Multi-City {index}",
+      "expenseTitle": "{travelTitle} - {expenseItemName}",
+      "batchCreateSuccess": "Successfully created {count} expenses",
+      "batchCreateFailed": "Failed to create expenses: {error}",
+      "saveDraftSuccess": "Expense saved as draft",
+      "submitSuccess": "Expense submitted successfully",
+      "saveFailed": "Failed to save expense",
+      "noExpenseItems": "Please add at least one expense item",
+      "autoMatchedInvoices": "Automatically matched {count} invoices to expense items"
     }
   },
   "approval": {
