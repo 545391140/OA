@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -72,11 +72,7 @@ const ApprovalList = () => {
   const [typeFilter, setTypeFilter] = useState('all'); // all, travel, expense
   const [statusFilter, setStatusFilter] = useState('all'); // all, submitted, approved, rejected
 
-  useEffect(() => {
-    fetchApprovals();
-  }, []);
-
-  const fetchApprovals = async () => {
+  const fetchApprovals = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -386,32 +382,36 @@ const ApprovalList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showNotification, t, user]);
 
-  const handleTabChange = (event, newValue) => {
+  useEffect(() => {
+    fetchApprovals();
+  }, [fetchApprovals]);
+
+  const handleTabChange = useCallback((event, newValue) => {
     setTabValue(newValue);
-  };
+  }, []);
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     // 实时搜索已经在 filterItems 中处理，此函数保留以保持与其他页面的一致性
     // 可以在这里添加额外的搜索逻辑，如记录搜索历史等
-  };
+  }, []);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setSearchTerm('');
     setTypeFilter('all');
     setStatusFilter('all');
     fetchApprovals(); // 重新加载数据
-  };
+  }, [fetchApprovals]);
 
-  const handleApproval = (item, action) => {
+  const handleApproval = useCallback((item, action) => {
     setSelectedItem(item);
     setApprovalAction(action);
     setApprovalComments('');
     setApprovalDialogOpen(true);
-  };
+  }, []);
 
-  const handleApprovalSubmit = async () => {
+  const handleApprovalSubmit = useCallback(async () => {
     if (!approvalComments.trim()) {
       showNotification(t('approval.approvalCommentsRequired'), 'warning');
       return;
@@ -464,9 +464,10 @@ const ApprovalList = () => {
         'error'
       );
     }
-  };
+  }, [selectedItem, approvalAction, approvalComments, showNotification, t, user, fetchApprovals]);
 
-  const getStatusColor = (status) => {
+  // 使用 useCallback 优化函数
+  const getStatusColor = useCallback((status) => {
     const colors = {
       submitted: 'warning',
       approved: 'success',
@@ -474,23 +475,23 @@ const ApprovalList = () => {
       pending: 'info'
     };
     return colors[status] || 'default';
-  };
+  }, []);
 
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = useCallback((priority) => {
     const colors = {
       high: 'error',
       medium: 'warning',
       low: 'success'
     };
     return colors[priority] || 'default';
-  };
+  }, []);
 
-  const getTypeIcon = (type) => {
+  const getTypeIcon = useCallback((type) => {
     return type === 'travel' ? <TravelIcon /> : <ExpenseIcon />;
-  };
+  }, []);
 
-  // 搜索和过滤逻辑
-  const filterItems = (items) => {
+  // 搜索和过滤逻辑（使用 useMemo 缓存过滤结果）
+  const filterItems = useCallback((items) => {
     return items.filter(item => {
       // 类型过滤
       if (typeFilter !== 'all' && item.type !== typeFilter) {
@@ -521,36 +522,39 @@ const ApprovalList = () => {
 
       return true;
     });
-  };
+  }, [typeFilter, statusFilter, searchTerm, tabValue]);
 
-  const filteredPendingApprovals = filterItems(pendingApprovals);
-  const filteredApprovalHistory = filterItems(approvalHistory);
+  // 使用 useMemo 缓存过滤结果，避免每次渲染都重新计算
+  const filteredPendingApprovals = useMemo(() => filterItems(pendingApprovals), [pendingApprovals, filterItems]);
+  const filteredApprovalHistory = useMemo(() => filterItems(approvalHistory), [approvalHistory, filterItems]);
 
-  const ApprovalCard = ({ item, showActions = true }) => {
+  // 使用 React.memo 优化 ApprovalCard 组件
+  const ApprovalCard = React.memo(({ item, showActions = true, getStatusColor, getTypeIcon, travelStats, t, onApproval, navigate }) => {
     // 获取员工差旅统计
     const emp = item.employee;
-    let employeeId = null;
-    if (emp) {
-      if (typeof emp === 'string') {
-        employeeId = emp;
-      } else if (emp._id) {
-        employeeId = String(emp._id);
-      } else if (emp.id) {
-        employeeId = String(emp.id);
-      }
-    }
-    const stats = employeeId ? travelStats[employeeId] || null : null;
+    const employeeId = useMemo(() => {
+      if (!emp) return null;
+      if (typeof emp === 'string') return emp;
+      if (emp._id) return String(emp._id);
+      if (emp.id) return String(emp.id);
+      return null;
+    }, [emp]);
     
-    // 调试日志
-    if (item.type === 'travel') {
-      console.log('Card item:', {
-        title: item.title,
-        employeeId,
-        employee: emp,
-        stats,
-        travelStatsKeys: Object.keys(travelStats)
-      });
-    }
+    const stats = useMemo(() => 
+      employeeId ? travelStats[employeeId] || null : null,
+      [employeeId, travelStats]
+    );
+    
+    // 使用 useMemo 缓存格式化日期
+    const formattedDate = useMemo(() => 
+      item.date ? dayjs(item.date).format('MMM DD, YYYY') : '-',
+      [item.date]
+    );
+    
+    const formattedApprovedAt = useMemo(() => 
+      item.approvedAt ? dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm') : '',
+      [item.approvedAt]
+    );
     
     return (
     <Card sx={{ mb: 1 }} elevation={1}>
@@ -631,7 +635,7 @@ const ApprovalList = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
             <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
-              {dayjs(item.date).format('MMM DD, YYYY')}
+              {formattedDate}
             </Typography>
           </Box>
           <Typography component="span" variant="body2" color="text.secondary">
@@ -724,7 +728,7 @@ const ApprovalList = () => {
         {item.approver && (
           <Box sx={{ mt: 0.5, mb: 0.5 }}>
             <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3, display: 'block' }}>
-              {t('approval.approvedBy')}: {item.approver.firstName} {item.approver.lastName} ({item.approver.position}) • {dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm')}
+              {t('approval.approvedBy')}: {item.approver.firstName} {item.approver.lastName} ({item.approver.position}) • {formattedApprovedAt}
             </Typography>
             {item.comments && (
               <Typography variant="body2" sx={{ lineHeight: 1.3, color: 'text.secondary' }}>
@@ -741,7 +745,7 @@ const ApprovalList = () => {
               <Button
                 variant="outlined"
                 color="error"
-                onClick={() => handleApproval(item, 'reject')}
+                onClick={() => onApproval(item, 'reject')}
                 size="small"
                 sx={{ 
                   minWidth: 'auto',
@@ -756,7 +760,7 @@ const ApprovalList = () => {
               <Button
                 variant="outlined"
                 color="success"
-                onClick={() => handleApproval(item, 'approve')}
+                onClick={() => onApproval(item, 'approve')}
                 size="small"
                 sx={{ 
                   minWidth: 'auto',
@@ -789,7 +793,16 @@ const ApprovalList = () => {
       </CardContent>
     </Card>
     );
-  };
+  }, (prevProps, nextProps) => {
+    // 自定义比较函数，只在关键属性变化时重渲染
+    return (
+      prevProps.item.id === nextProps.item.id &&
+      prevProps.item.status === nextProps.item.status &&
+      prevProps.showActions === nextProps.showActions
+    );
+  });
+
+  ApprovalCard.displayName = 'ApprovalCard';
 
   if (loading) {
     return (
@@ -920,7 +933,17 @@ const ApprovalList = () => {
                   </Alert>
                 ) : (
                   filteredPendingApprovals.map((item) => (
-                    <ApprovalCard key={item.id} item={item} showActions={true} />
+                    <ApprovalCard 
+                      key={item.id} 
+                      item={item} 
+                      showActions={true}
+                      getStatusColor={getStatusColor}
+                      getTypeIcon={getTypeIcon}
+                      travelStats={travelStats}
+                      t={t}
+                      onApproval={handleApproval}
+                      navigate={navigate}
+                    />
                   ))
                 )}
               </Box>
@@ -946,7 +969,17 @@ const ApprovalList = () => {
                   </Alert>
                 ) : (
                   filteredApprovalHistory.map((item) => (
-                    <ApprovalCard key={item.id} item={item} showActions={false} />
+                    <ApprovalCard 
+                      key={item.id} 
+                      item={item} 
+                      showActions={false}
+                      getStatusColor={getStatusColor}
+                      getTypeIcon={getTypeIcon}
+                      travelStats={travelStats}
+                      t={t}
+                      onApproval={handleApproval}
+                      navigate={navigate}
+                    />
                   ))
                 )}
               </Box>

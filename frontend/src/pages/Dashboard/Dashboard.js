@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import {
   Grid,
   Paper,
@@ -30,13 +30,16 @@ import {
   Refresh as RefreshIcon,
   ErrorOutline as ErrorIcon
 } from '@mui/icons-material';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+
+// 懒加载图表组件
+const MonthlySpendingChart = lazy(() => import('./MonthlySpendingChart'));
+const CategoryBreakdownChart = lazy(() => import('./CategoryBreakdownChart'));
 
 const Dashboard = () => {
   const { t, i18n } = useTranslation();
@@ -64,11 +67,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async (isRefresh = false) => {
+  const fetchDashboardData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -105,13 +104,18 @@ const Dashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [showNotification, t]);
 
-  const handleRefresh = () => {
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleRefresh = useCallback(() => {
     fetchDashboardData(true);
-  };
+  }, [fetchDashboardData]);
 
-  const getStatusColor = (status) => {
+  // 使用 useCallback 优化函数，避免不必要的重渲染
+  const getStatusColor = useCallback((status) => {
     const colors = {
       draft: 'default',
       submitted: 'warning',
@@ -123,9 +127,9 @@ const Dashboard = () => {
       cancelled: 'error'
     };
     return colors[status] || 'default';
-  };
+  }, []);
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = useCallback((amount) => {
     const numAmount = parseFloat(amount || 0);
     // 根据当前语言使用不同的货币符号和格式
     const locale = i18n.language || 'zh';
@@ -138,15 +142,16 @@ const Dashboard = () => {
     } else {
       return `$${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-  };
+  }, [i18n.language]);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     if (!dateString) return t('common.nA') || '-';
     const locale = i18n.language || 'zh';
     return dayjs(dateString).format(t('common.dateFormat') || 'YYYY-MM-DD');
-  };
+  }, [i18n.language, t]);
 
-  const StatCard = ({ title, value, icon, trend, trendValue, loading }) => (
+  // 使用 React.memo 优化 StatCard 组件，避免不必要的重渲染
+  const StatCard = React.memo(({ title, value, icon, trend, trendValue, loading }) => (
     <Card sx={{ height: '100%' }}>
       <CardContent>
         {loading ? (
@@ -187,7 +192,16 @@ const Dashboard = () => {
         )}
       </CardContent>
     </Card>
-  );
+  ), (prevProps, nextProps) => {
+    // 自定义比较函数，只在关键属性变化时重渲染
+    return (
+      prevProps.title === nextProps.title &&
+      prevProps.value === nextProps.value &&
+      prevProps.trend === nextProps.trend &&
+      prevProps.trendValue === nextProps.trendValue &&
+      prevProps.loading === nextProps.loading
+    );
+  });
 
   if (error && !dashboardData.stats.totalTravelRequests) {
     return (
@@ -287,23 +301,9 @@ const Dashboard = () => {
                 </Typography>
               </Box>
             ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dashboardData.monthlySpending}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="month" 
-                  tickFormatter={(value) => {
-                    // 尝试翻译月份名称
-                    const monthKey = `common.months.${value}`;
-                    const translated = t(monthKey);
-                    return translated !== monthKey ? translated : value;
-                  }}
-                />
-                <YAxis />
-                  <ChartTooltip formatter={(value) => [formatCurrency(value), t('dashboard.amount')]} />
-                <Line type="monotone" dataKey="amount" stroke="#1976d2" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<Skeleton variant="rectangular" width="100%" height={300} />}>
+              <MonthlySpendingChart data={dashboardData.monthlySpending} formatCurrency={formatCurrency} />
+            </Suspense>
             )}
           </Paper>
         </Grid>
@@ -326,50 +326,9 @@ const Dashboard = () => {
                 </Typography>
               </Box>
             ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={dashboardData.categoryBreakdown}
-                  cx="50%"
-                  cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => {
-                      // 尝试翻译类别名称
-                      const categoryKey = `expense.categories.${name}`;
-                      const translatedName = t(categoryKey);
-                      const displayName = translatedName !== categoryKey ? translatedName : name;
-                      return `${displayName} ${value}%`;
-                    }}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {dashboardData.categoryBreakdown.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                  <ChartTooltip 
-                    formatter={(value, name, props) => {
-                      const categoryKey = `expense.categories.${name}`;
-                      const translatedName = t(categoryKey);
-                      const displayName = translatedName !== categoryKey ? translatedName : name;
-                      const amount = props.payload?.amount;
-                      // 如果有金额数据，显示金额和百分比；否则只显示百分比
-                      if (amount !== undefined) {
-                        return [`${formatCurrency(amount)} (${value}%)`, displayName];
-                      }
-                      return [`${value}%`, displayName];
-                    }}
-                  />
-                  <Legend 
-                    formatter={(value) => {
-                      const categoryKey = `expense.categories.${value}`;
-                      const translated = t(categoryKey);
-                      return translated !== categoryKey ? translated : value;
-                    }}
-                  />
-              </PieChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<Skeleton variant="circular" width={200} height={200} sx={{ mx: 'auto', mt: 5 }} />}>
+              <CategoryBreakdownChart data={dashboardData.categoryBreakdown} formatCurrency={formatCurrency} />
+            </Suspense>
             )}
           </Paper>
         </Grid>

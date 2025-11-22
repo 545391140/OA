@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -56,6 +56,104 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
+// 优化的表格行组件，使用React.memo避免不必要的重渲染
+const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatusColor, getStatusLabel, getCategoryLabel, t }) => {
+  const formattedInvoiceDate = useMemo(() => 
+    invoice.invoiceDate ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD') : '-',
+    [invoice.invoiceDate]
+  );
+
+  const formattedCreatedAt = useMemo(() => 
+    dayjs(invoice.createdAt).format('YYYY-MM-DD HH:mm'),
+    [invoice.createdAt]
+  );
+
+  return (
+    <TableRow hover>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {getFileIcon(invoice.file?.mimeType)}
+          <Typography variant="body2" color="text.secondary">
+            {invoice.file?.originalName || '-'}
+          </Typography>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Typography variant="body2" fontWeight={500}>
+          {invoice.invoiceNumber || '-'}
+        </Typography>
+      </TableCell>
+      <TableCell>{invoice.vendor?.name || '-'}</TableCell>
+      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+        {(invoice.totalAmount || invoice.amount) ? (
+          <Typography variant="body2" fontWeight={600}>
+            {invoice.currency || 'CNY'} {(invoice.totalAmount || invoice.amount).toFixed(2)}
+          </Typography>
+        ) : (
+          '-'
+        )}
+      </TableCell>
+      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+        {formattedInvoiceDate}
+      </TableCell>
+      <TableCell>
+        <Chip
+          label={getCategoryLabel(invoice.category)}
+          size="small"
+          variant="outlined"
+        />
+      </TableCell>
+      <TableCell>
+        <Chip
+          label={getStatusLabel(invoice.status)}
+          color={getStatusColor(invoice.status)}
+          size="small"
+        />
+      </TableCell>
+      <TableCell>
+        {invoice.relatedExpense ? (
+          <Chip
+            icon={<LinkIcon />}
+            label={t('invoice.list.expense')}
+            size="small"
+            color="info"
+          />
+        ) : invoice.relatedTravel ? (
+          <Chip
+            icon={<LinkIcon />}
+            label={t('invoice.list.travel')}
+            size="small"
+            color="info"
+          />
+        ) : (
+          '-'
+        )}
+      </TableCell>
+      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+        {formattedCreatedAt}
+      </TableCell>
+      <TableCell align="right">
+        <IconButton
+          onClick={(e) => onMenuOpen(e, invoice)}
+          size="small"
+        >
+          <MoreVertIcon />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+}, (prevProps, nextProps) => {
+  // 自定义比较函数，只在关键属性变化时重渲染
+  return (
+    prevProps.invoice._id === nextProps.invoice._id &&
+    prevProps.invoice.status === nextProps.invoice.status &&
+    prevProps.invoice.invoiceNumber === nextProps.invoice.invoiceNumber &&
+    prevProps.invoice.totalAmount === nextProps.invoice.totalAmount
+  );
+});
+
+InvoiceTableRow.displayName = 'InvoiceTableRow';
+
 const InvoiceList = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
@@ -74,11 +172,7 @@ const InvoiceList = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
-  useEffect(() => {
-    fetchInvoices();
-  }, [page, statusFilter, categoryFilter]);
-
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -117,39 +211,43 @@ const InvoiceList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, statusFilter, categoryFilter, searchTerm, showNotification, t]);
 
-  const handleSearch = () => {
+  useEffect(() => {
+    fetchInvoices();
+  }, [fetchInvoices]);
+
+  const handleSearch = useCallback(() => {
     setPage(1);
     fetchInvoices();
-  };
+  }, [fetchInvoices]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setSearchTerm('');
     setStatusFilter('all');
     setCategoryFilter('all');
     setPage(1);
     setTimeout(() => fetchInvoices(), 100);
-  };
+  }, [fetchInvoices]);
 
-  const handleMenuOpen = (event, invoice) => {
+  const handleMenuOpen = useCallback((event, invoice) => {
     setAnchorEl(event.currentTarget);
     setSelectedInvoice(invoice);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedInvoice(null);
-  };
+  }, []);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (selectedInvoice) {
       setDeleteDialog({ open: true, invoice: selectedInvoice });
     }
     handleMenuClose();
-  };
+  }, [selectedInvoice, handleMenuClose]);
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     try {
       await apiClient.delete(`/invoices/${deleteDialog.invoice._id}`);
       showNotification(t('invoice.list.deleteSuccess'), 'success');
@@ -161,16 +259,16 @@ const InvoiceList = () => {
     } finally {
       setDeleteDialog({ open: false, invoice: null });
     }
-  };
+  }, [deleteDialog.invoice, showNotification, t, fetchInvoices]);
 
-  const handleView = () => {
+  const handleView = useCallback(() => {
     if (selectedInvoice) {
       navigate(`/invoices/${selectedInvoice._id}`);
     }
     handleMenuClose();
-  };
+  }, [selectedInvoice, navigate, handleMenuClose]);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     const invoice = selectedInvoice;
     if (!invoice) {
       handleMenuClose();
@@ -196,9 +294,10 @@ const InvoiceList = () => {
     } finally {
       handleMenuClose();
     }
-  };
+  }, [selectedInvoice, showNotification, t, handleMenuClose]);
 
-  const getFileIcon = (mimeType) => {
+  // 使用 useCallback 优化函数
+  const getFileIcon = useCallback((mimeType) => {
     if (mimeType?.includes('pdf')) {
       return <PdfIcon />;
     }
@@ -206,9 +305,9 @@ const InvoiceList = () => {
       return <ImageIcon />;
     }
     return <ImageIcon />;
-  };
+  }, []);
 
-  const getStatusColor = (status) => {
+  const getStatusColor = useCallback((status) => {
     const colors = {
       pending: 'warning',
       verified: 'success',
@@ -216,9 +315,9 @@ const InvoiceList = () => {
       archived: 'default'
     };
     return colors[status] || 'default';
-  };
+  }, []);
 
-  const getStatusLabel = (status) => {
+  const getStatusLabel = useCallback((status) => {
     const labels = {
       pending: t('invoice.list.statuses.pending'),
       verified: t('invoice.list.statuses.verified'),
@@ -226,9 +325,9 @@ const InvoiceList = () => {
       archived: t('invoice.list.statuses.archived')
     };
     return labels[status] || status;
-  };
+  }, [t]);
 
-  const getCategoryLabel = (category) => {
+  const getCategoryLabel = useCallback((category) => {
     const labels = {
       transportation: t('invoice.list.categories.transportation'),
       accommodation: t('invoice.list.categories.accommodation'),
@@ -240,7 +339,7 @@ const InvoiceList = () => {
       other: t('invoice.list.categories.other')
     };
     return labels[category] || category;
-  };
+  }, [t]);
 
   return (
     <Container maxWidth="xl">
@@ -375,80 +474,16 @@ const InvoiceList = () => {
                 </TableRow>
               ) : (
                 invoices.map((invoice) => (
-                  <TableRow key={invoice._id} hover>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {getFileIcon(invoice.file?.mimeType)}
-                        <Typography variant="body2" color="text.secondary">
-                          {invoice.file?.originalName || '-'}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={500}>
-                        {invoice.invoiceNumber || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{invoice.vendor?.name || '-'}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {(invoice.totalAmount || invoice.amount) ? (
-                        <Typography variant="body2" fontWeight={600}>
-                          {invoice.currency || 'CNY'} {(invoice.totalAmount || invoice.amount).toFixed(2)}
-                        </Typography>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {invoice.invoiceDate
-                        ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD')
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={getCategoryLabel(invoice.category)}
-                        size="small"
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={getStatusLabel(invoice.status)}
-                        color={getStatusColor(invoice.status)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {invoice.relatedExpense ? (
-                        <Chip
-                          icon={<LinkIcon />}
-                          label={t('invoice.list.expense')}
-                          size="small"
-                          color="info"
-                        />
-                      ) : invoice.relatedTravel ? (
-                        <Chip
-                          icon={<LinkIcon />}
-                          label={t('invoice.list.travel')}
-                          size="small"
-                          color="info"
-                        />
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {dayjs(invoice.createdAt).format('YYYY-MM-DD HH:mm')}
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        onClick={(e) => handleMenuOpen(e, invoice)}
-                        size="small"
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
+                  <InvoiceTableRow
+                    key={invoice._id}
+                    invoice={invoice}
+                    onMenuOpen={handleMenuOpen}
+                    getFileIcon={getFileIcon}
+                    getStatusColor={getStatusColor}
+                    getStatusLabel={getStatusLabel}
+                    getCategoryLabel={getCategoryLabel}
+                    t={t}
+                  />
                 ))
               )}
             </TableBody>

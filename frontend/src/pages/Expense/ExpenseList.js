@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
@@ -57,6 +57,135 @@ const devError = (...args) => {
   }
 };
 
+// 优化的表格行组件，使用React.memo避免不必要的重渲染
+const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCategoryIcon, t }) => {
+  const formattedDate = useMemo(() => 
+    expense.date ? dayjs(expense.date).format('MMM DD, YYYY') : '-',
+    [expense.date]
+  );
+
+  return (
+    <TableRow hover>
+      <TableCell>
+        <Typography variant="body2" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
+          {expense.reimbursementNumber || '-'}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
+            {getCategoryIcon(expense.category)}
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+              {expense.title || expense.expenseItem?.itemName || t('expense.untitled')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {expense.description || '-'}
+            </Typography>
+            {expense.project && (
+              <Typography variant="caption" color="primary">
+                {expense.project}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+            {expense.category ? (expense.category.charAt(0).toUpperCase() + expense.category.slice(1)) : '-'}
+          </Typography>
+          {expense.subcategory && (
+            <Typography variant="caption" color="text.secondary">
+              {expense.subcategory}
+            </Typography>
+          )}
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <BusinessIcon color="action" fontSize="small" />
+          <Box>
+            <Typography variant="body2">
+              {expense.vendor?.name || '-'}
+            </Typography>
+            {expense.vendor?.address && (
+              <Typography variant="caption" color="text.secondary">
+                {expense.vendor.address}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <MoneyIcon color="action" fontSize="small" />
+          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+            {expense.currency || 'USD'} {(expense.amount || 0).toLocaleString()}
+          </Typography>
+        </Box>
+        {expense.isBillable && (
+          <Chip label={t('expense.billable')} size="small" color="success" sx={{ mt: 0.5 }} />
+        )}
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CalendarIcon color="action" fontSize="small" />
+          <Typography variant="body2">
+            {formattedDate}
+          </Typography>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Chip
+          label={
+            expense.matchSource === 'auto' || expense.autoMatched === true
+              ? (t('expense.generationType.ai') || 'AI生成')
+              : (t('expense.generationType.manual') || '手动生成')
+          }
+          color={expense.matchSource === 'auto' || expense.autoMatched === true ? 'primary' : 'default'}
+          size="small"
+          variant={expense.matchSource === 'auto' || expense.autoMatched === true ? 'filled' : 'outlined'}
+        />
+      </TableCell>
+      <TableCell>
+        <Chip
+          label={t(`expense.statuses.${expense.status}`) || expense.status}
+          color={getStatusColor(expense.status)}
+          size="small"
+        />
+      </TableCell>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ReceiptIcon color="action" fontSize="small" />
+          <Typography variant="body2">
+            {(expense.receipts?.length || 0) + (expense.relatedInvoices?.length || 0)}
+          </Typography>
+        </Box>
+      </TableCell>
+      <TableCell>
+        <IconButton
+          onClick={(e) => onMenuOpen(e, expense)}
+          size="small"
+        >
+          <MoreVertIcon />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+}, (prevProps, nextProps) => {
+  // 自定义比较函数，只在关键属性变化时重渲染
+  return (
+    prevProps.expense._id === nextProps.expense._id &&
+    prevProps.expense.status === nextProps.expense.status &&
+    prevProps.expense.title === nextProps.expense.title &&
+    prevProps.expense.amount === nextProps.expense.amount
+  );
+});
+
+ExpenseTableRow.displayName = 'ExpenseTableRow';
+
 const ExpenseList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -76,7 +205,8 @@ const ExpenseList = () => {
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [total, setTotal] = useState(0);
 
-  const statusOptions = [
+  // 使用 useMemo 缓存选项数组，避免每次渲染都重新创建
+  const statusOptions = useMemo(() => [
     { value: 'all', label: t('expense.statuses.all') || 'All Status' },
     { value: 'draft', label: t('expense.statuses.draft') || 'Draft' },
     { value: 'submitted', label: t('expense.statuses.submitted') || 'Submitted' },
@@ -84,9 +214,9 @@ const ExpenseList = () => {
     { value: 'rejected', label: t('expense.statuses.rejected') || 'Rejected' },
     { value: 'paid', label: t('expense.statuses.paid') || 'Paid' },
     { value: 'cancelled', label: t('expense.statuses.cancelled') || 'Cancelled' }
-  ];
+  ], [t]);
 
-  const categoryOptions = [
+  const categoryOptions = useMemo(() => [
     { value: 'all', label: t('expense.categories.all') || 'All Categories' },
     { value: 'transportation', label: t('expense.categories.transportation') || 'Transportation' },
     { value: 'accommodation', label: t('expense.categories.accommodation') || 'Accommodation' },
@@ -96,9 +226,10 @@ const ExpenseList = () => {
     { value: 'office_supplies', label: t('expense.categories.officeSupplies') || 'Office Supplies' },
     { value: 'training', label: t('expense.categories.training') || 'Training' },
     { value: 'other', label: t('expense.categories.other') || 'Other' }
-  ];
+  ], [t]);
 
-  const getStatusColor = (status) => {
+  // 使用 useCallback 优化函数，避免不必要的重渲染
+  const getStatusColor = useCallback((status) => {
     const colors = {
       draft: 'default',
       submitted: 'warning',
@@ -108,9 +239,9 @@ const ExpenseList = () => {
       cancelled: 'error'
     };
     return colors[status] || 'default';
-  };
+  }, []);
 
-  const getCategoryIcon = (category) => {
+  const getCategoryIcon = useCallback((category) => {
     const icons = {
       transportation: '🚗',
       accommodation: '🏨',
@@ -122,36 +253,9 @@ const ExpenseList = () => {
       other: '📄'
     };
     return icons[category] || '📄';
-  };
+  }, []);
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [page, rowsPerPage, statusFilter, categoryFilter]);
-
-  // 监听路由变化，当从编辑页面返回时刷新数据
-  const prevPathnameRef = React.useRef(location.pathname);
-  useEffect(() => {
-    // 只有当路径从非 /expenses 变为 /expenses 时才刷新（表示从其他页面返回）
-    if (location.pathname === '/expenses' && prevPathnameRef.current !== '/expenses') {
-      fetchExpenses();
-    }
-    prevPathnameRef.current = location.pathname;
-  }, [location.pathname]);
-
-  // 搜索防抖
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (page === 0) {
-        fetchExpenses();
-      } else {
-        setPage(0);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -180,41 +284,69 @@ const ExpenseList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, rowsPerPage, statusFilter, categoryFilter, searchTerm, showNotification, t]);
 
-  const handleMenuOpen = (event, expense) => {
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
+
+  // 监听路由变化，当从编辑页面返回时刷新数据
+  const prevPathnameRef = React.useRef(location.pathname);
+  useEffect(() => {
+    // 只有当路径从非 /expenses 变为 /expenses 时才刷新（表示从其他页面返回）
+    if (location.pathname === '/expenses' && prevPathnameRef.current !== '/expenses') {
+      fetchExpenses();
+    }
+    prevPathnameRef.current = location.pathname;
+  }, [location.pathname]);
+
+  // 搜索防抖
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (page === 0) {
+        fetchExpenses();
+      } else {
+        setPage(0);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, fetchExpenses, page]);
+
+  // 使用 useCallback 优化事件处理函数
+  const handleMenuOpen = useCallback((event, expense) => {
     setAnchorEl(event.currentTarget);
     setSelectedExpense(expense);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedExpense(null);
-  };
+  }, []);
 
-  const handleView = () => {
+  const handleView = useCallback(() => {
     if (!selectedExpense || !selectedExpense._id) {
       return;
     }
     navigate(`/expenses/${selectedExpense._id}`);
     handleMenuClose();
-  };
+  }, [selectedExpense, navigate, handleMenuClose]);
 
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     if (!selectedExpense || !selectedExpense._id) {
       return;
     }
     navigate(`/expenses/${selectedExpense._id}/edit`);
     handleMenuClose();
-  };
+  }, [selectedExpense, navigate, handleMenuClose]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     setDeleteDialogOpen(true);
     // 不要在这里关闭菜单和清空 selectedExpense，因为删除对话框需要它
     setAnchorEl(null); // 只关闭菜单
-  };
+  }, []);
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     // 添加空值检查
     if (!selectedExpense || !selectedExpense._id) {
       showNotification(
@@ -244,7 +376,7 @@ const ExpenseList = () => {
       setDeleteDialogOpen(false);
       setSelectedExpense(null);
     }
-  };
+  }, [selectedExpense, showNotification, t, fetchExpenses]);
 
   if (loading) {
     return (
@@ -366,114 +498,14 @@ const ExpenseList = () => {
             </TableHead>
             <TableBody>
               {expenses.map((expense) => (
-                <TableRow key={expense._id} hover>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
-                      {expense.reimbursementNumber || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
-                        {getCategoryIcon(expense.category)}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                          {expense.title || expense.expenseItem?.itemName || t('expense.untitled')}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {expense.description || '-'}
-                        </Typography>
-                        {expense.project && (
-                          <Typography variant="caption" color="primary">
-                            {expense.project}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {expense.category ? (expense.category.charAt(0).toUpperCase() + expense.category.slice(1)) : '-'}
-                      </Typography>
-                      {expense.subcategory && (
-                        <Typography variant="caption" color="text.secondary">
-                          {expense.subcategory}
-                        </Typography>
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <BusinessIcon color="action" fontSize="small" />
-                      <Box>
-                        <Typography variant="body2">
-                          {expense.vendor?.name || '-'}
-                        </Typography>
-                        {expense.vendor?.address && (
-                          <Typography variant="caption" color="text.secondary">
-                            {expense.vendor.address}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <MoneyIcon color="action" fontSize="small" />
-                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {expense.currency || 'USD'} {(expense.amount || 0).toLocaleString()}
-                      </Typography>
-                    </Box>
-                    {expense.isBillable && (
-                      <Chip label={t('expense.billable')} size="small" color="success" sx={{ mt: 0.5 }} />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CalendarIcon color="action" fontSize="small" />
-                      <Typography variant="body2">
-                        {expense.date ? dayjs(expense.date).format('MMM DD, YYYY') : '-'}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={
-                        expense.matchSource === 'auto' || expense.autoMatched === true
-                          ? (t('expense.generationType.ai') || 'AI生成')
-                          : (t('expense.generationType.manual') || '手动生成')
-                      }
-                      color={expense.matchSource === 'auto' || expense.autoMatched === true ? 'primary' : 'default'}
-                      size="small"
-                      variant={expense.matchSource === 'auto' || expense.autoMatched === true ? 'filled' : 'outlined'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={t(`expense.statuses.${expense.status}`) || expense.status}
-                      color={getStatusColor(expense.status)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <ReceiptIcon color="action" fontSize="small" />
-                      <Typography variant="body2">
-                        {(expense.receipts?.length || 0) + (expense.relatedInvoices?.length || 0)}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <IconButton
-                      onClick={(e) => handleMenuOpen(e, expense)}
-                      size="small"
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                <ExpenseTableRow
+                  key={expense._id}
+                  expense={expense}
+                  onMenuOpen={handleMenuOpen}
+                  getStatusColor={getStatusColor}
+                  getCategoryIcon={getCategoryIcon}
+                  t={t}
+                />
               ))}
             </TableBody>
           </Table>
