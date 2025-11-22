@@ -735,138 +735,138 @@ router.delete('/:id', protect, asyncHandler(async (req, res) => {
 // @route   POST /api/expenses/:id/link-invoice
 // @access  Private
 router.post('/:id/link-invoice', protect, asyncHandler(async (req, res) => {
-    const { invoiceId } = req.body;
+    try {
+      const { invoiceId } = req.body;
     
-    logger.info(`Linking invoice ${invoiceId} to expense ${req.params.id}`);
-    
-    if (!invoiceId) {
-      throw ErrorFactory.badRequest('Invoice ID is required');
-    }
-    
-    const expense = await Expense.findById(req.params.id);
-    const invoice = await Invoice.findById(invoiceId);
-    
-    if (!expense) {
-      logger.warn(`Expense ${req.params.id} not found`);
-      throw ErrorFactory.notFound('Expense not found');
-    }
-    
-    if (!invoice) {
-      logger.warn(`Invoice ${invoiceId} not found`);
-      throw ErrorFactory.notFound('Invoice not found');
-    }
-    
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
-    
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized'
-      });
-    }
-    
-    // 检查发票是否已经在当前费用申请中（只检查当前费用申请，不检查其他费用申请）
-    const invoiceObjectId = typeof invoiceId === 'string' ? invoiceId : invoiceId.toString();
-    const invoiceIdInExpense = expense.relatedInvoices.some(id => id.toString() === invoiceObjectId);
-    
-    if (!invoiceIdInExpense) {
-      logger.debug(`Adding invoice ${invoiceId} to expense ${expense._id}`);
-      expense.relatedInvoices.push(invoiceObjectId);
-      await expense.save();
-      logger.info(`Successfully added invoice to expense. Total invoices: ${expense.relatedInvoices.length}`);
-    } else {
-      logger.debug(`Invoice ${invoiceId} already in expense.relatedInvoices, skipping`);
-      // 如果发票已经在当前费用申请中，直接返回成功（幂等操作）
-      return res.json({
+      logger.info(`Linking invoice ${invoiceId} to expense ${req.params.id}`);
+      
+      if (!invoiceId) {
+        throw ErrorFactory.badRequest('Invoice ID is required');
+      }
+      
+      const expense = await Expense.findById(req.params.id);
+      const invoice = await Invoice.findById(invoiceId);
+      
+      if (!expense) {
+        logger.warn(`Expense ${req.params.id} not found`);
+        throw ErrorFactory.notFound('Expense not found');
+      }
+      
+      if (!invoice) {
+        logger.warn(`Invoice ${invoiceId} not found`);
+        throw ErrorFactory.notFound('Invoice not found');
+      }
+      
+      // 数据权限检查：使用数据权限范围检查
+      const role = await Role.findOne({ code: req.user.role, isActive: true });
+      const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+      
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized'
+        });
+      }
+      
+      // 检查发票是否已经在当前费用申请中（只检查当前费用申请，不检查其他费用申请）
+      const invoiceObjectId = typeof invoiceId === 'string' ? invoiceId : invoiceId.toString();
+      const invoiceIdInExpense = expense.relatedInvoices.some(id => id.toString() === invoiceObjectId);
+      
+      if (!invoiceIdInExpense) {
+        logger.debug(`Adding invoice ${invoiceId} to expense ${expense._id}`);
+        expense.relatedInvoices.push(invoiceObjectId);
+        await expense.save();
+        logger.info(`Successfully added invoice to expense. Total invoices: ${expense.relatedInvoices.length}`);
+      } else {
+        logger.debug(`Invoice ${invoiceId} already in expense.relatedInvoices, skipping`);
+        // 如果发票已经在当前费用申请中，直接返回成功（幂等操作）
+        return res.json({
+          success: true,
+          message: 'Invoice already linked to this expense',
+          data: {
+            expense: expense,
+            invoice: invoice
+          }
+        });
+      }
+      
+      // 更新发票的 relatedExpense（允许同一个发票关联到多个费用申请，但只记录最后关联的那个）
+      // 注意：由于 Invoice 模型的 relatedExpense 字段是单一值，我们只更新为当前费用申请
+      // 但不会阻止发票在其他费用申请中使用（通过 expense.relatedInvoices 数组）
+      if (!invoice.relatedExpense || invoice.relatedExpense.toString() !== expense._id.toString()) {
+        logger.debug(`Updating invoice ${invoiceId} relatedExpense to ${expense._id}`);
+        invoice.relatedExpense = expense._id;
+        invoice.matchStatus = 'linked';
+        if (expense.travel) {
+          invoice.relatedTravel = expense.travel;
+        }
+        await invoice.save();
+        logger.info(`Successfully updated invoice`);
+      } else {
+        logger.debug(`Invoice ${invoiceId} already linked to expense ${expense._id}, skipping update`);
+      }
+      
+      res.json({
         success: true,
-        message: 'Invoice already linked to this expense',
+        message: 'Invoice linked successfully',
         data: {
           expense: expense,
           invoice: invoice
         }
       });
+    } catch (error) {
+      logger.error('Link invoice error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to link invoice'
+      });
     }
-    
-    // 更新发票的 relatedExpense（允许同一个发票关联到多个费用申请，但只记录最后关联的那个）
-    // 注意：由于 Invoice 模型的 relatedExpense 字段是单一值，我们只更新为当前费用申请
-    // 但不会阻止发票在其他费用申请中使用（通过 expense.relatedInvoices 数组）
-    if (!invoice.relatedExpense || invoice.relatedExpense.toString() !== expense._id.toString()) {
-      logger.debug(`Updating invoice ${invoiceId} relatedExpense to ${expense._id}`);
-      invoice.relatedExpense = expense._id;
-      invoice.matchStatus = 'linked';
-      if (expense.travel) {
-        invoice.relatedTravel = expense.travel;
-      }
-      await invoice.save();
-      logger.info(`Successfully updated invoice`);
-    } else {
-      logger.debug(`Invoice ${invoiceId} already linked to expense ${expense._id}, skipping update`);
-    }
-    
-    res.json({
-      success: true,
-      message: 'Invoice linked successfully',
-      data: {
-        expense: expense,
-        invoice: invoice
-      }
-    });
-    
-  } catch (error) {
-    logger.error('Link invoice error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to link invoice'
-    });
-  }
-});
+}));
 
 // @desc    Unlink invoice from expense
 // @route   DELETE /api/expenses/:id/unlink-invoice/:invoiceId
 // @access  Private
 router.delete('/:id/unlink-invoice/:invoiceId', protect, asyncHandler(async (req, res) => {
-    const expense = await Expense.findById(req.params.id);
-    const invoice = await Invoice.findById(req.params.invoiceId);
-    
-    if (!expense || !invoice) {
-      throw ErrorFactory.notFound('Expense or invoice not found');
+    try {
+      const expense = await Expense.findById(req.params.id);
+      const invoice = await Invoice.findById(req.params.invoiceId);
+      
+      if (!expense || !invoice) {
+        throw ErrorFactory.notFound('Expense or invoice not found');
+      }
+      
+      // 数据权限检查：使用数据权限范围检查
+      const role = await Role.findOne({ code: req.user.role, isActive: true });
+      const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+      
+      if (!hasAccess) {
+        throw ErrorFactory.forbidden('Not authorized');
+      }
+      
+      // 取消关联
+      expense.relatedInvoices = expense.relatedInvoices.filter(
+        id => id.toString() !== invoice._id.toString()
+      );
+      await expense.save();
+      
+      invoice.relatedExpense = null;
+      invoice.matchStatus = 'unmatched';
+      invoice.matchedTravelId = null;
+      invoice.matchedExpenseItemId = null;
+      await invoice.save();
+      
+      res.json({
+        success: true,
+        message: 'Invoice unlinked successfully'
+      });
+    } catch (error) {
+      logger.error('Unlink invoice error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to unlink invoice'
+      });
     }
-    
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
-    
-    if (!hasAccess) {
-      throw ErrorFactory.forbidden('Not authorized');
-    }
-    
-    // 取消关联
-    expense.relatedInvoices = expense.relatedInvoices.filter(
-      id => id.toString() !== invoice._id.toString()
-    );
-    await expense.save();
-    
-    invoice.relatedExpense = null;
-    invoice.matchStatus = 'unmatched';
-    invoice.matchedTravelId = null;
-    invoice.matchedExpenseItemId = null;
-    await invoice.save();
-    
-    res.json({
-      success: true,
-      message: 'Invoice unlinked successfully'
-    });
-    
-  } catch (error) {
-    logger.error('Unlink invoice error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to unlink invoice'
-    });
-  }
-});
+}));
 
 // @desc    Get expense receipt file
 // @route   GET /api/expenses/:id/receipts/:receiptPath
