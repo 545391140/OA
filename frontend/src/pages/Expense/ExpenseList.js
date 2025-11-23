@@ -41,8 +41,7 @@ import {
   Receipt as ReceiptIcon,
   AttachMoney as MoneyIcon,
   CalendarToday as CalendarIcon,
-  Business as BusinessIcon,
-  CloudUpload as UploadIcon
+  Business as BusinessIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -191,7 +190,6 @@ ExpenseTableRow.displayName = 'ExpenseTableRow';
 
 const ExpenseList = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();

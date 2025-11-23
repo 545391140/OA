@@ -309,11 +309,36 @@ class NotificationService {
    * 获取未读通知数量
    */
   async getUnreadCount(userId) {
-    const count = await Notification.countDocuments({
-      recipient: userId,
-      isRead: false
-    });
-    return count;
+    const mongoose = require('mongoose');
+    
+    // 验证用户ID格式
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    
+    // 转换用户ID为ObjectId（如果还不是）
+    let userIdObj;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      // 如果已经是 ObjectId 实例，直接使用；否则创建新的 ObjectId
+      if (userId instanceof mongoose.Types.ObjectId) {
+        userIdObj = userId;
+      } else {
+        userIdObj = new mongoose.Types.ObjectId(userId);
+      }
+    } else {
+      throw new Error(`Invalid user ID format: ${userId}`);
+    }
+
+    try {
+      const count = await Notification.countDocuments({
+        recipient: userIdObj,
+        isRead: false
+      });
+      return count || 0;
+    } catch (error) {
+      console.error('Get unread count error:', error);
+      throw error;
+    }
   }
 
   /**

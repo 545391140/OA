@@ -5,6 +5,8 @@ const TravelMealStandard = require('../models/TravelMealStandard');
 const TravelAllowanceStandard = require('../models/TravelAllowanceStandard');
 const CityLevel = require('../models/CityLevel');
 const User = require('../models/User');
+const logger = require('../utils/logger');
+const mongoose = require('mongoose');
 
 // @desc    Match travel standard for a trip
 // @route   POST /api/standard-match/match
@@ -12,6 +14,40 @@ const User = require('../models/User');
 exports.matchStandard = async (req, res) => {
   try {
     const { destination, startDate, transportType, days } = req.body;
+    
+    // 验证用户ID
+    if (!req.user || !req.user.id) {
+      logger.error('Match standard: User not found in request');
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+
+    // 验证用户ID格式
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+      logger.error(`Match standard: Invalid user ID format: ${req.user.id}`);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID format'
+      });
+    }
+
+    // 验证必需参数
+    if (!destination) {
+      return res.status(400).json({
+        success: false,
+        message: 'Destination is required'
+      });
+    }
+
+    if (!startDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date is required'
+      });
+    }
+
     const userId = req.user.id;
 
     // Get user with job level
@@ -156,10 +192,16 @@ exports.matchStandard = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Match standard error:', error);
+    logger.error('Match standard error:', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      destination,
+      startDate
+    });
     res.status(500).json({
       success: false,
-      message: 'Server error during standard matching'
+      message: error.message || 'Server error during standard matching'
     });
   }
 };
@@ -260,10 +302,15 @@ exports.validateExpense = async (req, res) => {
       data: validationResults
     });
   } catch (error) {
-    console.error('Validate expense error:', error);
+    logger.error('Validate expense error:', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      standardId
+    });
     res.status(500).json({
       success: false,
-      message: 'Server error during expense validation'
+      message: error.message || 'Server error during expense validation'
     });
   }
 };

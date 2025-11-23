@@ -197,18 +197,14 @@ const ApprovalList = () => {
           .filter(id => id !== null)
         )];
         
-        console.log('Employee IDs to fetch stats:', employeeIds);
-        
         const statsPromises = employeeIds.map(async (employeeId) => {
           try {
             const statsResponse = await apiClient.get(`/approvals/travel-statistics/${employeeId}`);
-            console.log(`Stats response for ${employeeId}:`, statsResponse.data);
             if (statsResponse.data && statsResponse.data.success) {
               return { employeeId, stats: statsResponse.data.data };
             }
           } catch (error) {
-            console.error(`Failed to fetch stats for employee ${employeeId}:`, error);
-            console.error('Error details:', error.response?.data);
+            // 静默处理错误，不影响主流程
           }
           return null;
         });
@@ -220,7 +216,6 @@ const ApprovalList = () => {
             statsMap[result.employeeId] = result.stats;
           }
         });
-        console.log('Final stats map:', statsMap);
         setTravelStats(statsMap);
         
         // 获取审批历史
@@ -229,15 +224,8 @@ const ApprovalList = () => {
             params: { limit: 100 } // 获取最近100条审批历史
           });
           
-          console.log('=== Approval History Response ===');
-          console.log('Response:', historyResponse.data);
-          
           if (historyResponse.data && historyResponse.data.success) {
             const { travels = [], expenses = [] } = historyResponse.data.data;
-            
-            console.log('Travels count:', travels.length);
-            console.log('Expenses count:', expenses.length);
-            console.log('Current user ID:', user.id);
             
             // 转换差旅申请历史数据格式
             const historyTravelItems = travels.map(travel => {
@@ -248,17 +236,8 @@ const ApprovalList = () => {
                   const approverId = a.approver?._id || a.approver;
                   const approverIdStr = approverId ? String(approverId) : null;
                   const userIdStr = String(user.id);
-                  const matches = approverIdStr === userIdStr && 
-                                 (a.status === 'approved' || a.status === 'rejected');
-                  if (matches) {
-                    console.log('Found matching approval:', {
-                      travelId: travel._id,
-                      approverId: approverIdStr,
-                      userId: userIdStr,
-                      status: a.status
-                    });
-                  }
-                  return matches;
+                  return approverIdStr === userIdStr && 
+                         (a.status === 'approved' || a.status === 'rejected');
                 }
               );
               
@@ -358,23 +337,16 @@ const ApprovalList = () => {
             }).filter(item => item !== null);
             
             const allHistoryItems = [...historyTravelItems, ...historyExpenseItems];
-            console.log('Total history items:', allHistoryItems.length);
-            console.log('Travel history items:', historyTravelItems.length);
-            console.log('Expense history items:', historyExpenseItems.length);
             setApprovalHistory(allHistoryItems);
           } else {
-            console.warn('History API response not successful:', historyResponse.data);
             setApprovalHistory([]);
           }
         } catch (historyError) {
-          console.error('Failed to fetch approval history:', historyError);
-          console.error('Error details:', historyError.response?.data);
-          // 不显示错误通知，因为审批历史不是必需的
+          // 静默处理错误，因为审批历史不是必需的
           setApprovalHistory([]);
         }
       }
     } catch (error) {
-      console.error('Failed to fetch approvals:', error);
       showNotification(
         error.response?.data?.message || t('messages.error.failedToLoadApprovals') || '加载审批列表失败',
         'error'
@@ -458,7 +430,6 @@ const ApprovalList = () => {
       setApprovalAction('');
       setApprovalComments('');
     } catch (error) {
-      console.error('Approval error:', error);
       showNotification(
         error.response?.data?.message || t('messages.error.general'),
         'error'

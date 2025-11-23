@@ -47,8 +47,6 @@ import {
   CloudUpload as UploadIcon,
   Receipt as ReceiptIcon,
   Business as BusinessIcon,
-  Person as PersonIcon,
-  CalendarToday as CalendarIcon,
   LocationOn as LocationIcon,
   Flight as FlightIcon,
   Train as TrainIcon,

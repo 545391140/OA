@@ -1,56 +1,80 @@
 const express = require('express');
 const { protect } = require('../middleware/auth');
 const notificationService = require('../services/notificationService');
+const asyncHandler = require('../utils/asyncHandler');
+const logger = require('../utils/logger');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
 // @desc    Get user notifications
 // @route   GET /api/notifications
 // @access  Private
-router.get('/', protect, async (req, res) => {
-  try {
-    const { page, limit, isRead } = req.query;
-    const result = await notificationService.getUserNotifications(
-      req.user.id,
-      {
-        page: parseInt(page) || 1,
-        limit: parseInt(limit) || 20,
-        isRead: isRead !== undefined ? isRead === 'true' : undefined
-      }
-    );
-
-    res.json({
-      success: true,
-      ...result
-    });
-  } catch (error) {
-    console.error('Get notifications error:', error);
-    res.status(500).json({
+router.get('/', protect, asyncHandler(async (req, res) => {
+  const { page, limit, isRead } = req.query;
+  
+  // 验证用户ID
+  if (!req.user || !req.user.id) {
+    logger.error('Get notifications: User not found in request');
+    return res.status(401).json({
       success: false,
-      message: 'Server error'
+      message: 'User not authenticated'
     });
   }
-});
+
+  // 验证用户ID格式
+  if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+    logger.error(`Get notifications: Invalid user ID format: ${req.user.id}`);
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid user ID format'
+    });
+  }
+
+  const result = await notificationService.getUserNotifications(
+    req.user.id,
+    {
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 20,
+      isRead: isRead !== undefined ? isRead === 'true' : undefined
+    }
+  );
+
+  res.json({
+    success: true,
+    ...result
+  });
+}));
 
 // @desc    Get unread count
 // @route   GET /api/notifications/unread-count
 // @access  Private
-router.get('/unread-count', protect, async (req, res) => {
-  try {
-    const count = await notificationService.getUnreadCount(req.user.id);
-
-    res.json({
-      success: true,
-      count
-    });
-  } catch (error) {
-    console.error('Get unread count error:', error);
-    res.status(500).json({
+router.get('/unread-count', protect, asyncHandler(async (req, res) => {
+  // 验证用户ID
+  if (!req.user || !req.user.id) {
+    logger.error('Get unread count: User not found in request');
+    return res.status(401).json({
       success: false,
-      message: 'Server error'
+      message: 'User not authenticated'
     });
   }
-});
+
+  // 验证用户ID格式
+  if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+    logger.error(`Get unread count: Invalid user ID format: ${req.user.id}`);
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid user ID format'
+    });
+  }
+
+  const count = await notificationService.getUnreadCount(req.user.id);
+
+  res.json({
+    success: true,
+    count: count || 0
+  });
+}));
 
 // @desc    Mark notification as read
 // @route   PUT /api/notifications/:id/read
