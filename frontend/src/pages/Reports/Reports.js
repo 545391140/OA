@@ -274,73 +274,23 @@ const Reports = () => {
   };
 
   const generatePDFContent = (data) => {
-    // 使用当前语言生成PDF内容
-    const currentLang = i18n.language || 'en';
-    const langMap = {
-      zh: {
-        title: '费用与差旅报告',
-        period: '期间',
-        generated: '生成时间',
-        summary: '汇总',
-        totalExpenses: '总费用',
-        totalTravel: '总差旅',
-        pendingApprovals: '待审批',
-        monthlyData: '月度数据',
-        month: '月份',
-        expenses: '费用',
-        travel: '差旅',
-        approved: '已批准',
-        pending: '待处理'
-      },
-      ja: {
-        title: '経費・出張レポート',
-        period: '期間',
-        generated: '生成日時',
-        summary: '概要',
-        totalExpenses: '総経費',
-        totalTravel: '総出張',
-        pendingApprovals: '承認待ち',
-        monthlyData: '月次データ',
-        month: '月',
-        expenses: '経費',
-        travel: '出張',
-        approved: '承認済み',
-        pending: '承認待ち'
-      },
-      ko: {
-        title: '비용 및 출장 보고서',
-        period: '기간',
-        generated: '생성 시간',
-        summary: '요약',
-        totalExpenses: '총 비용',
-        totalTravel: '총 출장',
-        pendingApprovals: '승인 대기',
-        monthlyData: '월별 데이터',
-        month: '월',
-        expenses: '비용',
-        travel: '출장',
-        approved: '승인됨',
-        pending: '대기 중'
-      },
-      en: {
-        title: 'Expense & Travel Report',
-        period: 'Period',
-        generated: 'Generated',
-        summary: 'Summary',
-        totalExpenses: 'Total Expenses',
-        totalTravel: 'Total Travel',
-        pendingApprovals: 'Pending Approvals',
-        monthlyData: 'Monthly Data',
-        month: 'Month',
-        expenses: 'Expenses',
-        travel: 'Travel',
-        approved: 'Approved',
-        pending: 'Pending'
-      }
+    // 使用 i18n 翻译生成PDF内容
+    const labels = {
+      title: t('reports.title'),
+      period: t('reports.period'),
+      generated: t('reports.generated'),
+      summary: t('reports.summary'),
+      totalExpenses: t('reports.totalExpenses'),
+      totalTravel: t('reports.travelCosts'),
+      pendingApprovals: t('reports.pendingApprovals'),
+      monthlyData: t('reports.monthlyTrends'),
+      month: t('reports.month'),
+      expenses: t('reports.expenses'),
+      travel: t('reports.travel'),
+      approved: t('reports.approved'),
+      pending: t('reports.pending')
     };
-    
-    const labels = langMap[currentLang] || langMap.en;
-    const toLabel = currentLang === 'zh' ? '至' : currentLang === 'ja' ? 'から' : currentLang === 'ko' ? '부터' : 'to';
+    const toLabel = t('reports.to');
     
     return `
       <!DOCTYPE html>
@@ -386,88 +336,27 @@ const Reports = () => {
   };
 
   const generateCSVContent = (data) => {
-    const currentLang = i18n.language || 'en';
-    const langMap = {
-      zh: {
-        title: '费用与差旅报告',
-        period: '期间',
-        generated: '生成时间',
-        summary: '汇总',
-        totalExpenses: '总费用',
-        totalTravel: '总差旅',
-        pendingApprovals: '待审批',
-        monthlyData: '月度数据',
-        month: '月份',
-        expenses: '费用',
-        travel: '差旅',
-        approved: '已批准',
-        pending: '待处理',
-        categoryData: '类别数据',
-        category: '类别',
-        amount: '金额',
-        count: '数量'
-      },
-      ja: {
-        title: '経費・出張レポート',
-        period: '期間',
-        generated: '生成日時',
-        summary: '概要',
-        totalExpenses: '総経費',
-        totalTravel: '総出張',
-        pendingApprovals: '承認待ち',
-        monthlyData: '月次データ',
-        month: '月',
-        expenses: '経費',
-        travel: '出張',
-        approved: '承認済み',
-        pending: '承認待ち',
-        categoryData: 'カテゴリデータ',
-        category: 'カテゴリ',
-        amount: '金額',
-        count: '件数'
-      },
-      ko: {
-        title: '비용 및 출장 보고서',
-        period: '기간',
-        generated: '생성 시간',
-        summary: '요약',
-        totalExpenses: '총 비용',
-        totalTravel: '총 출장',
-        pendingApprovals: '승인 대기',
-        monthlyData: '월별 데이터',
-        month: '월',
-        expenses: '비용',
-        travel: '출장',
-        approved: '승인됨',
-        pending: '대기 중',
-        categoryData: '카테고리 데이터',
-        category: '카테고리',
-        amount: '금액',
-        count: '건수'
-      },
-      en: {
-        title: 'Expense & Travel Report',
-        period: 'Period',
-        generated: 'Generated',
-        summary: 'Summary',
-        totalExpenses: 'Total Expenses',
-        totalTravel: 'Total Travel',
-        pendingApprovals: 'Pending Approvals',
-        monthlyData: 'Monthly Data',
-        month: 'Month',
-        expenses: 'Expenses',
-        travel: 'Travel',
-        approved: 'Approved',
-        pending: 'Pending',
-        categoryData: 'Category Data',
-        category: 'Category',
-        amount: 'Amount',
-        count: 'Count'
-      }
+    // 使用 i18n 翻译生成CSV内容
+    const labels = {
+      title: t('reports.title'),
+      period: t('reports.period'),
+      generated: t('reports.generated'),
+      summary: t('reports.summary'),
+      totalExpenses: t('reports.totalExpenses'),
+      totalTravel: t('reports.travelCosts'),
+      pendingApprovals: t('reports.pendingApprovals'),
+      monthlyData: t('reports.monthlyTrends'),
+      month: t('reports.month'),
+      expenses: t('reports.expenses'),
+      travel: t('reports.travel'),
+      approved: t('reports.approved'),
+      pending: t('reports.pending'),
+      categoryData: t('reports.categoryData'),
+      category: t('reports.category'),
+      amount: t('reports.amount'),
+      count: t('reports.count')
     };
-    
-    const labels = langMap[currentLang] || langMap.en;
-    const toLabel = currentLang === 'zh' ? '至' : currentLang === 'ja' ? 'から' : currentLang === 'ko' ? '부터' : 'to';
+    const toLabel = t('reports.to');
     
     let csv = `${labels.title}\n`;
     csv += `${labels.period}: ${data.filters.startDate} ${toLabel} ${data.filters.endDate}\n`;

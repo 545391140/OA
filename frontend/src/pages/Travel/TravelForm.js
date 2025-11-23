@@ -420,9 +420,6 @@ const TravelForm = () => {
       
       // 只在有 ID 时验证格式并获取数据（新建模式下不会有 ID）
       if (id) {
-        // 调试：输出实际获取到的 ID
-        console.log('Fetching travel data with ID:', id, 'Type:', typeof id, 'Length:', id?.length);
-        
         // 清理 ID：去除可能的空格和特殊字符
         const cleanId = String(id).trim();
         
@@ -518,9 +515,6 @@ const TravelForm = () => {
             title: data.title || '',
             purpose: data.purpose || ''
           };
-          
-          console.log('Fetched travel data:', data);
-          console.log('Processed form data:', processedData);
           
           // 编辑模式下，优先重新匹配差旅标准（使用最新标准），而不是从预算恢复
           // 这样可以确保编辑时使用最新的差旅标准
@@ -1432,18 +1426,7 @@ const TravelForm = () => {
     const hasBasicDestination = hasLocationValue(formData.destination);
     
     // 如果没有任何目的地（基本信息、去程、返程或多程行程都没有），则报错
-    // 添加调试日志以便排查问题
     if (!hasOutboundDestination && !hasInboundDestination && !hasMultiCityDestination && !hasBasicDestination) {
-      console.log('Destination validation failed:', {
-        hasOutboundDestination,
-        hasInboundDestination,
-        hasMultiCityDestination,
-        hasBasicDestination,
-        outboundDestination: formData.outbound?.destination,
-        inboundDestination: formData.inbound?.destination,
-        basicDestination: formData.destination,
-        multiCityRoutes: formData.multiCityRoutes
-      });
       newErrors.destination = t('travel.form.pleaseSelectDestination');
     }
 
@@ -1540,7 +1523,7 @@ const TravelForm = () => {
 
   const handleSave = async (status = 'draft') => {
     if (!validateForm()) {
-      console.log('验证失败，阻止提交');
+      // 验证失败，阻止提交
       return;
     }
 
@@ -1656,23 +1639,6 @@ const TravelForm = () => {
         };
       });
       
-      console.log('=== 前端提交数据 ===');
-      console.log('multiCityRoutesBudget:', {
-        length: submitData.multiCityRoutesBudget?.length || 0,
-        isArray: Array.isArray(submitData.multiCityRoutesBudget),
-        data: JSON.stringify(submitData.multiCityRoutesBudget, null, 2),
-        details: budgetDetails
-      });
-      console.log('multiCityRoutes:', {
-        length: submitData.multiCityRoutes?.length || 0,
-        routes: submitData.multiCityRoutes
-      });
-      console.log('完整提交数据:', {
-        ...submitData,
-        outboundBudgetKeys: Object.keys(submitData.outboundBudget || {}),
-        inboundBudgetKeys: Object.keys(submitData.inboundBudget || {}),
-        multiCityRoutesBudgetLength: submitData.multiCityRoutesBudget?.length || 0
-      });
 
       let response;
       if (isEdit) {
@@ -1759,10 +1725,6 @@ const TravelForm = () => {
   };
 
   const handleSubmit = () => {
-    console.log('=== 提交申请按钮点击 ===');
-    console.log('Form data:', formData);
-    console.log('Validation result:', validateForm());
-    console.log('Errors:', errors);
     handleSave('submitted');
   };
 

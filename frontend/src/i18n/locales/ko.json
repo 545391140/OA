@@ -1351,7 +1351,16 @@
     "approvalStatus": "승인 상태",
     "expenseAnalysis": "비용 분석",
     "travelAnalysis": "출장 분석",
-    "departmentAnalysis": "부서 분석"
+    "departmentAnalysis": "부서 분석",
+    "period": "기간",
+    "generated": "생성 시간",
+    "summary": "요약",
+    "month": "월",
+    "categoryData": "카테고리 데이터",
+    "category": "카테고리",
+    "amount": "금액",
+    "count": "건수",
+    "to": "부터"
   },
   "messages": {
     "success": {

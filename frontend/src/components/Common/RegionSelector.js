@@ -220,7 +220,6 @@ const RegionSelector = ({
       }
       
       const locations = response.data.data || [];
-      console.log('从API获取地理位置数据成功:', locations.length);
       
       // 验证并转换数据结构
       const validLocations = locations
@@ -255,7 +254,6 @@ const RegionSelector = ({
           noAirport: location.noAirport || false
         }));
       
-      console.log('有效数据数量:', validLocations.length);
       setAllLocations(validLocations);
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || '获取地理位置数据失败';

@@ -1594,7 +1594,16 @@
     "approvalStatus": "Approval Status",
     "expenseAnalysis": "Expense Analysis",
     "travelAnalysis": "Travel Analysis",
-    "departmentAnalysis": "Department Analysis"
+    "departmentAnalysis": "Department Analysis",
+    "period": "Period",
+    "generated": "Generated",
+    "summary": "Summary",
+    "month": "Month",
+    "categoryData": "Category Data",
+    "category": "Category",
+    "amount": "Amount",
+    "count": "Count",
+    "to": "to"
   },
   "messages": {
     "success": {

@@ -1660,7 +1660,16 @@
     "approvalStatus": "审批状态",
     "expenseAnalysis": "费用分析",
     "travelAnalysis": "差旅分析",
-    "departmentAnalysis": "部门分析"
+    "departmentAnalysis": "部门分析",
+    "period": "期间",
+    "generated": "生成时间",
+    "summary": "汇总",
+    "month": "月份",
+    "categoryData": "类别数据",
+    "category": "类别",
+    "amount": "金额",
+    "count": "数量",
+    "to": "至"
   },
   "settings": {
     "title": "设置",

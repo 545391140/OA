@@ -1316,7 +1316,16 @@
     "approvalStatus": "承認ステータス",
     "expenseAnalysis": "経費分析",
     "travelAnalysis": "出張分析",
-    "departmentAnalysis": "部署分析"
+    "departmentAnalysis": "部署分析",
+    "period": "期間",
+    "generated": "生成日時",
+    "summary": "概要",
+    "month": "月",
+    "categoryData": "カテゴリデータ",
+    "category": "カテゴリ",
+    "amount": "金額",
+    "count": "件数",
+    "to": "から"
   },
   "messages": {
     "success": {

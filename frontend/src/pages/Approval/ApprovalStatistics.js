@@ -74,10 +74,6 @@ const ApprovalStatistics = () => {
     try {
       setLoading(true);
       
-      console.log('=== Frontend: Fetching Approval Statistics ===');
-      console.log('Date range:', dateRange);
-      console.log('Type:', type);
-      
       // 获取审批统计
       // 添加时间戳参数防止缓存，确保数据实时更新
       const statsResponse = await apiClient.get('/approvals/statistics', {
@@ -93,14 +89,8 @@ const ApprovalStatistics = () => {
         }
       });
 
-      console.log('Stats API Response:', statsResponse);
-      console.log('Stats API Data:', statsResponse.data);
-
       if (statsResponse.data && statsResponse.data.success) {
         const statsData = statsResponse.data.data;
-        console.log('Setting statistics:', statsData);
-        console.log('Travel stats:', statsData.travel);
-        console.log('Expense stats:', statsData.expense);
         
         // 确保即使没有数据也设置默认值
         const defaultStats = {
@@ -119,13 +109,8 @@ const ApprovalStatistics = () => {
           expense: statsData.expense || defaultStats
         };
         
-        console.log('Setting statistics:', finalStats);
-        console.log('Travel avgAmount:', finalStats.travel.avgAmount, typeof finalStats.travel.avgAmount);
-        console.log('Expense avgAmount:', finalStats.expense.avgAmount, typeof finalStats.expense.avgAmount);
-        
         setStatistics(finalStats);
       } else {
-        console.warn('Stats API response not successful:', statsResponse.data);
         // 设置空数据
         setStatistics({
           travel: null,
@@ -145,8 +130,6 @@ const ApprovalStatistics = () => {
           'Pragma': 'no-cache'
         }
       });
-
-      console.log('Workload API Response:', workloadResponse.data);
 
       if (workloadResponse.data && workloadResponse.data.success) {
         setApproverWorkload(workloadResponse.data.data || []);
@@ -168,8 +151,6 @@ const ApprovalStatistics = () => {
         }
       });
 
-      console.log('Trend API Response:', trendResponse.data);
-
       if (trendResponse.data && trendResponse.data.success) {
         setTrendData(trendResponse.data.data || []);
       } else {
@@ -177,13 +158,7 @@ const ApprovalStatistics = () => {
       }
 
     } catch (error) {
-      console.error('=== Frontend: Failed to fetch statistics ===');
-      console.error('Error object:', error);
-      console.error('Error message:', error.message);
-      console.error('Error response:', error.response);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error response status:', error.response?.status);
-      console.error('Error config:', error.config);
+      console.error('Failed to fetch statistics:', error);
       showNotification(t('approval.statistics.loadError') || '加载统计数据失败', 'error');
       
       // 设置空数据以避免UI错误
@@ -199,10 +174,6 @@ const ApprovalStatistics = () => {
   };
 
   useEffect(() => {
-    console.log('=== Frontend: ApprovalStatistics useEffect triggered ===');
-    console.log('Date range changed:', dateRange);
-    console.log('Type changed:', type);
-    console.log('Refresh key:', refreshKey);
     fetchStatistics();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange, type, refreshKey]);
@@ -210,7 +181,6 @@ const ApprovalStatistics = () => {
   // 添加自动刷新功能，每30秒刷新一次统计数据
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('Auto refreshing statistics...');
       setRefreshKey(prev => prev + 1);
     }, 30000); // 30秒刷新一次
 
