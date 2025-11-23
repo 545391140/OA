@@ -476,6 +476,46 @@ exports.matchStandard = async (req, res) => {
       position: position || (user?.position || '')
     };
     
+    // 通过城市和国家名称查找对应的 Location ID（用于 ID 匹配）
+    const Location = require('../models/Location');
+    if (matchParams.city) {
+      try {
+        const cityLocation = await Location.findOne({
+          $or: [
+            { name: matchParams.city },
+            { city: matchParams.city }
+          ],
+          type: 'city',
+          status: 'active'
+        });
+        if (cityLocation) {
+          matchParams.cityLocationId = cityLocation._id;
+          console.log(`[STANDARD_MATCH] Found city location ID: ${cityLocation._id} for city: ${matchParams.city}`);
+        }
+      } catch (err) {
+        console.warn(`[STANDARD_MATCH] Failed to find city location:`, err);
+      }
+    }
+    
+    if (matchParams.country) {
+      try {
+        const countryLocation = await Location.findOne({
+          $or: [
+            { name: matchParams.country },
+            { country: matchParams.country }
+          ],
+          type: 'country',
+          status: 'active'
+        });
+        if (countryLocation) {
+          matchParams.countryLocationId = countryLocation._id;
+          console.log(`[STANDARD_MATCH] Found country location ID: ${countryLocation._id} for country: ${matchParams.country}`);
+        }
+      } catch (err) {
+        console.warn(`[STANDARD_MATCH] Failed to find country location:`, err);
+      }
+    }
+    
     // 记录匹配参数，便于调试
     console.log(`[STANDARD_MATCH] Matching standards with params:`, {
       userId: req.user.id,
@@ -877,13 +917,55 @@ function matchConditionGroup(group, testData) {
 // Helper function to match a single condition
 // 核心逻辑：匹配差旅标准配置中的单个条件
 // 支持的条件类型：country, city, city_level, position_level, role, position, department, project_code
+// 优先使用 Location ID 匹配（解决名称变更后匹配失效的问题），降级到名称匹配（兼容旧数据）
 function matchSingleCondition(condition, testData) {
-  const { country, city, cityLevel, positionLevel, department, projectCode, role, position } = testData;
-  const { type, operator, value } = condition;
+  const { country, city, cityLevel, positionLevel, department, projectCode, role, position, cityLocationId, countryLocationId } = testData;
+  const { type, operator, value, locationIds } = condition;
+
+  // 优先使用 Location ID 匹配（适用于 city 和 country 类型）
+  if ((type === 'city' || type === 'country') && locationIds && Array.isArray(locationIds) && locationIds.length > 0) {
+    const testLocationId = type === 'city' ? cityLocationId : countryLocationId;
+    
+    if (testLocationId) {
+      // 使用 Location ID 进行匹配
+      const testIdString = testLocationId.toString();
+      const conditionIds = locationIds.map(id => id.toString());
+      
+      switch (operator) {
+        case 'IN':
+          // IN: 测试 Location ID 在条件 Location ID 列表中
+          if (conditionIds.includes(testIdString)) {
+            console.log(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} IN [${conditionIds.join(', ')}]`);
+            return true;
+          }
+          // ID 不匹配，降级到名称匹配
+          break;
+        case 'NOT_IN':
+          // NOT_IN: 测试 Location ID 不在条件 Location ID 列表中
+          if (!conditionIds.includes(testIdString)) {
+            console.log(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} NOT_IN [${conditionIds.join(', ')}]`);
+            return true;
+          }
+          // ID 在排除列表中，不匹配
+          return false;
+        case 'EQUAL':
+          // EQUAL: 测试 Location ID 等于条件 Location ID 列表中的任意一个
+          if (conditionIds.includes(testIdString)) {
+            console.log(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} EQUAL [${conditionIds.join(', ')}]`);
+            return true;
+          }
+          // ID 不匹配，降级到名称匹配
+          break;
+        default:
+          // 其他操作符（>=, <=）不适用于 ID 匹配，降级到名称匹配
+          break;
+      }
+    }
+  }
 
   let testValue = '';
   
-  // 根据条件类型获取对应的测试值
+  // 根据条件类型获取对应的测试值（降级到名称匹配，兼容旧数据）
   // 核心逻辑：所有差旅标准配置时涉及到的条件都要查询
   switch (type) {
     case 'country':

@@ -65,7 +65,12 @@ const TravelStandardSchema = new mongoose.Schema({
       value: {
         type: String,
         required: true
-      }
+      },
+      // 存储关联的 Location ID（用于 city 和 country 类型，解决名称变更后匹配失效的问题）
+      locationIds: [{
+        type: mongoose.Schema.ObjectId,
+        ref: 'Location'
+      }]
     }]
   }],
   // 覆盖人群配置（保留兼容性）

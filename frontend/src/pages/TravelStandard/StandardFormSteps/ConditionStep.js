@@ -50,22 +50,27 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
     const fetchLocationData = async () => {
       setLocationsData(prev => ({ ...prev, loading: true }));
       try {
-        // 从地理位置管理API获取数据
-        const [citiesResponse] = await Promise.all([
+        // 从地理位置管理API获取数据（同时获取城市和国家）
+        const [citiesResponse, countriesResponse] = await Promise.all([
           apiClient.get('/locations', {
             params: { type: 'city', status: 'active' }
-          })
+          }),
+          apiClient.get('/locations', {
+            params: { type: 'country', status: 'active' }
+          }).catch(() => ({ data: { success: false, data: [] } })) // 如果国家类型不存在，返回空数组
         ]);
         
         const citiesResult = citiesResponse.data?.success ? (citiesResponse.data.data || []) : [];
+        const countriesResult = countriesResponse.data?.success ? (countriesResponse.data.data || []) : [];
         
-        // 从城市数据中提取唯一的国家信息
+        // 从城市数据中提取唯一的国家信息（作为补充，因为可能有些国家没有单独的国家记录）
         const countryMap = new Map();
         citiesResult.forEach(city => {
           if (city.country) {
             const countryKey = city.country.toLowerCase();
             if (!countryMap.has(countryKey)) {
               countryMap.set(countryKey, {
+                _id: null, // 从城市数据提取的国家没有独立的 _id
                 name: city.country,
                 countryCode: city.countryCode || '',
                 type: 'country'
@@ -73,10 +78,24 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
             }
           }
         });
-        const countries = Array.from(countryMap.values());
+        
+        // 合并国家数据：优先使用独立的国家记录，补充从城市数据提取的国家
+        const countriesFromCities = Array.from(countryMap.values());
+        const allCountries = [...countriesResult];
+        
+        // 添加从城市数据提取的国家（如果不存在）
+        countriesFromCities.forEach(countryFromCity => {
+          const exists = allCountries.some(c => 
+            c.name?.toLowerCase() === countryFromCity.name.toLowerCase() ||
+            c.country?.toLowerCase() === countryFromCity.name.toLowerCase()
+          );
+          if (!exists) {
+            allCountries.push(countryFromCity);
+          }
+        });
         
         setLocationsData({
-          countries: countries || [],
+          countries: allCountries || [],
           cities: citiesResult || [],
           loading: false
         });
@@ -146,13 +165,19 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
     setFormData({ ...formData, conditionGroups: newGroups });
   };
 
-  const updateCondition = (groupIndex, condIndex, field, value) => {
+  const updateCondition = (groupIndex, condIndex, field, value, locationIds = null) => {
     const newGroups = [...formData.conditionGroups];
     newGroups[groupIndex].conditions[condIndex][field] = value;
     
-    // 如果改变了类型，清空值
+    // 如果改变了类型，清空值和 locationIds
     if (field === 'type') {
       newGroups[groupIndex].conditions[condIndex].value = '';
+      newGroups[groupIndex].conditions[condIndex].locationIds = [];
+    }
+    
+    // 如果提供了 locationIds，同时更新 locationIds 字段
+    if (locationIds !== null) {
+      newGroups[groupIndex].conditions[condIndex].locationIds = locationIds;
     }
     
     setFormData({ ...formData, conditionGroups: newGroups });
@@ -168,7 +193,9 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
           id: country._id || country.id || `country_${country.name || country.country}`,
           name: country.name || country.country,
           label: `${country.name || country.country}${country.countryCode ? ` (${country.countryCode})` : ''}`,
-          isSelectAll: false
+          isSelectAll: false,
+          // 保存 Location ID 用于匹配（优先使用 _id，如果是从城市数据提取的国家可能没有 _id）
+          locationId: country._id || country.id || null
         }));
         // 按名称排序
         baseOptions.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
@@ -178,7 +205,9 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
           id: city._id || city.id || `city_${city.name || city.city}`,
           name: city.name || city.city,
           label: `${city.name || city.city}${city.province ? `, ${city.province}` : ''}${city.country ? `, ${city.country}` : ''}`,
-          isSelectAll: false
+          isSelectAll: false,
+          // 保存 Location ID 用于匹配（优先使用 _id）
+          locationId: city._id || city.id || null
         }));
         // 按名称排序
         baseOptions.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
@@ -288,7 +317,20 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
     }
     
     const values = finalSelectedOptions.map(opt => opt.name || opt.id);
-    updateCondition(groupIndex, condIndex, 'value', valuesToString(values));
+    
+    // 对于城市和国家类型，同时保存 Location ID 数组
+    const conditionType = formData.conditionGroups[groupIndex].conditions[condIndex].type;
+    let locationIds = null;
+    
+    if (conditionType === 'city' || conditionType === 'country') {
+      // 提取有效的 Location ID（排除全选选项和无效 ID）
+      locationIds = finalSelectedOptions
+        .filter(opt => opt.locationId && opt.locationId !== '__SELECT_ALL__')
+        .map(opt => opt.locationId)
+        .filter(id => id && typeof id === 'string' && id.length > 0);
+    }
+    
+    updateCondition(groupIndex, condIndex, 'value', valuesToString(values), locationIds);
   };
   
   // 获取显示用的选中选项（包含全选状态判断）
