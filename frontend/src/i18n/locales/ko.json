@@ -40,6 +40,7 @@
     "all": "전체",
     "reset": "재설정",
     "submitting": "제출 중...",
+    "actualReimbursement": "실제 지급",
     "months": {
       "Jan": "1월",
       "Feb": "2월",
@@ -682,6 +683,7 @@
       "dinner": "저녁 식사",
       "dailyTotal": "일일 합계",
       "daysTotal": "일 합계",
+      "travelAllowance": "출장 수당",
       "otherAllowances": "기타 수당",
       "perDay": "/일",
       "subtotal": "소계",

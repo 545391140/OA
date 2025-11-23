@@ -41,6 +41,7 @@
     "reset": "Reset",
     "submitting": "Submitting...",
     "sheet": "sheet",
+    "actualReimbursement": "Actual Reimbursement",
     "months": {
       "Jan": "January",
       "Feb": "February",
@@ -696,6 +697,7 @@
       "dinner": "Dinner",
       "dailyTotal": "Daily Total",
       "daysTotal": "Days Total",
+      "travelAllowance": "Travel Allowance",
       "otherAllowances": "Other Allowances",
       "perDay": "/day",
       "subtotal": "Subtotal",

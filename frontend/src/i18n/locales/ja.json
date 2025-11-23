@@ -40,6 +40,7 @@
     "all": "すべて",
     "reset": "リセット",
     "submitting": "送信中...",
+    "actualReimbursement": "実報実銷",
     "months": {
       "Jan": "1月",
       "Feb": "2月",
@@ -647,6 +648,7 @@
       "dinner": "夕食",
       "dailyTotal": "1日合計",
       "daysTotal": "日合計",
+      "travelAllowance": "出張手当",
       "otherAllowances": "その他の手当",
       "perDay": "/日",
       "subtotal": "小計",

@@ -131,11 +131,17 @@ exports.matchStandard = async (req, res) => {
     const transportItems = [];
     const accommodationItems = [];
     const mealItems = [];
-    const allowanceItems = [];
+    const travelAllowanceItems = []; // 差旅补助（独立类别）
+    const allowanceItems = []; // 其他补贴
     
     // 根据 itemName 推断分类的辅助函数
     const inferCategoryFromName = (itemName) => {
       const name = itemName.toLowerCase();
+      // 特殊处理：差旅补助应该单独分类
+      if (name.includes('差旅补助') || name.includes('差旅补贴') || 
+          (name.includes('差旅') && (name.includes('补助') || name.includes('补贴')))) {
+        return 'travelAllowance';
+      }
       // 特殊处理：机场往返应该归类为补贴，而不是交通费
       if (name.includes('机场往返') || name.includes('机场接送') || name.includes('往返机场')) {
         return 'allowance';
@@ -187,6 +193,8 @@ exports.matchStandard = async (req, res) => {
           accommodationItems.push(itemData);
         } else if (category === 'meal') {
           mealItems.push(itemData);
+        } else if (category === 'travelAllowance') {
+          travelAllowanceItems.push(itemData);
         } else if (category === 'allowance') {
           allowanceItems.push(itemData);
         } else {
@@ -201,33 +209,76 @@ exports.matchStandard = async (req, res) => {
       transportCount: transportItems.length,
       accommodationCount: accommodationItems.length,
       mealCount: mealItems.length,
+      travelAllowanceCount: travelAllowanceItems.length,
       allowanceCount: allowanceItems.length
     });
 
     // 计算预估费用
-    // 对于交通：取第一个或最大的限额
-    const transportAmount = transportItems.length > 0 
-      ? Math.max(...transportItems.map(t => t.limitAmount || 0))
+    // 对于交通：取第一个或最大的限额，同时检查是否有实报实销
+    const transportMaxItem = transportItems.length > 0 
+      ? transportItems.reduce((max, item) => {
+          if (item.limitType === 'ACTUAL') return { ...item, limitType: 'ACTUAL' };
+          if (max.limitType === 'ACTUAL') return max;
+          return (item.limitAmount || 0) > (max.limitAmount || 0) ? item : max;
+        }, transportItems[0])
+      : null;
+    const transportAmount = transportMaxItem && transportMaxItem.limitType !== 'ACTUAL'
+      ? (transportMaxItem.limitAmount || 0)
+      : 0;
+    const transportLimitType = transportMaxItem?.limitType || 'FIXED';
+    
+    // 对于住宿：按天计算，同时检查是否有实报实销
+    const accommodationMaxItem = accommodationItems.length > 0
+      ? accommodationItems.reduce((max, item) => {
+          if (item.limitType === 'ACTUAL') return { ...item, limitType: 'ACTUAL' };
+          if (max.limitType === 'ACTUAL') return max;
+          return (item.limitAmount || 0) > (max.limitAmount || 0) ? item : max;
+        }, accommodationItems[0])
+      : null;
+    const accommodationAmount = accommodationMaxItem && accommodationMaxItem.limitType !== 'ACTUAL'
+      ? (accommodationMaxItem.calcUnit === 'PER_DAY' 
+          ? (accommodationMaxItem.limitAmount || 0) * (days || 1) 
+          : (accommodationMaxItem.limitAmount || 0))
+      : 0;
+    const accommodationLimitType = accommodationMaxItem?.limitType || 'FIXED';
+    const accommodationMaxPerNight = accommodationMaxItem && accommodationMaxItem.limitType !== 'ACTUAL'
+      ? (accommodationMaxItem.limitAmount || 0)
       : 0;
     
-    // 对于住宿：按天计算
-    const accommodationAmount = accommodationItems.length > 0
-      ? Math.max(...accommodationItems.map(a => {
-          const amount = a.limitAmount || 0;
-          return a.calcUnit === 'PER_DAY' ? amount * (days || 1) : amount;
-        }))
+    // 对于餐饮：按天计算，同时检查是否有实报实销
+    const mealMaxItem = mealItems.length > 0
+      ? mealItems.reduce((max, item) => {
+          if (item.limitType === 'ACTUAL') return { ...item, limitType: 'ACTUAL' };
+          if (max.limitType === 'ACTUAL') return max;
+          return (item.limitAmount || 0) > (max.limitAmount || 0) ? item : max;
+        }, mealItems[0])
+      : null;
+    const mealAmount = mealMaxItem && mealMaxItem.limitType !== 'ACTUAL'
+      ? (mealMaxItem.calcUnit === 'PER_DAY' 
+          ? (mealMaxItem.limitAmount || 0) * (days || 1) 
+          : (mealMaxItem.limitAmount || 0))
+      : 0;
+    const mealLimitType = mealMaxItem?.limitType || 'FIXED';
+    const mealDailyTotal = mealMaxItem && mealMaxItem.limitType !== 'ACTUAL'
+      ? (mealMaxItem.limitAmount || 0)
       : 0;
     
-    // 对于餐饮：按天计算
-    const mealAmount = mealItems.length > 0
-      ? Math.max(...mealItems.map(m => {
-          const amount = m.limitAmount || 0;
-          return m.calcUnit === 'PER_DAY' ? amount * (days || 1) : amount;
-        }))
-      : 0;
+    // 对于差旅补助：按天或按次计算，同时检查是否有实报实销
+    const travelAllowanceAmount = travelAllowanceItems.reduce((sum, a) => {
+      if (a.limitType === 'ACTUAL') return sum; // 实报实销不计算到总额中
+      const amount = a.limitAmount || 0;
+      if (a.calcUnit === 'PER_DAY') {
+        return sum + (amount * (days || 1));
+      } else if (a.calcUnit === 'PER_TRIP') {
+        return sum + amount;
+      } else {
+        return sum + amount;
+      }
+    }, 0);
     
-    // 对于补贴：按天或按次计算
+    // 对于其他补贴：按天或按次计算，同时检查是否有实报实销
     const allowanceAmount = allowanceItems.reduce((sum, a) => {
+      if (a.limitType === 'ACTUAL') return sum; // 实报实销不计算到总额中
       const amount = a.limitAmount || 0;
       if (a.calcUnit === 'PER_DAY') {
         return sum + (amount * (days || 1));
@@ -242,8 +293,9 @@ exports.matchStandard = async (req, res) => {
       transport: transportAmount,
       accommodation: accommodationAmount,
       meal: mealAmount,
+      travelAllowance: travelAllowanceAmount,
       allowance: allowanceAmount,
-      total: transportAmount + accommodationAmount + mealAmount + allowanceAmount
+      total: transportAmount + accommodationAmount + mealAmount + travelAllowanceAmount + allowanceAmount
     };
 
     res.json({
@@ -268,11 +320,13 @@ exports.matchStandard = async (req, res) => {
           type: transportType || 'flight',
           seatClass: '经济舱', // 默认值，实际应该从费用项中获取
           maxAmount: transportAmount,
+          limitType: transportLimitType, // 添加 limitType
           cityLevel: cityLevel,
           distanceRange: null
         } : null,
         accommodation: accommodationItems.length > 0 ? {
-          maxAmountPerNight: Math.max(...accommodationItems.map(a => a.limitAmount || 0)),
+          maxAmountPerNight: accommodationMaxPerNight,
+          limitType: accommodationLimitType, // 添加 limitType
           starLevel: null, // 实际应该从费用项中获取
           nights: days || 1,
           totalAmount: accommodationAmount
@@ -281,16 +335,26 @@ exports.matchStandard = async (req, res) => {
           breakfast: 0, // 实际应该从费用项中获取或计算
           lunch: 0,
           dinner: 0,
-          dailyTotal: Math.max(...mealItems.map(m => m.limitAmount || 0)),
+          dailyTotal: mealDailyTotal,
+          limitType: mealLimitType, // 添加 limitType
           days: days || 1,
           totalAmount: mealAmount
         } : null,
+        travelAllowance: travelAllowanceItems.length > 0 ? travelAllowanceItems.map(allowance => ({
+          type: allowance.itemName,
+          amountType: allowance.calcUnit === 'PER_DAY' ? 'daily' : 'per_trip',
+          amount: allowance.limitAmount || 0,
+          limitType: allowance.limitType || 'FIXED', // 添加 limitType
+          total: allowance.limitType === 'ACTUAL' ? 0 : (allowance.calcUnit === 'PER_DAY' ? 
+            (allowance.limitAmount || 0) * (days || 1) : (allowance.limitAmount || 0))
+        })) : [],
         allowances: allowanceItems.length > 0 ? allowanceItems.map(allowance => ({
           type: allowance.itemName,
           amountType: allowance.calcUnit === 'PER_DAY' ? 'daily' : 'per_trip',
           amount: allowance.limitAmount || 0,
-          total: allowance.calcUnit === 'PER_DAY' ? 
-            (allowance.limitAmount || 0) * (days || 1) : (allowance.limitAmount || 0)
+          limitType: allowance.limitType || 'FIXED', // 添加 limitType
+          total: allowance.limitType === 'ACTUAL' ? 0 : (allowance.calcUnit === 'PER_DAY' ? 
+            (allowance.limitAmount || 0) * (days || 1) : (allowance.limitAmount || 0))
         })) : [],
         estimatedCost
       }

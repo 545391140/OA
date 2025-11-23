@@ -19,7 +19,8 @@ import {
   Hotel as HotelIcon,
   Restaurant as RestaurantIcon,
   LocalTaxi as TaxiIcon,
-  QueryBuilder as QueryIcon
+  QueryBuilder as QueryIcon,
+  AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../utils/axiosConfig';
@@ -197,7 +198,11 @@ const StandardQuery = () => {
                           {t('travelStandard.query.seatClass')}: {standardData.transport.seatClass}
                         </Typography>
                         <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
-                          {t('travelStandard.query.maxAmount')}: {formatCurrency(standardData.transport.maxAmount)}{t('travelStandard.query.perTrip')}
+                          {t('travelStandard.query.maxAmount')}: {
+                            standardData.transport.limitType === 'ACTUAL' 
+                              ? t('common.actualReimbursement')
+                              : `${formatCurrency(standardData.transport.maxAmount)}${t('travelStandard.query.perTrip')}`
+                          }
                         </Typography>
                       </Box>
                     </CardContent>
@@ -216,7 +221,11 @@ const StandardQuery = () => {
                       </Box>
                       <Box sx={{ pl: 4 }}>
                         <Typography variant="h6" color="primary">
-                          {t('travelStandard.query.max')} {formatCurrency(standardData.accommodation.maxAmountPerNight)}{t('travelStandard.query.perNight')}
+                          {t('travelStandard.query.max')} {
+                            standardData.accommodation.limitType === 'ACTUAL'
+                              ? t('common.actualReimbursement')
+                              : `${formatCurrency(standardData.accommodation.maxAmountPerNight)}${t('travelStandard.query.perNight')}`
+                          }
                         </Typography>
                         {standardData.accommodation.starLevel && (
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -254,11 +263,47 @@ const StandardQuery = () => {
                           </Typography>
                         </Box>
                         <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
-                          {t('travelStandard.query.dailyTotal')}: {formatCurrency(standardData.meal.dailyTotal)}
+                          {t('travelStandard.query.dailyTotal')}: {
+                            standardData.meal.limitType === 'ACTUAL'
+                              ? t('common.actualReimbursement')
+                              : formatCurrency(standardData.meal.dailyTotal)
+                          }
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                           {standardData.meal.days}{t('travelStandard.query.daysTotal')}: {formatCurrency(standardData.meal.totalAmount)}
                         </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
+
+              {/* 差旅补助 */}
+              {standardData.travelAllowance && standardData.travelAllowance.length > 0 && (
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <MoneyIcon sx={{ mr: 1, color: 'primary.main' }} />
+                        <Typography variant="h6">{t('travelStandard.query.travelAllowance')}</Typography>
+                      </Box>
+                      <Box sx={{ pl: 4 }}>
+                        {standardData.travelAllowance.map((allowance, index) => (
+                          <Box key={index} sx={{ mb: 1 }}>
+                            <Typography variant="body2">
+                              {allowance.type}: {
+                                allowance.limitType === 'ACTUAL'
+                                  ? t('common.actualReimbursement')
+                                  : `${formatCurrency(allowance.amount)}${allowance.amountType === 'daily' ? t('travelStandard.query.perDay') : ''}${allowance.amountType === 'per_trip' ? t('travelStandard.query.perTrip') : ''}`
+                              }
+                            </Typography>
+                            {allowance.amountType === 'daily' && allowance.limitType !== 'ACTUAL' && (
+                              <Typography variant="body2" color="text.secondary">
+                                {t('travelStandard.query.subtotal')}: {formatCurrency(allowance.total)}
+                              </Typography>
+                            )}
+                          </Box>
+                        ))}
                       </Box>
                     </CardContent>
                   </Card>
@@ -278,11 +323,13 @@ const StandardQuery = () => {
                         {standardData.allowances.map((allowance, index) => (
                           <Box key={index} sx={{ mb: 1 }}>
                             <Typography variant="body2">
-                              {allowance.type}: {formatCurrency(allowance.amount)}
-                              {allowance.amountType === 'daily' && t('travelStandard.query.perDay')}
-                              {allowance.amountType === 'per_trip' && t('travelStandard.query.perTrip')}
+                              {allowance.type}: {
+                                allowance.limitType === 'ACTUAL'
+                                  ? t('common.actualReimbursement')
+                                  : `${formatCurrency(allowance.amount)}${allowance.amountType === 'daily' ? t('travelStandard.query.perDay') : ''}${allowance.amountType === 'per_trip' ? t('travelStandard.query.perTrip') : ''}`
+                              }
                             </Typography>
-                            {allowance.amountType === 'daily' && (
+                            {allowance.amountType === 'daily' && allowance.limitType !== 'ACTUAL' && (
                               <Typography variant="body2" color="text.secondary">
                                 {t('travelStandard.query.subtotal')}: {formatCurrency(allowance.total)}
                               </Typography>
@@ -305,19 +352,23 @@ const StandardQuery = () => {
                   </Typography>
                   <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.3)' }} />
                   <Grid container spacing={2}>
-                    <Grid item xs={6} md={3}>
+                    <Grid item xs={6} md={2.4}>
                       <Typography variant="body2">{t('travelStandard.query.transport')}</Typography>
                       <Typography variant="h6">{formatCurrency(standardData.estimatedCost.transport)}</Typography>
                     </Grid>
-                    <Grid item xs={6} md={3}>
+                    <Grid item xs={6} md={2.4}>
                       <Typography variant="body2">{t('travelStandard.query.accommodation')}</Typography>
                       <Typography variant="h6">{formatCurrency(standardData.estimatedCost.accommodation)}</Typography>
                     </Grid>
-                    <Grid item xs={6} md={3}>
+                    <Grid item xs={6} md={2.4}>
                       <Typography variant="body2">{t('travelStandard.query.meal')}</Typography>
                       <Typography variant="h6">{formatCurrency(standardData.estimatedCost.meal)}</Typography>
                     </Grid>
-                    <Grid item xs={6} md={3}>
+                    <Grid item xs={6} md={2.4}>
+                      <Typography variant="body2">{t('travelStandard.query.travelAllowance')}</Typography>
+                      <Typography variant="h6">{formatCurrency(standardData.estimatedCost.travelAllowance || 0)}</Typography>
+                    </Grid>
+                    <Grid item xs={6} md={2.4}>
                       <Typography variant="body2">{t('travelStandard.query.other')}</Typography>
                       <Typography variant="h6">{formatCurrency(standardData.estimatedCost.allowance)}</Typography>
                     </Grid>

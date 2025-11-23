@@ -42,6 +42,7 @@
     "reset": "重置",
     "submitting": "提交中...",
     "sheet": "张",
+    "actualReimbursement": "实报实销",
     "months": {
       "Jan": "一月",
       "Feb": "二月",
@@ -739,6 +740,7 @@
       "dinner": "晚餐",
       "dailyTotal": "每日合计",
       "daysTotal": "天合计",
+      "travelAllowance": "差旅补助",
       "otherAllowances": "其他补贴",
       "perDay": "/天",
       "subtotal": "小计",
