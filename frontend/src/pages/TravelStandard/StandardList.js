@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Paper,
@@ -29,7 +29,8 @@ import {
   Cancel as DeactivateIcon,
   Visibility as ViewIcon,
   MoreVert as MoreVertIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -40,9 +41,20 @@ import dayjs from 'dayjs';
 
 const StandardList = () => {
   const { t } = useTranslation();
+  const { showNotification } = useNotification();
+
+  const handleCopyNumber = useCallback((e, number) => {
+    e.stopPropagation();
+    if (number && number !== '-') {
+      navigator.clipboard.writeText(number).then(() => {
+        showNotification(t('common.copied') || '已复制', 'success');
+      }).catch(() => {
+        showNotification(t('common.copyFailed') || '复制失败', 'error');
+      });
+    }
+  }, [showNotification, t]);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { showNotification } = useNotification();
   const [standards, setStandards] = useState([]);
   const [expenseItemsMap, setExpenseItemsMap] = useState({}); // 费用项ID到名称的映射
   const [loading, setLoading] = useState(true);
@@ -305,8 +317,37 @@ const StandardList = () => {
                          };
                          
                          return (
-                           <TableRow key={standard._id} hover>
-                             <TableCell>{standard.standardCode}</TableCell>
+                          <TableRow key={standard._id} hover>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Typography 
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: 500,
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.875rem',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: '200px'
+                                  }}
+                                >
+                                  {standard.standardCode}
+                                </Typography>
+                                {standard.standardCode && standard.standardCode !== '-' && (
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => handleCopyNumber(e, standard.standardCode)}
+                                    sx={{ 
+                                      p: 0.5,
+                                      '&:hover': { bgcolor: 'action.hover' }
+                                    }}
+                                  >
+                                    <ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} />
+                                  </IconButton>
+                                )}
+                              </Box>
+                            </TableCell>
                              <TableCell>
                                <Box>
                                  <Typography variant="body2" fontWeight="medium">

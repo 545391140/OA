@@ -44,7 +44,8 @@ import {
   Flight as FlightIcon,
   LocationOn as LocationIcon,
   CalendarToday as CalendarIcon,
-  AttachMoney as MoneyIcon
+  AttachMoney as MoneyIcon,
+  ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -53,14 +54,24 @@ import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
-const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t }) => {
+const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t, showNotification }) => {
+  const handleCopyNumber = useCallback((e, number) => {
+    e.stopPropagation();
+    if (number && number !== '-') {
+      navigator.clipboard.writeText(number).then(() => {
+        showNotification(t('common.copied') || '已复制', 'success');
+      }).catch(() => {
+        showNotification(t('common.copyFailed') || '复制失败', 'error');
+      });
+    }
+  }, [showNotification, t]);
   const formattedDeparture = useMemo(() => 
-    travel.dates.departure ? dayjs(travel.dates.departure).format('YYYY-MM-DD') : '-',
+    travel.dates.departure ? dayjs(travel.dates.departure).format('YYYY/MM/DD') : '-',
     [travel.dates.departure]
   );
   
   const formattedReturn = useMemo(() => 
-    travel.dates.return ? dayjs(travel.dates.return).format('YYYY-MM-DD') : '-',
+    travel.dates.return ? dayjs(travel.dates.return).format('YYYY/MM/DD') : '-',
     [travel.dates.return]
   );
   
@@ -72,9 +83,34 @@ const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t }) =>
   return (
     <TableRow hover>
       <TableCell>
-        <Typography variant="body2" sx={{ fontWeight: 'medium', fontFamily: 'monospace' }}>
-          {travel.travelNumber || '-'}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontWeight: 500,
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '200px'
+            }}
+          >
+            {travel.travelNumber || '-'}
+          </Typography>
+          {travel.travelNumber && travel.travelNumber !== '-' && (
+            <IconButton
+              size="small"
+              onClick={(e) => handleCopyNumber(e, travel.travelNumber)}
+              sx={{ 
+                p: 0.5,
+                '&:hover': { bgcolor: 'action.hover' }
+              }}
+            >
+              <ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} />
+            </IconButton>
+          )}
+        </Box>
       </TableCell>
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
@@ -140,7 +176,7 @@ const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t }) =>
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <MoneyIcon color="action" fontSize="small" />
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+          <Typography variant="body2" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
             {travel.currency} {travel.estimatedCost?.toLocaleString() || 0}
           </Typography>
         </Box>
@@ -526,7 +562,7 @@ const TravelList = () => {
             <TableHead>
               <TableRow>
                 <TableCell sx={{ minWidth: 120 }}>{t('travel.travelNumber')}</TableCell>
-                <TableCell sx={{ minWidth: 250 }}>{t('travel.list.titleColumn')}</TableCell>
+                <TableCell sx={{ minWidth: 167 }}>{t('travel.list.titleColumn')}</TableCell>
                 <TableCell sx={{ minWidth: 150 }}>{t('travel.list.destinationColumn')}</TableCell>
                 <TableCell sx={{ minWidth: 180 }}>{t('travel.list.datesColumn')}</TableCell>
                 <TableCell sx={{ minWidth: 120 }}>{t('travel.list.estimatedCostColumn')}</TableCell>
@@ -557,6 +593,7 @@ const TravelList = () => {
                     onMenuOpen={handleMenuOpen}
                     getStatusColor={getStatusColor}
                     t={t}
+                    showNotification={showNotification}
                   />
                 ))
               )}

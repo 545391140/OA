@@ -49,7 +49,8 @@ import {
   Link as LinkIcon,
   Download as DownloadIcon,
   MoreVert as MoreVertIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -58,7 +59,18 @@ import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
-const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatusColor, getStatusLabel, getCategoryLabel, t }) => {
+const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatusColor, getStatusLabel, getCategoryLabel, t, showNotification }) => {
+  const handleCopyNumber = useCallback((e, number) => {
+    e.stopPropagation();
+    if (number && number !== '-') {
+      navigator.clipboard.writeText(number).then(() => {
+        showNotification(t('common.copied') || '已复制', 'success');
+      }).catch(() => {
+        showNotification(t('common.copyFailed') || '复制失败', 'error');
+      });
+    }
+  }, [showNotification, t]);
+
   const formattedInvoiceDate = useMemo(() => 
     invoice.invoiceDate ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD') : '-',
     [invoice.invoiceDate]
@@ -80,9 +92,34 @@ const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatu
         </Box>
       </TableCell>
       <TableCell>
-        <Typography variant="body2" fontWeight={500}>
-          {invoice.invoiceNumber || '-'}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography 
+            variant="body2" 
+            sx={{
+              fontWeight: 500,
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '200px'
+            }}
+          >
+            {invoice.invoiceNumber || '-'}
+          </Typography>
+          {invoice.invoiceNumber && invoice.invoiceNumber !== '-' && (
+            <IconButton
+              size="small"
+              onClick={(e) => handleCopyNumber(e, invoice.invoiceNumber)}
+              sx={{ 
+                p: 0.5,
+                '&:hover': { bgcolor: 'action.hover' }
+              }}
+            >
+              <ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} />
+            </IconButton>
+          )}
+        </Box>
       </TableCell>
       <TableCell>{invoice.vendor?.name || '-'}</TableCell>
       <TableCell sx={{ whiteSpace: 'nowrap' }}>
@@ -489,6 +526,7 @@ const InvoiceList = () => {
                     getStatusLabel={getStatusLabel}
                     getCategoryLabel={getCategoryLabel}
                     t={t}
+                    showNotification={showNotification}
                   />
                 ))
               )}

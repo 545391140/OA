@@ -41,7 +41,8 @@ import {
   Receipt as ReceiptIcon,
   AttachMoney as MoneyIcon,
   CalendarToday as CalendarIcon,
-  Business as BusinessIcon
+  Business as BusinessIcon,
+  ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -57,7 +58,17 @@ const devError = (...args) => {
 };
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
-const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCategoryIcon, t }) => {
+const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCategoryIcon, t, showNotification }) => {
+  const handleCopyNumber = useCallback((e, number) => {
+    e.stopPropagation();
+    if (number && number !== '-') {
+      navigator.clipboard.writeText(number).then(() => {
+        showNotification(t('common.copied') || '已复制', 'success');
+      }).catch(() => {
+        showNotification(t('common.copyFailed') || '复制失败', 'error');
+      });
+    }
+  }, [showNotification, t]);
   const formattedDate = useMemo(() => 
     expense.date ? dayjs(expense.date).format('YYYY-MM-DD') : '-',
     [expense.date]
@@ -66,9 +77,34 @@ const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCa
   return (
     <TableRow hover>
       <TableCell>
-        <Typography variant="body2" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
-          {expense.reimbursementNumber || '-'}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontWeight: 500,
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '200px'
+            }}
+          >
+            {expense.reimbursementNumber || '-'}
+          </Typography>
+          {expense.reimbursementNumber && expense.reimbursementNumber !== '-' && (
+            <IconButton
+              size="small"
+              onClick={(e) => handleCopyNumber(e, expense.reimbursementNumber)}
+              sx={{ 
+                p: 0.5,
+                '&:hover': { bgcolor: 'action.hover' }
+              }}
+            >
+              <ContentCopyIcon fontSize="small" sx={{ fontSize: 14 }} />
+            </IconButton>
+          )}
+        </Box>
       </TableCell>
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -123,7 +159,7 @@ const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCa
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <MoneyIcon color="action" fontSize="small" />
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+          <Typography variant="body2" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
             {expense.currency || 'USD'} {(expense.amount || 0).toLocaleString()}
           </Typography>
         </Box>
@@ -555,6 +591,7 @@ const ExpenseList = () => {
                   getStatusColor={getStatusColor}
                   getCategoryIcon={getCategoryIcon}
                   t={t}
+                  showNotification={showNotification}
                 />
               ))}
             </TableBody>
