@@ -81,7 +81,10 @@ const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCa
               {expense.title || expense.expenseItem?.itemName || t('expense.untitled')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {expense.description || '-'}
+              {(expense.travel?.title && expense.travel.title.trim()) || 
+               (expense.travel?.purpose && expense.travel.purpose.trim()) || 
+               (expense.travel?.destination && (typeof expense.travel.destination === 'string' ? expense.travel.destination : expense.travel.destination.name || expense.travel.destination.city)) || 
+               '-'}
             </Typography>
             {expense.project && (
               <Typography variant="caption" color="primary">

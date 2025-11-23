@@ -1077,6 +1077,7 @@
     "amount": "Amount",
     "date": "Date",
     "reimbursementNumber": "Reimbursement Number",
+    "reimbursement": "Expense Reimbursement",
     "generationType": "Generation Type",
     "generationType.ai": "AI Generated",
     "generationType.manual": "Manual",

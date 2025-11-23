@@ -1121,6 +1121,7 @@
     "amount": "金额",
     "date": "日期",
     "reimbursementNumber": "核销单号",
+    "reimbursement": "费用核销",
     "generationType": "生成类型",
     "generationType.ai": "AI生成",
     "generationType.manual": "手动生成",

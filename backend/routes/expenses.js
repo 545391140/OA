@@ -87,12 +87,12 @@ router.get('/', protect, loadUserRole, asyncHandler(async (req, res) => {
     const total = await Expense.countDocuments(query);
     
     // 查询数据：只选择列表需要的字段，使用 lean() 提高性能
-    // 排除大字段：receipts（收据文件数组）、ocrData（OCR原始数据）、description（可能很长）
-    // 列表页需要的字段：_id, title, amount, date, category, status, currency, reimbursementNumber, 
-    //                   employee, travel, expenseItem, relatedInvoices, approvals, createdAt, updatedAt
+    // 排除大字段：receipts（收据文件数组）、ocrData（OCR原始数据）
+    // 列表页需要的字段：_id, title, description, amount, date, category, status, currency, reimbursementNumber, 
+    //                   employee, travel, expenseItem, relatedInvoices, approvals, vendor, createdAt, updatedAt
     // 优化：先查询主数据，再批量查询关联数据，避免嵌套 populate 和数组 populate 的 N+1 问题
     const expenses = await Expense.find(query)
-      .select('title amount date category status currency reimbursementNumber matchSource employee travel expenseItem relatedInvoices approvals createdAt updatedAt')
+      .select('title description amount date category status currency reimbursementNumber matchSource employee travel expenseItem relatedInvoices approvals vendor createdAt updatedAt')
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit)
@@ -110,7 +110,16 @@ router.get('/', protect, loadUserRole, asyncHandler(async (req, res) => {
       expenses
         .map(e => e.travel)
         .filter(Boolean)
-        .map(id => id.toString ? id.toString() : id)
+        .map(id => {
+          // 处理 ObjectId 对象
+          if (id._id) {
+            return id._id.toString();
+          } else if (id.toString) {
+            return id.toString();
+          } else {
+            return String(id);
+          }
+        })
     )];
     
     const expenseItemIds = [...new Set(
@@ -145,7 +154,7 @@ router.get('/', protect, loadUserRole, asyncHandler(async (req, res) => {
         : Promise.resolve([]),
       travelIds.length > 0
         ? Travel.find({ _id: { $in: travelIds } })
-            .select('title destination')
+            .select('title destination travelNumber purpose')
             .lean()
         : Promise.resolve([]),
       expenseItemIds.length > 0
@@ -182,8 +191,26 @@ router.get('/', protect, loadUserRole, asyncHandler(async (req, res) => {
       
       // Populate travel
       if (expense.travel) {
-        const travelId = expense.travel.toString ? expense.travel.toString() : expense.travel;
+        // 保存原始 travel 值（可能是 ObjectId 对象）
+        const originalTravel = expense.travel;
+        
+        // 处理 ObjectId 或字符串格式的 ID，统一转换为字符串
+        let travelId;
+        if (originalTravel._id) {
+          travelId = originalTravel._id.toString();
+        } else if (typeof originalTravel.toString === 'function') {
+          travelId = originalTravel.toString();
+        } else {
+          travelId = String(originalTravel);
+        }
+        
+        // 从 map 中查找对应的 travel 数据
         expense.travel = travelMap.get(travelId) || null;
+        
+        // 如果找不到，记录警告日志（仅在开发环境）
+        if (!expense.travel && process.env.NODE_ENV === 'development') {
+          logger.debug(`Travel not found for expense ${expense._id}, travelId: ${travelId}, available travelIds: ${Array.from(travelMap.keys()).join(', ')}`);
+        }
       }
       
       // Populate expenseItem
