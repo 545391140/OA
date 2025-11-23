@@ -460,9 +460,6 @@ const Layout = () => {
         <MenuItem onClick={() => handleLanguageChange('ko')}>
           {t('navigation.languages.ko')}
         </MenuItem>
-        <MenuItem onClick={() => handleLanguageChange('ar')}>
-          {t('navigation.languages.ar')}
-        </MenuItem>
         <MenuItem onClick={() => handleLanguageChange('vi')}>
           {t('navigation.languages.vi')}
         </MenuItem>

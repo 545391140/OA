@@ -78,12 +78,6 @@ const EnhancedLanguageSwitcher = ({ variant = 'select', showFlags = true, showNa
       flag: '🇰🇷',
       direction: 'ltr'
     },
-    'ar': { 
-      name: 'Arabic', 
-      nativeName: 'العربية',
-      flag: '🇸🇦',
-      direction: 'rtl'
-    },
     'he': { 
       name: 'Hebrew', 
       nativeName: 'עברית',

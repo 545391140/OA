@@ -1095,6 +1095,7 @@
   },
   "expense": {
     "title": "تقرير المصروفات",
+    "untitled": "مصروف غير مسمى",
     "newExpense": "مصروف جديد",
     "editExpense": "تعديل المصروف",
     "expenseList": "تقارير المصروفات",

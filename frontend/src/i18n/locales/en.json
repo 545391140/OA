@@ -1095,6 +1095,7 @@
   },
   "expense": {
     "title": "Expense Report",
+    "untitled": "Untitled Expense",
     "newExpense": "New Expense",
     "editExpense": "Edit Expense",
     "expenseList": "Expense Reports",

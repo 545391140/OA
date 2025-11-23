@@ -385,9 +385,45 @@
       "domestic": "国内出張"
     },
     "tripTypes": {
-      "oneWay": "片道",
-      "roundTrip": "往復",
-      "multiCity": "複数都市"
+      "international": "国際",
+      "mainland_china": "中国本土"
+    },
+    "costOwingDepartment": "費用負担部門",
+    "requestName": "申請者名",
+    "startDate": "開始日",
+    "endDate": "終了日",
+    "tripDescription": "出張説明",
+    "currency": "通貨",
+    "employee": "従業員",
+    "outbound": "出発",
+    "inbound": "帰着",
+    "departments": {
+      "hr": "人事部",
+      "it": "情報技術部",
+      "finance": "財務部",
+      "marketing": "マーケティング部",
+      "sales": "営業部",
+      "operations": "運営部",
+      "information_resources": "情報資源部"
+    },
+    "destinations": {
+      "los_angeles": "ロサンゼルス、米国",
+      "new_york": "ニューヨーク、米国",
+      "london": "ロンドン、英国",
+      "tokyo": "東京、日本",
+      "shanghai": "上海、中国",
+      "singapore": "シンガポール",
+      "paris": "パリ、フランス"
+    },
+    "requestNames": {
+      "john_doe": "ジョン・ドウ",
+      "jane_smith": "ジェーン・スミス",
+      "mike_johnson": "マイク・ジョンソン",
+      "sarah_wilson": "サラ・ウィルソン",
+      "david_brown": "デビッド・ブラウン"
+    },
+    "placeholders": {
+      "tripDescription": "出張の目的、詳細な理由、期待される成果/成果物を記載してください。"
     },
     "form": {
       "basicInfo": "基本情報",
@@ -607,6 +643,8 @@
         "loadError": "費用申請の読み込みに失敗しました",
         "noExpenses": "費用申請がありません",
         "notGenerated": "費用申請はまだ生成されていません",
+        "noExpensesGenerated": "一致する請求書が見つかりません。手動で費用を生成してください",
+        "alreadyGenerated": "費用申請は既に生成されています",
         "invoiceCount": "関連する請求書",
         "invoices": "件",
         "autoMatched": "自動マッチ",
@@ -915,6 +953,7 @@
   },
   "expense": {
     "title": "経費報告",
+    "untitled": "無題の経費",
     "newExpense": "新しい経費",
     "editExpense": "経費編集",
     "expenseList": "経費一覧",

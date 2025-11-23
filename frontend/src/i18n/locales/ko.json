@@ -394,6 +394,9 @@
     "endDate": "종료일",
     "tripDescription": "출장 설명",
     "currency": "통화",
+    "employee": "직원",
+    "outbound": "출발",
+    "inbound": "귀국",
     "departments": {
       "hr": "인사부",
       "it": "정보기술부",
@@ -642,6 +645,8 @@
         "loadError": "비용 신청 로드 실패",
         "noExpenses": "비용 신청 없음",
         "notGenerated": "비용 신청이 아직 생성되지 않았습니다",
+        "noExpensesGenerated": "일치하는 송장을 찾을 수 없습니다. 수동으로 비용을 생성하세요",
+        "alreadyGenerated": "비용 신청이 이미 생성되었습니다",
         "invoiceCount": "관련 송장",
         "invoices": "장",
         "autoMatched": "자동 매칭",
@@ -950,6 +955,7 @@
   },
   "expense": {
     "title": "비용 보고서",
+    "untitled": "제목 없는 비용",
     "newExpense": "새 비용",
     "editExpense": "비용 편집",
     "expenseList": "비용 목록",

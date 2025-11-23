@@ -1095,6 +1095,7 @@
   },
   "expense": {
     "title": "Báo cáo Chi phí",
+    "untitled": "Chi phí Chưa đặt tên",
     "newExpense": "Chi phí Mới",
     "editExpense": "Chỉnh sửa Chi phí",
     "expenseList": "Báo cáo Chi phí",

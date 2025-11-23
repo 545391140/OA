@@ -638,6 +638,7 @@
       "confirmDelete": "确定要删除这条差旅申请吗？",
       "approved": "已批准",
       "rejected": "已拒绝",
+      "pending": "待审批",
       "travelNumber": "差旅单号",
       "applicant": "申请人",
       "department": "部门",
