@@ -35,6 +35,7 @@ import LocationManagement from './pages/Location/LocationManagement';
 import StandardQuery from './pages/TravelStandard/StandardQuery';
 import StandardList from './pages/TravelStandard/StandardList';
 import StandardForm from './pages/TravelStandard/StandardForm';
+import StandardDetail from './pages/TravelStandard/StandardDetail';
 import ExpenseItemsManagement from './pages/TravelStandard/ExpenseItemsManagement';
 import ExpenseItemsMaintenance from './pages/TravelStandard/ExpenseItemsMaintenance';
 import RoleManagement from './pages/Role/RoleManagement';
@@ -104,7 +105,7 @@ function App() {
               <Route path="travel-standards/query" element={<StandardQuery />} />
               <Route path="travel-standards/:standardId/expense-items" element={<ExpenseItemsManagement />} />
               <Route path="travel-standards/:id/edit" element={<StandardForm />} />
-              <Route path="travel-standards/:id" element={<StandardList />} />
+              <Route path="travel-standards/:id" element={<StandardDetail />} />
               
               {/* Expense Items Maintenance */}
               <Route path="expense-items" element={<ExpenseItemsMaintenance />} />

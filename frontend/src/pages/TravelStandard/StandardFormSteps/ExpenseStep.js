@@ -106,10 +106,66 @@ const ExpenseStep = ({ formData, setFormData, options, loadingOptions }) => {
     );
     
     if (index !== -1) {
-      newStandards[index] = {
+      const updatedStandard = {
         ...newStandards[index],
         [field]: value
       };
+
+      // 当 limitType 改变时，清理掉其他类型不需要的字段
+      if (field === 'limitType') {
+        // 根据新的 limitType 清理字段
+        if (value === 'ACTUAL') {
+          // 实报实销：删除所有金额相关字段
+          delete updatedStandard.limitAmount;
+          delete updatedStandard.calcUnit;
+          delete updatedStandard.limitMin;
+          delete updatedStandard.limitMax;
+          delete updatedStandard.percentage;
+          delete updatedStandard.baseAmount;
+        } else if (value === 'FIXED') {
+          // 固定限额：只保留 limitAmount 和 calcUnit
+          delete updatedStandard.limitMin;
+          delete updatedStandard.limitMax;
+          delete updatedStandard.percentage;
+          delete updatedStandard.baseAmount;
+          // 如果没有 limitAmount，设置默认值 0
+          if (updatedStandard.limitAmount === undefined) {
+            updatedStandard.limitAmount = 0;
+          }
+          // 如果没有 calcUnit，设置默认值
+          if (!updatedStandard.calcUnit) {
+            updatedStandard.calcUnit = 'PER_DAY';
+          }
+        } else if (value === 'RANGE') {
+          // 范围限额：只保留 limitMin 和 limitMax
+          delete updatedStandard.limitAmount;
+          delete updatedStandard.calcUnit;
+          delete updatedStandard.percentage;
+          delete updatedStandard.baseAmount;
+          // 如果没有 limitMin 和 limitMax，设置默认值
+          if (updatedStandard.limitMin === undefined) {
+            updatedStandard.limitMin = 0;
+          }
+          if (updatedStandard.limitMax === undefined) {
+            updatedStandard.limitMax = 0;
+          }
+        } else if (value === 'PERCENTAGE') {
+          // 按比例：只保留 percentage 和 baseAmount
+          delete updatedStandard.limitAmount;
+          delete updatedStandard.calcUnit;
+          delete updatedStandard.limitMin;
+          delete updatedStandard.limitMax;
+          // 如果没有 percentage 和 baseAmount，设置默认值
+          if (updatedStandard.percentage === undefined) {
+            updatedStandard.percentage = 0;
+          }
+          if (updatedStandard.baseAmount === undefined) {
+            updatedStandard.baseAmount = 0;
+          }
+        }
+      }
+
+      newStandards[index] = updatedStandard;
       setFormData({
         ...formData,
         expenseStandards: newStandards

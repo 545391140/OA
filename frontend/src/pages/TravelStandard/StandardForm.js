@@ -140,11 +140,26 @@ const StandardForm = () => {
               expenseItemsConfigured[itemIdStr] = true;
             }
             
-            // 返回标准化后的expenseStandard，确保expenseItemId是字符串ID
-            return {
-              ...es,
-              expenseItemId: itemIdStr
+            // 根据 limitType 清理不需要的字段
+            const cleanedStandard = {
+              expenseItemId: itemIdStr,
+              limitType: es.limitType || 'FIXED'
             };
+
+            // 根据 limitType 只保留相关字段
+            if (es.limitType === 'FIXED') {
+              if (es.limitAmount !== undefined) cleanedStandard.limitAmount = es.limitAmount;
+              if (es.calcUnit) cleanedStandard.calcUnit = es.calcUnit;
+            } else if (es.limitType === 'RANGE') {
+              if (es.limitMin !== undefined) cleanedStandard.limitMin = es.limitMin;
+              if (es.limitMax !== undefined) cleanedStandard.limitMax = es.limitMax;
+            } else if (es.limitType === 'PERCENTAGE') {
+              if (es.percentage !== undefined) cleanedStandard.percentage = es.percentage;
+              if (es.baseAmount !== undefined) cleanedStandard.baseAmount = es.baseAmount;
+            }
+            // ACTUAL 类型不需要任何金额相关字段，所以不添加任何字段
+
+            return cleanedStandard;
           })
           .filter(es => es.expenseItemId !== null && es.expenseItemId !== undefined && es.expenseItemId !== ''); // 过滤掉无效的项
         
@@ -232,9 +247,32 @@ const StandardForm = () => {
       setSaving(true);
       
       // 过滤掉 expenseItemId 为 null 或 undefined 的 expenseStandards 项
-      const validExpenseStandards = (formData.expenseStandards || []).filter(es => {
-        return es.expenseItemId !== null && es.expenseItemId !== undefined && es.expenseItemId !== '';
-      });
+      // 并根据 limitType 清理不需要的字段
+      const validExpenseStandards = (formData.expenseStandards || [])
+        .filter(es => {
+          return es.expenseItemId !== null && es.expenseItemId !== undefined && es.expenseItemId !== '';
+        })
+        .map(es => {
+          const cleaned = {
+            expenseItemId: es.expenseItemId,
+            limitType: es.limitType
+          };
+
+          // 根据 limitType 只保留相关字段
+          if (es.limitType === 'FIXED') {
+            cleaned.limitAmount = es.limitAmount;
+            cleaned.calcUnit = es.calcUnit;
+          } else if (es.limitType === 'RANGE') {
+            cleaned.limitMin = es.limitMin;
+            cleaned.limitMax = es.limitMax;
+          } else if (es.limitType === 'PERCENTAGE') {
+            cleaned.percentage = es.percentage;
+            cleaned.baseAmount = es.baseAmount;
+          }
+          // ACTUAL 类型不需要任何金额相关字段
+
+          return cleaned;
+        });
       
       const payload = {
         standardCode: formData.standardCode.trim().toUpperCase(),

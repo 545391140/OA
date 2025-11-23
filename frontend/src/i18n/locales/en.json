@@ -719,6 +719,14 @@
         "car": "Car",
         "other": "Other"
       },
+      "jobLevels": {
+        "EMPLOYEE": "Employee",
+        "MANAGER": "Manager",
+        "DIRECTOR": "Director",
+        "VP": "Vice President",
+        "PRESIDENT": "President",
+        "CEO": "Chief Executive Officer"
+      },
       "version": "Version"
     },
     "management": {
@@ -775,7 +783,8 @@
         "view": "View Details",
         "edit": "Edit",
         "delete": "Delete",
-        "activate": "Activate"
+        "activate": "Activate",
+        "deactivate": "Deactivate"
       }
     },
     "form": {
@@ -876,6 +885,19 @@
         "limitMax": "Max Amount (CNY)",
         "percentage": "Percentage (%)",
         "baseAmount": "Base Amount (CNY)",
+        "limitTypes": {
+          "FIXED": "Fixed Limit",
+          "RANGE": "Range Limit",
+          "ACTUAL": "Actual Reimbursement",
+          "PERCENTAGE": "Percentage"
+        },
+        "calcUnits": {
+          "PER_DAY": "Per Day",
+          "PER_TRIP": "Per Trip",
+          "PER_KM": "Per Kilometer"
+        }
+      },
+      "expenseItems": {
         "limitTypes": {
           "FIXED": "Fixed Limit",
           "RANGE": "Range Limit",

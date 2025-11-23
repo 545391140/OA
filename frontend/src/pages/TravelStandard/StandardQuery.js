@@ -155,7 +155,14 @@ const StandardQuery = () => {
                   {t('travelStandard.query.yourInfo')}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                  <Chip label={`${t('travelStandard.query.jobLevel')}: ${standardData.userInfo.jobLevel || t('travelStandard.query.notSet')}`} color="primary" />
+                  <Chip 
+                    label={`${t('travelStandard.query.jobLevel')}: ${
+                      standardData.userInfo.jobLevel 
+                        ? (t(`travelStandard.query.jobLevels.${standardData.userInfo.jobLevel}`) || standardData.userInfo.jobLevel)
+                        : t('travelStandard.query.notSet')
+                    }`} 
+                    color="primary" 
+                  />
                   {standardData.userInfo.cityInfo && (
                     <Chip
                       label={`${t('travelStandard.query.destinationLevel')}: ${standardData.userInfo.cityInfo.levelName}`}

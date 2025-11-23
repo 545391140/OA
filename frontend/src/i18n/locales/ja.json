@@ -670,6 +670,14 @@
         "car": "車",
         "other": "その他"
       },
+      "jobLevels": {
+        "EMPLOYEE": "従業員",
+        "MANAGER": "マネージャー",
+        "DIRECTOR": "ディレクター",
+        "VP": "副社長",
+        "PRESIDENT": "社長",
+        "CEO": "最高経営責任者"
+      },
       "version": "バージョン"
     },
     "management": {
@@ -726,7 +734,8 @@
         "view": "詳細を見る",
         "edit": "編集",
         "delete": "削除",
-        "activate": "有効化"
+        "activate": "有効化",
+        "deactivate": "無効化"
       }
     },
     "form": {
@@ -827,6 +836,19 @@
         "limitMax": "最大金額 (元)",
         "percentage": "割合 (%)",
         "baseAmount": "基準金額 (元)",
+        "limitTypes": {
+          "FIXED": "固定限額",
+          "RANGE": "範囲限額",
+          "ACTUAL": "実報実銷",
+          "PERCENTAGE": "割合"
+        },
+        "calcUnits": {
+          "PER_DAY": "日あたり",
+          "PER_TRIP": "回あたり",
+          "PER_KM": "キロあたり"
+        }
+      },
+      "expenseItems": {
         "limitTypes": {
           "FIXED": "固定限額",
           "RANGE": "範囲限額",

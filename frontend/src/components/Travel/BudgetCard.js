@@ -255,7 +255,21 @@ const BudgetCard = ({
             </Grid>
           ) : (
             <Alert severity="info">
-              请先填写目的地和出发日期，系统将自动匹配差旅标准并显示费用项目
+              {(() => {
+                // 检查是否已填写目的地和出发日期
+                const hasDestination = routeData?.destination && 
+                  (typeof routeData.destination === 'string' ? routeData.destination.trim() !== '' : true);
+                const hasDate = routeData?.date && 
+                  (dayjs.isDayjs(routeData.date) ? routeData.date.isValid() : dayjs(routeData.date).isValid());
+                
+                if (hasDestination && hasDate) {
+                  // 已填写目的地和日期，但未匹配到费用项
+                  return '已填写目的地和出发日期，但未找到匹配的差旅标准。请检查差旅标准配置或联系管理员。';
+                } else {
+                  // 未填写目的地或日期
+                  return '请先填写目的地和出发日期，系统将自动匹配差旅标准并显示费用项目';
+                }
+              })()}
             </Alert>
           )}
         </Collapse>

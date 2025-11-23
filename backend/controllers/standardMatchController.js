@@ -1,8 +1,4 @@
 const TravelStandard = require('../models/TravelStandard');
-const TravelTransportStandard = require('../models/TravelTransportStandard');
-const TravelAccommodationStandard = require('../models/TravelAccommodationStandard');
-const TravelMealStandard = require('../models/TravelMealStandard');
-const TravelAllowanceStandard = require('../models/TravelAllowanceStandard');
 const CityLevel = require('../models/CityLevel');
 const User = require('../models/User');
 const logger = require('../utils/logger');
@@ -59,6 +55,19 @@ exports.matchStandard = async (req, res) => {
       });
     }
 
+    // 确定使用的 jobLevelCode，优先使用用户的 jobLevel，如果为空则使用默认值
+    const jobLevelCode = (user.jobLevel && user.jobLevel.trim()) ? user.jobLevel.toUpperCase() : 'EMPLOYEE';
+    
+    logger.info('Standard match query params:', {
+      userId,
+      destination,
+      startDate,
+      transportType,
+      days,
+      userJobLevel: user.jobLevel,
+      jobLevelCode
+    });
+
     // Find effective standard
     const effectiveStandard = await TravelStandard.findOne({
       status: 'active',
@@ -70,11 +79,18 @@ exports.matchStandard = async (req, res) => {
     }).sort({ effectiveDate: -1 });
 
     if (!effectiveStandard) {
+      logger.warn('No effective standard found', { startDate, userId });
       return res.status(404).json({
         success: false,
         message: 'No effective travel standard found for the given date'
       });
     }
+
+    logger.info('Found effective standard:', {
+      standardId: effectiveStandard._id,
+      standardCode: effectiveStandard.standardCode,
+      standardName: effectiveStandard.standardName
+    });
 
     // Get city level
     const cityInfo = await CityLevel.findOne({
@@ -85,62 +101,150 @@ exports.matchStandard = async (req, res) => {
     });
 
     const cityLevel = cityInfo ? cityInfo.level : 4; // Default to level 4 if not found
-
-    // Match transport standard
-    const transportStandard = await TravelTransportStandard.findOne({
-      standard: effectiveStandard._id,
-      jobLevelCode: user.jobLevel || 'EMPLOYEE',
-      transportType: transportType || 'flight',
-      $or: [
-        { cityLevel: null },
-        { cityLevel: cityLevel }
-      ]
-    }).sort({ cityLevel: -1 }); // Prefer specific city level over null
-
-    // Match accommodation standard
-    const accommodationStandard = await TravelAccommodationStandard.findOne({
-      standard: effectiveStandard._id,
-      jobLevelCode: user.jobLevel || 'EMPLOYEE',
-      cityLevel: cityLevel
+    
+    logger.info('City level info:', {
+      destination,
+      cityInfo: cityInfo ? { name: cityInfo.cityName, level: cityInfo.level } : null,
+      cityLevel
     });
 
-    // Match meal standard
-    const mealStandard = await TravelMealStandard.findOne({
-      standard: effectiveStandard._id,
-      jobLevelCode: user.jobLevel || 'EMPLOYEE',
-      cityLevel: cityLevel
+    // 使用新的数据结构：从 expenseStandards 中提取数据
+    // 需要 populate expenseItemId 来获取费用项信息（包括 category）
+    await effectiveStandard.populate({
+      path: 'expenseStandards.expenseItemId',
+      select: 'itemName category description'
     });
-
-    // Get allowance standards
-    const allowanceStandards = await TravelAllowanceStandard.find({
-      standard: effectiveStandard._id,
-      jobLevelCode: user.jobLevel || 'EMPLOYEE'
+    
+    logger.info('Expense standards before processing:', {
+      count: effectiveStandard.expenseStandards?.length || 0,
+      standards: effectiveStandard.expenseStandards?.map(es => ({
+        expenseItemId: es.expenseItemId?._id || es.expenseItemId,
+        itemName: es.expenseItemId?.itemName || 'N/A',
+        category: es.expenseItemId?.category || 'N/A',
+        limitType: es.limitType,
+        limitAmount: es.limitAmount,
+        calcUnit: es.calcUnit
+      })) || []
     });
-
-    // Calculate estimated costs
-    const estimatedCost = {
-      transport: transportStandard ? transportStandard.maxAmount : 0,
-      accommodation: accommodationStandard ? 
-        (accommodationStandard.maxAmountPerNight * (days || 1)) : 0,
-      meal: mealStandard ? 
-        (mealStandard.dailyTotal * (days || 1)) : 0,
-      allowance: allowanceStandards.reduce((sum, allowance) => {
-        if (allowance.amountType === 'daily') {
-          return sum + (allowance.amount * (days || 1));
-        } else if (allowance.amountType === 'per_trip') {
-          return sum + allowance.amount;
-        } else {
-          return sum + allowance.amount;
-        }
-      }, 0),
-      total: 0
+    
+    // 根据费用项的 category 分类提取数据
+    const transportItems = [];
+    const accommodationItems = [];
+    const mealItems = [];
+    const allowanceItems = [];
+    
+    // 根据 itemName 推断分类的辅助函数
+    const inferCategoryFromName = (itemName) => {
+      const name = itemName.toLowerCase();
+      // 特殊处理：机场往返应该归类为补贴，而不是交通费
+      if (name.includes('机场往返') || name.includes('机场接送') || name.includes('往返机场')) {
+        return 'allowance';
+      }
+      // 交通费：包含交通、机票、火车、航班等（但不包括机场往返）
+      if (name.includes('交通') || name.includes('机票') || name.includes('火车') || 
+          name.includes('航班') || name.includes('transport')) {
+        return 'transport';
+      } else if (name.includes('住宿') || name.includes('酒店') || name.includes('accommodation')) {
+        return 'accommodation';
+      } else if (name.includes('餐') || name.includes('食') || name.includes('meal') || 
+                 name.includes('breakfast') || name.includes('lunch') || name.includes('dinner')) {
+        return 'meal';
+      } else if (name.includes('补助') || name.includes('补贴') || name.includes('allowance') ||
+                 name.includes('电话') || name.includes('洗衣') || name.includes('签证') ||
+                 name.includes('机场')) {
+        // 机场相关的其他费用（如机场费、机场税等）也归类为补贴
+        return 'allowance';
+      }
+      return 'general';
     };
 
-    estimatedCost.total = 
-      estimatedCost.transport + 
-      estimatedCost.accommodation + 
-      estimatedCost.meal + 
-      estimatedCost.allowance;
+    if (effectiveStandard.expenseStandards && effectiveStandard.expenseStandards.length > 0) {
+      effectiveStandard.expenseStandards.forEach(es => {
+        // 处理 expenseItemId 可能是 ObjectId 或已 populate 的对象
+        const expenseItem = es.expenseItemId;
+        let category = (expenseItem && typeof expenseItem === 'object' && expenseItem.category) 
+          ? expenseItem.category 
+          : 'general';
+        const itemName = (expenseItem && typeof expenseItem === 'object' && expenseItem.itemName)
+          ? expenseItem.itemName
+          : '未知费用项';
+        
+        // 如果 category 是 'general'，尝试根据 itemName 推断
+        if (category === 'general') {
+          category = inferCategoryFromName(itemName);
+        }
+        
+        const itemData = {
+          itemName,
+          limitAmount: es.limitAmount || 0,
+          limitType: es.limitType || 'FIXED',
+          calcUnit: es.calcUnit || 'PER_DAY'
+        };
+        
+        if (category === 'transport') {
+          transportItems.push(itemData);
+        } else if (category === 'accommodation') {
+          accommodationItems.push(itemData);
+        } else if (category === 'meal') {
+          mealItems.push(itemData);
+        } else if (category === 'allowance') {
+          allowanceItems.push(itemData);
+        } else {
+          // 如果仍然无法分类，添加到 allowance（其他补贴）
+          allowanceItems.push(itemData);
+          logger.debug('Uncategorized expense item, added to allowance:', { itemName, limitAmount: es.limitAmount });
+        }
+      });
+    }
+
+    logger.info('Expense standards extracted:', {
+      transportCount: transportItems.length,
+      accommodationCount: accommodationItems.length,
+      mealCount: mealItems.length,
+      allowanceCount: allowanceItems.length
+    });
+
+    // 计算预估费用
+    // 对于交通：取第一个或最大的限额
+    const transportAmount = transportItems.length > 0 
+      ? Math.max(...transportItems.map(t => t.limitAmount || 0))
+      : 0;
+    
+    // 对于住宿：按天计算
+    const accommodationAmount = accommodationItems.length > 0
+      ? Math.max(...accommodationItems.map(a => {
+          const amount = a.limitAmount || 0;
+          return a.calcUnit === 'PER_DAY' ? amount * (days || 1) : amount;
+        }))
+      : 0;
+    
+    // 对于餐饮：按天计算
+    const mealAmount = mealItems.length > 0
+      ? Math.max(...mealItems.map(m => {
+          const amount = m.limitAmount || 0;
+          return m.calcUnit === 'PER_DAY' ? amount * (days || 1) : amount;
+        }))
+      : 0;
+    
+    // 对于补贴：按天或按次计算
+    const allowanceAmount = allowanceItems.reduce((sum, a) => {
+      const amount = a.limitAmount || 0;
+      if (a.calcUnit === 'PER_DAY') {
+        return sum + (amount * (days || 1));
+      } else if (a.calcUnit === 'PER_TRIP') {
+        return sum + amount;
+      } else {
+        return sum + amount;
+      }
+    }, 0);
+
+    const estimatedCost = {
+      transport: transportAmount,
+      accommodation: accommodationAmount,
+      meal: mealAmount,
+      allowance: allowanceAmount,
+      total: transportAmount + accommodationAmount + mealAmount + allowanceAmount
+    };
 
     res.json({
       success: true,
@@ -160,34 +264,34 @@ exports.matchStandard = async (req, res) => {
             levelName: getCityLevelName(cityInfo.level)
           } : null
         },
-        transport: transportStandard ? {
-          type: transportStandard.transportType,
-          seatClass: transportStandard.seatClass,
-          maxAmount: transportStandard.maxAmount,
-          cityLevel: transportStandard.cityLevel,
-          distanceRange: transportStandard.distanceRange
+        transport: transportItems.length > 0 ? {
+          type: transportType || 'flight',
+          seatClass: '经济舱', // 默认值，实际应该从费用项中获取
+          maxAmount: transportAmount,
+          cityLevel: cityLevel,
+          distanceRange: null
         } : null,
-        accommodation: accommodationStandard ? {
-          maxAmountPerNight: accommodationStandard.maxAmountPerNight,
-          starLevel: accommodationStandard.starLevel,
+        accommodation: accommodationItems.length > 0 ? {
+          maxAmountPerNight: Math.max(...accommodationItems.map(a => a.limitAmount || 0)),
+          starLevel: null, // 实际应该从费用项中获取
           nights: days || 1,
-          totalAmount: accommodationStandard.maxAmountPerNight * (days || 1)
+          totalAmount: accommodationAmount
         } : null,
-        meal: mealStandard ? {
-          breakfast: mealStandard.breakfastAmount,
-          lunch: mealStandard.lunchAmount,
-          dinner: mealStandard.dinnerAmount,
-          dailyTotal: mealStandard.dailyTotal,
+        meal: mealItems.length > 0 ? {
+          breakfast: 0, // 实际应该从费用项中获取或计算
+          lunch: 0,
+          dinner: 0,
+          dailyTotal: Math.max(...mealItems.map(m => m.limitAmount || 0)),
           days: days || 1,
-          totalAmount: mealStandard.dailyTotal * (days || 1)
+          totalAmount: mealAmount
         } : null,
-        allowances: allowanceStandards.map(allowance => ({
-          type: allowance.allowanceType,
-          amountType: allowance.amountType,
-          amount: allowance.amount,
-          total: allowance.amountType === 'daily' ? 
-            allowance.amount * (days || 1) : allowance.amount
-        })),
+        allowances: allowanceItems.length > 0 ? allowanceItems.map(allowance => ({
+          type: allowance.itemName,
+          amountType: allowance.calcUnit === 'PER_DAY' ? 'daily' : 'per_trip',
+          amount: allowance.limitAmount || 0,
+          total: allowance.calcUnit === 'PER_DAY' ? 
+            (allowance.limitAmount || 0) * (days || 1) : (allowance.limitAmount || 0)
+        })) : [],
         estimatedCost
       }
     });

@@ -526,16 +526,16 @@ const RegionSelector = ({
                         color={getTypeColor(location.type)}
                         sx={{ height: 20, fontSize: '0.75rem' }}
                       />
-                      {location.code && (
+                      {location.code ? (
                         <Chip
                           label={location.code}
                           size="small"
                           variant="outlined"
                           sx={{ height: 20, fontSize: '0.75rem' }}
                         />
-                      )}
+                      ) : null}
                       {/* 城市类型显示风险等级（低风险不显示，显示在右侧） */}
-                      {location.type === 'city' && location.riskLevel && location.riskLevel !== 'low' && (
+                      {location.type === 'city' && location.riskLevel && location.riskLevel !== 'low' ? (
                         <Chip
                           label={`风险${getRiskLevelLabel(location.riskLevel)}`}
                           size="small"
@@ -550,9 +550,9 @@ const RegionSelector = ({
                             } : {})
                           }}
                         />
-                      )}
+                      ) : null}
                       {/* 城市类型显示无机场标识 */}
-                      {location.type === 'city' && location.noAirport && (
+                      {location.type === 'city' && location.noAirport ? (
                         <Chip
                           label="无机场"
                           size="small"
@@ -564,7 +564,7 @@ const RegionSelector = ({
                             fontWeight: 500
                           }}
                         />
-                      )}
+                      ) : null}
                     </Box>
                   }
                   secondary={

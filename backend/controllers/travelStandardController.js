@@ -489,6 +489,7 @@ exports.matchStandard = async (req, res) => {
     });
 
     // Find all active standards
+    // 注意：Mongoose 默认不会缓存查询结果，每次查询都会从数据库获取最新数据
     const standards = await TravelStandard.find({
       status: 'active',
       effectiveDate: { $lte: now },
@@ -499,6 +500,20 @@ exports.matchStandard = async (req, res) => {
     })
       .populate('expenseStandards.expenseItemId')
       .sort({ priority: -1, effectiveDate: -1 }); // Sort by priority (highest first)
+    
+    // 添加调试日志，检查条件组数据
+    console.log(`[STANDARD_MATCH] Found ${standards.length} active standards`);
+    standards.forEach((std, index) => {
+      console.log(`[STANDARD_MATCH] Standard ${index + 1}: ${std.standardCode}, conditionGroups: ${std.conditionGroups?.length || 0}`);
+      if (std.conditionGroups && std.conditionGroups.length > 0) {
+        std.conditionGroups.forEach((group, gIndex) => {
+          const cityConditions = group.conditions?.filter(c => c.type === 'city') || [];
+          if (cityConditions.length > 0) {
+            console.log(`[STANDARD_MATCH]   Group ${gIndex + 1} city conditions:`, cityConditions.map(c => `${c.operator} ${c.value}`).join(', '));
+          }
+        });
+      }
+    });
 
     // Test each standard against conditions and collect all matched standards
     // 核心逻辑：对每个标准，检查其条件组中的所有条件是否匹配
@@ -910,14 +925,30 @@ function matchSingleCondition(condition, testData) {
   // 根据操作符进行匹配
   switch (operator) {
     case 'IN':
-      // IN: 测试值在条件值列表中
-      return values.some(v => testValue.toLowerCase().includes(v.toLowerCase()) || v.toLowerCase() === testValue.toLowerCase());
+      // IN: 测试值在条件值列表中（支持双向包含匹配，处理"北京"和"北京市"的情况）
+      return values.some(v => {
+        const vLower = v.toLowerCase().trim();
+        const testLower = testValue.toLowerCase().trim();
+        // 精确匹配
+        if (vLower === testLower) return true;
+        // 双向包含匹配（处理"北京"和"北京市"的情况）
+        if (vLower.includes(testLower) || testLower.includes(vLower)) return true;
+        return false;
+      });
     case 'NOT_IN':
-      // NOT_IN: 测试值不在条件值列表中
-      return !values.some(v => testValue.toLowerCase().includes(v.toLowerCase()) || v.toLowerCase() === testValue.toLowerCase());
+      // NOT_IN: 测试值不在条件值列表中（支持双向包含匹配）
+      return !values.some(v => {
+        const vLower = v.toLowerCase().trim();
+        const testLower = testValue.toLowerCase().trim();
+        // 精确匹配
+        if (vLower === testLower) return true;
+        // 双向包含匹配
+        if (vLower.includes(testLower) || testLower.includes(vLower)) return true;
+        return false;
+      });
     case 'EQUAL':
-      // EQUAL: 测试值等于条件值列表中的任意一个
-      return values.some(v => v.toLowerCase() === testValue.toLowerCase());
+      // EQUAL: 测试值等于条件值列表中的任意一个（精确匹配）
+      return values.some(v => v.toLowerCase().trim() === testValue.toLowerCase().trim());
     case '>=':
       // >=: 测试值大于等于条件值（用于数字比较，如城市级别、岗位级别）
       return Number(testValue) >= Number(value);

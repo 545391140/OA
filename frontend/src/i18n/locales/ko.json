@@ -705,6 +705,14 @@
         "car": "자동차",
         "other": "기타"
       },
+      "jobLevels": {
+        "EMPLOYEE": "직원",
+        "MANAGER": "매니저",
+        "DIRECTOR": "디렉터",
+        "VP": "부사장",
+        "PRESIDENT": "사장",
+        "CEO": "최고경영자"
+      },
       "version": "버전"
     },
     "management": {
@@ -761,7 +769,8 @@
         "view": "세부 정보 보기",
         "edit": "편집",
         "delete": "삭제",
-        "activate": "활성화"
+        "activate": "활성화",
+        "deactivate": "비활성화"
       }
     },
     "form": {
@@ -862,6 +871,19 @@
         "limitMax": "최대 금액 (원)",
         "percentage": "비율 (%)",
         "baseAmount": "기준 금액 (원)",
+        "limitTypes": {
+          "FIXED": "고정 한도",
+          "RANGE": "범위 한도",
+          "ACTUAL": "실제 상환",
+          "PERCENTAGE": "비율"
+        },
+        "calcUnits": {
+          "PER_DAY": "일당",
+          "PER_TRIP": "회당",
+          "PER_KM": "킬로당"
+        }
+      },
+      "expenseItems": {
         "limitTypes": {
           "FIXED": "고정 한도",
           "RANGE": "범위 한도",

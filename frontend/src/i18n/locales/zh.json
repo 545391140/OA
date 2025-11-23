@@ -762,6 +762,14 @@
         "car": "汽车",
         "other": "其他"
       },
+      "jobLevels": {
+        "EMPLOYEE": "员工",
+        "MANAGER": "经理",
+        "DIRECTOR": "总监",
+        "VP": "副总裁",
+        "PRESIDENT": "总裁",
+        "CEO": "首席执行官"
+      },
       "version": "版本"
     },
     "management": {
@@ -818,7 +826,8 @@
         "view": "查看详情",
         "edit": "编辑",
         "delete": "删除",
-        "activate": "激活"
+        "activate": "激活",
+        "deactivate": "停用"
       }
     },
     "form": {
@@ -919,6 +928,19 @@
         "limitMax": "最大金额 (元)",
         "percentage": "比例 (%)",
         "baseAmount": "基准金额 (元)",
+        "limitTypes": {
+          "FIXED": "固定限额",
+          "RANGE": "范围限额",
+          "ACTUAL": "实报实销",
+          "PERCENTAGE": "按比例"
+        },
+        "calcUnits": {
+          "PER_DAY": "按天",
+          "PER_TRIP": "按次",
+          "PER_KM": "按公里"
+        }
+      },
+      "expenseItems": {
         "limitTypes": {
           "FIXED": "固定限额",
           "RANGE": "范围限额",
