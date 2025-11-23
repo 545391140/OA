@@ -28,12 +28,96 @@ router.get('/', protect, async (req, res) => {
       query.level = parseInt(level);
     }
 
+    // 优化：先查询主数据，再批量查询关联数据，避免 populate 的 N+1 问题
     const departments = await Department.find(query)
-      .populate('parent', 'code name')
-      .populate('manager', 'firstName lastName email')
-      .populate('createdBy', 'firstName lastName')
-      .populate('updatedBy', 'firstName lastName')
-      .sort({ level: 1, order: 1, name: 1 });
+      .sort({ level: 1, order: 1, name: 1 })
+      .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
+
+    // 步骤 1：收集所有需要 populate 的唯一 ID
+    const parentIds = [...new Set(
+      departments
+        .map(d => d.parent)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const managerIds = [...new Set(
+      departments
+        .map(d => d.manager)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const createdByIds = [...new Set(
+      departments
+        .map(d => d.createdBy)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const updatedByIds = [...new Set(
+      departments
+        .map(d => d.updatedBy)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [parents, managers, createdByUsers, updatedByUsers] = await Promise.all([
+      parentIds.length > 0
+        ? Department.find({ _id: { $in: parentIds } })
+            .select('code name')
+            .lean()
+        : Promise.resolve([]),
+      managerIds.length > 0
+        ? User.find({ _id: { $in: managerIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([]),
+      createdByIds.length > 0
+        ? User.find({ _id: { $in: createdByIds } })
+            .select('firstName lastName')
+            .lean()
+        : Promise.resolve([]),
+      updatedByIds.length > 0
+        ? User.find({ _id: { $in: updatedByIds } })
+            .select('firstName lastName')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const parentMap = new Map(parents.map(p => [p._id.toString(), p]));
+    const managerMap = new Map(managers.map(m => [m._id.toString(), m]));
+    const createdByMap = new Map(createdByUsers.map(u => [u._id.toString(), u]));
+    const updatedByMap = new Map(updatedByUsers.map(u => [u._id.toString(), u]));
+
+    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
+    departments.forEach(department => {
+      // Populate parent
+      if (department.parent) {
+        const parentId = department.parent.toString ? department.parent.toString() : department.parent;
+        department.parent = parentMap.get(parentId) || null;
+      }
+      
+      // Populate manager
+      if (department.manager) {
+        const managerId = department.manager.toString ? department.manager.toString() : department.manager;
+        department.manager = managerMap.get(managerId) || null;
+      }
+      
+      // Populate createdBy
+      if (department.createdBy) {
+        const createdById = department.createdBy.toString ? department.createdBy.toString() : department.createdBy;
+        department.createdBy = createdByMap.get(createdById) || null;
+      }
+      
+      // Populate updatedBy
+      if (department.updatedBy) {
+        const updatedById = department.updatedBy.toString ? department.updatedBy.toString() : department.updatedBy;
+        department.updatedBy = updatedByMap.get(updatedById) || null;
+      }
+    });
 
     res.json({
       success: true,

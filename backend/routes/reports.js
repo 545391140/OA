@@ -159,11 +159,37 @@ router.get('/expenses', protect, async (req, res) => {
       match.category = category;
     }
 
-    // 查询费用数据（优化：只选择需要的字段）
+    // 查询费用数据（优化：先查询主数据，再批量查询关联数据）
     const expenses = await Expense.find(match)
       .select('amount date category createdAt employee')
-      .populate('employee', 'firstName lastName department')
       .lean();
+
+    // 步骤 1：收集所有需要 populate 的唯一 employee ID
+    const employeeIds = [...new Set(
+      expenses
+        .map(e => e.employee)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const employees = employeeIds.length > 0
+      ? await User.find({ _id: { $in: employeeIds } })
+          .select('firstName lastName department')
+          .lean()
+      : [];
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const employeeMap = new Map(employees.map(e => [e._id.toString(), e]));
+
+    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
+    expenses.forEach(expense => {
+      // Populate employee
+      if (expense.employee) {
+        const employeeId = expense.employee.toString ? expense.employee.toString() : expense.employee;
+        expense.employee = employeeMap.get(employeeId) || null;
+      }
+    });
 
     // 部门筛选
     let filteredExpenses = expenses;

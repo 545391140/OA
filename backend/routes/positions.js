@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { protect, authorize, checkPermission } = require('../middleware/auth');
 const { PERMISSIONS } = require('../config/permissions');
 const Position = require('../models/Position');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -33,11 +34,58 @@ router.get('/', protect, checkPermission(PERMISSIONS.POSITION_VIEW), async (req,
       ];
     }
 
+    // 优化：先查询主数据，再批量查询关联数据，避免 populate 的 N+1 问题
     const positions = await Position.find(query)
-      .populate('createdBy', 'firstName lastName')
-      .populate('updatedBy', 'firstName lastName')
       .sort({ createdAt: -1 })
       .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
+
+    // 步骤 1：收集所有需要 populate 的唯一 ID
+    const createdByIds = [...new Set(
+      positions
+        .map(p => p.createdBy)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const updatedByIds = [...new Set(
+      positions
+        .map(p => p.updatedBy)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [createdByUsers, updatedByUsers] = await Promise.all([
+      createdByIds.length > 0
+        ? User.find({ _id: { $in: createdByIds } })
+            .select('firstName lastName')
+            .lean()
+        : Promise.resolve([]),
+      updatedByIds.length > 0
+        ? User.find({ _id: { $in: updatedByIds } })
+            .select('firstName lastName')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const createdByMap = new Map(createdByUsers.map(u => [u._id.toString(), u]));
+    const updatedByMap = new Map(updatedByUsers.map(u => [u._id.toString(), u]));
+
+    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
+    positions.forEach(position => {
+      // Populate createdBy
+      if (position.createdBy) {
+        const createdById = position.createdBy.toString ? position.createdBy.toString() : position.createdBy;
+        position.createdBy = createdByMap.get(createdById) || null;
+      }
+      
+      // Populate updatedBy
+      if (position.updatedBy) {
+        const updatedById = position.updatedBy.toString ? position.updatedBy.toString() : position.updatedBy;
+        position.updatedBy = updatedByMap.get(updatedById) || null;
+      }
+    });
 
     res.json({
       success: true,

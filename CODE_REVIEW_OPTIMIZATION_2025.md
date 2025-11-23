@@ -163,29 +163,34 @@ if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
 
 ### 3. 性能问题
 
-#### 3.1 仍有 Populate 使用
+#### 3.1 Populate 优化 ✅ 已完成
 **位置**: 多个路由文件
 
-**统计**:
-- ⚠️ 仍有 **67 处** `.populate()` 调用
+**优化前统计**:
+- ⚠️ 有 **67 处** `.populate()` 调用
 - ⚠️ 分布在 11 个路由文件中
 
-**文件分布**:
-- `backend/routes/expenses.js`: 10 处
-- `backend/routes/travel.js`: 9 处
-- `backend/routes/invoices.js`: 6 处
-- `backend/routes/users.js`: 5 处
-- `backend/routes/approvals.js`: 11 处
-- 其他文件: 26 处
+**优化后状态**:
+- ✅ 已优化所有列表查询中的 populate，替换为批量查询模式
+- ✅ 详情查询中的 populate 保留（合理使用）
+- ✅ 优化了以下文件的列表查询：
+  - `backend/routes/approvals.js`: GET `/` 和 GET `/history` 路由
+  - `backend/routes/users.js`: GET `/` 路由
+  - `backend/routes/roles.js`: GET `/` 路由
+  - `backend/routes/positions.js`: GET `/` 路由
+  - `backend/routes/departments.js`: GET `/` 路由
+  - `backend/routes/approvalWorkflows.js`: GET `/` 路由
+  - `backend/routes/reports.js`: 费用查询
 
-**问题**:
-- ⚠️ 部分 populate 可能仍有 N+1 查询问题
-- ⚠️ 详情查询中的 populate 是合理的，但列表查询应使用批量查询
+**优化模式**:
+- ✅ 使用批量查询替代 populate，避免 N+1 查询问题
+- ✅ 先查询主数据，再批量查询关联数据，最后合并
+- ✅ 使用 Map 数据结构提升查找性能
+- ✅ 参考 `expenses.js`、`travel.js` 和 `invoices.js` 中已优化的批量查询模式
 
-**建议**:
-- ✅ 检查列表查询中的 populate，考虑使用批量查询模式
-- ✅ 详情查询中的 populate 可以保留
-- ✅ 参考 `expenses.js` 和 `travel.js` 中已优化的批量查询模式
+**保留的 populate**:
+- ✅ 详情查询（GET `/:id`）中的 populate 保留，因为只查询单个文档
+- ✅ 创建/更新后的单个文档查询中的 populate 保留
 
 #### 3.2 长函数和复杂逻辑
 **位置**: 多个文件

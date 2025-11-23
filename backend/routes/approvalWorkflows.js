@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const ApprovalWorkflow = require('../models/ApprovalWorkflow');
+const User = require('../models/User');
 
 // @route   GET /api/approval-workflows
 // @desc    获取所有审批流程
@@ -14,10 +15,58 @@ router.get('/', protect, async (req, res) => {
     if (type) query.appliesTo = type;
     if (isActive !== undefined) query.isActive = isActive === 'true';
 
+    // 优化：先查询主数据，再批量查询关联数据，避免 populate 的 N+1 问题
     const workflows = await ApprovalWorkflow.find(query)
       .sort({ priority: -1, createdAt: -1 })
-      .populate('createdBy', 'firstName lastName')
-      .populate('updatedBy', 'firstName lastName');
+      .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
+
+    // 步骤 1：收集所有需要 populate 的唯一 ID
+    const createdByIds = [...new Set(
+      workflows
+        .map(w => w.createdBy)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const updatedByIds = [...new Set(
+      workflows
+        .map(w => w.updatedBy)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [createdByUsers, updatedByUsers] = await Promise.all([
+      createdByIds.length > 0
+        ? User.find({ _id: { $in: createdByIds } })
+            .select('firstName lastName')
+            .lean()
+        : Promise.resolve([]),
+      updatedByIds.length > 0
+        ? User.find({ _id: { $in: updatedByIds } })
+            .select('firstName lastName')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const createdByMap = new Map(createdByUsers.map(u => [u._id.toString(), u]));
+    const updatedByMap = new Map(updatedByUsers.map(u => [u._id.toString(), u]));
+
+    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
+    workflows.forEach(workflow => {
+      // Populate createdBy
+      if (workflow.createdBy) {
+        const createdById = workflow.createdBy.toString ? workflow.createdBy.toString() : workflow.createdBy;
+        workflow.createdBy = createdByMap.get(createdById) || null;
+      }
+      
+      // Populate updatedBy
+      if (workflow.updatedBy) {
+        const updatedById = workflow.updatedBy.toString ? workflow.updatedBy.toString() : workflow.updatedBy;
+        workflow.updatedBy = updatedByMap.get(updatedById) || null;
+      }
+    });
 
     res.json({
       success: true,

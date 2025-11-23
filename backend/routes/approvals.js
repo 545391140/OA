@@ -14,37 +14,140 @@ const router = express.Router();
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    // Get travel requests pending approval（优化：使用 select 和 lean）
+    // Get travel requests pending approval（优化：先查询主数据，再批量查询关联数据）
     const pendingTravels = await Travel.find({
       'approvals.approver': req.user.id,
       'approvals.status': 'pending'
     })
       .select('title travelNumber status startDate endDate destination employee approvals createdAt')
-      .populate('employee', 'firstName lastName email')
-      .populate('approvals.approver', 'firstName lastName email')
       .lean();
 
-    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    // 步骤 1：收集所有需要 populate 的唯一 ID
+    const travelEmployeeIds = [...new Set(
+      pendingTravels
+        .map(t => t.employee)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const travelApproverIds = [...new Set(
+      pendingTravels
+        .flatMap(t => (t.approvals || []).map(a => a.approver))
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [travelEmployees, travelApprovers] = await Promise.all([
+      travelEmployeeIds.length > 0
+        ? User.find({ _id: { $in: travelEmployeeIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([]),
+      travelApproverIds.length > 0
+        ? User.find({ _id: { $in: travelApproverIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const travelEmployeeMap = new Map(travelEmployees.map(e => [e._id.toString(), e]));
+    const travelApproverMap = new Map(travelApprovers.map(a => [a._id.toString(), a]));
+
+    // 步骤 4：合并数据到原始文档中
     pendingTravels.forEach(travel => {
+      // Populate employee
+      if (travel.employee) {
+        const employeeId = travel.employee.toString ? travel.employee.toString() : travel.employee;
+        travel.employee = travelEmployeeMap.get(employeeId) || null;
+      }
+      
+      // Populate approvals.approver（嵌套数组）
       if (travel.approvals && Array.isArray(travel.approvals)) {
-        travel.approvals = travel.approvals.filter(
-          approval => approval.approver !== null && approval.approver !== undefined
-        );
+        travel.approvals = travel.approvals
+          .map(approval => {
+            if (approval.approver) {
+              const approverId = approval.approver.toString ? approval.approver.toString() : approval.approver;
+              approval.approver = travelApproverMap.get(approverId) || null;
+            }
+            return approval;
+          })
+          .filter(approval => approval.approver !== null && approval.approver !== undefined);
       }
     });
 
-    // Get expenses pending approval（优化：使用 select 和 lean）
+    // Get expenses pending approval（优化：先查询主数据，再批量查询关联数据）
     const pendingExpenses = await Expense.find({
       'approvals.approver': req.user.id,
       'approvals.status': 'pending'
     })
       .select('title amount date category status currency reimbursementNumber employee travel approvals createdAt')
-      .populate('employee', 'firstName lastName email')
-      .populate('travel', 'title destination')
       .lean();
 
-    // 注意：如果 travel 关联的差旅被删除，populate 会将 travel 设置为 null
-    // 这是正常行为，前端需要处理 null 值
+    // 步骤 1：收集所有需要 populate 的唯一 ID
+    const expenseEmployeeIds = [...new Set(
+      pendingExpenses
+        .map(e => e.employee)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const expenseTravelIds = [...new Set(
+      pendingExpenses
+        .map(e => e.travel)
+        .filter(Boolean)
+        .map(id => {
+          if (id._id) {
+            return id._id.toString();
+          } else if (id.toString) {
+            return id.toString();
+          } else {
+            return String(id);
+          }
+        })
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [expenseEmployees, expenseTravels] = await Promise.all([
+      expenseEmployeeIds.length > 0
+        ? User.find({ _id: { $in: expenseEmployeeIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([]),
+      expenseTravelIds.length > 0
+        ? Travel.find({ _id: { $in: expenseTravelIds } })
+            .select('title destination')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const expenseEmployeeMap = new Map(expenseEmployees.map(e => [e._id.toString(), e]));
+    const expenseTravelMap = new Map(expenseTravels.map(t => [t._id.toString(), t]));
+
+    // 步骤 4：合并数据到原始文档中
+    pendingExpenses.forEach(expense => {
+      // Populate employee
+      if (expense.employee) {
+        const employeeId = expense.employee.toString ? expense.employee.toString() : expense.employee;
+        expense.employee = expenseEmployeeMap.get(employeeId) || null;
+      }
+      
+      // Populate travel
+      if (expense.travel) {
+        const originalTravel = expense.travel;
+        let travelId;
+        if (originalTravel._id) {
+          travelId = originalTravel._id.toString();
+        } else if (typeof originalTravel.toString === 'function') {
+          travelId = originalTravel.toString();
+        } else {
+          travelId = String(originalTravel);
+        }
+        expense.travel = expenseTravelMap.get(travelId) || null;
+      }
+    });
 
     res.json({
       success: true,
@@ -315,50 +418,169 @@ router.get('/history', protect, async (req, res) => {
     const approverId = req.user.id;
     const approverIdString = String(approverId);
 
-    // Get travel approvals history
-    // 返回包含完整approvals数组的申请对象，让前端自己过滤
+    // Get travel approvals history（优化：先查询主数据，再批量查询关联数据）
     const travelHistory = await Travel.find({
       'approvals.approver': { $in: [approverId, approverIdString] },
       'approvals.status': { $in: ['approved', 'rejected'] }
     })
-      .populate('employee', 'firstName lastName email')
-      .populate('approvals.approver', 'firstName lastName email position')
       .select('title travelNumber status estimatedBudget estimatedCost currency startDate endDate destination outbound inbound multiCityRoutes createdAt approvals employee')
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
 
-    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    // 步骤 1：收集所有需要 populate 的唯一 ID
+    const travelHistoryEmployeeIds = [...new Set(
+      travelHistory
+        .map(t => t.employee)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const travelHistoryApproverIds = [...new Set(
+      travelHistory
+        .flatMap(t => (t.approvals || []).map(a => a.approver))
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [travelHistoryEmployees, travelHistoryApprovers] = await Promise.all([
+      travelHistoryEmployeeIds.length > 0
+        ? User.find({ _id: { $in: travelHistoryEmployeeIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([]),
+      travelHistoryApproverIds.length > 0
+        ? User.find({ _id: { $in: travelHistoryApproverIds } })
+            .select('firstName lastName email position')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const travelHistoryEmployeeMap = new Map(travelHistoryEmployees.map(e => [e._id.toString(), e]));
+    const travelHistoryApproverMap = new Map(travelHistoryApprovers.map(a => [a._id.toString(), a]));
+
+    // 步骤 4：合并数据到原始文档中
     travelHistory.forEach(travel => {
+      // Populate employee
+      if (travel.employee) {
+        const employeeId = travel.employee.toString ? travel.employee.toString() : travel.employee;
+        travel.employee = travelHistoryEmployeeMap.get(employeeId) || null;
+      }
+      
+      // Populate approvals.approver（嵌套数组）
       if (travel.approvals && Array.isArray(travel.approvals)) {
-        travel.approvals = travel.approvals.filter(
-          approval => approval.approver !== null && approval.approver !== undefined
-        );
+        travel.approvals = travel.approvals
+          .map(approval => {
+            if (approval.approver) {
+              const approverId = approval.approver.toString ? approval.approver.toString() : approval.approver;
+              approval.approver = travelHistoryApproverMap.get(approverId) || null;
+            }
+            return approval;
+          })
+          .filter(approval => approval.approver !== null && approval.approver !== undefined);
       }
     });
 
-    // Get expense approvals history
+    // Get expense approvals history（优化：先查询主数据，再批量查询关联数据）
     const expenseHistory = await Expense.find({
       'approvals.approver': { $in: [approverId, approverIdString] },
       'approvals.status': { $in: ['approved', 'rejected'] }
     })
-      .populate('employee', 'firstName lastName email')
-      .populate('travel', 'title destination')
-      .populate('approvals.approver', 'firstName lastName email position')
       .select('title expenseNumber totalAmount amount currency expenseDate date createdAt approvals employee travel')
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
 
-    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    // 步骤 1：收集所有需要 populate 的唯一 ID
+    const expenseHistoryEmployeeIds = [...new Set(
+      expenseHistory
+        .map(e => e.employee)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+    
+    const expenseHistoryTravelIds = [...new Set(
+      expenseHistory
+        .map(e => e.travel)
+        .filter(Boolean)
+        .map(id => {
+          if (id._id) {
+            return id._id.toString();
+          } else if (id.toString) {
+            return id.toString();
+          } else {
+            return String(id);
+          }
+        })
+    )];
+    
+    const expenseHistoryApproverIds = [...new Set(
+      expenseHistory
+        .flatMap(e => (e.approvals || []).map(a => a.approver))
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const [expenseHistoryEmployees, expenseHistoryTravels, expenseHistoryApprovers] = await Promise.all([
+      expenseHistoryEmployeeIds.length > 0
+        ? User.find({ _id: { $in: expenseHistoryEmployeeIds } })
+            .select('firstName lastName email')
+            .lean()
+        : Promise.resolve([]),
+      expenseHistoryTravelIds.length > 0
+        ? Travel.find({ _id: { $in: expenseHistoryTravelIds } })
+            .select('title destination')
+            .lean()
+        : Promise.resolve([]),
+      expenseHistoryApproverIds.length > 0
+        ? User.find({ _id: { $in: expenseHistoryApproverIds } })
+            .select('firstName lastName email position')
+            .lean()
+        : Promise.resolve([])
+    ]);
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const expenseHistoryEmployeeMap = new Map(expenseHistoryEmployees.map(e => [e._id.toString(), e]));
+    const expenseHistoryTravelMap = new Map(expenseHistoryTravels.map(t => [t._id.toString(), t]));
+    const expenseHistoryApproverMap = new Map(expenseHistoryApprovers.map(a => [a._id.toString(), a]));
+
+    // 步骤 4：合并数据到原始文档中
     expenseHistory.forEach(expense => {
-      if (expense.approvals && Array.isArray(expense.approvals)) {
-        expense.approvals = expense.approvals.filter(
-          approval => approval.approver !== null && approval.approver !== undefined
-        );
+      // Populate employee
+      if (expense.employee) {
+        const employeeId = expense.employee.toString ? expense.employee.toString() : expense.employee;
+        expense.employee = expenseHistoryEmployeeMap.get(employeeId) || null;
       }
-      // 注意：如果 travel 关联的差旅被删除，populate 会将 travel 设置为 null
-      // 这是正常行为，前端需要处理 null 值
+      
+      // Populate travel
+      if (expense.travel) {
+        const originalTravel = expense.travel;
+        let travelId;
+        if (originalTravel._id) {
+          travelId = originalTravel._id.toString();
+        } else if (typeof originalTravel.toString === 'function') {
+          travelId = originalTravel.toString();
+        } else {
+          travelId = String(originalTravel);
+        }
+        expense.travel = expenseHistoryTravelMap.get(travelId) || null;
+      }
+      
+      // Populate approvals.approver（嵌套数组）
+      if (expense.approvals && Array.isArray(expense.approvals)) {
+        expense.approvals = expense.approvals
+          .map(approval => {
+            if (approval.approver) {
+              const approverId = approval.approver.toString ? approval.approver.toString() : approval.approver;
+              approval.approver = expenseHistoryApproverMap.get(approverId) || null;
+            }
+            return approval;
+          })
+          .filter(approval => approval.approver !== null && approval.approver !== undefined);
+      }
     });
 
     logger.info('=== Approval History API ===');

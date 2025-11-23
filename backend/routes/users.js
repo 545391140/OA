@@ -41,11 +41,38 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
       ];
     }
 
+    // 优化：先查询主数据，再批量查询关联数据，避免 populate 的 N+1 问题
     const users = await User.find(query)
       .select('-password')
-      .populate('manager', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .lean(); // 使用 lean() 返回纯 JavaScript 对象，提高性能
+
+    // 步骤 1：收集所有需要 populate 的唯一 manager ID
+    const managerIds = [...new Set(
+      users
+        .map(u => u.manager)
+        .filter(Boolean)
+        .map(id => id.toString ? id.toString() : id)
+    )];
+
+    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    const managers = managerIds.length > 0
+      ? await User.find({ _id: { $in: managerIds } })
+          .select('firstName lastName email')
+          .lean()
+      : [];
+
+    // 步骤 3：创建 ID 到数据的映射表
+    const managerMap = new Map(managers.map(m => [m._id.toString(), m]));
+
+    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
+    users.forEach(user => {
+      // Populate manager
+      if (user.manager) {
+        const managerId = user.manager.toString ? user.manager.toString() : user.manager;
+        user.manager = managerMap.get(managerId) || null;
+      }
+    });
 
     res.json({
       success: true,
