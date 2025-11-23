@@ -8,6 +8,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import 'dayjs/locale/zh-cn';
 import 'dayjs/locale/ja';
 import 'dayjs/locale/ko';
+import 'dayjs/locale/vi';
+import 'dayjs/locale/th';
+import 'dayjs/locale/ar';
 
 import App from './App';
 import './i18n';
