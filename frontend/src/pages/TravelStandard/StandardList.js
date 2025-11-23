@@ -28,13 +28,15 @@ import {
   CheckCircle as ActivateIcon,
   Cancel as DeactivateIcon,
   Visibility as ViewIcon,
-  MoreVert as MoreVertIcon
+  MoreVert as MoreVertIcon,
+  CalendarToday as CalendarIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import { useAuth } from '../../contexts/AuthContext';
+import dayjs from 'dayjs';
 
 const StandardList = () => {
   const { t } = useTranslation();
@@ -338,10 +340,24 @@ const StandardList = () => {
                              </TableCell>
                              <TableCell>V{standard.version}</TableCell>
                              <TableCell>
-                               {new Date(standard.effectiveDate).toLocaleDateString()}
+                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                 <CalendarIcon color="action" fontSize="small" />
+                                 <Typography variant="body2">
+                                   {dayjs(standard.effectiveDate).format('YYYY-MM-DD')}
+                                 </Typography>
+                               </Box>
                              </TableCell>
                              <TableCell>
-                               {standard.expiryDate ? new Date(standard.expiryDate).toLocaleDateString() : t('travelStandard.management.expiryDate.permanent')}
+                               {standard.expiryDate ? (
+                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                   <CalendarIcon color="action" fontSize="small" />
+                                   <Typography variant="body2">
+                                     {dayjs(standard.expiryDate).format('YYYY-MM-DD')}
+                                   </Typography>
+                                 </Box>
+                               ) : (
+                                 t('travelStandard.management.expiryDate.permanent')
+                               )}
                              </TableCell>
                              <TableCell>
                                <Chip

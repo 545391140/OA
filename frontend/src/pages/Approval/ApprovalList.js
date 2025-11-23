@@ -518,12 +518,12 @@ const ApprovalList = () => {
     
     // 使用 useMemo 缓存格式化日期
     const formattedDate = useMemo(() => 
-      item.date ? dayjs(item.date).format('MMM DD, YYYY') : '-',
+      item.date ? dayjs(item.date).format('YYYY-MM-DD') : '-',
       [item.date]
     );
     
     const formattedApprovedAt = useMemo(() => 
-      item.approvedAt ? dayjs(item.approvedAt).format('MMM DD, YYYY HH:mm') : '',
+      item.approvedAt ? dayjs(item.approvedAt).format('YYYY-MM-DD HH:mm') : '',
       [item.approvedAt]
     );
     
@@ -560,7 +560,7 @@ const ApprovalList = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
                     {item.departureCity || '?'}-{item.destination || '?'}
                     {(item.earliestDate && item.latestDate) && (
-                      <> • {dayjs(item.earliestDate).format('MMM DD')}-{dayjs(item.latestDate).format('MMM DD')}
+                      <> • {dayjs(item.earliestDate).format('YYYY-MM-DD')}-{dayjs(item.latestDate).format('YYYY-MM-DD')}
                       {item.days > 0 && <> • {t('approval.totalDays')}{item.days}{t('approval.days')}</>}
                       </>
                     )}

@@ -59,7 +59,7 @@ const devError = (...args) => {
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
 const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCategoryIcon, t }) => {
   const formattedDate = useMemo(() => 
-    expense.date ? dayjs(expense.date).format('MMM DD, YYYY') : '-',
+    expense.date ? dayjs(expense.date).format('YYYY-MM-DD') : '-',
     [expense.date]
   );
 

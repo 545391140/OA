@@ -55,27 +55,17 @@ import dayjs from 'dayjs';
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
 const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t }) => {
   const formattedDeparture = useMemo(() => 
-    travel.dates.departure ? dayjs(travel.dates.departure).format('MMM DD') : '-',
+    travel.dates.departure ? dayjs(travel.dates.departure).format('YYYY-MM-DD') : '-',
     [travel.dates.departure]
   );
   
   const formattedReturn = useMemo(() => 
-    travel.dates.return ? dayjs(travel.dates.return).format('MMM DD') : '-',
+    travel.dates.return ? dayjs(travel.dates.return).format('YYYY-MM-DD') : '-',
     [travel.dates.return]
   );
   
-  const formattedYear = useMemo(() => 
-    travel.dates.departure ? dayjs(travel.dates.departure).format('YYYY') : '',
-    [travel.dates.departure]
-  );
-  
   const formattedCreatedDate = useMemo(() => 
-    travel.createdAt ? dayjs(travel.createdAt).format('MMM DD, YYYY') : '-',
-    [travel.createdAt]
-  );
-  
-  const formattedCreatedTime = useMemo(() => 
-    travel.createdAt ? dayjs(travel.createdAt).format('HH:mm') : '',
+    travel.createdAt ? dayjs(travel.createdAt).format('YYYY-MM-DD') : '-',
     [travel.createdAt]
   );
 
@@ -142,16 +132,9 @@ const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t }) =>
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <CalendarIcon color="action" fontSize="small" />
-          <Box>
-            <Typography variant="body2">
-              {formattedDeparture} - {formattedReturn}
-            </Typography>
-            {formattedYear && (
-              <Typography variant="caption" color="text.secondary">
-                {formattedYear}
-              </Typography>
-            )}
-          </Box>
+          <Typography variant="body2">
+            {formattedDeparture} - {formattedReturn}
+          </Typography>
         </Box>
       </TableCell>
       <TableCell>
@@ -170,14 +153,12 @@ const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t }) =>
         />
       </TableCell>
       <TableCell>
-        <Typography variant="body2">
-          {formattedCreatedDate}
-        </Typography>
-        {formattedCreatedTime && (
-          <Typography variant="caption" color="text.secondary">
-            {formattedCreatedTime}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CalendarIcon color="action" fontSize="small" />
+          <Typography variant="body2">
+            {formattedCreatedDate}
           </Typography>
-        )}
+        </Box>
       </TableCell>
       <TableCell>
         <IconButton

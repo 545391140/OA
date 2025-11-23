@@ -48,7 +48,8 @@ import {
   FilterList as FilterIcon,
   Link as LinkIcon,
   Download as DownloadIcon,
-  MoreVert as MoreVertIcon
+  MoreVert as MoreVertIcon,
+  CalendarToday as CalendarIcon
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -94,7 +95,12 @@ const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatu
         )}
       </TableCell>
       <TableCell sx={{ whiteSpace: 'nowrap' }}>
-        {formattedInvoiceDate}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CalendarIcon color="action" fontSize="small" />
+          <Typography variant="body2">
+            {formattedInvoiceDate}
+          </Typography>
+        </Box>
       </TableCell>
       <TableCell>
         <Chip
