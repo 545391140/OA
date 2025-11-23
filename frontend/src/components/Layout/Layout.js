@@ -60,6 +60,8 @@ const Layout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
+  
+  const isArabicLayout = (i18n.language || '').toLowerCase().startsWith('ar');
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -266,7 +268,10 @@ const Layout = () => {
         position="fixed"
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+          ...(isArabicLayout
+            ? { mr: { md: `${drawerWidth}px` } }
+            : { ml: { md: `${drawerWidth}px` } }
+          ),
         }}
       >
         <Toolbar>
@@ -326,11 +331,16 @@ const Layout = () => {
 
       <Box
         component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
+        sx={{ 
+          width: { md: drawerWidth }, 
+          flexShrink: { md: 0 },
+          order: isArabicLayout ? 1 : 0
+        }}
         aria-label="mailbox folders"
       >
         <Drawer
           variant="temporary"
+          anchor={isArabicLayout ? 'right' : 'left'}
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
@@ -345,6 +355,7 @@ const Layout = () => {
         </Drawer>
         <Drawer
           variant="permanent"
+          anchor={isArabicLayout ? 'right' : 'left'}
           sx={{
             display: { xs: 'none', md: 'block' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
@@ -361,10 +372,23 @@ const Layout = () => {
           flexGrow: 1,
           p: 3,
           width: { md: `calc(100% - ${drawerWidth}px)` },
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          order: isArabicLayout ? 0 : 1,
         }}
       >
         <Toolbar />
-        <Outlet />
+        <Box
+          sx={{
+            width: '100%',
+            maxWidth: '1536px',
+            flex: 1,
+            mx: 'auto', // 水平居中
+          }}
+        >
+          <Outlet />
+        </Box>
       </Box>
 
       {/* Profile Menu */}
@@ -434,6 +458,15 @@ const Layout = () => {
         </MenuItem>
         <MenuItem onClick={() => handleLanguageChange('ko')}>
           {t('navigation.languages.ko')}
+        </MenuItem>
+        <MenuItem onClick={() => handleLanguageChange('ar')}>
+          {t('navigation.languages.ar')}
+        </MenuItem>
+        <MenuItem onClick={() => handleLanguageChange('vi')}>
+          {t('navigation.languages.vi')}
+        </MenuItem>
+        <MenuItem onClick={() => handleLanguageChange('th')}>
+          {t('navigation.languages.th')}
         </MenuItem>
       </Menu>
 

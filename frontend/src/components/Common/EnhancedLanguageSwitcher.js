@@ -89,6 +89,18 @@ const EnhancedLanguageSwitcher = ({ variant = 'select', showFlags = true, showNa
       nativeName: 'עברית',
       flag: '🇮🇱',
       direction: 'rtl'
+    },
+    'vi': { 
+      name: 'Vietnamese', 
+      nativeName: 'Tiếng Việt',
+      flag: '🇻🇳',
+      direction: 'ltr'
+    },
+    'th': { 
+      name: 'Thai', 
+      nativeName: 'ไทย',
+      flag: '🇹🇭',
+      direction: 'ltr'
     }
   };
 

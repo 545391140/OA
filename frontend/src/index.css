@@ -59,14 +59,28 @@ button, a, .MuiButton-root, .MuiIconButton-root, .MuiCard-root, .MuiPaper-root {
   }
 }
 
-/* Container width overrides */
+/* Container width overrides - 确保在RTL和LTR模式下都居中 */
 .MuiContainer-maxWidthXl {
   max-width: 1536px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 .MuiContainer-root {
   max-width: 1536px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
+
+/* RTL模式下强制居中 - 覆盖RTL的默认行为 */
+[dir="rtl"] .MuiContainer-root,
+[dir="rtl"] .MuiContainer-maxWidthXl {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-inline-start: auto !important;
+  margin-inline-end: auto !important;
+}
+
 
 /* Mobile responsive */
 @media (max-width: 768px) {

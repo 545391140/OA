@@ -9,6 +9,9 @@ import en from './locales/en.json';
 import zh from './locales/zh.json';
 import ja from './locales/ja.json';
 import ko from './locales/ko.json';
+import ar from './locales/ar.json';
+import vi from './locales/vi.json';
+import th from './locales/th.json';
 
 const resources = {
   en: {
@@ -29,6 +32,15 @@ const resources = {
   },
   ko: {
     translation: ko
+  },
+  ar: {
+    translation: ar
+  },
+  vi: {
+    translation: vi
+  },
+  th: {
+    translation: th
   }
 };
 

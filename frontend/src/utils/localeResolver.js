@@ -12,7 +12,9 @@ export const SUPPORTED_LOCALES = {
   'ja': '日本語',
   'ko': '한국어',
   'ar': 'العربية',
-  'he': 'עברית'
+  'he': 'עברית',
+  'vi': 'Tiếng Việt',
+  'th': 'ไทย'
 };
 
 // 回退链配置
@@ -27,6 +29,8 @@ export const FALLBACK_CHAINS = {
   'ko': ['ko', 'en'],
   'ar': ['ar', 'en'],
   'he': ['he', 'en'],
+  'vi': ['vi', 'en'],
+  'th': ['th', 'en'],
   'en': ['en']
 };
 
@@ -198,8 +202,10 @@ export const getLocaleFontFamily = (locale) => {
     'zh-Hant-TW': '"Roboto", "PingFang TC", "Microsoft JhengHei", sans-serif',
     'ja': '"Roboto", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif',
     'ko': '"Roboto", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif',
-    'ar': '"Roboto", "Cairo", "Amiri", sans-serif',
-    'he': '"Roboto", "Heebo", "Assistant", sans-serif'
+    'ar': '"Roboto", "Cairo", "Amiri", "Arial", "Tahoma", sans-serif',
+    'he': '"Roboto", "Heebo", "Assistant", sans-serif',
+    'vi': '"Roboto", "Arial", "Helvetica", sans-serif',
+    'th': '"Roboto", "Sarabun", "Kanit", "Arial", sans-serif'
   };
   
   return fontFamilies[locale] || fontFamilies['en'];

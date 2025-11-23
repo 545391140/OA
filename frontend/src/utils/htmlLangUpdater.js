@@ -8,7 +8,10 @@ export const updateHtmlLang = (language) => {
     en: 'Travel & Expense Management System',
     zh: '差旅和费用管理系统',
     ja: '出張・経費管理システム',
-    ko: '출장 및 비용 관리 시스템'
+    ko: '출장 및 비용 관리 시스템',
+    ar: 'نظام إدارة السفر والمصروفات',
+    vi: 'Hệ thống Quản lý Công tác & Chi phí',
+    th: 'ระบบจัดการการเดินทางและค่าใช้จ่าย'
   };
   
   document.title = titles[language] || titles.en;
@@ -18,7 +21,10 @@ export const updateHtmlLang = (language) => {
     en: 'Modern Travel and Expense Management System',
     zh: '现代化差旅和费用管理系统',
     ja: 'モダンな出張・経費管理システム',
-    ko: '현대적인 출장 및 비용 관리 시스템'
+    ko: '현대적인 출장 및 비용 관리 시스템',
+    ar: 'نظام حديث لإدارة السفر والمصروفات',
+    vi: 'Hệ thống Quản lý Công tác & Chi phí Hiện đại',
+    th: 'ระบบจัดการการเดินทางและค่าใช้จ่ายที่ทันสมัย'
   };
   
   const metaDescription = document.querySelector('meta[name="description"]');
@@ -31,7 +37,10 @@ export const updateHtmlLang = (language) => {
     en: 'You need to enable JavaScript to run this app.',
     zh: '您需要启用JavaScript才能运行此应用程序。',
     ja: 'このアプリを実行するにはJavaScriptを有効にする必要があります。',
-    ko: '이 앱을 실행하려면 JavaScript를 활성화해야 합니다.'
+    ko: '이 앱을 실행하려면 JavaScript를 활성화해야 합니다.',
+    ar: 'تحتاج إلى تمكين JavaScript لتشغيل هذا التطبيق.',
+    vi: 'Bạn cần bật JavaScript để chạy ứng dụng này.',
+    th: 'คุณต้องเปิดใช้งาน JavaScript เพื่อรันแอปนี้'
   };
   
   const noscript = document.querySelector('noscript');
@@ -44,14 +53,20 @@ export const updateHtmlLang = (language) => {
     en: 'Travel & Expense Management System',
     zh: '差旅和费用管理系统',
     ja: '出張・経費管理システム',
-    ko: '출장 및 비용 관리システム'
+    ko: '출장 및 비용 관리システム',
+    ar: 'نظام إدارة السفر والمصروفات',
+    vi: 'Hệ thống Quản lý Công tác & Chi phí',
+    th: 'ระบบจัดการการเดินทางและค่าใช้จ่าย'
   };
   
   const manifestShortNames = {
     en: 'Travel Expense',
     zh: '差旅费用',
     ja: '出張経費',
-    ko: '출장비용'
+    ko: '출장비용',
+    ar: 'السفر والمصروفات',
+    vi: 'Công tác & Chi phí',
+    th: 'การเดินทางและค่าใช้จ่าย'
   };
   
   // 动态更新manifest
@@ -92,7 +107,10 @@ export const updateHtmlLang = (language) => {
     en: '"Roboto", "Helvetica", "Arial", sans-serif',
     zh: '"Roboto", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
     ja: '"Roboto", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif',
-    ko: '"Roboto", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif'
+    ko: '"Roboto", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif',
+    ar: '"Roboto", "Cairo", "Amiri", sans-serif',
+    vi: '"Roboto", "Segoe UI", "Helvetica Neue", "Arial", sans-serif',
+    th: '"Roboto", "Thonburi", "Tahoma", sans-serif'
   };
   
   // 动态更新字体
