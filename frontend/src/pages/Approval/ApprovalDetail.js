@@ -982,7 +982,7 @@ const ApprovalDetail = () => {
           {type === 'expense' && item.tags && item.tags.length > 0 && (
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                {t('expense.tags') || 'Tags'}
+                {t('expense.tagsLabel') || 'Tags'}
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>

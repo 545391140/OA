@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Container,
@@ -107,7 +107,6 @@ const ExpenseForm = () => {
     },
     project: '',
     costCenter: '',
-    isBillable: false,
     client: '',
     tags: [],
     notes: '',
@@ -351,6 +350,69 @@ const ExpenseForm = () => {
     }
   }, [id, isEdit]);
 
+  // 监听发票变化，自动更新报销金额
+  // 规则：如果报销金额未设置，自动设置为发票总金额
+  // 如果发票被清空（总金额为0），自动更新报销金额为0
+  // 如果用户已经手动修改过报销金额（不等于发票总金额），则保持用户的修改
+  useEffect(() => {
+    Object.keys(expenseItemInvoices).forEach(expenseItemIdKey => {
+      const invoices = expenseItemInvoices[expenseItemIdKey];
+      if (Array.isArray(invoices) && invoices.length > 0) {
+        // 计算当前发票总金额
+        const totalAmount = invoices.reduce((sum, inv) => {
+          const amount = inv.totalAmount || inv.amount || 0;
+          return sum + amount;
+        }, 0);
+        
+        if (totalAmount > 0) {
+          setExpenseItemReimbursementAmounts(prevAmounts => {
+            // 支持多种ID格式的查找：字符串、对象ID等
+            const currentReimbursement = prevAmounts[expenseItemIdKey] ?? 
+                                         prevAmounts[expenseItemIdKey?.toString()] ??
+                                         prevAmounts[expenseItemIdKey?.valueOf?.()];
+            
+            // 如果报销金额未设置，自动设置为发票总金额
+            if (currentReimbursement === undefined || currentReimbursement === null) {
+              const updated = {
+                ...prevAmounts,
+                [expenseItemIdKey]: totalAmount
+              };
+              // 同时设置字符串格式的键（如果不同）
+              if (expenseItemIdKey?.toString && expenseItemIdKey.toString() !== expenseItemIdKey) {
+                updated[expenseItemIdKey.toString()] = totalAmount;
+              }
+              return updated;
+            }
+            
+            return prevAmounts;
+          });
+        }
+      } else if (Array.isArray(invoices) && invoices.length === 0) {
+        // 如果发票被清空（总金额为0），自动更新报销金额为0
+        setExpenseItemReimbursementAmounts(prevAmounts => {
+          const currentReimbursement = prevAmounts[expenseItemIdKey] ?? 
+                                       prevAmounts[expenseItemIdKey?.toString()] ??
+                                       prevAmounts[expenseItemIdKey?.valueOf?.()];
+          
+          // 只有当报销金额不为0时才更新（避免不必要的更新）
+          if (currentReimbursement !== undefined && currentReimbursement !== null && currentReimbursement !== 0) {
+            const updated = {
+              ...prevAmounts,
+              [expenseItemIdKey]: 0
+            };
+            // 同时设置字符串格式的键（如果不同）
+            if (expenseItemIdKey?.toString && expenseItemIdKey.toString() !== expenseItemIdKey) {
+              updated[expenseItemIdKey.toString()] = 0;
+            }
+            return updated;
+          }
+          
+          return prevAmounts;
+        });
+      }
+    });
+  }, [expenseItemInvoices]);
+
   const generateExpensesFromTravel = async () => {
     try {
       setGeneratingExpenses(true);
@@ -523,7 +585,6 @@ const ExpenseForm = () => {
       vendor: expenseData.vendor || { name: '', address: '', taxId: '' },
       project: expenseData.project || '',
       costCenter: expenseData.costCenter || '',
-      isBillable: expenseData.isBillable || false,
       client: expenseData.client || '',
       tags: expenseData.tags || [],
       notes: expenseData.notes || '',
@@ -735,6 +796,35 @@ const ExpenseForm = () => {
     return Object.values(merged);
   };
 
+  // 计算预算金额、发票金额、核销金额（仅当关联差旅单时）
+  const calculatedAmounts = useMemo(() => {
+    if (!selectedTravel || extractExpenseBudgets(selectedTravel).length === 0) {
+      return { budgetAmount: 0, invoiceAmount: 0, reimbursementAmount: 0 };
+    }
+
+    // 计算预算金额：所有费用项预算金额总和
+    const mergedBudgets = mergeExpenseBudgetsByItem(extractExpenseBudgets(selectedTravel));
+    const budgetAmount = mergedBudgets.reduce((sum, budget) => sum + (budget.totalAmount || 0), 0);
+
+    // 计算发票金额：所有费用项关联的发票金额总和
+    let invoiceAmount = 0;
+    Object.values(expenseItemInvoices).forEach((invoices) => {
+      if (Array.isArray(invoices)) {
+        invoices.forEach((inv) => {
+          const amount = inv.totalAmount || inv.amount || 0;
+          invoiceAmount += amount;
+        });
+      }
+    });
+
+    // 计算核销金额：所有费用项核销金额总和
+    const reimbursementAmount = Object.values(expenseItemReimbursementAmounts).reduce((sum, amount) => {
+      return sum + (parseFloat(amount) || 0);
+    }, 0);
+
+    return { budgetAmount, invoiceAmount, reimbursementAmount };
+  }, [selectedTravel, expenseItemInvoices, expenseItemReimbursementAmounts]);
+
   // 自动匹配发票到费用项
   const autoMatchInvoicesToExpenseItems = async (travel, budgets) => {
     if (!travel || !budgets || budgets.length === 0) {
@@ -793,7 +883,12 @@ const ExpenseForm = () => {
       const expenseItemIds = budgets.map(b => b.expenseItemId?.toString() || b.expenseItemId);
       const expenseItemsMap = {};
       
-      // 从已有的 expenseItems 中获取，如果没有则查询
+      // 确保费用项列表已加载
+      if (expenseItems.length === 0) {
+        await fetchExpenseItemsList();
+      }
+      
+      // 从已有的 expenseItems 中获取
       expenseItemIds.forEach(itemId => {
         const item = expenseItems.find(i => {
           const id = i._id?.toString() || i._id;
@@ -801,11 +896,14 @@ const ExpenseForm = () => {
         });
         if (item) {
           expenseItemsMap[itemId] = item;
+        } else {
+          devWarn('[AUTO_MATCH] Expense item not found in list:', itemId, 'Available items:', expenseItems.map(i => i._id?.toString() || i._id));
         }
       });
 
-      // 如果费用项信息不完整，需要加载费用项列表
+      // 如果费用项信息不完整，再次尝试加载费用项列表
       if (Object.keys(expenseItemsMap).length < expenseItemIds.length) {
+        devLog('[AUTO_MATCH] Some expense items not found, reloading expense items list...');
         await fetchExpenseItemsList();
         // 重新构建费用项映射
         expenseItemIds.forEach(itemId => {
@@ -815,9 +913,13 @@ const ExpenseForm = () => {
           });
           if (item) {
             expenseItemsMap[itemId] = item;
+          } else {
+            devWarn('[AUTO_MATCH] Expense item still not found after reload:', itemId);
           }
         });
       }
+      
+      devLog('[AUTO_MATCH] Expense items map:', Object.keys(expenseItemsMap).length, 'of', expenseItemIds.length, 'found');
 
       // 3. 为每个费用项匹配发票
       const matchedInvoices = {};
@@ -828,7 +930,10 @@ const ExpenseForm = () => {
         const expenseItem = expenseItemsMap[expenseItemId];
         
         if (!expenseItem) {
-          devWarn('[AUTO_MATCH] Expense item not found:', expenseItemId);
+          devWarn('[AUTO_MATCH] Expense item not found:', expenseItemId, 'Skipping invoice matching for this expense item.');
+          devWarn('[AUTO_MATCH] Available expense item IDs:', Object.keys(expenseItemsMap));
+          devWarn('[AUTO_MATCH] Budget expense item ID:', expenseItemId, 'Type:', typeof expenseItemId);
+          // 跳过这个费用项，继续处理其他费用项
           return;
         }
 
@@ -1170,16 +1275,28 @@ const ExpenseForm = () => {
       }, 0);
       
       // 自动更新报销金额为发票总金额
+      // 规则：如果报销金额未设置，或者等于之前的发票总金额（说明是自动设置的），则自动更新为新总金额
+      // 如果用户已经手动修改过报销金额（不等于之前的发票总金额），则保持用户的修改
       setExpenseItemReimbursementAmounts(prevAmounts => {
         const currentReimbursement = prevAmounts[expenseItemIdStr] ?? prevAmounts[expenseItemId];
         
-        // 如果报销金额还没有设置，或者当前报销金额等于之前的发票总金额，则自动更新
-        if (currentReimbursement === undefined || currentReimbursement === previousTotal) {
+        // 如果报销金额还没有设置，自动设置为新的发票总金额
+        if (currentReimbursement === undefined || currentReimbursement === null) {
           return {
             ...prevAmounts,
             [expenseItemIdStr]: totalAmount
           };
         }
+        
+        // 如果当前报销金额等于之前的发票总金额（说明是自动设置的），则自动更新为新总金额
+        if (currentReimbursement === previousTotal) {
+          return {
+            ...prevAmounts,
+            [expenseItemIdStr]: totalAmount
+          };
+        }
+        
+        // 如果用户已经手动修改过报销金额（不等于之前的发票总金额），保持用户的修改
         return prevAmounts;
       });
       
@@ -1261,7 +1378,6 @@ const ExpenseForm = () => {
           vendor: expenseData.vendor || { name: '', address: '', taxId: '' },
           project: expenseData.project || '',
           costCenter: expenseData.costCenter || '',
-          isBillable: expenseData.isBillable || false,
           client: expenseData.client || '',
           tags: expenseData.tags || [],
           notes: expenseData.notes || '',
@@ -1285,10 +1401,42 @@ const ExpenseForm = () => {
           const expenseItemId = expenseData.expenseItem?._id || expenseData.expenseItem;
           if (expenseItemId) {
           const expenseItemIdStr = expenseItemId?.toString() || expenseItemId;
+          const invoices = expenseData.relatedInvoices || [];
           setExpenseItemInvoices(prev => ({
             ...prev,
-            [expenseItemIdStr]: expenseData.relatedInvoices || []
+            [expenseItemIdStr]: invoices
           }));
+          
+          // 自动计算并设置报销金额为发票总金额
+          // 规则：如果报销金额未设置，或者等于费用申请的金额（说明是自动生成的），则更新为发票总金额
+          // 如果费用申请中已经有报销金额（可能是用户修改过的），则保持原值
+          const totalAmount = invoices.reduce((sum, inv) => {
+            const amount = inv.totalAmount || inv.amount || 0;
+            return sum + amount;
+          }, 0);
+          
+          setExpenseItemReimbursementAmounts(prevAmounts => {
+            const currentReimbursement = prevAmounts[expenseItemIdStr] ?? prevAmounts[expenseItemId];
+            
+            // 如果报销金额还没有设置，自动设置为发票总金额
+            if (currentReimbursement === undefined || currentReimbursement === null) {
+              return {
+                ...prevAmounts,
+                [expenseItemIdStr]: totalAmount
+              };
+            }
+            
+            // 如果报销金额等于费用申请的金额（说明是自动生成的），更新为发票总金额
+            if (currentReimbursement === expenseData.amount) {
+              return {
+                ...prevAmounts,
+                [expenseItemIdStr]: totalAmount
+              };
+            }
+            
+            // 如果费用申请中已经有报销金额（可能是用户修改过的），保持原值
+            return prevAmounts;
+          });
           }
         }
         
@@ -1606,10 +1754,6 @@ const ExpenseForm = () => {
       newErrors.date = t('expense.form.dateRequired');
     }
 
-    if (!formData.vendor.name.trim()) {
-      newErrors.vendorName = t('expense.form.vendorNameRequired');
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -1731,7 +1875,6 @@ const ExpenseForm = () => {
               vendor: vendor,
               relatedInvoices: itemInvoices.map(inv => inv._id || inv.id).filter(Boolean),
               costCenter: formData.costCenter || '',
-              isBillable: formData.isBillable || false,
               client: formData.client || '',
               tags: formData.tags || [],
               notes: formData.notes || '',
@@ -1841,7 +1984,6 @@ const ExpenseForm = () => {
         // 如果关联了差旅单，添加travel字段
         ...(selectedTravel && { travel: selectedTravel._id }),
         costCenter: formData.costCenter || '',
-        isBillable: formData.isBillable || false,
         client: formData.client || '',
         tags: formData.tags || [],
         notes: formData.notes || '',
@@ -2587,9 +2729,15 @@ const ExpenseForm = () => {
                     </Typography>
                     <Divider sx={{ mb: 2 }} />
                     {mergeExpenseBudgetsByItem(extractExpenseBudgets(selectedTravel)).map((mergedBudget) => {
-                      const expenseItem = expenseItems.find(item => item._id === mergedBudget.expenseItemId);
                       // 确保正确获取发票列表，支持字符串和对象 ID
                       const expenseItemId = mergedBudget.expenseItemId?.toString() || mergedBudget.expenseItemId;
+                      
+                      // 正确查找费用项，支持字符串和对象 ID 的比较
+                      const expenseItem = expenseItems.find(item => {
+                        const itemId = item._id?.toString() || item._id;
+                        return itemId === expenseItemId || itemId === mergedBudget.expenseItemId?.toString() || itemId === mergedBudget.expenseItemId;
+                      });
+                      
                       const itemInvoices = (expenseItemInvoices[expenseItemId] || expenseItemInvoices[mergedBudget.expenseItemId] || []).filter(Boolean);
                       
                       // 格式化预算明细标签
@@ -2608,7 +2756,7 @@ const ExpenseForm = () => {
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pr: 2 }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', flex: 1 }}>
                                 <Typography variant="subtitle1">
-                                  {expenseItem?.itemName || mergedBudget.expenseItemId}
+                                  {expenseItem?.itemName || t('expense.form.unknownExpenseItem') || '未知费用项'}
                                 </Typography>
                                 {budgetDetails.length > 0 && (
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -2754,19 +2902,79 @@ const ExpenseForm = () => {
                                   <TextField
                                     size="small"
                                     type="number"
-                                    value={expenseItemReimbursementAmounts[expenseItemId] ?? (() => {
+                                    value={(() => {
+                                      // 计算发票总金额
                                       const totalAmount = itemInvoices.reduce((sum, inv) => {
                                         const amount = inv.totalAmount || inv.amount || 0;
                                         return sum + amount;
                                       }, 0);
+                                      
+                                      // 优先使用已设置的报销金额，支持字符串和对象ID格式
+                                      const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemId] ?? 
+                                                                  expenseItemReimbursementAmounts[mergedBudget.expenseItemId?.toString()] ??
+                                                                  expenseItemReimbursementAmounts[mergedBudget.expenseItemId];
+                                      
+                                      // 如果报销金额已设置，使用已设置的值
+                                      if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
+                                        return reimbursementAmount;
+                                      }
+                                      
+                                      // 如果报销金额未设置，但有发票，立即设置报销金额为发票总金额
+                                      if (totalAmount > 0) {
+                                        // 使用 useEffect 的依赖来触发更新，避免在渲染时直接修改状态
+                                        // 这里先返回发票总金额，useEffect 会在下次渲染时设置
+                                        // 但为了确保立即生效，我们使用 useRef 来跟踪是否已经设置
+                                        const shouldSet = !expenseItemReimbursementAmounts[expenseItemId] && 
+                                                         !expenseItemReimbursementAmounts[mergedBudget.expenseItemId?.toString()] &&
+                                                         !expenseItemReimbursementAmounts[mergedBudget.expenseItemId];
+                                        
+                                        if (shouldSet) {
+                                          // 使用 setTimeout 异步设置，避免在渲染时修改状态
+                                          setTimeout(() => {
+                                            setExpenseItemReimbursementAmounts(prev => {
+                                              // 再次检查是否已经设置（避免重复设置）
+                                              const current = prev[expenseItemId] ?? 
+                                                             prev[mergedBudget.expenseItemId?.toString()] ??
+                                                             prev[mergedBudget.expenseItemId];
+                                              if (current === undefined || current === null) {
+                                                const updated = {
+                                                  ...prev,
+                                                  [expenseItemId]: totalAmount
+                                                };
+                                                // 同时设置其他格式的键
+                                                if (mergedBudget.expenseItemId?.toString() && mergedBudget.expenseItemId.toString() !== expenseItemId) {
+                                                  updated[mergedBudget.expenseItemId.toString()] = totalAmount;
+                                                }
+                                                if (mergedBudget.expenseItemId && mergedBudget.expenseItemId !== expenseItemId && mergedBudget.expenseItemId.toString() !== expenseItemId) {
+                                                  updated[mergedBudget.expenseItemId] = totalAmount;
+                                                }
+                                                return updated;
+                                              }
+                                              return prev;
+                                            });
+                                          }, 0);
+                                        }
+                                      }
+                                      
+                                      // 返回发票总金额作为默认值
                                       return totalAmount;
                                     })()}
                                     onChange={(e) => {
                                       const value = parseFloat(e.target.value) || 0;
-                                      setExpenseItemReimbursementAmounts(prev => ({
-                                        ...prev,
-                                        [expenseItemId]: value
-                                      }));
+                                      // 同时更新字符串和对象ID格式的键，确保一致性
+                                      setExpenseItemReimbursementAmounts(prev => {
+                                        const updated = {
+                                          ...prev,
+                                          [expenseItemId]: value
+                                        };
+                                        // 如果 expenseItemId 和 mergedBudget.expenseItemId 不同，也更新原键
+                                        if (expenseItemId !== mergedBudget.expenseItemId?.toString() && 
+                                            expenseItemId !== mergedBudget.expenseItemId) {
+                                          updated[mergedBudget.expenseItemId?.toString()] = value;
+                                          updated[mergedBudget.expenseItemId] = value;
+                                        }
+                                        return updated;
+                                      });
                                     }}
                                     InputProps={{
                                       startAdornment: (
@@ -2854,6 +3062,23 @@ const ExpenseForm = () => {
               </FormControl>
             </Grid>
 
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>{t('expense.costCenter')}</InputLabel>
+                <Select
+                  value={formData.costCenter}
+                  label={t('expense.costCenter')}
+                  onChange={(e) => handleChange('costCenter', e.target.value)}
+                >
+                  {costCenters.map((center) => (
+                    <MenuItem key={center} value={center}>
+                      {center}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -2866,8 +3091,8 @@ const ExpenseForm = () => {
               />
             </Grid>
 
-            {/* Category and Amount */}
-            <Grid item xs={12} md={4}>
+            {/* Category */}
+            <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>{t('expense.category')} *</InputLabel>
                 <Select
@@ -2888,7 +3113,7 @@ const ExpenseForm = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>{t('expense.subcategory')}</InputLabel>
                 <Select
@@ -2906,24 +3131,82 @@ const ExpenseForm = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label={`${t('expense.amount')} *`}
-                type="number"
-                value={formData.amount}
-                onChange={(e) => handleChange('amount', e.target.value)}
-                error={!!errors.amount}
-                helperText={errors.amount}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <MoneyIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
+            {/* 预算金额、发票金额、核销金额（仅当关联差旅单时显示） */}
+            {selectedTravel && extractExpenseBudgets(selectedTravel).length > 0 && (
+              <>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label={t('expense.budgetAmount') || '预算金额'}
+                    value={calculatedAmounts.budgetAmount.toLocaleString()}
+                    InputProps={{
+                      readOnly: true,
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Typography variant="body2" color="text.secondary">
+                            {selectedTravel.currency}
+                          </Typography>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiInputBase-input': {
+                        color: 'text.primary',
+                        fontWeight: 500
+                      }
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label={t('expense.invoiceAmount') || '发票金额'}
+                    value={calculatedAmounts.invoiceAmount.toLocaleString()}
+                    InputProps={{
+                      readOnly: true,
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Typography variant="body2" color="text.secondary">
+                            {selectedTravel.currency}
+                          </Typography>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiInputBase-input': {
+                        color: 'text.primary',
+                        fontWeight: 500
+                      }
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label={t('expense.reimbursementAmount') || '核销金额'}
+                    value={calculatedAmounts.reimbursementAmount.toLocaleString()}
+                    InputProps={{
+                      readOnly: true,
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Typography variant="body2" color="text.secondary">
+                            {selectedTravel.currency}
+                          </Typography>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiInputBase-input': {
+                        color: 'text.primary',
+                        fontWeight: 500
+                      }
+                    }}
+                  />
+                </Grid>
+              </>
+            )}
 
             {/* Date and Vendor */}
             <Grid item xs={12} md={6}>
@@ -2939,117 +3222,6 @@ const ExpenseForm = () => {
                   }
                 }}
               />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label={`${t('expense.detail.vendorName')} *`}
-                value={formData.vendor.name}
-                onChange={(e) => handleChange('vendor.name', e.target.value)}
-                error={!!errors.vendorName}
-                helperText={errors.vendorName}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <BusinessIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label={t('expense.vendorAddress')}
-                value={formData.vendor.address}
-                onChange={(e) => handleChange('vendor.address', e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LocationIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label={t('expense.taxId')}
-                value={formData.vendor.taxId}
-                onChange={(e) => handleChange('vendor.taxId', e.target.value)}
-              />
-            </Grid>
-
-            {/* Project and Cost Center */}
-            <Grid item xs={12} md={6}>
-              <Autocomplete
-                freeSolo
-                options={projects}
-                value={formData.project}
-                onChange={(event, newValue) => handleChange('project', newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label={t('expense.project')}
-                    placeholder={t('expense.selectProject')}
-                  />
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>{t('expense.costCenter')}</InputLabel>
-                <Select
-                  value={formData.costCenter}
-                  label={t('expense.costCenter')}
-                  onChange={(e) => handleChange('costCenter', e.target.value)}
-                >
-                  {costCenters.map((center) => (
-                    <MenuItem key={center} value={center}>
-                      {center}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Billable and Client */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>{t('expense.client')}</InputLabel>
-                <Select
-                  value={formData.client}
-                  label={t('expense.client')}
-                  onChange={(e) => handleChange('client', e.target.value)}
-                >
-                  {clients.map((client) => (
-                    <MenuItem key={client} value={client}>
-                      {client}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
-                <FormControl>
-                  <InputLabel>{t('expense.billable')}</InputLabel>
-                  <Select
-                    value={formData.isBillable}
-                    label={t('expense.billable')}
-                    onChange={(e) => handleChange('isBillable', e.target.value)}
-                  >
-                    <MenuItem value={false}>No</MenuItem>
-                    <MenuItem value={true}>Yes</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
             </Grid>
 
             {/* Tags */}
@@ -3073,7 +3245,7 @@ const ExpenseForm = () => {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label={t('expense.tags')}
+                    label={t('expense.tagsLabel')}
                     placeholder={t('expense.addTags')}
                   />
                 )}
@@ -3170,20 +3342,22 @@ const ExpenseForm = () => {
 
             {/* Receipts */}
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                <Typography variant="h6">
-                  {t('expense.receipts')}
-                </Typography>
-                <Button
-                  startIcon={<UploadIcon />}
-                  onClick={() => setUploadDialogOpen(true)}
-                  variant="outlined"
-                  size="small"
-                >
-                  {t('expense.uploadReceipts')}
-                </Button>
+              <Box sx={{ mt: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="h6">
+                    {t('expense.receipts')}
+                  </Typography>
+                  <Button
+                    startIcon={<UploadIcon />}
+                    onClick={() => setUploadDialogOpen(true)}
+                    variant="outlined"
+                    size="small"
+                  >
+                    {t('expense.uploadReceipts')}
+                  </Button>
+                </Box>
+                <Divider sx={{ mb: 2 }} />
               </Box>
-              <Divider sx={{ mb: 2 }} />
             </Grid>
 
             {formData.receipts.length > 0 && (
@@ -3212,19 +3386,6 @@ const ExpenseForm = () => {
                 </List>
               </Grid>
             )}
-
-            {/* Notes */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label={t('travel.additionalNotes')}
-                value={formData.notes}
-                onChange={(e) => handleChange('notes', e.target.value)}
-                placeholder={t('placeholders.additionalExpenseInfo')}
-              />
-            </Grid>
 
             {/* Action Buttons */}
             <Grid item xs={12}>

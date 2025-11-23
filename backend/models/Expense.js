@@ -142,10 +142,6 @@ const ExpenseSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  isBillable: {
-    type: Boolean,
-    default: false
-  },
   client: {
     type: String,
     trim: true

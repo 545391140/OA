@@ -1155,11 +1155,12 @@
     "generationType.ai": "AI生成",
     "generationType.manual": "手动生成",
     "vendor": "供应商",
-    "receipts": "发票",
+    "receipts": "附件",
     "project": "项目",
     "costCenter": "成本中心",
     "isBillable": "可计费",
     "client": "客户",
+    "tagsLabel": "标签",
     "tags": "标签",
     "vendorAddress": "供应商地址",
     "taxId": "税号",
@@ -1190,6 +1191,7 @@
       "other": "其他"
     },
     "invoiceTotalAmount": "发票总金额",
+    "invoiceAmount": "发票金额",
     "reimbursementAmount": "报销金额",
     "relatedInvoices": "关联发票",
     "addInvoices": "从发票夹添加发票",
@@ -1210,7 +1212,7 @@
     "saveError": "保存费用申请失败",
     "saveDraft": "保存草稿",
     "submitExpense": "提交费用申请",
-    "uploadReceipts": "上传收据",
+    "uploadReceipts": "上传附件",
     "chooseFiles": "选择文件",
     "supportedFormats": "支持格式：JPG, PNG, PDF（最大10MB/文件）",
     "invoices": {
@@ -1734,7 +1736,7 @@
   },
   "dialogs": {
     "confirmDelete": "确认删除",
-    "uploadReceipts": "上传发票",
+    "uploadReceipts": "上传附件",
     "changePassword": "修改密码"
   },
   "messages": {
