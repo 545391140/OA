@@ -52,9 +52,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+import { useDateFormat } from '../../utils/dateFormatter';
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
 const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t, showNotification }) => {
+  const formatDate = useDateFormat(false);
+  const formatDateRange = useDateFormat(true);
+  
   const handleCopyNumber = useCallback((e, number) => {
     e.stopPropagation();
     if (number && number !== '-') {
@@ -65,19 +69,20 @@ const TravelTableRow = React.memo(({ travel, onMenuOpen, getStatusColor, t, show
       });
     }
   }, [showNotification, t]);
+  
   const formattedDeparture = useMemo(() => 
-    travel.dates.departure ? dayjs(travel.dates.departure).format('YYYY/MM/DD') : '-',
-    [travel.dates.departure]
+    formatDateRange(travel.dates.departure),
+    [travel.dates.departure, formatDateRange]
   );
   
   const formattedReturn = useMemo(() => 
-    travel.dates.return ? dayjs(travel.dates.return).format('YYYY/MM/DD') : '-',
-    [travel.dates.return]
+    formatDateRange(travel.dates.return),
+    [travel.dates.return, formatDateRange]
   );
   
   const formattedCreatedDate = useMemo(() => 
-    travel.createdAt ? dayjs(travel.createdAt).format('YYYY-MM-DD') : '-',
-    [travel.createdAt]
+    formatDate(travel.createdAt),
+    [travel.createdAt, formatDate]
   );
 
   return (

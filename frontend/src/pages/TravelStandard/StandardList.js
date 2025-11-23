@@ -38,10 +38,12 @@ import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import dayjs from 'dayjs';
+import { useDateFormat } from '../../utils/dateFormatter';
 
 const StandardList = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
+  const formatDate = useDateFormat(false);
 
   const handleCopyNumber = useCallback((e, number) => {
     e.stopPropagation();
@@ -384,7 +386,7 @@ const StandardList = () => {
                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                  <CalendarIcon color="action" fontSize="small" />
                                  <Typography variant="body2">
-                                   {dayjs(standard.effectiveDate).format('YYYY-MM-DD')}
+                                   {formatDate(standard.effectiveDate)}
                                  </Typography>
                                </Box>
                              </TableCell>
@@ -393,7 +395,7 @@ const StandardList = () => {
                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                    <CalendarIcon color="action" fontSize="small" />
                                    <Typography variant="body2">
-                                     {dayjs(standard.expiryDate).format('YYYY-MM-DD')}
+                                     {formatDate(standard.expiryDate)}
                                    </Typography>
                                  </Box>
                                ) : (

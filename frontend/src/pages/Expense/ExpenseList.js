@@ -49,6 +49,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+import { useDateFormat } from '../../utils/dateFormatter';
 
 // 开发环境日志辅助函数
 const devError = (...args) => {
@@ -59,6 +60,8 @@ const devError = (...args) => {
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
 const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCategoryIcon, t, showNotification }) => {
+  const formatDate = useDateFormat(false);
+  
   const handleCopyNumber = useCallback((e, number) => {
     e.stopPropagation();
     if (number && number !== '-') {
@@ -69,9 +72,10 @@ const ExpenseTableRow = React.memo(({ expense, onMenuOpen, getStatusColor, getCa
       });
     }
   }, [showNotification, t]);
+  
   const formattedDate = useMemo(() => 
-    expense.date ? dayjs(expense.date).format('YYYY-MM-DD') : '-',
-    [expense.date]
+    formatDate(expense.date),
+    [expense.date, formatDate]
   );
 
   return (

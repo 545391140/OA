@@ -52,6 +52,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+import { useDateFormat } from '../../utils/dateFormatter';
 
 const ApprovalList = () => {
   const { t } = useTranslation();
@@ -501,6 +502,9 @@ const ApprovalList = () => {
 
   // 使用 React.memo 优化 ApprovalCard 组件
   const ApprovalCard = React.memo(({ item, showActions = true, getStatusColor, getTypeIcon, travelStats, t, onApproval, navigate }) => {
+    const formatDate = useDateFormat(false);
+    const formatDateRange = useDateFormat(true);
+    
     // 获取员工差旅统计
     const emp = item.employee;
     const employeeId = useMemo(() => {
@@ -518,14 +522,16 @@ const ApprovalList = () => {
     
     // 使用 useMemo 缓存格式化日期
     const formattedDate = useMemo(() => 
-      item.date ? dayjs(item.date).format('YYYY-MM-DD') : '-',
-      [item.date]
+      formatDate(item.date),
+      [item.date, formatDate]
     );
     
-    const formattedApprovedAt = useMemo(() => 
-      item.approvedAt ? dayjs(item.approvedAt).format('YYYY-MM-DD HH:mm') : '',
-      [item.approvedAt]
-    );
+    const formattedApprovedAt = useMemo(() => {
+      if (!item.approvedAt) return '';
+      const dateStr = formatDate(item.approvedAt);
+      const timeStr = dayjs(item.approvedAt).format('HH:mm');
+      return `${dateStr} ${timeStr}`;
+    }, [item.approvedAt, formatDate]);
     
     return (
     <Card sx={{ mb: 1 }} elevation={1}>
@@ -560,7 +566,7 @@ const ApprovalList = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.3 }}>
                     {item.departureCity || '?'}-{item.destination || '?'}
                     {(item.earliestDate && item.latestDate) && (
-                      <> • {dayjs(item.earliestDate).format('YYYY/MM/DD')} - {dayjs(item.latestDate).format('YYYY/MM/DD')}
+                      <> • {formatDateRange(item.earliestDate)} - {formatDateRange(item.latestDate)}
                       {item.days > 0 && <> • {t('approval.totalDays')}{item.days}{t('approval.days')}</>}
                       </>
                     )}

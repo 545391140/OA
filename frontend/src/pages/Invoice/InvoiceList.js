@@ -57,9 +57,12 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import { useDateFormat } from '../../utils/dateFormatter';
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
 const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatusColor, getStatusLabel, getCategoryLabel, t, showNotification }) => {
+  const formatDate = useDateFormat(false);
+  
   const handleCopyNumber = useCallback((e, number) => {
     e.stopPropagation();
     if (number && number !== '-') {
@@ -72,14 +75,16 @@ const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatu
   }, [showNotification, t]);
 
   const formattedInvoiceDate = useMemo(() => 
-    invoice.invoiceDate ? dayjs(invoice.invoiceDate).format('YYYY-MM-DD') : '-',
-    [invoice.invoiceDate]
+    formatDate(invoice.invoiceDate),
+    [invoice.invoiceDate, formatDate]
   );
 
-  const formattedCreatedAt = useMemo(() => 
-    dayjs(invoice.createdAt).format('YYYY-MM-DD HH:mm'),
-    [invoice.createdAt]
-  );
+  const formattedCreatedAt = useMemo(() => {
+    if (!invoice.createdAt) return '-';
+    const dateStr = formatDate(invoice.createdAt);
+    const timeStr = dayjs(invoice.createdAt).format('HH:mm');
+    return `${dateStr} ${timeStr}`;
+  }, [invoice.createdAt, formatDate]);
 
   return (
     <TableRow hover>
