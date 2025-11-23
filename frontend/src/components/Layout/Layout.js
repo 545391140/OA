@@ -62,6 +62,7 @@ const Layout = () => {
   const { user, logout } = useAuth();
   
   const isArabicLayout = (i18n.language || '').toLowerCase().startsWith('ar');
+  const isDashboard = location.pathname === '/dashboard';
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -382,9 +383,9 @@ const Layout = () => {
         <Box
           sx={{
             width: '100%',
-            maxWidth: '1536px',
+            maxWidth: isDashboard ? '100%' : '1536px',
             flex: 1,
-            mx: 'auto', // 水平居中
+            mx: isDashboard ? 0 : 'auto', // dashboard 全屏，其他页面居中
           }}
         >
           <Outlet />
