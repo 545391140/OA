@@ -11,8 +11,8 @@ const ExpenseItem = require('../models/ExpenseItem');
 const Invoice = require('../models/Invoice');
 const Travel = require('../models/Travel');
 const User = require('../models/User');
-const { buildDataScopeQuery, checkDataAccess } = require('../utils/dataScope');
-const Role = require('../models/Role');
+const { buildDataScopeQuery } = require('../utils/dataScope');
+const { loadUserRole, checkResourceAccess } = require('../middleware/dataAccess');
 const approvalWorkflowService = require('../services/approvalWorkflowService');
 const notificationService = require('../services/notificationService');
 
@@ -53,16 +53,13 @@ const generateReimbursementNumber = async () => {
 // @desc    Get all expenses
 // @route   GET /api/expenses
 // @access  Private
-router.get('/', protect, asyncHandler(async (req, res) => {
+router.get('/', protect, loadUserRole, asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
     
-    // 获取用户角色以确定数据权限范围
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    
-    // 构建数据权限查询条件
-    const dataScopeQuery = await buildDataScopeQuery(req.user, role, 'employee');
+    // 构建数据权限查询条件（使用已加载的角色）
+    const dataScopeQuery = await buildDataScopeQuery(req.user, req.role, 'employee');
     
     // 构建查询条件（合并数据权限条件和筛选条件）
     const query = { ...dataScopeQuery };
@@ -232,7 +229,7 @@ router.get('/', protect, asyncHandler(async (req, res) => {
 // @desc    Get single expense
 // @route   GET /api/expenses/:id
 // @access  Private
-router.get('/:id', protect, asyncHandler(async (req, res) => {
+router.get('/:id', protect, loadUserRole, asyncHandler(async (req, res) => {
     // 验证ID格式
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       throw ErrorFactory.badRequest('Invalid expense ID format');
@@ -262,15 +259,11 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, expense, 'expense', 'employee');
     
     if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this expense'
-      });
+      throw ErrorFactory.forbidden('Not authorized to access this expense');
     }
 
     // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
@@ -451,9 +444,8 @@ router.put('/:id', protect, asyncHandler(async (req, res) => {
       throw ErrorFactory.notFound('Expense not found');
     }
 
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, expense, 'expense', 'employee');
     
     if (!hasAccess) {
       throw ErrorFactory.forbidden('Not authorized');
@@ -680,9 +672,8 @@ router.delete('/:id', protect, asyncHandler(async (req, res) => {
       throw ErrorFactory.notFound('Expense not found');
     }
 
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, expense, 'expense', 'employee');
     
     if (!hasAccess) {
       throw ErrorFactory.forbidden('Not authorized');
@@ -757,15 +748,11 @@ router.post('/:id/link-invoice', protect, asyncHandler(async (req, res) => {
         throw ErrorFactory.notFound('Invoice not found');
       }
       
-      // 数据权限检查：使用数据权限范围检查
-      const role = await Role.findOne({ code: req.user.role, isActive: true });
-      const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+      // 数据权限检查：使用统一的数据权限检查函数
+      const hasAccess = await checkResourceAccess(req, expense, 'expense', 'employee');
       
       if (!hasAccess) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized'
-        });
+        throw ErrorFactory.forbidden('Not authorized');
       }
       
       // 检查发票是否已经在当前费用申请中（只检查当前费用申请，不检查其他费用申请）
@@ -835,9 +822,8 @@ router.delete('/:id/unlink-invoice/:invoiceId', protect, asyncHandler(async (req
         throw ErrorFactory.notFound('Expense or invoice not found');
       }
       
-      // 数据权限检查：使用数据权限范围检查
-      const role = await Role.findOne({ code: req.user.role, isActive: true });
-      const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+      // 数据权限检查：使用统一的数据权限检查函数
+      const hasAccess = await checkResourceAccess(req, expense, 'expense', 'employee');
       
       if (!hasAccess) {
         throw ErrorFactory.forbidden('Not authorized');
@@ -878,9 +864,8 @@ router.get('/:id/receipts/*', protect, asyncHandler(async (req, res) => {
       throw ErrorFactory.notFound('Expense not found');
     }
     
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, expense, role, 'employee');
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, expense, 'expense', 'employee');
     
     if (!hasAccess) {
       throw ErrorFactory.forbidden('Not authorized to access this file');

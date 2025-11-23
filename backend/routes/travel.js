@@ -3,8 +3,10 @@ const express = require('express');
 const { protect } = require('../middleware/auth');
 const Travel = require('../models/Travel');
 const User = require('../models/User');
-const { buildDataScopeQuery, checkDataAccess } = require('../utils/dataScope');
-const Role = require('../models/Role');
+const { buildDataScopeQuery } = require('../utils/dataScope');
+const { loadUserRole, checkResourceAccess } = require('../middleware/dataAccess');
+const { ErrorFactory } = require('../utils/AppError');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -39,11 +41,10 @@ const generateTravelNumber = async () => {
 // @desc    Get all travel requests
 // @route   GET /api/travel
 // @access  Private
-router.get('/', protect, async (req, res) => {
+router.get('/', protect, loadUserRole, async (req, res) => {
   try {
-    // 获取用户角色和数据权限
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const dataScopeQuery = await buildDataScopeQuery(req.user, role, 'employee');
+    // 获取数据权限查询条件（使用已加载的角色）
+    const dataScopeQuery = await buildDataScopeQuery(req.user, req.role, 'employee');
     
     // 构建查询条件（应用数据权限）
     let query = { ...dataScopeQuery };
@@ -144,7 +145,7 @@ router.get('/', protect, async (req, res) => {
       }
     });
 
-    console.log(`[TRAVEL_LIST] User ${req.user.id} (role: ${req.user.role}) fetched ${travels.length} travels (page: ${page}, limit: ${limit}, total: ${total})`);
+    logger.info(`[TRAVEL_LIST] User ${req.user.id} (role: ${req.user.role}) fetched ${travels.length} travels (page: ${page}, limit: ${limit}, total: ${total})`);
 
     res.json({
       success: true,
@@ -156,7 +157,7 @@ router.get('/', protect, async (req, res) => {
       data: travels
     });
   } catch (error) {
-    console.error('Get travels error:', error);
+    logger.error('Get travels error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -196,21 +197,11 @@ router.get('/:id', protect, async (req, res) => {
       );
     }
 
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
     
     if (!hasAccess) {
-      console.warn('[GET_TRAVEL] Data access denied:', {
-        travelId: req.params.id,
-        userId: req.user.id,
-        userRole: req.user.role,
-        dataScope: role?.dataScope || 'self'
-      });
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this travel request'
-      });
+      throw ErrorFactory.forbidden('Not authorized to access this travel request');
     }
 
     res.json({
@@ -218,10 +209,10 @@ router.get('/:id', protect, async (req, res) => {
       data: travel
     });
   } catch (error) {
-    console.error('Get travel error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Request params:', req.params);
-    console.error('User ID:', req.user?.id);
+    logger.error('Get travel error:', error);
+    logger.error('Error stack:', error.stack);
+    logger.error('Request params:', req.params);
+    logger.error('User ID:', req.user?.id);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -292,7 +283,7 @@ router.post('/', protect, async (req, res) => {
       travelData.multiCityRoutesBudget = [];
     }
     
-    console.log('Create travel - multiCityRoutesBudget:', {
+    logger.info('Create travel - multiCityRoutesBudget:', {
       routesLength,
       budgetLength: travelData.multiCityRoutesBudget.length,
       hasMultiCityRoutes: !!travelData.multiCityRoutes,
@@ -333,7 +324,7 @@ router.post('/', protect, async (req, res) => {
 
     const travel = await Travel.create(travelData);
     
-    console.log('Created travel:', {
+    logger.info('Created travel:', {
       id: travel._id,
       hasOutboundBudget: !!travel.outboundBudget,
       hasInboundBudget: !!travel.inboundBudget,
@@ -348,7 +339,7 @@ router.post('/', protect, async (req, res) => {
       data: travel
     });
   } catch (error) {
-    console.error('Create travel error:', error);
+    logger.error('Create travel error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -379,36 +370,26 @@ router.put('/:id', protect, async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
     
     if (!hasAccess) {
-      console.warn('[PUT_TRAVEL] Data access denied:', {
-        travelId: req.params.id,
-        userId: req.user.id,
-        userRole: req.user.role,
-        dataScope: role?.dataScope || 'self'
-      });
-          return res.status(403).json({
-            success: false,
-            message: 'Not authorized to update this travel request'
-          });
+      throw ErrorFactory.forbidden('Not authorized to update this travel request');
     }
 
     // 处理日期字段转换
     const updateData = { ...req.body };
     
     // 记录接收到的原始数据
-    console.log('=== 后端接收到的原始数据 ===');
-    console.log('req.body.multiCityRoutesBudget:', {
+    logger.info('=== 后端接收到的原始数据 ===');
+    logger.info('req.body.multiCityRoutesBudget:', {
       exists: req.body.hasOwnProperty('multiCityRoutesBudget'),
       isArray: Array.isArray(req.body.multiCityRoutesBudget),
       length: req.body.multiCityRoutesBudget?.length || 0,
       data: JSON.stringify(req.body.multiCityRoutesBudget, null, 2),
       type: typeof req.body.multiCityRoutesBudget
     });
-    console.log('req.body.multiCityRoutes:', {
+    logger.info('req.body.multiCityRoutes:', {
       exists: req.body.hasOwnProperty('multiCityRoutes'),
       isArray: Array.isArray(req.body.multiCityRoutes),
       length: req.body.multiCityRoutes?.length || 0
@@ -442,20 +423,20 @@ router.put('/:id', protect, async (req, res) => {
     
     // 如果前端发送了 multiCityRoutesBudget，使用前端的数据（即使它是空数组）
     // 只有在前端没有发送该字段时，才从现有数据中初始化
-    console.log('=== 处理 multiCityRoutesBudget ===');
-    console.log('前端是否发送:', updateData.hasOwnProperty('multiCityRoutesBudget'));
-    console.log('前端原始数据:', {
+    logger.info('=== 处理 multiCityRoutesBudget ===');
+    logger.info('前端是否发送:', updateData.hasOwnProperty('multiCityRoutesBudget'));
+    logger.info('前端原始数据:', {
       isArray: Array.isArray(updateData.multiCityRoutesBudget),
       length: updateData.multiCityRoutesBudget?.length || 0,
       type: typeof updateData.multiCityRoutesBudget,
       data: JSON.stringify(updateData.multiCityRoutesBudget, null, 2)
     });
-    console.log('routesLength:', routesLength);
+    logger.info('routesLength:', routesLength);
     
     if (updateData.hasOwnProperty('multiCityRoutesBudget')) {
       // 前端发送了该字段，使用前端的数据
       if (!Array.isArray(updateData.multiCityRoutesBudget)) {
-        console.warn('Warning: multiCityRoutesBudget is not an array, converting');
+        logger.warn('Warning: multiCityRoutesBudget is not an array, converting');
         updateData.multiCityRoutesBudget = [];
       }
       
@@ -469,7 +450,7 @@ router.put('/:id', protect, async (req, res) => {
         if (updateData.multiCityRoutesBudget.length > routesLength) {
           updateData.multiCityRoutesBudget = updateData.multiCityRoutesBudget.slice(0, routesLength);
         }
-        console.log(`调整数组长度: ${originalLength} -> ${updateData.multiCityRoutesBudget.length}`);
+        logger.info(`调整数组长度: ${originalLength} -> ${updateData.multiCityRoutesBudget.length}`);
         
         // 检查每个预算对象是否有数据
         updateData.multiCityRoutesBudget.forEach((budget, index) => {
@@ -481,7 +462,7 @@ router.put('/:id', protect, async (req, res) => {
             quantity: budget[key]?.quantity || 'N/A',
             subtotal: budget[key]?.subtotal || 'N/A'
           }));
-          console.log(`预算[${index}]:`, {
+          logger.info(`预算[${index}]:`, {
             keysCount: keys.length,
             keys: keys,
             hasData: keys.length > 0,
@@ -494,7 +475,7 @@ router.put('/:id', protect, async (req, res) => {
       }
     } else {
       // 前端没有发送该字段，从现有数据中初始化
-      console.log('前端未发送 multiCityRoutesBudget，从现有数据初始化');
+      logger.info('前端未发送 multiCityRoutesBudget，从现有数据初始化');
       if (routesLength > 0) {
         const existingBudget = travel.multiCityRoutesBudget || [];
         if (Array.isArray(existingBudget) && existingBudget.length === routesLength) {
@@ -509,7 +490,7 @@ router.put('/:id', protect, async (req, res) => {
       }
     }
     
-    console.log('处理后的 multiCityRoutesBudget:', {
+    logger.info('处理后的 multiCityRoutesBudget:', {
       length: updateData.multiCityRoutesBudget?.length || 0,
       isArray: Array.isArray(updateData.multiCityRoutesBudget),
       data: JSON.stringify(updateData.multiCityRoutesBudget, null, 2)
@@ -553,7 +534,7 @@ router.put('/:id', protect, async (req, res) => {
 
     // updateData.multiCityRoutesBudget 已经在上面（365-406行）处理过了
     // 这里只需要记录日志即可
-    console.log('Update travel data (processed):', {
+    logger.info('Update travel data (processed):', {
       id: req.params.id,
       hasOutboundBudget: !!updateData.outboundBudget,
       hasInboundBudget: !!updateData.inboundBudget,
@@ -579,12 +560,12 @@ router.put('/:id', protect, async (req, res) => {
     
     // 直接设置所有更新字段
     // 注意：updateData.multiCityRoutesBudget 已经在上面处理过了
-    console.log('=== 设置文档字段 ===');
+    logger.info('=== 设置文档字段 ===');
     Object.keys(updateData).forEach(key => {
       if (key !== 'employee' && key !== 'travelNumber') {
         travel[key] = updateData[key];
         if (key === 'multiCityRoutesBudget') {
-          console.log(`设置 travel.${key}:`, {
+          logger.info(`设置 travel.${key}:`, {
             isArray: Array.isArray(updateData[key]),
             length: updateData[key]?.length || 0,
             data: JSON.stringify(updateData[key], null, 2)
@@ -599,12 +580,12 @@ router.put('/:id', protect, async (req, res) => {
     
     // 确保是数组类型
     if (!Array.isArray(travel.multiCityRoutesBudget)) {
-      console.warn('Warning: multiCityRoutesBudget is not an array, converting to array');
+      logger.warn('Warning: multiCityRoutesBudget is not an array, converting to array');
       travel.multiCityRoutesBudget = [];
     }
     
-    console.log('=== Before save - travel.multiCityRoutesBudget ===');
-    console.log('准备保存的数据:', {
+    logger.info('=== Before save - travel.multiCityRoutesBudget ===');
+    logger.info('准备保存的数据:', {
       length: travel.multiCityRoutesBudget?.length || 0,
       isArray: Array.isArray(travel.multiCityRoutesBudget),
       data: JSON.stringify(travel.multiCityRoutesBudget, null, 2),
@@ -615,7 +596,7 @@ router.put('/:id', protect, async (req, res) => {
     // 检查每个预算对象
     travel.multiCityRoutesBudget.forEach((budget, index) => {
       const keys = Object.keys(budget || {});
-      console.log(`准备保存的预算[${index}]:`, {
+      logger.info(`准备保存的预算[${index}]:`, {
         keysCount: keys.length,
         keys: keys,
         hasData: keys.length > 0,
@@ -624,15 +605,15 @@ router.put('/:id', protect, async (req, res) => {
     });
     
     // 保存文档，这会确保所有字段（包括新字段）都被保存到数据库
-    console.log('=== 开始保存到数据库 ===');
+    logger.info('=== 开始保存到数据库 ===');
     await travel.save();
-    console.log('保存完成');
+    logger.info('保存完成');
     
     // 重新加载以获取最新数据
     travel = await Travel.findById(req.params.id).populate('employee', 'firstName lastName email');
 
-    console.log('=== 保存后的数据（从数据库重新加载） ===');
-    console.log('Updated travel:', {
+    logger.info('=== 保存后的数据（从数据库重新加载） ===');
+    logger.info('Updated travel:', {
       id: travel._id,
       hasOutboundBudget: !!travel.outboundBudget,
       hasInboundBudget: !!travel.inboundBudget,
@@ -652,7 +633,7 @@ router.put('/:id', protect, async (req, res) => {
           quantity: budget[key]?.quantity || 'N/A',
           subtotal: budget[key]?.subtotal || 'N/A'
         }));
-        console.log(`保存后的预算[${index}]:`, {
+        logger.info(`保存后的预算[${index}]:`, {
           keysCount: keys.length,
           keys: keys,
           hasData: keys.length > 0,
@@ -660,7 +641,7 @@ router.put('/:id', protect, async (req, res) => {
         });
       });
     } else {
-      console.warn('保存后的 multiCityRoutesBudget 不是数组或为空');
+      logger.warn('保存后的 multiCityRoutesBudget 不是数组或为空');
     }
 
     res.json({
@@ -668,7 +649,7 @@ router.put('/:id', protect, async (req, res) => {
       data: travel
     });
   } catch (error) {
-    console.error('Update travel error:', error);
+    logger.error('Update travel error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -699,22 +680,11 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    // 检查权限：只能删除自己的申请或管理员
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    // 检查权限：数据权限检查
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
     
     if (!hasAccess) {
-      console.warn('[DELETE_TRAVEL] Data access denied:', {
-        travelId: req.params.id,
-        userId: req.user.id,
-        userRole: req.user.role,
-        dataScope: role?.dataScope || 'self'
-      });
-          return res.status(403).json({
-            success: false,
-            message: 'Not authorized to delete this travel request'
-          });
+      throw ErrorFactory.forbidden('Not authorized to delete this travel request');
     }
 
     // 只能删除草稿状态的申请
@@ -732,10 +702,10 @@ router.delete('/:id', protect, async (req, res) => {
       message: 'Travel request deleted successfully'
     });
   } catch (error) {
-    console.error('Delete travel error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Request params:', req.params);
-    console.error('User ID:', req.user?.id);
+    logger.error('Delete travel error:', error);
+    logger.error('Error stack:', error.stack);
+    logger.error('Request params:', req.params);
+    logger.error('User ID:', req.user?.id);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -772,11 +742,10 @@ router.post('/:id/submit', protect, async (req, res) => {
     // 检查权限：只能提交自己的申请
     let employeeId;
     // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
     
     if (!hasAccess) {
-      console.warn('[SUBMIT_TRAVEL] Data access denied:', {
+      logger.warn('[SUBMIT_TRAVEL] Data access denied:', {
         travelId: req.params.id,
         userId: req.user.id,
         userRole: req.user.role,
@@ -816,7 +785,7 @@ router.post('/:id/submit', protect, async (req, res) => {
       });
     } else {
       // 没有匹配的工作流，使用默认逻辑
-      console.log('No matching workflow found, using default approval logic');
+      logger.info('No matching workflow found, using default approval logic');
       
       if (budgetAmount > 10000) {
         approvals.push({
@@ -875,7 +844,7 @@ router.post('/:id/submit', protect, async (req, res) => {
         }
       });
     } catch (notifyError) {
-      console.error('Failed to send approval notifications:', notifyError);
+      logger.error('Failed to send approval notifications:', notifyError);
       // 通知失败不影响提交流程
     }
 
@@ -884,7 +853,7 @@ router.post('/:id/submit', protect, async (req, res) => {
       data: travel
     });
   } catch (error) {
-    console.error('Submit travel error:', error);
+    logger.error('Submit travel error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -897,32 +866,27 @@ router.post('/:id/submit', protect, async (req, res) => {
 // @access  Private
 router.post('/:id/generate-expenses', protect, async (req, res) => {
   const travelId = req.params.id;
-  console.log(`[GENERATE_EXPENSES] Starting request for travel ${travelId}`);
+  logger.info(`[GENERATE_EXPENSES] Starting request for travel ${travelId}`);
   
   try {
     const travel = await Travel.findById(travelId)
       .populate('employee', 'firstName lastName email');
     
-    console.log(`[GENERATE_EXPENSES] Travel found: ${travel ? 'yes' : 'no'}`);
+    logger.info(`[GENERATE_EXPENSES] Travel found: ${travel ? 'yes' : 'no'}`);
     
     if (!travel) {
-      console.log(`[GENERATE_EXPENSES] Travel ${travelId} not found`);
+      logger.info(`[GENERATE_EXPENSES] Travel ${travelId} not found`);
       return res.status(404).json({
         success: false,
         message: 'Travel not found'
       });
     }
     
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
     
     if (!hasAccess) {
-      console.log(`[GENERATE_EXPENSES] Data access denied by user ${req.user.id}`);
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized'
-      });
+      throw ErrorFactory.forbidden('Not authorized');
     }
     
     // 检查是否有employee字段
@@ -938,7 +902,7 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
     }
     
     if (!employeeId) {
-      console.error(`[GENERATE_EXPENSES] Travel ${travelId} has no employee`);
+      logger.error(`[GENERATE_EXPENSES] Travel ${travelId} has no employee`);
       return res.status(400).json({
         success: false,
         message: 'Travel has no employee assigned'
@@ -947,8 +911,8 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
     
     // 检查是否已经生成过
     if (travel.expenseGenerationStatus === 'completed') {
-      console.log(`[GENERATE_EXPENSES] Travel ${req.params.id} already has completed expense generation`);
-      console.log(`[GENERATE_EXPENSES] Related expenses:`, travel.relatedExpenses);
+      logger.info(`[GENERATE_EXPENSES] Travel ${req.params.id} already has completed expense generation`);
+      logger.info(`[GENERATE_EXPENSES] Related expenses:`, travel.relatedExpenses);
       return res.status(400).json({
         success: false,
         message: 'Expenses already generated',
@@ -970,7 +934,7 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
       const timeSinceUpdate = now - new Date(updatedAt);
       
       if (timeSinceUpdate > generatingTimeout) {
-        console.warn(`Expense generation status stuck in 'generating' for ${Math.round(timeSinceUpdate / 1000)}s, resetting to 'pending'`);
+        logger.warn(`Expense generation status stuck in 'generating' for ${Math.round(timeSinceUpdate / 1000)}s, resetting to 'pending'`);
         // 重置状态为 pending，允许重新生成
         await Travel.updateOne(
           { _id: req.params.id },
@@ -987,7 +951,7 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
       } else {
         // 如果还在超时时间内，返回错误
         const remainingSeconds = Math.round((generatingTimeout - timeSinceUpdate) / 1000);
-        console.log(`[GENERATE_EXPENSES] Travel ${req.params.id} is still generating, remaining time: ${remainingSeconds}s`);
+        logger.info(`[GENERATE_EXPENSES] Travel ${req.params.id} is still generating, remaining time: ${remainingSeconds}s`);
       return res.status(400).json({
         success: false,
           message: 'Expense generation in progress',
@@ -1001,12 +965,12 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
     }
     
     // 执行自动生成
-    console.log(`[GENERATE_EXPENSES] Calling autoGenerateExpenses for travel ${travelId}`);
+    logger.info(`[GENERATE_EXPENSES] Calling autoGenerateExpenses for travel ${travelId}`);
     const expenseMatchService = require('../services/expenseMatchService');
     
     try {
     const result = await expenseMatchService.autoGenerateExpenses(travel);
-      console.log(`[GENERATE_EXPENSES] Successfully generated ${result.generatedCount} expenses`);
+      logger.info(`[GENERATE_EXPENSES] Successfully generated ${result.generatedCount} expenses`);
     
     res.json({
       success: true,
@@ -1014,15 +978,15 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
       data: result
     });
     } catch (serviceError) {
-      console.error(`[GENERATE_EXPENSES] Service error:`, serviceError);
-      console.error(`[GENERATE_EXPENSES] Service error stack:`, serviceError.stack);
+      logger.error(`[GENERATE_EXPENSES] Service error:`, serviceError);
+      logger.error(`[GENERATE_EXPENSES] Service error stack:`, serviceError.stack);
       throw serviceError; // 重新抛出，让外层 catch 处理
     }
     
   } catch (error) {
-    console.error(`[GENERATE_EXPENSES] Fatal error for travel ${travelId}:`, error);
-    console.error(`[GENERATE_EXPENSES] Error stack:`, error.stack);
-    console.error(`[GENERATE_EXPENSES] Error details:`, {
+    logger.error(`[GENERATE_EXPENSES] Fatal error for travel ${travelId}:`, error);
+    logger.error(`[GENERATE_EXPENSES] Error stack:`, error.stack);
+    logger.error(`[GENERATE_EXPENSES] Error details:`, {
       message: error.message,
       name: error.name,
       code: error.code,
@@ -1049,32 +1013,27 @@ router.post('/:id/generate-expenses', protect, async (req, res) => {
 // @access  Private
 router.get('/:id/expenses', protect, async (req, res) => {
   const travelId = req.params.id;
-  console.log(`[GET_TRAVEL_EXPENSES] Starting request for travel ${travelId}`);
+  logger.info(`[GET_TRAVEL_EXPENSES] Starting request for travel ${travelId}`);
   
   try {
     const travel = await Travel.findById(travelId)
       .populate('employee', 'firstName lastName email');
     
     if (!travel) {
-      console.log(`[GET_TRAVEL_EXPENSES] Travel ${travelId} not found`);
+      logger.info(`[GET_TRAVEL_EXPENSES] Travel ${travelId} not found`);
       return res.status(404).json({
         success: false,
         message: 'Travel not found'
       });
     }
     
-    console.log(`[GET_TRAVEL_EXPENSES] Travel found: ${travel.travelNumber || travelId}`);
+    logger.info(`[GET_TRAVEL_EXPENSES] Travel found: ${travel.travelNumber || travelId}`);
     
-    // 数据权限检查：使用数据权限范围检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const hasAccess = await checkDataAccess(req.user, travel, role, 'employee');
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
     
     if (!hasAccess) {
-      console.log(`[GET_TRAVEL_EXPENSES] Data access denied by user ${req.user.id} for travel ${travelId}`);
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized'
-      });
+      throw ErrorFactory.forbidden('Not authorized');
     }
     
     // 获取费用申请的详细信息
@@ -1083,7 +1042,7 @@ router.get('/:id/expenses', protect, async (req, res) => {
     
     // 过滤掉无效的 ObjectId
     const relatedExpenses = travel.relatedExpenses || [];
-    console.log(`[GET_TRAVEL_EXPENSES] Travel has ${relatedExpenses.length} related expenses`);
+    logger.info(`[GET_TRAVEL_EXPENSES] Travel has ${relatedExpenses.length} related expenses`);
     
     const validExpenseIds = relatedExpenses.filter(id => {
       if (!id) return false;
@@ -1091,11 +1050,11 @@ router.get('/:id/expenses', protect, async (req, res) => {
         const idStr = id.toString ? id.toString() : String(id);
         const isValid = mongoose.Types.ObjectId.isValid(idStr);
         if (!isValid) {
-          console.warn(`[GET_TRAVEL_EXPENSES] Invalid expense ID found: ${idStr}`);
+          logger.warn(`[GET_TRAVEL_EXPENSES] Invalid expense ID found: ${idStr}`);
         }
         return isValid;
       } catch (e) {
-        console.warn(`[GET_TRAVEL_EXPENSES] Error validating expense ID: ${id}`, e);
+        logger.warn(`[GET_TRAVEL_EXPENSES] Error validating expense ID: ${id}`, e);
         return false;
       }
     }).map(id => {
@@ -1104,10 +1063,10 @@ router.get('/:id/expenses', protect, async (req, res) => {
       return new mongoose.Types.ObjectId(idStr);
     });
     
-    console.log(`[GET_TRAVEL_EXPENSES] Valid expense IDs: ${validExpenseIds.length} out of ${relatedExpenses.length}`);
+    logger.info(`[GET_TRAVEL_EXPENSES] Valid expense IDs: ${validExpenseIds.length} out of ${relatedExpenses.length}`);
     
     if (validExpenseIds.length === 0) {
-      console.log(`[GET_TRAVEL_EXPENSES] No valid expense IDs found, returning empty array`);
+      logger.info(`[GET_TRAVEL_EXPENSES] No valid expense IDs found, returning empty array`);
       return res.json({
         success: true,
         count: 0,
@@ -1118,8 +1077,8 @@ router.get('/:id/expenses', protect, async (req, res) => {
     // 查询费用申请，使用 try-catch 处理 populate 错误
     let expenses = [];
     try {
-      console.log(`[GET_TRAVEL_EXPENSES] Querying expenses with populate...`);
-      console.log(`[GET_TRAVEL_EXPENSES] Valid expense IDs:`, validExpenseIds.map(id => id.toString()));
+      logger.info(`[GET_TRAVEL_EXPENSES] Querying expenses with populate...`);
+      logger.info(`[GET_TRAVEL_EXPENSES] Valid expense IDs:`, validExpenseIds.map(id => id.toString()));
       
       // 先尝试使用 populate 查询，使用 lean() 提高性能
       expenses = await Expense.find({
@@ -1138,7 +1097,7 @@ router.get('/:id/expenses', protect, async (req, res) => {
         .sort({ createdAt: -1 })
         .lean(); // 使用 lean() 直接返回普通对象，提高性能
       
-      console.log(`[GET_TRAVEL_EXPENSES] Found ${expenses.length} expenses`);
+      logger.info(`[GET_TRAVEL_EXPENSES] Found ${expenses.length} expenses`);
       
       // 清理 populate 失败的数据（null 值）
       expenses = expenses.map(expense => {
@@ -1156,8 +1115,8 @@ router.get('/:id/expenses', protect, async (req, res) => {
       });
       
     } catch (queryError) {
-      console.error(`[GET_TRAVEL_EXPENSES] Error querying expenses with populate:`, queryError);
-      console.error(`[GET_TRAVEL_EXPENSES] Error details:`, {
+      logger.error(`[GET_TRAVEL_EXPENSES] Error querying expenses with populate:`, queryError);
+      logger.error(`[GET_TRAVEL_EXPENSES] Error details:`, {
         message: queryError.message,
         stack: queryError.stack,
         name: queryError.name,
@@ -1166,13 +1125,13 @@ router.get('/:id/expenses', protect, async (req, res) => {
       
       // 如果 populate 失败，尝试不使用 populate
       try {
-        console.log(`[GET_TRAVEL_EXPENSES] Falling back to query without populate...`);
+        logger.info(`[GET_TRAVEL_EXPENSES] Falling back to query without populate...`);
         expenses = await Expense.find({
           _id: { $in: validExpenseIds }
         })
           .sort({ createdAt: -1 })
           .lean();
-        console.log(`[GET_TRAVEL_EXPENSES] Fallback query found ${expenses.length} expenses`);
+        logger.info(`[GET_TRAVEL_EXPENSES] Fallback query found ${expenses.length} expenses`);
         
         // 手动清理数据
         expenses = expenses.map(expense => {
@@ -1185,8 +1144,8 @@ router.get('/:id/expenses', protect, async (req, res) => {
           return expense;
         });
       } catch (fallbackError) {
-        console.error(`[GET_TRAVEL_EXPENSES] Fallback query also failed:`, fallbackError);
-        console.error(`[GET_TRAVEL_EXPENSES] Fallback error details:`, {
+        logger.error(`[GET_TRAVEL_EXPENSES] Fallback query also failed:`, fallbackError);
+        logger.error(`[GET_TRAVEL_EXPENSES] Fallback error details:`, {
           message: fallbackError.message,
           stack: fallbackError.stack,
           name: fallbackError.name
@@ -1198,7 +1157,7 @@ router.get('/:id/expenses', protect, async (req, res) => {
     
     // 过滤掉 null 值和无效数据
     expenses = expenses.filter(expense => expense !== null && expense !== undefined);
-    console.log(`[GET_TRAVEL_EXPENSES] Filtered expenses: ${expenses.length}`);
+    logger.info(`[GET_TRAVEL_EXPENSES] Filtered expenses: ${expenses.length}`);
     
     // 手动处理 populate 失败的字段
     expenses = expenses.map(expense => {
@@ -1218,12 +1177,12 @@ router.get('/:id/expenses', protect, async (req, res) => {
         }
         return expense;
       } catch (e) {
-        console.warn(`[GET_TRAVEL_EXPENSES] Error processing expense ${expense._id}:`, e);
+        logger.warn(`[GET_TRAVEL_EXPENSES] Error processing expense ${expense._id}:`, e);
         return expense;
       }
     });
     
-    console.log(`[GET_TRAVEL_EXPENSES] Successfully returning ${expenses.length} expenses`);
+    logger.info(`[GET_TRAVEL_EXPENSES] Successfully returning ${expenses.length} expenses`);
     
     res.json({
       success: true,
@@ -1232,9 +1191,9 @@ router.get('/:id/expenses', protect, async (req, res) => {
     });
     
   } catch (error) {
-    console.error(`[GET_TRAVEL_EXPENSES] Fatal error for travel ${travelId}:`, error);
-    console.error(`[GET_TRAVEL_EXPENSES] Error stack:`, error.stack);
-    console.error(`[GET_TRAVEL_EXPENSES] Error details:`, {
+    logger.error(`[GET_TRAVEL_EXPENSES] Fatal error for travel ${travelId}:`, error);
+    logger.error(`[GET_TRAVEL_EXPENSES] Error stack:`, error.stack);
+    logger.error(`[GET_TRAVEL_EXPENSES] Error details:`, {
       message: error.message,
       name: error.name,
       code: error.code,

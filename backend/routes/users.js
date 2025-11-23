@@ -53,7 +53,7 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
       data: users
     });
   } catch (error) {
-    console.error('Get users error:', error);
+    logger.error('Get users error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -194,7 +194,7 @@ router.post('/', [
       data: userResponse
     });
   } catch (error) {
-    console.error('Create user error:', error);
+    logger.error('Create user error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -308,7 +308,7 @@ router.put('/:id', [
       data: user
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    logger.error('Update user error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -338,7 +338,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       message: 'User deleted successfully'
     });
   } catch (error) {
-    console.error('Delete user error:', error);
+    logger.error('Delete user error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -371,7 +371,7 @@ router.patch('/:id/toggle-active', protect, authorize('admin'), async (req, res)
       data: userResponse
     });
   } catch (error) {
-    console.error('Toggle user active error:', error);
+    logger.error('Toggle user active error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'

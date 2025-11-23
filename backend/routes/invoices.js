@@ -5,19 +5,20 @@ const Invoice = require('../models/Invoice');
 const Expense = require('../models/Expense');
 const Travel = require('../models/Travel');
 const ocrService = require('../services/ocrService');
-const { buildDataScopeQuery, checkDataAccess } = require('../utils/dataScope');
-const Role = require('../models/Role');
+const { buildDataScopeQuery } = require('../utils/dataScope');
+const { loadUserRole, checkResourceAccess } = require('../middleware/dataAccess');
 const User = require('../models/User');
 const path = require('path');
 const fs = require('fs');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
 // @desc    Get all invoices
 // @route   GET /api/invoices
 // @access  Private
-router.get('/', protect, async (req, res) => {
+router.get('/', protect, loadUserRole, async (req, res) => {
   try {
     const {
       status,
@@ -31,10 +32,9 @@ router.get('/', protect, async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // 获取用户角色和数据权限
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
+    // 获取数据权限查询条件（使用已加载的角色）
     const { buildInvoiceDataScopeQuery } = require('../utils/invoiceDataScope');
-    const dataScopeQuery = await buildInvoiceDataScopeQuery(req.user, role);
+    const dataScopeQuery = await buildInvoiceDataScopeQuery(req.user, req.role);
     
     // 构建查询条件（应用数据权限）
     const query = { ...dataScopeQuery };
@@ -147,7 +147,7 @@ router.get('/', protect, async (req, res) => {
       data: invoices
     });
   } catch (error) {
-    console.error('Get invoices error:', error);
+    logger.error('Get invoices error:', error);
     res.status(500).json({
       success: false,
       message: '获取发票列表失败'
@@ -169,10 +169,8 @@ router.get('/:id/preview', protect, async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用发票数据权限检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
-    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, invoice, 'invoice');
     
     if (!hasAccess) {
       return res.status(403).json({
@@ -213,7 +211,7 @@ router.get('/:id/preview', protect, async (req, res) => {
     res.setHeader('Content-Disposition', `inline; filename="preview.png"`);
     res.sendFile(previewImagePath);
   } catch (error) {
-    console.error('Get invoice preview error:', error);
+    logger.error('Get invoice preview error:', error);
     res.status(500).json({
       success: false,
       message: error.message || '获取预览图失败'
@@ -235,10 +233,8 @@ router.get('/:id/file', protect, async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用发票数据权限检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
-    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, invoice, 'invoice');
     
     if (!hasAccess) {
       return res.status(403).json({
@@ -260,7 +256,7 @@ router.get('/:id/file', protect, async (req, res) => {
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(invoice.file.originalName)}"`);
     res.sendFile(filePath);
   } catch (error) {
-    console.error('Get invoice file error:', error);
+    logger.error('Get invoice file error:', error);
     res.status(500).json({
       success: false,
       message: '获取文件失败'
@@ -286,13 +282,11 @@ router.get('/:id', protect, async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用发票数据权限检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
-    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, invoice, 'invoice');
     
     if (!hasAccess) {
-      console.warn('[GET_INVOICE] Data access denied:', {
+      logger.warn('[GET_INVOICE] Data access denied:', {
         invoiceId: req.params.id,
         userId: req.user.id,
         userRole: req.user.role,
@@ -309,7 +303,7 @@ router.get('/:id', protect, async (req, res) => {
       data: invoice
     });
   } catch (error) {
-    console.error('Get invoice error:', error);
+    logger.error('Get invoice error:', error);
     res.status(500).json({
       success: false,
       message: '获取发票详情失败'
@@ -322,11 +316,11 @@ router.get('/:id', protect, async (req, res) => {
 // @access  Private
 // NOTE: This route must be defined BEFORE /:id routes to avoid route conflicts
 router.post('/recognize-image', protect, upload.single('file'), async (req, res) => {
-  console.log('========================================');
-  console.log('收到 OCR 识别请求');
-  console.log('用户:', req.user ? req.user.email : '未登录');
-  console.log('文件:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : '无文件');
-  console.log('========================================');
+  logger.info('========================================');
+  logger.info('收到 OCR 识别请求');
+  logger.info('用户:', req.user ? req.user.email : '未登录');
+  logger.info('文件:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : '无文件');
+  logger.info('========================================');
   
   // 提前转换的图片路径（用于 PDF 文件）
   let convertedImagePath = null;
@@ -346,7 +340,7 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
         try {
           fs.unlinkSync(req.file.path);
         } catch (unlinkError) {
-          console.error('Delete file error:', unlinkError);
+          logger.error('Delete file error:', unlinkError);
         }
       }
       return res.status(400).json({
@@ -365,7 +359,7 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
           fs.unlinkSync(filePath);
         }
       } catch (unlinkError) {
-        console.error('Delete temp file error:', unlinkError);
+        logger.error('Delete temp file error:', unlinkError);
       }
       
       return res.status(503).json({
@@ -385,11 +379,11 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
     // 优化：如果是 PDF，提前转换为图片（这样 fallback 到阿里云时就不需要再转换了）
     if (req.file.mimetype === 'application/pdf') {
       try {
-        console.log('PDF 文件，提前转换为图片...');
+        logger.info('PDF 文件，提前转换为图片...');
         convertedImagePath = await ocrService.convertPDFToImage(filePath, 1);
-        console.log('PDF 转换完成，图片路径:', convertedImagePath);
+        logger.info('PDF 转换完成，图片路径:', convertedImagePath);
       } catch (convertError) {
-        console.warn('PDF 提前转换失败，将在 fallback 时转换:', convertError.message);
+        logger.warn('PDF 提前转换失败，将在 fallback 时转换:', convertError.message);
         // 转换失败不影响主流程，fallback 时会再次尝试转换
         convertedImagePath = null;
       }
@@ -398,22 +392,22 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
     // 执行OCR识别（根据文件类型选择不同的识别方法）
     let ocrResult;
     try {
-      console.log('开始OCR识别，文件类型:', req.file.mimetype);
-      console.log('文件路径:', filePath);
-      console.log('文件大小:', req.file.size, 'bytes');
+      logger.info('开始OCR识别，文件类型:', req.file.mimetype);
+      logger.info('文件路径:', filePath);
+      logger.info('文件大小:', req.file.size, 'bytes');
       
       if (req.file.mimetype.startsWith('image/')) {
-        console.log('调用 recognizeInvoice 方法...');
+        logger.info('调用 recognizeInvoice 方法...');
         ocrResult = await ocrService.recognizeInvoice(filePath);
       } else if (req.file.mimetype === 'application/pdf') {
-        console.log('调用 recognizePDFInvoice 方法...');
+        logger.info('调用 recognizePDFInvoice 方法...');
         // 传入转换后的图片路径（如果已转换）
         ocrResult = await ocrService.recognizePDFInvoice(filePath, 1, convertedImagePath);
       } else {
         throw new Error('不支持的文件类型');
       }
       
-      console.log('OCR识别完成，结果:', {
+      logger.info('OCR识别完成，结果:', {
         success: ocrResult?.success,
         hasData: !!ocrResult?.invoiceData,
         error: ocrResult?.error,
@@ -426,11 +420,11 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
         throw new Error('OCR识别返回空结果');
       }
     } catch (ocrError) {
-      console.error('========================================');
-      console.error('OCR service error:', ocrError);
-      console.error('Error message:', ocrError.message);
-      console.error('Error stack:', ocrError.stack);
-      console.error('========================================');
+      logger.error('========================================');
+      logger.error('OCR service error:', ocrError);
+      logger.error('Error message:', ocrError.message);
+      logger.error('Error stack:', ocrError.stack);
+      logger.error('========================================');
       
       // 删除临时文件（包括上传的文件和转换后的图片）
       try {
@@ -442,7 +436,7 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
           fs.unlinkSync(convertedImagePath);
         }
       } catch (unlinkError) {
-        console.error('Delete temp file error:', unlinkError);
+        logger.error('Delete temp file error:', unlinkError);
       }
       
       return res.status(500).json({
@@ -457,15 +451,15 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        console.log('OCR识别完成，已删除上传文件:', filePath);
+        logger.info('OCR识别完成，已删除上传文件:', filePath);
       }
       // 删除提前转换的图片文件（如果存在）
       if (convertedImagePath && fs.existsSync(convertedImagePath)) {
         fs.unlinkSync(convertedImagePath);
-        console.log('OCR识别完成，已删除转换后的图片:', convertedImagePath);
+        logger.info('OCR识别完成，已删除转换后的图片:', convertedImagePath);
       }
     } catch (unlinkError) {
-      console.error('删除文件失败:', unlinkError.message);
+      logger.error('删除文件失败:', unlinkError.message);
     }
 
     if (ocrResult && ocrResult.success) {
@@ -485,11 +479,11 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
         }
         };
         
-        console.log('准备返回成功响应，数据大小:', JSON.stringify(responseData).length, 'bytes');
+        logger.info('准备返回成功响应，数据大小:', JSON.stringify(responseData).length, 'bytes');
         res.json(responseData);
       } catch (responseError) {
-        console.error('响应序列化错误:', responseError);
-        console.error('错误堆栈:', responseError.stack);
+        logger.error('响应序列化错误:', responseError);
+        logger.error('错误堆栈:', responseError.stack);
         res.status(500).json({
           success: false,
           message: '响应序列化失败: ' + responseError.message,
@@ -498,7 +492,7 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       }
     } else {
       const errorMessage = ocrResult?.error || 'OCR识别失败，请检查配置或重试';
-      console.log('OCR识别失败，返回错误响应:', errorMessage);
+      logger.info('OCR识别失败，返回错误响应:', errorMessage);
       res.status(500).json({
         success: false,
         message: errorMessage,
@@ -506,18 +500,18 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
       });
     }
   } catch (error) {
-    console.error('========================================');
-    console.error('OCR recognize route error:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    console.error('Request file:', req.file ? {
+    logger.error('========================================');
+    logger.error('OCR recognize route error:', error);
+    logger.error('Error name:', error.name);
+    logger.error('Error message:', error.message);
+    logger.error('Error stack:', error.stack);
+    logger.error('Request file:', req.file ? {
       filename: req.file.filename,
       mimetype: req.file.mimetype,
       size: req.file.size,
       path: req.file.path
     } : 'No file');
-    console.error('========================================');
+    logger.error('========================================');
     
     // 删除临时文件（包括上传的文件和转换后的图片）
     if (req.file && req.file.path) {
@@ -525,15 +519,15 @@ router.post('/recognize-image', protect, upload.single('file'), async (req, res)
         const filePath = path.resolve(__dirname, '..', req.file.path);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
-          console.log('已删除临时文件:', filePath);
+          logger.info('已删除临时文件:', filePath);
         }
         // 删除提前转换的图片文件（如果存在）
         if (convertedImagePath && fs.existsSync(convertedImagePath)) {
           fs.unlinkSync(convertedImagePath);
-          console.log('已删除转换后的图片:', convertedImagePath);
+          logger.info('已删除转换后的图片:', convertedImagePath);
         }
       } catch (unlinkError) {
-        console.error('Delete file error:', unlinkError);
+        logger.error('Delete file error:', unlinkError);
       }
     }
     
@@ -599,7 +593,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
           
           // 验证修复后的字符串是否包含有效的中文字符
           if (/[\u4e00-\u9fa5]/.test(fixed)) {
-            console.log('文件名编码修复:', originalName, '->', fixed);
+            logger.debug('文件名编码修复:', originalName, '->', fixed);
             originalName = fixed;
           }
         } catch (e) {
@@ -620,8 +614,8 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
         }
       }
     } catch (error) {
-      console.error('文件名编码处理失败:', error);
-      console.error('原始文件名:', originalName);
+      logger.error('文件名编码处理失败:', error);
+      logger.error('原始文件名:', originalName);
       // 如果处理失败，使用原文件名
     }
 
@@ -670,7 +664,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
           ? JSON.parse(req.body.items) 
           : req.body.items;
       } catch (e) {
-        console.error('解析项目明细失败:', e);
+        logger.error('解析项目明细失败:', e);
       }
     }
     
@@ -713,7 +707,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
         };
         
         await invoice.save();
-        console.log('✓ 使用前端传递的 OCR 数据，跳过后端 OCR 识别');
+        logger.info('✓ 使用前端传递的 OCR 数据，跳过后端 OCR 识别');
         
         // 重新加载发票以获取最新数据
         const updatedInvoice = await Invoice.findById(invoice._id).populate('uploadedBy', 'name email');
@@ -724,50 +718,50 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
           data: updatedInvoice
         });
       } catch (ocrDataError) {
-        console.error('解析前端 OCR 数据失败:', ocrDataError);
+        logger.error('解析前端 OCR 数据失败:', ocrDataError);
         // 如果解析失败，继续执行后端 OCR 识别
       }
     }
     // 如果前端未进行 OCR 识别，且是图片或PDF文件，自动进行OCR识别
     else if (!skipOcr && (req.file.mimetype.startsWith('image/') || req.file.mimetype === 'application/pdf')) {
-      console.log('========================================');
-      console.log('开始OCR识别，文件类型:', req.file.mimetype);
-      console.log('文件路径:', req.file.path);
-      console.log('文件大小:', req.file.size, 'bytes');
+      logger.info('========================================');
+      logger.info('开始OCR识别，文件类型:', req.file.mimetype);
+      logger.info('文件路径:', req.file.path);
+      logger.info('文件大小:', req.file.size, 'bytes');
       
       // 检查Mistral AI配置
       const config = require('../config');
-      console.log('MISTRAL_API_KEY配置状态:', config.MISTRAL_API_KEY ? `已配置 (${config.MISTRAL_API_KEY.substring(0, 10)}...)` : '未配置');
+      logger.info('MISTRAL_API_KEY配置状态:', config.MISTRAL_API_KEY ? `已配置 (${config.MISTRAL_API_KEY.substring(0, 10)}...)` : '未配置');
       
       // 确保文件路径是绝对路径
-      const filePath = path.isAbsolute(req.file.path) 
+      const filePath = path.isAbsolute(req.file.path)
         ? req.file.path 
         : path.resolve(__dirname, '..', req.file.path);
-      console.log('绝对路径:', filePath);
-      console.log('文件是否存在:', fs.existsSync(filePath) ? '✓' : '✗');
+      logger.info('绝对路径:', filePath);
+      logger.info('文件是否存在:', fs.existsSync(filePath) ? '✓' : '✗');
       
       // 验证文件可读性
       try {
         fs.accessSync(filePath, fs.constants.R_OK);
-        console.log('文件可读性: ✓');
+        logger.info('文件可读性: ✓');
       } catch (accessError) {
-        console.error('文件不可读:', accessError.message);
+        logger.error('文件不可读:', accessError.message);
       }
-      console.log('========================================');
+      logger.info('========================================');
       
       try {
         let ocrResult;
         const startTime = Date.now();
         if (req.file.mimetype.startsWith('image/')) {
-          console.log('调用 ocrService.recognizeInvoice()...');
+          logger.info('调用 ocrService.recognizeInvoice()...');
           ocrResult = await ocrService.recognizeInvoice(filePath);
         } else if (req.file.mimetype === 'application/pdf') {
-          console.log('调用 ocrService.recognizePDFInvoice()...');
+          logger.info('调用 ocrService.recognizePDFInvoice()...');
           ocrResult = await ocrService.recognizePDFInvoice(filePath);
         }
         const duration = Date.now() - startTime;
-        console.log(`OCR识别耗时: ${duration}ms`);
-        console.log('OCR识别结果:', {
+        logger.info(`OCR识别耗时: ${duration}ms`);
+        logger.info('OCR识别结果:', {
           success: ocrResult.success,
           confidence: ocrResult.confidence,
           hasData: !!ocrResult.invoiceData,
@@ -788,11 +782,11 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
           // 如果OCR识别到信息，自动填充（仅在用户未手动填写时）
           if (ocrResult.invoiceData) {
-            console.log('========================================');
-            console.log('开始赋值 OCR 识别数据');
-            console.log('识别到的字段:', Object.keys(ocrResult.invoiceData));
-            console.log('识别数据详情:', JSON.stringify(ocrResult.invoiceData, null, 2));
-            console.log('========================================');
+            logger.info('========================================');
+            logger.info('开始赋值 OCR 识别数据');
+            logger.info('识别到的字段:', Object.keys(ocrResult.invoiceData));
+            logger.debug('识别数据详情:', JSON.stringify(ocrResult.invoiceData, null, 2));
+            logger.info('========================================');
             
             // 辅助函数：检查字符串字段是否有有效值（非空字符串）
             const hasValidStringValue = (value) => {
@@ -830,112 +824,112 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
             // 基本信息
             const ocrInvoiceNumber = ocrResult.invoiceData.invoiceNumber;
             const currentInvoiceNumber = invoice.invoiceNumber;
-            console.log(`[invoiceNumber] OCR值: "${ocrInvoiceNumber}" (类型: ${typeof ocrInvoiceNumber}), 当前值: "${currentInvoiceNumber}"`);
+            logger.debug(`[invoiceNumber] OCR值: "${ocrInvoiceNumber}" (类型: ${typeof ocrInvoiceNumber}), 当前值: "${currentInvoiceNumber}"`);
             if (hasValidStringValue(ocrInvoiceNumber) && (!currentInvoiceNumber || (typeof currentInvoiceNumber === 'string' && currentInvoiceNumber.trim() === ''))) {
               invoice.invoiceNumber = ocrInvoiceNumber.trim();
-              console.log('✓ 赋值 invoiceNumber:', invoice.invoiceNumber);
+              logger.debug('✓ 赋值 invoiceNumber:', invoice.invoiceNumber);
             } else {
-              console.log('✗ 跳过 invoiceNumber - OCR值无效或当前值已存在');
+              logger.debug('✗ 跳过 invoiceNumber - OCR值无效或当前值已存在');
             }
             
             const ocrInvoiceDate = ocrResult.invoiceData.invoiceDate;
             const currentInvoiceDate = invoice.invoiceDate;
-            console.log(`[invoiceDate] OCR值: "${ocrInvoiceDate}" (类型: ${typeof ocrInvoiceDate}), 当前值: ${currentInvoiceDate}`);
+            logger.debug(`[invoiceDate] OCR值: "${ocrInvoiceDate}" (类型: ${typeof ocrInvoiceDate}), 当前值: ${currentInvoiceDate}`);
             if (hasValidDateValue(ocrInvoiceDate) && !currentInvoiceDate) {
               try {
                 invoice.invoiceDate = new Date(ocrInvoiceDate.trim());
                 if (isNaN(invoice.invoiceDate.getTime())) {
-                  console.log('✗ 跳过 invoiceDate - 日期格式无效');
+                  logger.debug('✗ 跳过 invoiceDate - 日期格式无效');
                 } else {
-                  console.log('✓ 赋值 invoiceDate:', invoice.invoiceDate);
+                  logger.debug('✓ 赋值 invoiceDate:', invoice.invoiceDate);
                 }
               } catch (e) {
-                console.log('✗ 跳过 invoiceDate - 日期解析错误:', e.message);
+                logger.debug('✗ 跳过 invoiceDate - 日期解析错误:', e.message);
               }
             } else {
-              console.log('✗ 跳过 invoiceDate - OCR值无效或当前值已存在');
+              logger.debug('✗ 跳过 invoiceDate - OCR值无效或当前值已存在');
             }
             
             const ocrInvoiceType = ocrResult.invoiceData.invoiceType;
             const currentInvoiceType = invoice.invoiceType;
-            console.log(`[invoiceType] OCR值: "${ocrInvoiceType}" (类型: ${typeof ocrInvoiceType}), 当前值: "${currentInvoiceType}"`);
+            logger.debug(`[invoiceType] OCR值: "${ocrInvoiceType}" (类型: ${typeof ocrInvoiceType}), 当前值: "${currentInvoiceType}"`);
             if (hasValidStringValue(ocrInvoiceType) && (!currentInvoiceType || (typeof currentInvoiceType === 'string' && currentInvoiceType.trim() === ''))) {
               invoice.invoiceType = ocrInvoiceType.trim();
-              console.log('✓ 赋值 invoiceType:', invoice.invoiceType);
+              logger.debug('✓ 赋值 invoiceType:', invoice.invoiceType);
             } else {
-              console.log('✗ 跳过 invoiceType - OCR值无效或当前值已存在');
+              logger.debug('✗ 跳过 invoiceType - OCR值无效或当前值已存在');
             }
             
             const ocrAmount = ocrResult.invoiceData.amount;
             const currentAmount = invoice.amount;
-            console.log(`[amount] OCR值: ${ocrAmount} (类型: ${typeof ocrAmount}), 当前值: ${currentAmount}`);
+            logger.debug(`[amount] OCR值: ${ocrAmount} (类型: ${typeof ocrAmount}), 当前值: ${currentAmount}`);
             if (hasValidNumberValue(ocrAmount) && (!currentAmount || currentAmount === 0)) {
               const parsedAmount = typeof ocrAmount === 'string' ? parseFloat(ocrAmount.trim()) : ocrAmount;
               invoice.amount = parsedAmount;
-              console.log('✓ 赋值 amount:', invoice.amount);
+              logger.debug('✓ 赋值 amount:', invoice.amount);
             } else {
-              console.log('✗ 跳过 amount - OCR值无效或当前值已存在');
+              logger.debug('✗ 跳过 amount - OCR值无效或当前值已存在');
             }
             
             const ocrTaxAmount = ocrResult.invoiceData.taxAmount;
             const currentTaxAmount = invoice.taxAmount;
-            console.log(`[taxAmount] OCR值: ${ocrTaxAmount} (类型: ${typeof ocrTaxAmount}), 当前值: ${currentTaxAmount}`);
+            logger.debug(`[taxAmount] OCR值: ${ocrTaxAmount} (类型: ${typeof ocrTaxAmount}), 当前值: ${currentTaxAmount}`);
             // taxAmount 可以为 0（免税情况），所以需要特殊处理
             if (ocrTaxAmount !== undefined && ocrTaxAmount !== null && (currentTaxAmount === undefined || currentTaxAmount === null || currentTaxAmount === 0)) {
               const parsedTaxAmount = typeof ocrTaxAmount === 'string' ? parseFloat(ocrTaxAmount.trim()) : ocrTaxAmount;
               if (!isNaN(parsedTaxAmount)) {
                 invoice.taxAmount = parsedTaxAmount;
-                console.log('✓ 赋值 taxAmount:', invoice.taxAmount);
+                logger.debug('✓ 赋值 taxAmount:', invoice.taxAmount);
               } else {
-                console.log('✗ 跳过 taxAmount - 解析后无效');
+                logger.info('✗ 跳过 taxAmount - 解析后无效');
               }
             } else {
-              console.log('✗ 跳过 taxAmount - OCR值无效或当前值已存在');
+              logger.info('✗ 跳过 taxAmount - OCR值无效或当前值已存在');
             }
             
             const ocrTotalAmount = ocrResult.invoiceData.totalAmount;
             const currentTotalAmount = invoice.totalAmount;
-            console.log(`[totalAmount] OCR值: ${ocrTotalAmount} (类型: ${typeof ocrTotalAmount}), 当前值: ${currentTotalAmount}`);
+            logger.info(`[totalAmount] OCR值: ${ocrTotalAmount} (类型: ${typeof ocrTotalAmount}), 当前值: ${currentTotalAmount}`);
             if (hasValidNumberValue(ocrTotalAmount) && (!currentTotalAmount || currentTotalAmount === 0)) {
               const parsedTotalAmount = typeof ocrTotalAmount === 'string' ? parseFloat(ocrTotalAmount.trim()) : ocrTotalAmount;
               invoice.totalAmount = parsedTotalAmount;
-              console.log('✓ 赋值 totalAmount:', invoice.totalAmount);
+              logger.info('✓ 赋值 totalAmount:', invoice.totalAmount);
             } else {
-              console.log('✗ 跳过 totalAmount - OCR值无效或当前值已存在');
+              logger.info('✗ 跳过 totalAmount - OCR值无效或当前值已存在');
             }
             
             // 销售方（商户）信息
             const ocrVendorName = ocrResult.invoiceData.vendorName;
             const currentVendorName = invoice.vendor?.name;
-            console.log(`[vendorName] OCR值: "${ocrVendorName}" (类型: ${typeof ocrVendorName}), 当前值: "${currentVendorName}"`);
+            logger.info(`[vendorName] OCR值: "${ocrVendorName}" (类型: ${typeof ocrVendorName}), 当前值: "${currentVendorName}"`);
             if (hasValidStringValue(ocrVendorName) && (!currentVendorName || (typeof currentVendorName === 'string' && currentVendorName.trim() === ''))) {
               invoice.vendor = invoice.vendor || {};
               invoice.vendor.name = ocrVendorName.trim();
-              console.log('✓ 赋值 vendor.name:', invoice.vendor.name);
+              logger.info('✓ 赋值 vendor.name:', invoice.vendor.name);
             } else {
-              console.log('✗ 跳过 vendor.name - OCR值无效或当前值已存在');
+              logger.info('✗ 跳过 vendor.name - OCR值无效或当前值已存在');
             }
             
             const ocrVendorTaxId = ocrResult.invoiceData.vendorTaxId;
             const currentVendorTaxId = invoice.vendor?.taxId;
-            console.log(`[vendorTaxId] OCR值: "${ocrVendorTaxId}" (类型: ${typeof ocrVendorTaxId}), 当前值: "${currentVendorTaxId}"`);
+            logger.info(`[vendorTaxId] OCR值: "${ocrVendorTaxId}" (类型: ${typeof ocrVendorTaxId}), 当前值: "${currentVendorTaxId}"`);
             if (hasValidStringValue(ocrVendorTaxId) && (!currentVendorTaxId || (typeof currentVendorTaxId === 'string' && currentVendorTaxId.trim() === ''))) {
               invoice.vendor = invoice.vendor || {};
               invoice.vendor.taxId = ocrVendorTaxId.trim();
-              console.log('✓ 赋值 vendor.taxId:', invoice.vendor.taxId);
+              logger.info('✓ 赋值 vendor.taxId:', invoice.vendor.taxId);
             } else {
-              console.log('✗ 跳过 vendor.taxId - OCR值无效或当前值已存在');
+              logger.info('✗ 跳过 vendor.taxId - OCR值无效或当前值已存在');
             }
             
             const ocrVendorAddress = ocrResult.invoiceData.vendorAddress;
             const currentVendorAddress = invoice.vendor?.address;
-            console.log(`[vendorAddress] OCR值: "${ocrVendorAddress}" (类型: ${typeof ocrVendorAddress}), 当前值: "${currentVendorAddress}"`);
+            logger.info(`[vendorAddress] OCR值: "${ocrVendorAddress}" (类型: ${typeof ocrVendorAddress}), 当前值: "${currentVendorAddress}"`);
             if (hasValidStringValue(ocrVendorAddress) && (!currentVendorAddress || (typeof currentVendorAddress === 'string' && currentVendorAddress.trim() === ''))) {
               invoice.vendor = invoice.vendor || {};
               invoice.vendor.address = ocrVendorAddress.trim();
-              console.log('✓ 赋值 vendor.address:', invoice.vendor.address);
+              logger.info('✓ 赋值 vendor.address:', invoice.vendor.address);
             } else {
-              console.log('✗ 跳过 vendor.address - OCR值无效或当前值已存在');
+              logger.info('✗ 跳过 vendor.address - OCR值无效或当前值已存在');
             }
             
             // 购买方信息
@@ -944,41 +938,41 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
             if (hasValidStringValue(ocrBuyerName) || hasValidStringValue(ocrBuyerTaxId)) {
               invoice.buyer = invoice.buyer || {};
               const currentBuyerName = invoice.buyer.name;
-              console.log(`[buyerName] OCR值: "${ocrBuyerName}" (类型: ${typeof ocrBuyerName}), 当前值: "${currentBuyerName}"`);
+              logger.info(`[buyerName] OCR值: "${ocrBuyerName}" (类型: ${typeof ocrBuyerName}), 当前值: "${currentBuyerName}"`);
               if (hasValidStringValue(ocrBuyerName) && (!currentBuyerName || (typeof currentBuyerName === 'string' && currentBuyerName.trim() === ''))) {
                 invoice.buyer.name = ocrBuyerName.trim();
-                console.log('✓ 赋值 buyer.name:', invoice.buyer.name);
+                logger.info('✓ 赋值 buyer.name:', invoice.buyer.name);
               } else {
-                console.log('✗ 跳过 buyer.name - OCR值无效或当前值已存在');
+                logger.info('✗ 跳过 buyer.name - OCR值无效或当前值已存在');
               }
               
               const currentBuyerTaxId = invoice.buyer.taxId;
-              console.log(`[buyerTaxId] OCR值: "${ocrBuyerTaxId}" (类型: ${typeof ocrBuyerTaxId}), 当前值: "${currentBuyerTaxId}"`);
+              logger.info(`[buyerTaxId] OCR值: "${ocrBuyerTaxId}" (类型: ${typeof ocrBuyerTaxId}), 当前值: "${currentBuyerTaxId}"`);
               if (hasValidStringValue(ocrBuyerTaxId) && (!currentBuyerTaxId || (typeof currentBuyerTaxId === 'string' && currentBuyerTaxId.trim() === ''))) {
                 invoice.buyer.taxId = ocrBuyerTaxId.trim();
-                console.log('✓ 赋值 buyer.taxId:', invoice.buyer.taxId);
+                logger.info('✓ 赋值 buyer.taxId:', invoice.buyer.taxId);
               } else {
-                console.log('✗ 跳过 buyer.taxId - OCR值无效或当前值已存在');
+                logger.info('✗ 跳过 buyer.taxId - OCR值无效或当前值已存在');
               }
             }
             
             // 发票项目明细
             if (ocrResult.invoiceData.items && Array.isArray(ocrResult.invoiceData.items) && ocrResult.invoiceData.items.length > 0) {
               invoice.items = ocrResult.invoiceData.items;
-              console.log('✓ 赋值 items，数量:', invoice.items.length);
+              logger.info('✓ 赋值 items，数量:', invoice.items.length);
             } else {
-              console.log('✗ 跳过 items - OCR值无效或为空');
+              logger.info('✗ 跳过 items - OCR值无效或为空');
             }
             
             // 开票人
             const ocrIssuer = ocrResult.invoiceData.issuer;
             const currentIssuer = invoice.issuer;
-            console.log(`[issuer] OCR值: "${ocrIssuer}" (类型: ${typeof ocrIssuer}), 当前值: "${currentIssuer}"`);
+            logger.info(`[issuer] OCR值: "${ocrIssuer}" (类型: ${typeof ocrIssuer}), 当前值: "${currentIssuer}"`);
             if (hasValidStringValue(ocrIssuer) && (!currentIssuer || (typeof currentIssuer === 'string' && currentIssuer.trim() === ''))) {
               invoice.issuer = ocrIssuer.trim();
-              console.log('✓ 赋值 issuer:', invoice.issuer);
+              logger.info('✓ 赋值 issuer:', invoice.issuer);
             } else {
-              console.log('✗ 跳过 issuer - OCR值无效或当前值已存在');
+              logger.info('✗ 跳过 issuer - OCR值无效或当前值已存在');
             }
             
             // 出行人信息
@@ -991,58 +985,58 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
               invoice.traveler = invoice.traveler || {};
               
               const currentTravelerName = invoice.traveler.name;
-              console.log(`[travelerName] OCR值: "${ocrTravelerName}" (类型: ${typeof ocrTravelerName}), 当前值: "${currentTravelerName}"`);
+              logger.info(`[travelerName] OCR值: "${ocrTravelerName}" (类型: ${typeof ocrTravelerName}), 当前值: "${currentTravelerName}"`);
               if (hasValidStringValue(ocrTravelerName) && (!currentTravelerName || (typeof currentTravelerName === 'string' && currentTravelerName.trim() === ''))) {
                 invoice.traveler.name = ocrTravelerName.trim();
-                console.log('✓ 赋值 traveler.name:', invoice.traveler.name);
+                logger.info('✓ 赋值 traveler.name:', invoice.traveler.name);
               }
               
               const currentTravelerIdNumber = invoice.traveler.idNumber;
-              console.log(`[travelerIdNumber] OCR值: "${ocrTravelerIdNumber}" (类型: ${typeof ocrTravelerIdNumber}), 当前值: "${currentTravelerIdNumber}"`);
+              logger.info(`[travelerIdNumber] OCR值: "${ocrTravelerIdNumber}" (类型: ${typeof ocrTravelerIdNumber}), 当前值: "${currentTravelerIdNumber}"`);
               if (hasValidStringValue(ocrTravelerIdNumber) && (!currentTravelerIdNumber || (typeof currentTravelerIdNumber === 'string' && currentTravelerIdNumber.trim() === ''))) {
                 invoice.traveler.idNumber = ocrTravelerIdNumber.trim();
-                console.log('✓ 赋值 traveler.idNumber:', invoice.traveler.idNumber);
+                logger.info('✓ 赋值 traveler.idNumber:', invoice.traveler.idNumber);
               }
               
               const currentDeparture = invoice.traveler.departure;
-              console.log(`[departure] OCR值: "${ocrDeparture}" (类型: ${typeof ocrDeparture}), 当前值: "${currentDeparture}"`);
+              logger.info(`[departure] OCR值: "${ocrDeparture}" (类型: ${typeof ocrDeparture}), 当前值: "${currentDeparture}"`);
               if (hasValidStringValue(ocrDeparture) && (!currentDeparture || (typeof currentDeparture === 'string' && currentDeparture.trim() === ''))) {
                 invoice.traveler.departure = ocrDeparture.trim();
-                console.log('✓ 赋值 traveler.departure:', invoice.traveler.departure);
+                logger.info('✓ 赋值 traveler.departure:', invoice.traveler.departure);
               }
               
               const currentDestination = invoice.traveler.destination;
-              console.log(`[destination] OCR值: "${ocrDestination}" (类型: ${typeof ocrDestination}), 当前值: "${currentDestination}"`);
+              logger.info(`[destination] OCR值: "${ocrDestination}" (类型: ${typeof ocrDestination}), 当前值: "${currentDestination}"`);
               if (hasValidStringValue(ocrDestination) && (!currentDestination || (typeof currentDestination === 'string' && currentDestination.trim() === ''))) {
                 invoice.traveler.destination = ocrDestination.trim();
-                console.log('✓ 赋值 traveler.destination:', invoice.traveler.destination);
+                logger.info('✓ 赋值 traveler.destination:', invoice.traveler.destination);
               }
             }
             
             // 价税合计（大写）
             const ocrTotalAmountInWords = ocrResult.invoiceData.totalAmountInWords;
             const currentTotalAmountInWords = invoice.totalAmountInWords;
-            console.log(`[totalAmountInWords] OCR值: "${ocrTotalAmountInWords}" (类型: ${typeof ocrTotalAmountInWords}), 当前值: "${currentTotalAmountInWords}"`);
+            logger.info(`[totalAmountInWords] OCR值: "${ocrTotalAmountInWords}" (类型: ${typeof ocrTotalAmountInWords}), 当前值: "${currentTotalAmountInWords}"`);
             if (hasValidStringValue(ocrTotalAmountInWords) && (!currentTotalAmountInWords || (typeof currentTotalAmountInWords === 'string' && currentTotalAmountInWords.trim() === ''))) {
               invoice.totalAmountInWords = ocrTotalAmountInWords.trim();
-              console.log('✓ 赋值 totalAmountInWords:', invoice.totalAmountInWords);
+              logger.info('✓ 赋值 totalAmountInWords:', invoice.totalAmountInWords);
             } else {
-              console.log('✗ 跳过 totalAmountInWords - OCR值无效或当前值已存在');
+              logger.info('✗ 跳过 totalAmountInWords - OCR值无效或当前值已存在');
             }
             
-            console.log('========================================');
-            console.log('OCR 数据赋值完成');
-            console.log('========================================');
+            logger.info('========================================');
+            logger.info('OCR 数据赋值完成');
+            logger.info('========================================');
           } else {
-            console.log('✗ OCR识别成功但 invoiceData 为空或未定义');
+            logger.info('✗ OCR识别成功但 invoiceData 为空或未定义');
           }
 
           await invoice.save();
-          console.log('OCR数据已保存到发票');
-          console.log('识别的字段:', Object.keys(ocrResult.invoiceData || {}).join(', '));
+          logger.info('OCR数据已保存到发票');
+          logger.info('识别的字段:', Object.keys(ocrResult.invoiceData || {}).join(', '));
         } else {
-          console.error('OCR识别失败:', ocrResult.error);
-          console.error('OCR失败详情:', JSON.stringify(ocrResult, null, 2));
+          logger.error('OCR识别失败:', ocrResult.error);
+          logger.error('OCR失败详情:', JSON.stringify(ocrResult, null, 2));
           // 即使OCR失败，也记录尝试信息
           invoice.ocrData = {
             extracted: false,
@@ -1052,11 +1046,11 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
           await invoice.save();
         }
       } catch (ocrError) {
-        console.error('========================================');
-        console.error('OCR识别异常:', ocrError.message);
-        console.error('OCR错误类型:', ocrError.constructor.name);
-        console.error('OCR错误堆栈:', ocrError.stack);
-        console.error('========================================');
+        logger.error('========================================');
+        logger.error('OCR识别异常:', ocrError.message);
+        logger.error('OCR错误类型:', ocrError.constructor.name);
+        logger.error('OCR错误堆栈:', ocrError.stack);
+        logger.error('========================================');
         // OCR失败不影响发票上传，但记录错误信息
         try {
           invoice.ocrData = {
@@ -1066,7 +1060,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
           };
           await invoice.save();
         } catch (saveError) {
-          console.error('保存OCR错误信息失败:', saveError.message);
+          logger.error('保存OCR错误信息失败:', saveError.message);
         }
       }
       
@@ -1074,13 +1068,13 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       try {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
-          console.log('OCR识别完成，已删除上传文件:', filePath);
+          logger.info('OCR识别完成，已删除上传文件:', filePath);
         }
       } catch (unlinkError) {
-        console.error('删除上传文件失败:', unlinkError.message);
+        logger.error('删除上传文件失败:', unlinkError.message);
       }
     } else {
-      console.log('非图片文件，跳过OCR识别，文件类型:', req.file.mimetype);
+      logger.info('非图片文件，跳过OCR识别，文件类型:', req.file.mimetype);
       
       // 非图片文件也删除上传的文件（识别完成后）
       try {
@@ -1089,10 +1083,10 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
           : path.resolve(__dirname, '..', req.file.path);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
-          console.log('已删除上传文件:', filePath);
+          logger.info('已删除上传文件:', filePath);
         }
       } catch (unlinkError) {
-        console.error('删除上传文件失败:', unlinkError.message);
+        logger.error('删除上传文件失败:', unlinkError.message);
       }
     }
 
@@ -1106,14 +1100,14 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       data: updatedInvoice
     });
   } catch (error) {
-    console.error('Upload invoice error:', error);
+    logger.error('Upload invoice error:', error);
     
     // 如果创建失败，删除已上传的文件
     if (req.file && req.file.path) {
       try {
         fs.unlinkSync(req.file.path);
       } catch (unlinkError) {
-        console.error('Delete file error:', unlinkError);
+        logger.error('Delete file error:', unlinkError);
       }
     }
 
@@ -1138,10 +1132,8 @@ router.put('/:id', protect, upload.single('file'), async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用发票数据权限检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
-    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, invoice, 'invoice');
     
     if (!hasAccess) {
       return res.status(403).json({
@@ -1159,7 +1151,7 @@ router.put('/:id', protect, upload.single('file'), async (req, res) => {
           try {
             fs.unlinkSync(oldFilePath);
           } catch (err) {
-            console.error('删除旧文件失败:', err);
+            logger.error('删除旧文件失败:', err);
           }
         }
       }
@@ -1192,7 +1184,7 @@ router.put('/:id', protect, upload.single('file'), async (req, res) => {
           } catch (e) {}
         }
       } catch (error) {
-        console.error('文件名编码处理失败:', error);
+        logger.error('文件名编码处理失败:', error);
       }
 
       invoice.file = {
@@ -1210,28 +1202,28 @@ router.put('/:id', protect, upload.single('file'), async (req, res) => {
       try {
         bodyData.vendor = JSON.parse(req.body.vendor);
       } catch (e) {
-        console.error('解析vendor失败:', e);
+        logger.error('解析vendor失败:', e);
       }
     }
     if (typeof req.body.buyer === 'string') {
       try {
         bodyData.buyer = JSON.parse(req.body.buyer);
       } catch (e) {
-        console.error('解析buyer失败:', e);
+        logger.error('解析buyer失败:', e);
       }
     }
     if (typeof req.body.items === 'string') {
       try {
         bodyData.items = JSON.parse(req.body.items);
       } catch (e) {
-        console.error('解析items失败:', e);
+        logger.error('解析items失败:', e);
       }
     }
     if (typeof req.body.tags === 'string') {
       try {
         bodyData.tags = JSON.parse(req.body.tags);
       } catch (e) {
-        console.error('解析tags失败:', e);
+        logger.error('解析tags失败:', e);
       }
     }
 
@@ -1319,7 +1311,7 @@ router.put('/:id', protect, upload.single('file'), async (req, res) => {
       data: invoice
     });
   } catch (error) {
-    console.error('Update invoice error:', error);
+    logger.error('Update invoice error:', error);
     res.status(500).json({
       success: false,
       message: '更新发票失败: ' + error.message
@@ -1341,10 +1333,8 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用发票数据权限检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
-    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, invoice, 'invoice');
     
     if (!hasAccess) {
       return res.status(403).json({
@@ -1361,7 +1351,7 @@ router.delete('/:id', protect, async (req, res) => {
           fs.unlinkSync(filePath);
         }
       } catch (fileError) {
-        console.error('Delete file error:', fileError);
+        logger.error('Delete file error:', fileError);
       }
     }
 
@@ -1372,7 +1362,7 @@ router.delete('/:id', protect, async (req, res) => {
       message: '发票删除成功'
     });
   } catch (error) {
-    console.error('Delete invoice error:', error);
+    logger.error('Delete invoice error:', error);
     res.status(500).json({
       success: false,
       message: '删除发票失败'
@@ -1397,10 +1387,8 @@ router.post('/:id/link', protect, async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用发票数据权限检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
-    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, invoice, 'invoice');
     
     if (!hasAccess) {
       return res.status(403).json({
@@ -1444,7 +1432,7 @@ router.post('/:id/link', protect, async (req, res) => {
       data: invoice
     });
   } catch (error) {
-    console.error('Link invoice error:', error);
+    logger.error('Link invoice error:', error);
     res.status(500).json({
       success: false,
       message: '关联失败'
@@ -1466,10 +1454,8 @@ router.post('/:id/recognize', protect, async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用发票数据权限检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
-    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, invoice, 'invoice');
     
     if (!hasAccess) {
       return res.status(403).json({
@@ -1522,7 +1508,7 @@ router.post('/:id/recognize', protect, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('OCR recognize error:', error);
+    logger.error('OCR recognize error:', error);
     res.status(500).json({
       success: false,
       message: 'OCR识别失败: ' + error.message
@@ -1544,10 +1530,8 @@ router.post('/:id/apply-ocr', protect, async (req, res) => {
       });
     }
 
-    // 数据权限检查：使用发票数据权限检查
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    const { checkInvoiceAccess } = require('../utils/invoiceDataScope');
-    const hasAccess = await checkInvoiceAccess(req.user, invoice, role);
+    // 数据权限检查：使用统一的数据权限检查函数
+    const hasAccess = await checkResourceAccess(req, invoice, 'invoice');
     
     if (!hasAccess) {
       return res.status(403).json({
@@ -1597,7 +1581,7 @@ router.post('/:id/apply-ocr', protect, async (req, res) => {
       data: invoice
     });
   } catch (error) {
-    console.error('Apply OCR error:', error);
+    logger.error('Apply OCR error:', error);
     res.status(500).json({
       success: false,
       message: '应用OCR数据失败: ' + error.message

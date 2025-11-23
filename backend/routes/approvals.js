@@ -5,6 +5,7 @@ const Expense = require('../models/Expense');
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const notificationService = require('../services/notificationService');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -53,7 +54,7 @@ router.get('/', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get approvals error:', error);
+    logger.error('Get approvals error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -166,7 +167,7 @@ router.put('/travel/:id', protect, async (req, res) => {
         }
       }
     } catch (notifyError) {
-      console.error('Failed to send approval notification:', notifyError);
+      logger.error('Failed to send approval notification:', notifyError);
       // 通知失败不影响审批流程
     }
 
@@ -175,7 +176,7 @@ router.put('/travel/:id', protect, async (req, res) => {
       data: travel
     });
   } catch (error) {
-    console.error('Approve travel error:', error);
+    logger.error('Approve travel error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -289,7 +290,7 @@ router.put('/expense/:id', protect, async (req, res) => {
         }
       }
     } catch (notifyError) {
-      console.error('Failed to send approval notification:', notifyError);
+      logger.error('Failed to send approval notification:', notifyError);
       // 通知失败不影响审批流程
     }
 
@@ -298,7 +299,7 @@ router.put('/expense/:id', protect, async (req, res) => {
       data: expense
     });
   } catch (error) {
-    console.error('Approve expense error:', error);
+    logger.error('Approve expense error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -360,10 +361,10 @@ router.get('/history', protect, async (req, res) => {
       // 这是正常行为，前端需要处理 null 值
     });
 
-    console.log('=== Approval History API ===');
-    console.log('Approver ID:', approverId);
-    console.log('Travel history count:', travelHistory.length);
-    console.log('Expense history count:', expenseHistory.length);
+    logger.info('=== Approval History API ===');
+    logger.info('Approver ID:', approverId);
+    logger.info('Travel history count:', travelHistory.length);
+    logger.info('Expense history count:', expenseHistory.length);
 
     res.json({
       success: true,
@@ -373,7 +374,7 @@ router.get('/history', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get approval history error:', error);
+    logger.error('Get approval history error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -388,10 +389,10 @@ router.get('/statistics', protect, async (req, res) => {
   try {
     const { startDate, endDate, type } = req.query;
 
-    console.log('=== Approval Statistics API ===');
-    console.log('Query params:', { startDate, endDate, type });
+    logger.info('=== Approval Statistics API ===');
+    logger.info('Query params:', { startDate, endDate, type });
     const currentDate = new Date();
-    console.log('Current date:', currentDate.toISOString());
+    logger.info('Current date:', currentDate.toISOString());
 
     // 构建日期查询条件（UTC时间）
     const dateMatch = {};
@@ -399,27 +400,27 @@ router.get('/statistics', protect, async (req, res) => {
     if (startDate) {
       const startDateObj = new Date(startDate + 'T00:00:00.000Z');
       dateMatch.$gte = startDateObj;
-      console.log('Start date match:', startDateObj.toISOString());
+      logger.debug('Start date match:', startDateObj.toISOString());
       hasDateFilter = true;
       
       // 检查日期范围是否合理（未来日期可能是系统时间错误）
       if (startDateObj > currentDate) {
-        console.warn('WARNING: Start date is in the future! This may indicate a system time issue.');
+        logger.warn('WARNING: Start date is in the future! This may indicate a system time issue.');
       }
     }
     if (endDate) {
       const endDateObj = new Date(endDate + 'T23:59:59.999Z');
       dateMatch.$lte = endDateObj;
-      console.log('End date match:', endDateObj.toISOString());
+      logger.debug('End date match:', endDateObj.toISOString());
       hasDateFilter = true;
       
       // 检查日期范围是否合理
       if (endDateObj > currentDate) {
-        console.warn('WARNING: End date is in the future! This may indicate a system time issue.');
+        logger.warn('WARNING: End date is in the future! This may indicate a system time issue.');
       }
     }
-    console.log('Date match object:', dateMatch);
-    console.log('Has date filter:', hasDateFilter);
+    logger.debug('Date match object:', dateMatch);
+    logger.debug('Has date filter:', hasDateFilter);
 
     // 查询差旅统计数据
     // 按申请的整体状态统计，而不是审批节点数量
@@ -436,7 +437,7 @@ router.get('/statistics', protect, async (req, res) => {
       
       // 如果有日期条件，添加日期匹配
       if (Object.keys(dateMatch).length > 0) {
-        console.log('Adding date match to travel pipeline:', dateMatch);
+        logger.debug('Adding date match to travel pipeline:', dateMatch);
         pipeline.push({ $match: { createdAt: dateMatch } });
       }
       
@@ -476,7 +477,7 @@ router.get('/statistics', protect, async (req, res) => {
 
       const stats = await Travel.aggregate(pipeline);
       
-      console.log('Travel stats pipeline result:', JSON.stringify(stats, null, 2));
+      logger.debug('Travel stats pipeline result:', JSON.stringify(stats, null, 2));
       
       const result = {
         pending: 0,      // submitted状态（流程未完成）
@@ -501,11 +502,11 @@ router.get('/statistics', protect, async (req, res) => {
         // 所有状态的申请都计入总数和总金额
         result.total += stat.count;
         result.totalAmount += stat.totalAmount || 0;
-        console.log(`Travel stat: status=${stat._id}, count=${stat.count}, totalAmount=${stat.totalAmount || 0}`);
+        logger.debug(`Travel stat: status=${stat._id}, count=${stat.count}, totalAmount=${stat.totalAmount || 0}`);
       });
       
-      console.log('Travel stats result:', result);
-      console.log('Travel avgAmount calculation:', {
+      logger.debug('Travel stats result:', result);
+      logger.debug('Travel avgAmount calculation:', {
         totalAmount: result.totalAmount,
         total: result.total,
         avgAmount: result.total > 0 ? result.totalAmount / result.total : 0
@@ -548,7 +549,7 @@ router.get('/statistics', protect, async (req, res) => {
         result.approvalRate = 0;
       }
 
-      console.log('Travel final result:', {
+      logger.debug('Travel final result:', {
         ...result,
         avgAmount: result.avgAmount,
         avgAmountFormatted: result.avgAmount.toFixed(2)
@@ -611,7 +612,7 @@ router.get('/statistics', protect, async (req, res) => {
 
       const stats = await Expense.aggregate(pipeline);
       
-      console.log('Expense stats pipeline result:', JSON.stringify(stats, null, 2));
+      logger.debug('Expense stats pipeline result:', JSON.stringify(stats, null, 2));
       
       const result = {
         pending: 0,      // submitted状态（流程未完成）
@@ -636,11 +637,11 @@ router.get('/statistics', protect, async (req, res) => {
         // 所有状态的申请都计入总数和总金额
         result.total += stat.count;
         result.totalAmount += stat.totalAmount || 0;
-        console.log(`Expense stat: status=${stat._id}, count=${stat.count}, totalAmount=${stat.totalAmount || 0}`);
+        logger.debug(`Expense stat: status=${stat._id}, count=${stat.count}, totalAmount=${stat.totalAmount || 0}`);
       });
       
-      console.log('Expense stats result:', result);
-      console.log('Expense avgAmount calculation:', {
+      logger.debug('Expense stats result:', result);
+      logger.debug('Expense avgAmount calculation:', {
         totalAmount: result.totalAmount,
         total: result.total,
         avgAmount: result.total > 0 ? result.totalAmount / result.total : 0
@@ -683,7 +684,7 @@ router.get('/statistics', protect, async (req, res) => {
         result.approvalRate = 0;
       }
 
-      console.log('Expense final result:', {
+      logger.debug('Expense final result:', {
         ...result,
         avgAmount: result.avgAmount,
         avgAmountFormatted: result.avgAmount.toFixed(2)
@@ -713,7 +714,7 @@ router.get('/statistics', protect, async (req, res) => {
       data: results
     });
   } catch (error) {
-    console.error('Get approval statistics error:', error);
+    logger.error('Get approval statistics error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -923,7 +924,7 @@ router.get('/approver-workload', protect, async (req, res) => {
       data: workload
     });
   } catch (error) {
-    console.error('Get approver workload error:', error);
+    logger.error('Get approver workload error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -939,8 +940,8 @@ router.get('/trend', protect, async (req, res) => {
   try {
     const { startDate, endDate, type } = req.query;
 
-    console.log('=== Approval Trend API ===');
-    console.log('Query params:', { startDate, endDate, type });
+    logger.info('=== Approval Trend API ===');
+    logger.info('Query params:', { startDate, endDate, type });
 
     // 构建日期查询条件（UTC时间）
     const dateMatch = {};
@@ -1031,13 +1032,13 @@ router.get('/trend', protect, async (req, res) => {
 
     if (!type || type === 'travel' || type === 'all') {
       const travelTrend = await getTravelTrend();
-      console.log('Travel trend data:', travelTrend);
+      logger.debug('Travel trend data:', travelTrend);
       trendData = [...trendData, ...travelTrend.map(item => ({ ...item, type: 'travel' }))];
     }
 
     if (!type || type === 'expense' || type === 'all') {
       const expenseTrend = await getExpenseTrend();
-      console.log('Expense trend data:', expenseTrend);
+      logger.debug('Expense trend data:', expenseTrend);
       trendData = [...trendData, ...expenseTrend.map(item => ({ ...item, type: 'expense' }))];
     }
 
@@ -1067,14 +1068,14 @@ router.get('/trend', protect, async (req, res) => {
     });
 
     const result = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
-    console.log('Trend result:', result);
+    logger.debug('Trend result:', result);
 
     res.json({
       success: true,
       data: result
     });
   } catch (error) {
-    console.error('Get approval trend error:', error);
+    logger.error('Get approval trend error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -1179,7 +1180,7 @@ router.get('/travel-statistics/:employeeId', protect, async (req, res) => {
       data: result
     });
   } catch (error) {
-    console.error('Get travel statistics error:', error);
+    logger.error('Get travel statistics error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
