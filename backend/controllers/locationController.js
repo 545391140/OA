@@ -98,8 +98,10 @@ function buildTextSearchQuery(searchTerm) {
  * 生成正则表达式搜索查询条件（降级方案）
  * 支持：中文名称（name）、英文名称（enName）、拼音（pinyin）、代码（code）
  * 支持拼写容错（如 beijning -> beijing）
+ * @param {string} searchTerm - 搜索关键词
+ * @param {string} searchPriority - 搜索优先级，'enName_pinyin' 表示优先查询 enName 和 pinyin
  */
-function buildRegexSearchQuery(searchTerm) {
+function buildRegexSearchQuery(searchTerm, searchPriority = null) {
   if (!searchTerm || typeof searchTerm !== 'string') {
     return null;
   }
@@ -117,35 +119,71 @@ function buildRegexSearchQuery(searchTerm) {
   
   const searchConditions = [];
   
-  // 1. 精确匹配（最高优先级）- 优先查询 name、enName、pinyin 字段
-  searchConditions.push(
-    { name: { $regex: `^${escapedTrimmed}$`, $options: 'i' } },
-    { enName: { $regex: `^${escapedTrimmed}$`, $options: 'i' } },
-    { pinyin: { $regex: `^${escapedLower}$`, $options: 'i' } },
-    { code: { $regex: `^${escapedLower}$`, $options: 'i' } }
-  );
+  // 如果指定了优先查询 enName 和 pinyin，调整查询顺序
+  const prioritizeEnNamePinyin = searchPriority === 'enName_pinyin';
   
-  // 2. 前缀匹配（高优先级）- 优先查询 name、enName、pinyin 字段
-  searchConditions.push(
-    { name: { $regex: `^${escapedTrimmed}`, $options: 'i' } },
-    { enName: { $regex: `^${escapedTrimmed}`, $options: 'i' } },
-    { pinyin: { $regex: `^${escapedLower}`, $options: 'i' } },
-    { code: { $regex: `^${escapedLower}`, $options: 'i' } }
-  );
-  
-  // 3. 包含匹配（中等优先级）- 优先查询 name、enName、pinyin 字段
-  searchConditions.push(
-    { name: { $regex: escapedTrimmed, $options: 'i' } },
-    { enName: { $regex: escapedTrimmed, $options: 'i' } },
-    { pinyin: { $regex: escapedLower, $options: 'i' } },
-    { code: { $regex: escapedLower, $options: 'i' } },
-    { city: { $regex: escapedTrimmed, $options: 'i' } },
-    { province: { $regex: escapedTrimmed, $options: 'i' } },
-    { district: { $regex: escapedTrimmed, $options: 'i' } },
-    { county: { $regex: escapedTrimmed, $options: 'i' } },
-    { country: { $regex: escapedTrimmed, $options: 'i' } },
-    { countryCode: { $regex: escapedLower, $options: 'i' } }
-  );
+  if (prioritizeEnNamePinyin) {
+    // 1. 精确匹配（最高优先级）- 优先查询 enName、pinyin 字段
+    searchConditions.push(
+      { enName: { $regex: `^${escapedTrimmed}$`, $options: 'i' } },
+      { pinyin: { $regex: `^${escapedLower}$`, $options: 'i' } },
+      { name: { $regex: `^${escapedTrimmed}$`, $options: 'i' } },
+      { code: { $regex: `^${escapedLower}$`, $options: 'i' } }
+    );
+    
+    // 2. 前缀匹配（高优先级）- 优先查询 enName、pinyin 字段
+    searchConditions.push(
+      { enName: { $regex: `^${escapedTrimmed}`, $options: 'i' } },
+      { pinyin: { $regex: `^${escapedLower}`, $options: 'i' } },
+      { name: { $regex: `^${escapedTrimmed}`, $options: 'i' } },
+      { code: { $regex: `^${escapedLower}`, $options: 'i' } }
+    );
+    
+    // 3. 包含匹配（中等优先级）- 优先查询 enName、pinyin 字段
+    searchConditions.push(
+      { enName: { $regex: escapedTrimmed, $options: 'i' } },
+      { pinyin: { $regex: escapedLower, $options: 'i' } },
+      { name: { $regex: escapedTrimmed, $options: 'i' } },
+      { code: { $regex: escapedLower, $options: 'i' } },
+      { city: { $regex: escapedTrimmed, $options: 'i' } },
+      { province: { $regex: escapedTrimmed, $options: 'i' } },
+      { district: { $regex: escapedTrimmed, $options: 'i' } },
+      { county: { $regex: escapedTrimmed, $options: 'i' } },
+      { country: { $regex: escapedTrimmed, $options: 'i' } },
+      { countryCode: { $regex: escapedLower, $options: 'i' } }
+    );
+  } else {
+    // 默认顺序：name、enName、pinyin、code
+    // 1. 精确匹配（最高优先级）- 优先查询 name、enName、pinyin 字段
+    searchConditions.push(
+      { name: { $regex: `^${escapedTrimmed}$`, $options: 'i' } },
+      { enName: { $regex: `^${escapedTrimmed}$`, $options: 'i' } },
+      { pinyin: { $regex: `^${escapedLower}$`, $options: 'i' } },
+      { code: { $regex: `^${escapedLower}$`, $options: 'i' } }
+    );
+    
+    // 2. 前缀匹配（高优先级）- 优先查询 name、enName、pinyin 字段
+    searchConditions.push(
+      { name: { $regex: `^${escapedTrimmed}`, $options: 'i' } },
+      { enName: { $regex: `^${escapedTrimmed}`, $options: 'i' } },
+      { pinyin: { $regex: `^${escapedLower}`, $options: 'i' } },
+      { code: { $regex: `^${escapedLower}`, $options: 'i' } }
+    );
+    
+    // 3. 包含匹配（中等优先级）- 优先查询 name、enName、pinyin 字段
+    searchConditions.push(
+      { name: { $regex: escapedTrimmed, $options: 'i' } },
+      { enName: { $regex: escapedTrimmed, $options: 'i' } },
+      { pinyin: { $regex: escapedLower, $options: 'i' } },
+      { code: { $regex: escapedLower, $options: 'i' } },
+      { city: { $regex: escapedTrimmed, $options: 'i' } },
+      { province: { $regex: escapedTrimmed, $options: 'i' } },
+      { district: { $regex: escapedTrimmed, $options: 'i' } },
+      { county: { $regex: escapedTrimmed, $options: 'i' } },
+      { country: { $regex: escapedTrimmed, $options: 'i' } },
+      { countryCode: { $regex: escapedLower, $options: 'i' } }
+    );
+  }
   
   // 4. 拼写容错匹配（低优先级，仅对英文和拼音）
   // 对于长度 >= 3 的英文搜索词，生成模糊匹配模式
@@ -178,7 +216,8 @@ exports.getLocations = async (req, res) => {
       country,
       page = 1,
       limit = 20,
-      includeChildren = false // 新增：是否包含子项（机场、火车站）
+      includeChildren = false, // 新增：是否包含子项（机场、火车站）
+      searchPriority = null // 新增：搜索优先级，'enName_pinyin' 表示优先查询 enName 和 pinyin
     } = req.query;
     
     const query = {};
@@ -210,8 +249,9 @@ exports.getLocations = async (req, res) => {
         logger.info('[LocationController] 使用文本索引搜索');
       } else {
         // 降级使用正则表达式搜索（当文本索引无法使用时）
-        const regexSearchQuery = buildRegexSearchQuery(searchTrimmed);
+        const regexSearchQuery = buildRegexSearchQuery(searchTrimmed, searchPriority);
         logger.info(`[LocationController] 正则表达式查询条件数量: ${regexSearchQuery?.$or?.length || 0}`);
+        logger.info(`[LocationController] 搜索优先级: ${searchPriority || 'default'}`);
         
         if (regexSearchQuery && regexSearchQuery.$or && regexSearchQuery.$or.length > 0) {
           // 合并搜索条件到query中

@@ -681,12 +681,21 @@ const RegionSelector = ({
     autocompleteAbortControllerRef.current = abortController;
 
     try {
+      // 检测输入类型：中文、拼音或英语
+      const hasChinese = /[\u4e00-\u9fa5]/.test(trimmedKeyword);
+      const isPinyinOrEnglish = !hasChinese && /^[a-zA-Z\s]+$/.test(trimmedKeyword);
+      
       const params = {
         status: 'active',
         search: trimmedKeyword,
         page: 1,
         limit: 8 // 自动补全只返回8条建议
       };
+
+      // 如果输入是拼音或英语，添加参数告诉后端优先查询 enName 和 pinyin
+      if (isPinyinOrEnglish) {
+        params.searchPriority = 'enName_pinyin'; // 告诉后端优先查询 enName 和 pinyin
+      }
 
       // 根据交通工具类型添加过滤
       if (transportationType) {
@@ -799,16 +808,27 @@ const RegionSelector = ({
     setErrorMessage('');
     
     try {
+      // 检测输入类型：中文、拼音或英语
+      const trimmedKeyword = keyword.trim();
+      const hasChinese = /[\u4e00-\u9fa5]/.test(trimmedKeyword);
+      const isPinyinOrEnglish = !hasChinese && /^[a-zA-Z\s]+$/.test(trimmedKeyword);
+      
       // 优化：根据交通工具类型智能决定是否使用 includeChildren
       // 构建查询参数
       const params = {
         status: 'active',
-        search: keyword.trim(),
+        search: trimmedKeyword,
         page: 1,
         limit: 50, // 限制返回50条结果
       };
       
+      // 如果输入是拼音或英语，添加参数告诉后端优先查询 enName 和 pinyin
+      if (isPinyinOrEnglish) {
+        params.searchPriority = 'enName_pinyin'; // 告诉后端优先查询 enName 和 pinyin
+      }
+      
       console.log('[RegionSelector] 初始查询参数:', params);
+      console.log('[RegionSelector] 输入类型检测 - 中文:', hasChinese, '拼音/英语:', isPinyinOrEnglish);
 
       // 根据交通工具类型添加过滤和优化 includeChildren
       if (transportationType) {
@@ -1945,18 +1965,68 @@ const RegionSelector = ({
     const independentItems = [];
 
     // 分离城市和其子项（机场/火车站/汽车站）
+    // 第一步：先收集所有城市，用于后续判断哪些是子城市
+    const allCities = new Map(); // 城市ID -> 城市对象
+    const cityNameMap = new Map(); // 城市名称 -> 城市对象（用于判断子城市）
+    
     locations.forEach(location => {
-      // 标准化location的ID
-      const locationId = location.id || location._id || location._id?.toString();
-      
-      // 如果是城市类型
       if (location.type === 'city') {
+        const locationId = location.id || location._id || location._id?.toString();
         if (locationId) {
-          parentMap.set(locationId.toString(), location);
+          allCities.set(locationId.toString(), location);
+          // 建立城市名称到城市的映射（用于判断子城市）
+          if (location.name) {
+            const cityName = location.name.trim();
+            if (!cityNameMap.has(cityName)) {
+              cityNameMap.set(cityName, []);
+            }
+            cityNameMap.get(cityName).push(location);
+          }
         }
-      } 
+      }
+    });
+    
+    // 第二步：识别父城市和子城市
+    // 子城市的判断标准：city字段等于其他城市的name
+    const parentCityIds = new Set(); // 父城市ID集合
+    const childCityIds = new Set(); // 子城市ID集合
+    
+    allCities.forEach((city, cityId) => {
+      // 如果城市的city字段等于其他城市的name，说明它是子城市
+      if (city.city && city.city !== city.name) {
+        const parentCityName = city.city.trim();
+        const parentCities = cityNameMap.get(parentCityName);
+        if (parentCities && parentCities.length > 0) {
+          // 找到父城市，标记当前城市为子城市
+          childCityIds.add(cityId);
+          // 标记父城市
+          parentCities.forEach(parentCity => {
+            const parentId = parentCity.id || parentCity._id || parentCity._id?.toString();
+            if (parentId) {
+              parentCityIds.add(parentId.toString());
+            }
+          });
+        } else {
+          // 没有找到父城市，可能是独立城市
+          parentCityIds.add(cityId);
+        }
+      } else {
+        // city字段为空或等于name，说明是父城市
+        parentCityIds.add(cityId);
+      }
+    });
+    
+    // 第三步：只保留父城市，过滤掉子城市
+    allCities.forEach((city, cityId) => {
+      if (parentCityIds.has(cityId) && !childCityIds.has(cityId)) {
+        parentMap.set(cityId, city);
+      }
+    });
+    
+    // 第四步：处理机场、火车站、汽车站
+    locations.forEach(location => {
       // 如果是机场、火车站或汽车站，且有parentId
-      else if ((location.type === 'airport' || location.type === 'station' || location.type === 'bus') && location.parentId) {
+      if ((location.type === 'airport' || location.type === 'station' || location.type === 'bus') && location.parentId) {
         // 标准化parentId
         let parentId;
         if (typeof location.parentId === 'object') {
@@ -1967,14 +2037,20 @@ const RegionSelector = ({
         
         if (parentId) {
           const parentIdStr = parentId.toString();
-          if (!childrenMap.has(parentIdStr)) {
-            childrenMap.set(parentIdStr, []);
+          // 只添加父城市的子项，不添加子城市的子项
+          if (parentCityIds.has(parentIdStr) && !childCityIds.has(parentIdStr)) {
+            if (!childrenMap.has(parentIdStr)) {
+              childrenMap.set(parentIdStr, []);
+            }
+            childrenMap.get(parentIdStr).push(location);
+          } else {
+            // 如果父城市不在结果中，作为独立项目显示
+            independentItems.push(location);
           }
-          childrenMap.get(parentIdStr).push(location);
         }
       } 
       // 独立项目（没有parentId的机场/火车站/汽车站）
-      else {
+      else if (location.type !== 'city') {
         independentItems.push(location);
       }
     });

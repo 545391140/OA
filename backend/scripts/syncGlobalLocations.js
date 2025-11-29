@@ -592,8 +592,8 @@ async function saveOrUpdateLocation(locationData, cityMap) {
           return existingLocation;
         } else {
           // 数据已存在且正确，跳过写入（不更新，不创建）
-          stats.skippedLocations++;
-          return existingLocation;
+      stats.skippedLocations++;
+      return existingLocation;
         }
       }
     } else {
