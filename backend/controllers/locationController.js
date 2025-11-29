@@ -165,7 +165,7 @@ exports.getLocations = async (req, res) => {
           query.$or = searchQuery.$or;
         }
       }
-      useTextSearch = false;
+        useTextSearch = false;
     }
     
     // country筛选需要在搜索条件之后添加，确保与$or条件正确组合

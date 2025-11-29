@@ -1609,6 +1609,7 @@
     "totalTravelRequests": "إجمالي طلبات السفر",
     "totalExpenses": "إجمالي المصروفات",
     "approvedRequests": "الطلبات الموافق عليها",
+    "countryCount": "عدد البلدان المغطاة",
     "vsLastMonth": "مقارنة بالشهر الماضي",
     "amount": "المبلغ",
     "percentage": "النسبة المئوية",
@@ -1617,7 +1618,9 @@
     "noRecentExpenses": "لا توجد سجلات مصروفات حديثة",
     "noDestination": "لا توجد وجهة",
     "loadError": "فشل تحميل بيانات لوحة التحكم",
-    "refreshSuccess": "تم تحديث البيانات"
+    "refreshSuccess": "تم تحديث البيانات",
+    "countryTravelDistribution": "توزيع السفر حسب البلد",
+    "travels": "رحلة"
   },
   "reports": {
     "title": "التقارير",

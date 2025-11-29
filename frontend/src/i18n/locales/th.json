@@ -1612,6 +1612,7 @@
     "totalTravelRequests": "คำขอการเดินทางทั้งหมด",
     "totalExpenses": "ค่าใช้จ่ายทั้งหมด",
     "approvedRequests": "คำขอที่อนุมัติแล้ว",
+    "countryCount": "จำนวนประเทศที่ครอบคลุม",
     "vsLastMonth": "เทียบกับเดือนที่แล้ว",
     "amount": "จำนวนเงิน",
     "percentage": "เปอร์เซ็นต์",
@@ -1620,7 +1621,9 @@
     "noRecentExpenses": "ไม่มีบันทึกค่าใช้จ่ายล่าสุด",
     "noDestination": "ไม่มีจุดหมายปลายทาง",
     "loadError": "โหลดข้อมูลแดชบอร์ดล้มเหลว",
-    "refreshSuccess": "รีเฟรชข้อมูลแล้ว"
+    "refreshSuccess": "รีเฟรชข้อมูลแล้ว",
+    "countryTravelDistribution": "การกระจายการเดินทางตามประเทศ",
+    "travels": "ครั้ง"
   },
   "reports": {
     "title": "รายงาน",

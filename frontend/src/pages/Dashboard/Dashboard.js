@@ -28,7 +28,8 @@ import {
   AttachMoney as MoneyIcon,
   Schedule as ScheduleIcon,
   Refresh as RefreshIcon,
-  ErrorOutline as ErrorIcon
+  ErrorOutline as ErrorIcon,
+  Public as PublicIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -40,6 +41,7 @@ import dayjs from 'dayjs';
 // 懒加载图表组件
 const MonthlySpendingChart = lazy(() => import('./MonthlySpendingChart'));
 const CategoryBreakdownChart = lazy(() => import('./CategoryBreakdownChart'));
+const CountryTravelChart = lazy(() => import('./CountryTravelChart'));
 
 const Dashboard = () => {
   const { t, i18n } = useTranslation();
@@ -54,13 +56,15 @@ const Dashboard = () => {
       monthlySpending: 0,
       approvedRequests: 0,
       spendingTrend: 0,
-      totalExpenses: 0
+      totalExpenses: 0,
+      countryCount: 0
     },
     recentTravels: [],
     recentExpenses: [],
     monthlySpending: [],
     categoryBreakdown: [],
-    pendingTasks: []
+    pendingTasks: [],
+    countryTravelData: []
   });
 
   const [loading, setLoading] = useState(true);
@@ -87,7 +91,8 @@ const Dashboard = () => {
           recentExpenses: data.recentExpenses || [],
           monthlySpending: data.monthlySpending || [],
           categoryBreakdown: data.categoryBreakdown || [],
-          pendingTasks: data.pendingTasks || []
+          pendingTasks: data.pendingTasks || [],
+          countryTravelData: data.countryTravelData || []
         });
       }
     } catch (error) {
@@ -238,7 +243,7 @@ const Dashboard = () => {
 
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <StatCard
             title={t('dashboard.totalTravelRequests')}
             value={dashboardData.stats.totalTravelRequests}
@@ -246,7 +251,7 @@ const Dashboard = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <StatCard
             title={t('dashboard.totalExpenses')}
             value={dashboardData.stats.totalExpenses}
@@ -254,7 +259,7 @@ const Dashboard = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <StatCard
             title={t('dashboard.monthlySpending')}
             value={formatCurrency(dashboardData.stats.monthlySpending)}
@@ -264,7 +269,7 @@ const Dashboard = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <StatCard
             title={t('dashboard.pendingApprovals')}
             value={dashboardData.stats.pendingApprovals}
@@ -272,7 +277,7 @@ const Dashboard = () => {
             loading={loading}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <StatCard
             title={t('dashboard.approvedRequests')}
             value={dashboardData.stats.approvedRequests}
@@ -280,11 +285,19 @@ const Dashboard = () => {
             loading={loading}
           />
         </Grid>
+        <Grid item xs={12} sm={6} md={2}>
+          <StatCard
+            title={t('dashboard.countryCount')}
+            value={dashboardData.stats.countryCount}
+            icon={<PublicIcon />}
+            loading={loading}
+          />
+        </Grid>
       </Grid>
 
       <Grid container spacing={3}>
         {/* Monthly Spending Chart */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, height: 400 }}>
             <Typography variant="h6" gutterBottom>
               {t('dashboard.monthlyTrend')}
@@ -308,29 +321,59 @@ const Dashboard = () => {
           </Paper>
         </Grid>
 
-        {/* Category Breakdown */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" gutterBottom>
-              {t('dashboard.categoryBreakdown')}
-            </Typography>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
-                <Skeleton variant="circular" width={200} height={200} />
-              </Box>
-            ) : dashboardData.categoryBreakdown.length === 0 ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 300 }}>
-                <ErrorIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="body2" color="text.secondary">
-                  {t('dashboard.noData')}
+        {/* Second Column - Two Panels in a Row */}
+        <Grid item xs={12} md={6}>
+          <Grid container spacing={2}>
+            {/* Category Breakdown */}
+            <Grid item xs={6}>
+              <Paper sx={{ p: 2, height: 400 }}>
+                <Typography variant="h6" gutterBottom sx={{ fontSize: '0.875rem', mb: 1 }}>
+                  {t('dashboard.categoryBreakdown')}
                 </Typography>
-              </Box>
-            ) : (
-            <Suspense fallback={<Skeleton variant="circular" width={200} height={200} sx={{ mx: 'auto', mt: 5 }} />}>
-              <CategoryBreakdownChart data={dashboardData.categoryBreakdown} formatCurrency={formatCurrency} />
-            </Suspense>
-            )}
-          </Paper>
+                {loading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 340 }}>
+                    <Skeleton variant="circular" width={120} height={120} />
+                  </Box>
+                ) : dashboardData.categoryBreakdown.length === 0 ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 340 }}>
+                    <ErrorIcon sx={{ fontSize: 36, color: 'text.secondary', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {t('dashboard.noData')}
+                    </Typography>
+                  </Box>
+                ) : (
+                <Suspense fallback={<Skeleton variant="circular" width={120} height={120} sx={{ mx: 'auto', mt: 1 }} />}>
+                  <CategoryBreakdownChart data={dashboardData.categoryBreakdown} formatCurrency={formatCurrency} />
+                </Suspense>
+                )}
+              </Paper>
+            </Grid>
+
+            {/* Country Travel Distribution */}
+            <Grid item xs={6}>
+              <Paper sx={{ p: 2, height: 400 }}>
+                <Typography variant="h6" gutterBottom sx={{ fontSize: '0.875rem', mb: 1 }}>
+                  {t('dashboard.countryTravelDistribution')}
+                </Typography>
+                {loading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 340 }}>
+                    <Skeleton variant="circular" width={120} height={120} />
+                  </Box>
+                ) : dashboardData.countryTravelData.length === 0 ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 340 }}>
+                    <ErrorIcon sx={{ fontSize: 36, color: 'text.secondary', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {t('dashboard.noData')}
+                    </Typography>
+                  </Box>
+                ) : (
+                <Suspense fallback={<Skeleton variant="circular" width={120} height={120} sx={{ mx: 'auto', mt: 1 }} />}>
+                  <CountryTravelChart data={dashboardData.countryTravelData} />
+                </Suspense>
+                )}
+              </Paper>
+            </Grid>
+          </Grid>
         </Grid>
 
         {/* Recent Travel Requests */}

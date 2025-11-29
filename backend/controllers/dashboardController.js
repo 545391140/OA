@@ -2,8 +2,97 @@ const mongoose = require('mongoose');
 const Travel = require('../models/Travel');
 const Expense = require('../models/Expense');
 const User = require('../models/User');
+const Location = require('../models/Location');
 const { buildDataScopeQuery } = require('../utils/dataScope');
 const Role = require('../models/Role');
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C', '#8DD1E1', '#D084D0'];
+
+// 国家名称中英文映射表（作为后备方案，当数据库中没有enName时使用）
+const COUNTRY_NAME_MAP = {
+  '中国': 'China',
+  '美国': 'United States',
+  '日本': 'Japan',
+  '韩国': 'South Korea',
+  '英国': 'United Kingdom',
+  '法国': 'France',
+  '德国': 'Germany',
+  '意大利': 'Italy',
+  '西班牙': 'Spain',
+  '加拿大': 'Canada',
+  '澳大利亚': 'Australia',
+  '新加坡': 'Singapore',
+  '马来西亚': 'Malaysia',
+  '泰国': 'Thailand',
+  '印度': 'India',
+  '俄罗斯': 'Russia',
+  '巴西': 'Brazil',
+  '墨西哥': 'Mexico',
+  '阿根廷': 'Argentina',
+  '智利': 'Chile',
+  '南非': 'South Africa',
+  '埃及': 'Egypt',
+  '土耳其': 'Turkey',
+  '沙特阿拉伯': 'Saudi Arabia',
+  '阿联酋': 'United Arab Emirates',
+  '以色列': 'Israel',
+  '印度尼西亚': 'Indonesia',
+  '菲律宾': 'Philippines',
+  '越南': 'Vietnam',
+  '新西兰': 'New Zealand',
+  '荷兰': 'Netherlands',
+  '比利时': 'Belgium',
+  '瑞士': 'Switzerland',
+  '奥地利': 'Austria',
+  '瑞典': 'Sweden',
+  '挪威': 'Norway',
+  '丹麦': 'Denmark',
+  '芬兰': 'Finland',
+  '波兰': 'Poland',
+  '葡萄牙': 'Portugal',
+  '希腊': 'Greece',
+  '爱尔兰': 'Ireland',
+  '捷克': 'Czech Republic',
+  '匈牙利': 'Hungary',
+  '罗马尼亚': 'Romania',
+  '保加利亚': 'Bulgaria',
+  '克罗地亚': 'Croatia',
+  '乌克兰': 'Ukraine',
+  '白俄罗斯': 'Belarus',
+  '哈萨克斯坦': 'Kazakhstan',
+  '乌兹别克斯坦': 'Uzbekistan',
+  '伊朗': 'Iran',
+  '伊拉克': 'Iraq',
+  '阿富汗': 'Afghanistan',
+  '巴基斯坦': 'Pakistan',
+  '孟加拉国': 'Bangladesh',
+  '斯里兰卡': 'Sri Lanka',
+  '缅甸': 'Myanmar',
+  '柬埔寨': 'Cambodia',
+  '老挝': 'Laos',
+  '文莱': 'Brunei',
+  '蒙古': 'Mongolia',
+  '朝鲜': 'North Korea',
+  '尼泊尔': 'Nepal',
+  '不丹': 'Bhutan',
+  '马尔代夫': 'Maldives',
+  '也门': 'Yemen',
+  '阿曼': 'Oman',
+  '卡塔尔': 'Qatar',
+  '科威特': 'Kuwait',
+  '巴林': 'Bahrain',
+  '约旦': 'Jordan',
+  '黎巴嫩': 'Lebanon',
+  '叙利亚': 'Syria',
+  '巴勒斯坦': 'Palestine',
+  '乌拉圭': 'Uruguay',
+  '巴拉圭': 'Paraguay',
+  '玻利维亚': 'Bolivia',
+  '秘鲁': 'Peru',
+  '厄瓜多尔': 'Ecuador',
+  '哥伦比亚': 'Colombia',
+  '委内瑞拉': 'Venezuela',
+  '冈比亚': 'Gambia'
+};
 
 /**
  * @desc    获取Dashboard统计数据
@@ -527,7 +616,8 @@ exports.getDashboardData = async (req, res) => {
       getRecentTravelsData(travelQuery, 5),
       getRecentExpensesData(expenseQuery, 5),
       getMonthlySpendingAndCategoryData(expenseQueryForAggregate, 6, 'month'),
-      getPendingTasksData(userId, userRole, travelQuery)
+      getPendingTasksData(userId, userRole, travelQuery),
+      getCountryTravelData(travelQuery)
     ]);
 
     // 处理结果，如果失败则使用默认值
@@ -538,12 +628,13 @@ exports.getDashboardData = async (req, res) => {
     const monthlySpending = monthlyAndCategoryData.monthlySpending || [];
     const categoryBreakdown = monthlyAndCategoryData.categoryBreakdown || [];
     const pendingTasks = results[4].status === 'fulfilled' ? results[4].value : [];
+    const countryTravelData = results[5].status === 'fulfilled' ? results[5].value : [];
 
     // 记录任何失败的结果（仅在开发环境）
     if (process.env.NODE_ENV === 'development') {
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
-          const functionNames = ['getDashboardStatsData', 'getRecentTravelsData', 'getRecentExpensesData', 'getMonthlySpendingData', 'getCategoryBreakdownData', 'getPendingTasksData'];
+          const functionNames = ['getDashboardStatsData', 'getRecentTravelsData', 'getRecentExpensesData', 'getMonthlySpendingData', 'getCategoryBreakdownData', 'getPendingTasksData', 'getCountryTravelData'];
           console.error(`[DASHBOARD_DATA] ❌ ${functionNames[index]} failed:`, result.reason);
         }
       });
@@ -557,7 +648,8 @@ exports.getDashboardData = async (req, res) => {
         recentExpenses: recentExpenses || [],
         monthlySpending: monthlySpending || [],
         categoryBreakdown: categoryBreakdown || [],
-        pendingTasks: pendingTasks || []
+        pendingTasks: pendingTasks || [],
+        countryTravelData: countryTravelData || []
       }
     };
     
@@ -604,7 +696,8 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
       approvedRequests: 0,
       monthlySpending: 0,
       spendingTrend: 0,
-      totalExpenses: 0
+      totalExpenses: 0,
+      countryCount: 0
     };
   }
   
@@ -617,7 +710,8 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
     pendingApprovals,
     approvedRequests,
     monthlySpendingData,
-    totalExpenses
+    totalExpenses,
+    countryCount
   ] = await Promise.all([
     Travel.countDocuments(travelQuery),
     Travel.countDocuments({ ...travelQuery, status: 'submitted' }),
@@ -647,7 +741,9 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
         }
       }
     ]),
-    Expense.countDocuments(expenseQuery)
+    Expense.countDocuments(expenseQuery),
+    // 查询地理位置覆盖的国家数量（不重复的国家）
+    Location.distinct('country', { status: 'active', country: { $exists: true, $ne: null, $ne: '' } })
   ]);
 
   // 从合并的聚合结果中分离当前月和上月的数据
@@ -663,7 +759,8 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
     approvedRequests,
     monthlySpending: currentMonthTotal,
     spendingTrend: parseFloat(spendingTrend),
-    totalExpenses
+    totalExpenses,
+    countryCount: countryCount ? countryCount.length : 0
   };
 }
 
@@ -927,5 +1024,241 @@ async function getPendingTasksData(userId, userRole, travelQuery = null) {
   }
 
   return tasks;
+}
+
+/**
+ * 获取按国家统计的出差数量占比数据
+ */
+async function getCountryTravelData(travelQuery) {
+  try {
+    // 查询所有符合条件的出差记录
+    const travels = await Travel.find(travelQuery)
+      .select('destination outbound inbound multiCityRoutes')
+      .lean();
+
+    // 收集所有目的地ID（ObjectId类型）
+    const destinationIds = new Set();
+    const stringDestinations = [];
+
+    travels.forEach(travel => {
+      // 处理主目的地
+      if (travel.destination) {
+        if (mongoose.Types.ObjectId.isValid(travel.destination)) {
+          destinationIds.add(new mongoose.Types.ObjectId(travel.destination));
+        } else if (typeof travel.destination === 'string') {
+          stringDestinations.push(travel.destination);
+        }
+      }
+
+      // 处理去程目的地
+      if (travel.outbound && travel.outbound.destination) {
+        if (mongoose.Types.ObjectId.isValid(travel.outbound.destination)) {
+          destinationIds.add(new mongoose.Types.ObjectId(travel.outbound.destination));
+        } else if (typeof travel.outbound.destination === 'string') {
+          stringDestinations.push(travel.outbound.destination);
+        }
+      }
+
+      // 处理返程目的地
+      if (travel.inbound && travel.inbound.destination) {
+        if (mongoose.Types.ObjectId.isValid(travel.inbound.destination)) {
+          destinationIds.add(new mongoose.Types.ObjectId(travel.inbound.destination));
+        } else if (typeof travel.inbound.destination === 'string') {
+          stringDestinations.push(travel.inbound.destination);
+        }
+      }
+
+      // 处理多程目的地
+      if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
+        travel.multiCityRoutes.forEach(route => {
+          if (route.destination) {
+            if (mongoose.Types.ObjectId.isValid(route.destination)) {
+              destinationIds.add(new mongoose.Types.ObjectId(route.destination));
+            } else if (typeof route.destination === 'string') {
+              stringDestinations.push(route.destination);
+            }
+          }
+        });
+      }
+    });
+
+    // 统计每个国家的出差数量
+    const countryCountMap = new Map();
+
+    // 查询 Location 对象获取国家信息
+    if (destinationIds.size > 0) {
+      const locations = await Location.find({
+        _id: { $in: Array.from(destinationIds) }
+      }).select('country').lean();
+
+      // 创建 ID 到国家的映射
+      const idToCountryMap = new Map();
+      locations.forEach(loc => {
+        if (loc.country) {
+          idToCountryMap.set(loc._id.toString(), loc.country);
+        }
+      });
+
+      // 统计每个国家的数量
+      travels.forEach(travel => {
+        const destinations = [];
+        
+        if (travel.destination && mongoose.Types.ObjectId.isValid(travel.destination)) {
+          destinations.push(travel.destination.toString());
+        }
+        if (travel.outbound && travel.outbound.destination && mongoose.Types.ObjectId.isValid(travel.outbound.destination)) {
+          destinations.push(travel.outbound.destination.toString());
+        }
+        if (travel.inbound && travel.inbound.destination && mongoose.Types.ObjectId.isValid(travel.inbound.destination)) {
+          destinations.push(travel.inbound.destination.toString());
+        }
+        if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
+          travel.multiCityRoutes.forEach(route => {
+            if (route.destination && mongoose.Types.ObjectId.isValid(route.destination)) {
+              destinations.push(route.destination.toString());
+            }
+          });
+        }
+
+        destinations.forEach(destId => {
+          const country = idToCountryMap.get(destId);
+          if (country) {
+            countryCountMap.set(country, (countryCountMap.get(country) || 0) + 1);
+          }
+        });
+      });
+    }
+
+    // 处理字符串类型的目的地（尝试从字符串中提取国家或查询 Location）
+    if (stringDestinations.length > 0) {
+      // 尝试通过名称匹配 Location
+      const uniqueStringDests = [...new Set(stringDestinations)];
+      const locationMatches = await Location.find({
+        $or: uniqueStringDests.map(dest => ({
+          name: { $regex: dest.split(',')[0].trim(), $options: 'i' }
+        }))
+      }).select('country name').lean();
+
+      // 创建名称到国家的映射
+      const nameToCountryMap = new Map();
+      locationMatches.forEach(loc => {
+        if (loc.country) {
+          nameToCountryMap.set(loc.name.toLowerCase(), loc.country);
+        }
+      });
+
+      // 统计字符串目的地的国家
+      travels.forEach(travel => {
+        const stringDests = [];
+        
+        if (travel.destination && typeof travel.destination === 'string') {
+          stringDests.push(travel.destination);
+        }
+        if (travel.outbound && travel.outbound.destination && typeof travel.outbound.destination === 'string') {
+          stringDests.push(travel.outbound.destination);
+        }
+        if (travel.inbound && travel.inbound.destination && typeof travel.inbound.destination === 'string') {
+          stringDests.push(travel.inbound.destination);
+        }
+        if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
+          travel.multiCityRoutes.forEach(route => {
+            if (route.destination && typeof route.destination === 'string') {
+              stringDests.push(route.destination);
+            }
+          });
+        }
+
+        stringDests.forEach(dest => {
+          // 尝试从字符串中提取国家（格式：城市, 国家）
+          const parts = dest.split(',').map(s => s.trim());
+          if (parts.length >= 2) {
+            const country = parts[parts.length - 1];
+            countryCountMap.set(country, (countryCountMap.get(country) || 0) + 1);
+          } else {
+            // 尝试通过名称匹配
+            const cityName = parts[0].toLowerCase();
+            const country = nameToCountryMap.get(cityName);
+            if (country) {
+              countryCountMap.set(country, (countryCountMap.get(country) || 0) + 1);
+            }
+          }
+        });
+      });
+    }
+
+    if (countryCountMap.size === 0) {
+      return [];
+    }
+
+    // 查询国家记录以获取英文名称
+    const countryNames = Array.from(countryCountMap.keys());
+    const countryLocations = await Location.find({
+      type: 'country',
+      name: { $in: countryNames }
+    }).select('name enName').lean();
+
+    // 创建国家名称到英文名称的映射
+    const countryToEnNameMap = new Map();
+    countryLocations.forEach(loc => {
+      if (loc.name) {
+        // 如果有英文名称则使用，否则使用中文名称作为后备
+        countryToEnNameMap.set(loc.name, loc.enName || loc.name);
+      }
+    });
+    
+    // 如果某些国家没有找到对应的记录，尝试从其他类型的Location记录中查找
+    const missingCountries = countryNames.filter(name => !countryToEnNameMap.has(name));
+    if (missingCountries.length > 0) {
+      // 尝试从所有Location记录中查找这些国家的英文名称
+      const allLocations = await Location.find({
+        country: { $in: missingCountries }
+      }).select('country enName').lean();
+      
+      // 按国家分组，取第一个有enName的记录
+      const countryEnNameMap = new Map();
+      allLocations.forEach(loc => {
+        if (loc.country && loc.enName && !countryEnNameMap.has(loc.country)) {
+          countryEnNameMap.set(loc.country, loc.enName);
+        }
+      });
+      
+      // 补充缺失的国家英文名称
+      missingCountries.forEach(country => {
+        if (countryEnNameMap.has(country)) {
+          countryToEnNameMap.set(country, countryEnNameMap.get(country));
+        } else {
+          // 如果仍然找不到，使用中文名称作为后备
+          countryToEnNameMap.set(country, country);
+        }
+      });
+    }
+
+    // 计算总数
+    const total = Array.from(countryCountMap.values()).reduce((sum, count) => sum + count, 0);
+
+    // 转换为图表数据格式
+    const countryData = Array.from(countryCountMap.entries())
+      .map(([country, count], index) => {
+        // 优先使用数据库中的英文名称，其次使用映射表，最后使用中文名称
+        let enName = countryToEnNameMap.get(country);
+        if (!enName || enName === country) {
+          enName = COUNTRY_NAME_MAP[country] || country;
+        }
+        return {
+          name: country,
+          enName: enName,
+          value: Math.round((count / total) * 100 * 100) / 100, // 保留两位小数
+          count: count,
+          color: COLORS[index % COLORS.length]
+        };
+      })
+      .sort((a, b) => b.count - a.count) // 按数量降序排序
+      .slice(0, 10); // 只取前10个国家
+
+    return countryData;
+  } catch (error) {
+    console.error('[COUNTRY_TRAVEL_DATA] Error:', error);
+    return [];
+  }
 }
 

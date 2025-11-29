@@ -1612,6 +1612,7 @@
     "totalTravelRequests": "Tổng Yêu cầu Công tác",
     "totalExpenses": "Tổng Chi phí",
     "approvedRequests": "Yêu cầu Đã Phê duyệt",
+    "countryCount": "Số Quốc gia Được Bao phủ",
     "vsLastMonth": "so với Tháng trước",
     "amount": "Số tiền",
     "percentage": "Phần trăm",
@@ -1620,7 +1621,9 @@
     "noRecentExpenses": "Không có bản ghi chi phí gần đây",
     "noDestination": "Không có điểm đến",
     "loadError": "Không thể tải dữ liệu bảng điều khiển",
-    "refreshSuccess": "Đã làm mới dữ liệu"
+    "refreshSuccess": "Đã làm mới dữ liệu",
+    "countryTravelDistribution": "Phân bố Công tác theo Quốc gia",
+    "travels": "lần"
   },
   "reports": {
     "title": "Báo cáo",

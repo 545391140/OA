@@ -34,7 +34,8 @@ import {
   Grid,
   Menu,
   TablePagination,
-  Pagination
+  Pagination,
+  Autocomplete
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -415,16 +416,14 @@ const LocationManagement = () => {
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
+        {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" sx={{ 
-            background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            fontWeight: 700
-          }}>
-            {t('location.management.title')}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <CountryIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+            <Typography variant="h4" fontWeight={600}>
+              {t('location.management.title')}
+            </Typography>
+          </Box>
           {canEdit && (
             <Button
               variant="contained"
@@ -502,24 +501,41 @@ const LocationManagement = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>{t('location.management.country')}</InputLabel>
-                <Select
-                  value={countryFilter}
-                  label={t('location.management.country')}
-                  onChange={(e) => {
-                    setCountryFilter(e.target.value);
-                    setPage(0); // 改变筛选时重置到第一页
-                  }}
-                >
-                  <MenuItem value="all">{t('location.management.all')}</MenuItem>
-                  {countryOptions.map((country) => (
-                    <MenuItem key={country} value={country}>
-                      {country}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                fullWidth
+                options={['all', ...countryOptions]}
+                value={countryFilter}
+                onChange={(event, newValue) => {
+                  setCountryFilter(newValue || 'all');
+                  setPage(0); // 改变筛选时重置到第一页
+                }}
+                getOptionLabel={(option) => {
+                  if (option === 'all') {
+                    return t('location.management.all');
+                  }
+                  return option;
+                }}
+                isOptionEqualToValue={(option, value) => option === value}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={t('location.management.country')}
+                    placeholder={t('location.management.country')}
+                  />
+                )}
+                filterOptions={(options, { inputValue }) => {
+                  if (!inputValue) {
+                    return options;
+                  }
+                  const searchTerm = inputValue.toLowerCase();
+                  return options.filter((option) => {
+                    if (option === 'all') {
+                      return t('location.management.all').toLowerCase().includes(searchTerm);
+                    }
+                    return option.toLowerCase().includes(searchTerm);
+                  });
+                }}
+              />
             </Grid>
             <Grid item xs={12} md={3}>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'nowrap' }}>

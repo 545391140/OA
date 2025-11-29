@@ -1467,6 +1467,7 @@
     "totalTravelRequests": "총 출장 신청",
     "totalExpenses": "총 비용 신청",
     "approvedRequests": "승인된 신청",
+    "countryCount": "커버 국가 수",
     "vsLastMonth": "전월 대비",
     "amount": "금액",
     "percentage": "백분율",
@@ -1475,7 +1476,9 @@
     "noRecentExpenses": "최근 비용 기록이 없습니다",
     "noDestination": "목적지 미기재",
     "loadError": "대시보드 데이터 로드 실패",
-    "refreshSuccess": "데이터가 새로고침되었습니다"
+    "refreshSuccess": "데이터가 새로고침되었습니다",
+    "countryTravelDistribution": "국가별 출장 분포",
+    "travels": "회"
   },
   "reports": {
     "title": "보고서",

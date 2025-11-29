@@ -1467,6 +1467,7 @@
     "totalTravelRequests": "総出張申請数",
     "totalExpenses": "総経費申請数",
     "approvedRequests": "承認済み申請",
+    "countryCount": "カバー国数",
     "vsLastMonth": "前月比",
     "amount": "金額",
     "percentage": "パーセンテージ",
@@ -1475,7 +1476,9 @@
     "noRecentExpenses": "最近の経費記録がありません",
     "noDestination": "目的地未記入",
     "loadError": "ダッシュボードデータの読み込みに失敗しました",
-    "refreshSuccess": "データが更新されました"
+    "refreshSuccess": "データが更新されました",
+    "countryTravelDistribution": "国別出張分布",
+    "travels": "回"
   },
   "reports": {
     "title": "レポート",

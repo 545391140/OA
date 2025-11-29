@@ -1615,6 +1615,7 @@
     "totalTravelRequests": "总差旅申请",
     "totalExpenses": "总费用申请",
     "approvedRequests": "已批准申请",
+    "countryCount": "覆盖国家数",
     "vsLastMonth": "相比上月",
     "amount": "金额",
     "percentage": "百分比",
@@ -1623,7 +1624,9 @@
     "noRecentExpenses": "暂无最近的费用记录",
     "noDestination": "未填写目的地",
     "loadError": "加载Dashboard数据失败",
-    "refreshSuccess": "数据已刷新"
+    "refreshSuccess": "数据已刷新",
+    "countryTravelDistribution": "按国家出差分布",
+    "travels": "次"
   },
   "reports": {
     "title": "报告",

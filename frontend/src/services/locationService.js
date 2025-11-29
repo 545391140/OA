@@ -390,27 +390,27 @@ export const getAllCountries = async () => {
     
     if (response.data && response.data.success) {
       const countries = response.data.data || [];
-      
-      // 标准化数据格式
-      const standardizedCountries = countries.map(country => ({
-        id: country.countryId?.toString(),
-        name: country.name,
-        city: country.name,
-        country: country.name,
-        code: country.code,
-        type: 'country',
-        enName: country.enName,
-        continentId: country.continentId,
-        coordinates: { latitude: 0, longitude: 0 },
-        timezone: 'UTC',
-        status: 'active',
-      }));
+    
+    // 标准化数据格式
+    const standardizedCountries = countries.map(country => ({
+      id: country.countryId?.toString(),
+      name: country.name,
+      city: country.name,
+      country: country.name,
+      code: country.code,
+      type: 'country',
+      enName: country.enName,
+      continentId: country.continentId,
+      coordinates: { latitude: 0, longitude: 0 },
+      timezone: 'UTC',
+      status: 'active',
+    }));
 
-      // 缓存数据
-      setCachedData(CACHE_CONFIG.COUNTRIES_KEY, standardizedCountries);
-      console.log(`国家数据获取成功: ${standardizedCountries.length}条`);
-      
-      return standardizedCountries;
+    // 缓存数据
+    setCachedData(CACHE_CONFIG.COUNTRIES_KEY, standardizedCountries);
+    console.log(`国家数据获取成功: ${standardizedCountries.length}条`);
+    
+    return standardizedCountries;
     } else {
       throw new Error(response.data?.message || '获取国家数据失败');
     }
@@ -558,7 +558,7 @@ export const getGlobalPOIInfo = async (options = {}) => {
     }
 
     console.log(`全球POI数据获取完成: 共 ${allLocations.length} 条数据`);
-    
+
     // 缓存全球数据
     setCachedData(globalCacheKey, allLocations);
     

@@ -6,7 +6,7 @@ const CategoryBreakdownChart = ({ data, formatCurrency }) => {
   const { t } = useTranslation();
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={340}>
       <PieChart>
         <Pie
           data={data}
@@ -20,7 +20,7 @@ const CategoryBreakdownChart = ({ data, formatCurrency }) => {
             const displayName = translatedName !== categoryKey ? translatedName : name;
             return `${displayName} ${value}%`;
           }}
-          outerRadius={80}
+          outerRadius={90}
           fill="#8884d8"
           dataKey="value"
         >
