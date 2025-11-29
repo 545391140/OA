@@ -51,7 +51,9 @@ exports.getLocations = async (req, res) => {
           { district: { $regex: searchTrimmed, $options: 'i' } },
           { county: { $regex: searchTrimmed, $options: 'i' } },
           { country: { $regex: searchTrimmed, $options: 'i' } },
-          { countryCode: { $regex: searchTrimmed, $options: 'i' } }
+          { countryCode: { $regex: searchTrimmed, $options: 'i' } },
+          { enName: { $regex: searchTrimmed, $options: 'i' } }, // 新增：英文名称搜索
+          { pinyin: { $regex: searchTrimmed, $options: 'i' } }  // 新增：拼音搜索
         ];
         useTextSearch = false;
       }
@@ -98,7 +100,9 @@ exports.getLocations = async (req, res) => {
           { district: { $regex: searchTrimmed, $options: 'i' } },
           { county: { $regex: searchTrimmed, $options: 'i' } },
           { country: { $regex: searchTrimmed, $options: 'i' } },
-          { countryCode: { $regex: searchTrimmed, $options: 'i' } }
+          { countryCode: { $regex: searchTrimmed, $options: 'i' } },
+          { enName: { $regex: searchTrimmed, $options: 'i' } }, // 新增：英文名称搜索
+          { pinyin: { $regex: searchTrimmed, $options: 'i' } }  // 新增：拼音搜索
         ];
         
         // 使用降级查询
