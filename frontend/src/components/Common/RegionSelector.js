@@ -3,7 +3,7 @@
  * 支持机场、火车站、城市的搜索和选择
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import {
   Box,
@@ -148,7 +148,6 @@ const RegionSelector = ({
   const theme = useTheme();
   const [searchValue, setSearchValue] = useState('');
   const [filteredLocations, setFilteredLocations] = useState([]);
-  const [allLocations, setAllLocations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -160,30 +159,25 @@ const RegionSelector = ({
   // 初始化显示值
   useEffect(() => {
     if (value) {
-      // 如果value是字符串，尝试在数据中查找
+      // 如果value是字符串，直接显示
       if (typeof value === 'string') {
-        const found = allLocations.find(loc => 
-          loc.name === value || 
-          loc.code === value ||
-          loc._id === value
-        );
-        if (found) {
-          setSelectedLocation(found);
-          setSearchValue(`${found.name}${found.code ? ` (${found.code})` : ''}`);
-        } else {
-          setSearchValue(value);
-        }
+        setSearchValue(value);
+        setSelectedLocation(null); // 稍后通过搜索匹配
       } 
       // 如果value是对象
       else if (typeof value === 'object' && value !== null) {
         setSelectedLocation(value);
-        setSearchValue(`${value.name}${value.code ? ` (${value.code})` : ''}`);
+        // 汽车站不显示编码
+        const displayValue = value.type === 'bus' 
+          ? value.name 
+          : `${value.name}${value.code ? ` (${value.code})` : ''}`;
+        setSearchValue(displayValue);
       }
     } else {
       setSearchValue('');
       setSelectedLocation(null);
     }
-  }, [value, allLocations]);
+  }, [value]);
 
   // 根据交通工具类型生成动态placeholder
   const getDynamicPlaceholder = () => {
@@ -204,22 +198,60 @@ const RegionSelector = ({
     }
   };
 
-  // 从地理位置管理API获取所有地理位置数据
-  const fetchAllLocations = async () => {
+  // 从后端API搜索地理位置数据（按需搜索，提升性能）
+  const searchLocationsFromAPI = useCallback(async (keyword) => {
+    if (!keyword || keyword.trim().length < 1) {
+      setFilteredLocations([]);
+      return;
+    }
+
+    console.log('[RegionSelector] transportationType:', transportationType);
+    console.log('[RegionSelector] 搜索关键词:', keyword);
+
     setLoading(true);
     setErrorMessage('');
     
     try {
-      // 从后端API获取所有启用的地理位置数据
-      const response = await apiClient.get('/locations', {
-        params: { status: 'active' }
-      });
+      // 构建查询参数
+      const params = {
+        status: 'active',
+        search: keyword.trim(),
+        page: 1,
+        limit: 50 // 限制返回50条结果
+      };
+
+      // 根据交通工具类型添加过滤
+      if (transportationType) {
+        console.log('[RegionSelector] 设置了transportationType过滤:', transportationType);
+        switch (transportationType) {
+          case 'flight':
+            params.type = 'airport'; // 先搜索机场，城市会在结果中自然包含
+            break;
+          case 'train':
+            params.type = 'station'; // 先搜索火车站
+            break;
+          case 'car':
+          case 'bus':
+            params.type = 'city'; // 只搜索城市
+            break;
+        }
+      }
+
+      console.log('[RegionSelector] 请求参数:', params);
+      const response = await apiClient.get('/locations', { params });
       
       if (!response.data || !response.data.success) {
-        throw new Error(response.data?.message || '获取地理位置数据失败');
+        throw new Error(response.data?.message || '搜索地理位置数据失败');
       }
       
       const locations = response.data.data || [];
+      console.log('[RegionSelector] 后端返回的数据数量:', locations.length);
+      console.log('[RegionSelector] 后端返回的数据类型分布:', {
+        city: locations.filter(l => l.type === 'city').length,
+        airport: locations.filter(l => l.type === 'airport').length,
+        station: locations.filter(l => l.type === 'station').length,
+        bus: locations.filter(l => l.type === 'bus').length
+      });
       
       // 验证并转换数据结构
       const validLocations = locations
@@ -253,27 +285,266 @@ const RegionSelector = ({
           riskLevel: location.riskLevel || 'low',
           noAirport: location.noAirport || false
         }));
+
+      // 找出搜索到的城市ID（用于查询关联的机场和火车站）
+      const cityIds = validLocations
+        .filter(loc => loc.type === 'city' && (loc._id || loc.id))
+        .map(loc => loc._id || loc.id);
+
+      console.log('[RegionSelector] 搜索到的城市ID:', cityIds);
+      console.log('[RegionSelector] 搜索到的城市:', validLocations.filter(loc => loc.type === 'city'));
+
+      // 查询这些城市下的机场和火车站（通过parentId关联）
+      let childrenLocations = [];
+      if (cityIds.length > 0) {
+        try {
+          // 并行查询所有城市下的子项
+          const childrenPromises = cityIds.map(cityId => {
+            const url = `/locations/parent/${cityId}`;
+            console.log(`[RegionSelector] 查询城市 ${cityId} 下的子项: ${url}`);
+            return apiClient.get(url).catch(err => {
+              console.error(`[RegionSelector] 查询城市 ${cityId} 下的子项失败:`, err);
+              console.error(`[RegionSelector] 错误详情:`, {
+                message: err.message,
+                response: err.response?.data,
+                status: err.response?.status,
+                url: err.config?.url
+              });
+              return { data: { success: false, data: [] } };
+            });
+          });
+          
+          const childrenResponses = await Promise.all(childrenPromises);
+          console.log('[RegionSelector] 子项查询响应:', childrenResponses);
+          
+          // 合并所有子项
+          childrenResponses.forEach((response, index) => {
+            if (response.data && response.data.success && response.data.data) {
+              console.log(`[RegionSelector] 城市 ${cityIds[index]} 下的子项数量:`, response.data.data.length);
+              const children = response.data.data
+                .filter(location => 
+                  location && 
+                  typeof location === 'object' && 
+                  location.name
+                )
+                .map(location => ({
+                  id: location._id || location.id,
+                  _id: location._id || location.id,
+                  name: location.name,
+                  code: location.code || '',
+                  type: location.type || 'city',
+                  city: location.city || '',
+                  province: location.province || '',
+                  district: location.district || '',
+                  county: location.county || '',
+                  country: location.country || '中国',
+                  countryCode: location.countryCode || '',
+                  enName: location.enName || '',
+                  pinyin: location.pinyin || '',
+                  coordinates: location.coordinates || { latitude: 0, longitude: 0 },
+                  timezone: location.timezone || 'Asia/Shanghai',
+                  status: location.status || 'active',
+                  parentId: location.parentId?._id || location.parentId?.toString() || location.parentId || null,
+                  parentCity: location.parentId?.name || null,
+                  riskLevel: location.riskLevel || 'low',
+                  noAirport: location.noAirport || false
+                }));
+              
+              childrenLocations.push(...children);
+            } else {
+              console.warn(`[RegionSelector] 城市 ${cityIds[index]} 的查询响应无效:`, response.data);
+            }
+          });
+          
+          console.log('[RegionSelector] 查询到的子项总数:', childrenLocations.length);
+        } catch (childrenError) {
+          console.error('[RegionSelector] 查询城市下的子项失败:', childrenError);
+        }
+      } else {
+        console.log('[RegionSelector] 没有搜索到城市，跳过子项查询');
+      }
+
+      // 如果指定了交通工具类型，需要额外获取城市数据（用于飞机/火车）
+      // 注意：必须在查询子项之前获取城市，这样才能查询到城市下的机场/火车站
+      let additionalCities = [];
+      if (transportationType === 'flight' || transportationType === 'train') {
+        // 对于飞机和火车，还需要搜索匹配的城市
+        const cityParams = {
+          status: 'active',
+          search: keyword.trim(),
+          type: 'city',
+          page: 1,
+          limit: 20
+        };
+        
+        try {
+          const cityResponse = await apiClient.get('/locations', { params: cityParams });
+          if (cityResponse.data && cityResponse.data.success) {
+            const cities = cityResponse.data.data || [];
+            additionalCities = cities
+              .filter(location => location && typeof location === 'object' && location.name)
+              .map(location => ({
+                id: location._id || location.id,
+                _id: location._id || location.id,
+                name: location.name,
+                code: location.code || '',
+                type: 'city',
+                city: location.city || '',
+                province: location.province || '',
+                district: location.district || '',
+                county: location.county || '',
+                country: location.country || '中国',
+                countryCode: location.countryCode || '',
+                enName: location.enName || '',
+                pinyin: location.pinyin || '',
+                coordinates: location.coordinates || { latitude: 0, longitude: 0 },
+                timezone: location.timezone || 'Asia/Shanghai',
+                status: location.status || 'active',
+                parentId: null,
+                parentCity: null,
+                riskLevel: location.riskLevel || 'low',
+                noAirport: location.noAirport || false
+              }));
+          }
+        } catch (cityError) {
+          console.warn('[RegionSelector] 搜索城市数据失败:', cityError);
+        }
+      }
+
+      // 合并所有城市（包括初始搜索结果和额外搜索的城市）
+      const allCities = [
+        ...validLocations.filter(loc => loc.type === 'city'),
+        ...additionalCities
+      ];
       
-      setAllLocations(validLocations);
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || '获取地理位置数据失败';
-      setErrorMessage(errorMessage);
-      console.error('获取地理位置数据失败:', error);
-      console.error('错误详情:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
+      // 找出所有城市ID（包括额外搜索到的城市）
+      const allCityIds = Array.from(
+        new Set([
+          ...cityIds,
+          ...allCities.map(city => city._id || city.id).filter(Boolean)
+        ])
+      );
+
+      // 如果找到了新的城市，查询这些城市下的机场和火车站
+      const newCityIds = allCityIds.filter(id => !cityIds.includes(id));
+      if (newCityIds.length > 0) {
+        console.log('[RegionSelector] 发现新的城市ID，查询子项:', newCityIds);
+        try {
+          const newChildrenPromises = newCityIds.map(cityId => {
+            const url = `/locations/parent/${cityId}`;
+            console.log(`[RegionSelector] 查询新城市 ${cityId} 下的子项: ${url}`);
+            return apiClient.get(url).catch(err => {
+              console.error(`[RegionSelector] 查询新城市 ${cityId} 下的子项失败:`, err);
+              return { data: { success: false, data: [] } };
+            });
+          });
+          
+          const newChildrenResponses = await Promise.all(newChildrenPromises);
+          
+          newChildrenResponses.forEach((response, index) => {
+            if (response.data && response.data.success && response.data.data) {
+              const newChildren = response.data.data
+                .filter(location => location && typeof location === 'object' && location.name)
+                .map(location => ({
+                  id: location._id || location.id,
+                  _id: location._id || location.id,
+                  name: location.name,
+                  code: location.code || '',
+                  type: location.type || 'city',
+                  city: location.city || '',
+                  province: location.province || '',
+                  district: location.district || '',
+                  county: location.county || '',
+                  country: location.country || '中国',
+                  countryCode: location.countryCode || '',
+                  enName: location.enName || '',
+                  pinyin: location.pinyin || '',
+                  coordinates: location.coordinates || { latitude: 0, longitude: 0 },
+                  timezone: location.timezone || 'Asia/Shanghai',
+                  status: location.status || 'active',
+                  parentId: location.parentId?._id || location.parentId?.toString() || location.parentId || null,
+                  parentCity: location.parentId?.name || null,
+                  riskLevel: location.riskLevel || 'low',
+                  noAirport: location.noAirport || false
+                }));
+              
+              childrenLocations.push(...newChildren);
+            }
+          });
+        } catch (newChildrenError) {
+          console.error('[RegionSelector] 查询新城市下的子项失败:', newChildrenError);
+        }
+      }
+
+      // 合并所有搜索结果和关联的子项
+      const allResults = [
+        ...validLocations,
+        ...additionalCities,
+        ...childrenLocations
+      ];
+      
+      // 根据交通工具类型过滤（如果需要）
+      let filteredResults = allResults;
+      if (transportationType) {
+        console.log('[RegionSelector] 应用transportationType过滤前，结果数量:', allResults.length);
+        filteredResults = allResults.filter(location => {
+          switch (transportationType) {
+            case 'flight':
+              return location.type === 'airport' || location.type === 'city';
+            case 'train':
+              return location.type === 'station' || location.type === 'city';
+            case 'car':
+            case 'bus':
+              return location.type === 'city';
+            default:
+              return true;
+          }
+        });
+        console.log('[RegionSelector] 应用transportationType过滤后，结果数量:', filteredResults.length);
+        console.log('[RegionSelector] 过滤后的类型分布:', {
+          city: filteredResults.filter(l => l.type === 'city').length,
+          airport: filteredResults.filter(l => l.type === 'airport').length,
+          station: filteredResults.filter(l => l.type === 'station').length,
+          bus: filteredResults.filter(l => l.type === 'bus').length
+        });
+      } else {
+        console.log('[RegionSelector] 未设置transportationType，不过滤');
+      }
+
+      // 去重并设置结果
+      const uniqueResults = Array.from(
+        new Map(filteredResults.map(item => [item._id || item.id, item])).values()
+      );
+      
+      console.log('[RegionSelector] 最终结果数量:', uniqueResults.length);
+      console.log('[RegionSelector] 最终结果类型分布:', {
+        city: uniqueResults.filter(l => l.type === 'city').length,
+        airport: uniqueResults.filter(l => l.type === 'airport').length,
+        station: uniqueResults.filter(l => l.type === 'station').length,
+        bus: uniqueResults.filter(l => l.type === 'bus').length
       });
-      setAllLocations([]);
+      
+      setFilteredLocations(uniqueResults);
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || '搜索地理位置数据失败';
+      setErrorMessage(errorMessage);
+      console.error('搜索地理位置数据失败:', error);
+      setFilteredLocations([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [transportationType]);
 
-  // 组件挂载时获取数据
+  // 当value变化时，如果需要查找对应的位置数据
   useEffect(() => {
-    fetchAllLocations();
-  }, []);
+    if (value && typeof value === 'string' && value.trim()) {
+      // 如果value是字符串，尝试搜索匹配的位置
+      const timeoutId = setTimeout(() => {
+        searchLocationsFromAPI(value);
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [value, searchLocationsFromAPI]);
 
   // 监听窗口滚动和大小变化，更新下拉框位置
   useEffect(() => {
@@ -298,49 +569,21 @@ const RegionSelector = ({
     };
   }, [showDropdown]);
 
-  // 搜索和过滤逻辑
+  // 搜索逻辑 - 使用后端搜索（按需加载，提升性能）
   useEffect(() => {
     if (!searchValue.trim()) {
       setFilteredLocations([]);
+      setShowDropdown(false);
       return;
     }
 
-    if (!allLocations || allLocations.length === 0) {
-      return;
-    }
-
-      // 防抖处理
+    // 防抖处理，避免频繁请求
     const timeoutId = setTimeout(() => {
-      if (!allLocations || allLocations.length === 0) {
-        return;
-      }
-
-      // 根据交通工具类型过滤
-      const transportationFiltered = filterLocationsByTransportation(allLocations);
-
-      // 本地搜索（支持新字段）
-      const lowerKeyword = searchValue.toLowerCase();
-      const filtered = transportationFiltered.filter(location => {
-        return (
-          (location.name && location.name.toLowerCase().includes(lowerKeyword)) ||
-          (location.code && location.code.toLowerCase().includes(lowerKeyword)) ||
-          (location.city && location.city.toLowerCase().includes(lowerKeyword)) ||
-          (location.province && location.province.toLowerCase().includes(lowerKeyword)) ||
-          (location.district && location.district.toLowerCase().includes(lowerKeyword)) ||
-          (location.county && location.county.toLowerCase().includes(lowerKeyword)) ||
-          (location.country && location.country.toLowerCase().includes(lowerKeyword)) ||
-          (location.countryCode && location.countryCode.toLowerCase().includes(lowerKeyword)) ||
-          (location.enName && location.enName.toLowerCase().includes(lowerKeyword)) ||
-          (location.pinyin && location.pinyin.toLowerCase().includes(lowerKeyword)) ||
-          (location.parentCity && location.parentCity.toLowerCase().includes(lowerKeyword))
-        );
-      });
-      
-      setFilteredLocations(filtered.slice(0, 50)); // 限制显示数量
-    }, 200); // 200ms防抖
+      searchLocationsFromAPI(searchValue);
+    }, 300); // 300ms防抖，给用户输入时间
 
     return () => clearTimeout(timeoutId);
-  }, [searchValue, allLocations, transportationType]);
+  }, [searchValue, searchLocationsFromAPI]);
 
   // 处理输入框点击
   const handleInputClick = () => {
@@ -366,7 +609,10 @@ const RegionSelector = ({
 
   // 处理选择
   const handleSelect = (location) => {
-    const displayValue = `${location.name} (${location.code})`;
+    // 汽车站不显示编码
+    const displayValue = location.type === 'bus' 
+      ? location.name 
+      : `${location.name}${location.code ? ` (${location.code})` : ''}`;
     setSearchValue(displayValue);
     setShowDropdown(false);
     
@@ -524,7 +770,8 @@ const RegionSelector = ({
                         color={getTypeColor(location.type)}
                         sx={{ height: 20, fontSize: '0.75rem' }}
                       />
-                      {location.code ? (
+                      {/* 汽车站不显示编码 */}
+                      {location.code && location.type !== 'bus' ? (
                         <Chip
                           label={location.code}
                           size="small"
@@ -624,42 +871,26 @@ const RegionSelector = ({
     };
   };
 
-  // 根据交通工具类型过滤位置数据
-  const filterLocationsByTransportation = (locations) => {
-    if (!transportationType || !locations) {
-      return locations;
-    }
-
-    return locations.filter(location => {
-      switch (transportationType) {
-        case 'flight':
-          // 飞机：优先显示机场，也显示城市（用于选择城市的所有机场）
-          return location.type === 'airport' || location.type === 'city';
-        case 'train':
-          // 火车：优先显示火车站，也显示城市（用于选择城市的所有车站）
-          return location.type === 'station' || location.type === 'city';
-        case 'car':
-        case 'bus':
-          // 汽车/大巴：主要显示城市
-          return location.type === 'city';
-        default:
-          return true;
-      }
-    });
-  };
-
   // 按层级关系组织位置数据
   const organizeLocationsByHierarchy = (locations) => {
     if (!locations || locations.length === 0) {
       return [];
     }
 
+    console.log('[RegionSelector] organizeLocationsByHierarchy 输入数据数量:', locations.length);
+    console.log('[RegionSelector] organizeLocationsByHierarchy 输入数据类型分布:', {
+      city: locations.filter(l => l.type === 'city').length,
+      airport: locations.filter(l => l.type === 'airport').length,
+      station: locations.filter(l => l.type === 'station').length,
+      bus: locations.filter(l => l.type === 'bus').length
+    });
+
     const result = [];
     const parentMap = new Map(); // 城市ID -> 城市对象
-    const childrenMap = new Map(); // 城市ID -> [机场/火车站列表]
+    const childrenMap = new Map(); // 城市ID -> [机场/火车站/汽车站列表]
     const independentItems = [];
 
-    // 分离城市和其子项（机场/火车站）
+    // 分离城市和其子项（机场/火车站/汽车站）
     locations.forEach(location => {
       // 标准化location的ID
       const locationId = location.id || location._id || location._id?.toString();
@@ -670,8 +901,8 @@ const RegionSelector = ({
           parentMap.set(locationId.toString(), location);
         }
       } 
-      // 如果是机场或火车站，且有parentId
-      else if ((location.type === 'airport' || location.type === 'station') && location.parentId) {
+      // 如果是机场、火车站或汽车站，且有parentId
+      else if ((location.type === 'airport' || location.type === 'station' || location.type === 'bus') && location.parentId) {
         // 标准化parentId
         let parentId;
         if (typeof location.parentId === 'object') {
@@ -688,21 +919,55 @@ const RegionSelector = ({
           childrenMap.get(parentIdStr).push(location);
         }
       } 
-      // 独立项目（没有parentId的机场/火车站）
+      // 独立项目（没有parentId的机场/火车站/汽车站）
       else {
         independentItems.push(location);
       }
     });
 
-    // 按层级添加：先添加城市，再添加其下的机场/火车站
+    console.log('[RegionSelector] organizeLocationsByHierarchy 组织结果:');
+    console.log('- parentMap大小:', parentMap.size);
+    console.log('- childrenMap大小:', childrenMap.size);
+    console.log('- independentItems数量:', independentItems.length);
+    console.log('- independentItems类型分布:', {
+      city: independentItems.filter(l => l.type === 'city').length,
+      airport: independentItems.filter(l => l.type === 'airport').length,
+      station: independentItems.filter(l => l.type === 'station').length,
+      bus: independentItems.filter(l => l.type === 'bus').length
+    });
+
+    // 按层级添加：先添加城市，再添加其下的机场/火车站/汽车站
     parentMap.forEach((city, cityId) => {
       result.push(city);
       const children = childrenMap.get(cityId.toString()) || [];
+      console.log(`- 城市 ${city.name} (${cityId}) 下的子项数量:`, children.length);
       children.forEach(child => result.push(child));
     });
 
-    // 最后添加独立项目（没有关联城市的机场/火车站）
+    // 处理childrenMap中但parent不在parentMap中的子项（parentId关联错误的情况）
+    // 这些子项应该作为独立项目显示
+    const orphanedChildren = [];
+    childrenMap.forEach((children, parentId) => {
+      if (!parentMap.has(parentId)) {
+        console.log(`- 发现orphaned子项，parentId ${parentId} 不在parentMap中，数量:`, children.length);
+        orphanedChildren.push(...children);
+      }
+    });
+
+    // 最后添加独立项目（没有关联城市的机场/火车站/汽车站）
     independentItems.forEach(item => result.push(item));
+    
+    // 添加orphaned子项（parentId指向的城市不在搜索结果中）
+    orphanedChildren.forEach(item => result.push(item));
+
+    console.log('[RegionSelector] organizeLocationsByHierarchy 最终结果数量:', result.length);
+    console.log('[RegionSelector] organizeLocationsByHierarchy 最终结果类型分布:', {
+      city: result.filter(l => l.type === 'city').length,
+      airport: result.filter(l => l.type === 'airport').length,
+      station: result.filter(l => l.type === 'station').length,
+      bus: result.filter(l => l.type === 'bus').length
+    });
+    console.log('[RegionSelector] organizeLocationsByHierarchy 前10条结果:', result.slice(0, 10).map(l => `${l.type}:${l.name}`));
 
     return result;
   };

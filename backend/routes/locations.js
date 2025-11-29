@@ -24,11 +24,13 @@ router.get('/', getLocations);
 // @desc    Get locations by parent (city)
 // @route   GET /api/locations/parent/:parentId
 // @access  Private
+// 注意：必须在 /:id 路由之前定义，否则会被 /:id 路由匹配
 router.get('/parent/:parentId', getLocationsByParent);
 
 // @desc    Get location by ID
 // @route   GET /api/locations/:id
 // @access  Private
+// 注意：必须在所有具体路由之后定义，因为 :id 是通配符
 router.get('/:id', getLocationById);
 
 // @desc    Create location
