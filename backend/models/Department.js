@@ -105,3 +105,6 @@ DepartmentSchema.statics.getDescendantIds = async function(departmentId) {
 
 module.exports = mongoose.model('Department', DepartmentSchema);
 
+
+
+

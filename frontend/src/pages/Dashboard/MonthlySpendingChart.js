@@ -28,3 +28,6 @@ const MonthlySpendingChart = ({ data, formatCurrency }) => {
 
 export default MonthlySpendingChart;
 
+
+
+
