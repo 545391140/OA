@@ -55,11 +55,50 @@ function generateFuzzyRegex(searchTerm) {
 }
 
 /**
- * 生成搜索查询条件，支持多种搜索方式
+ * 构建文本索引搜索查询（优先使用，性能最佳）
+ * MongoDB 文本索引支持中文、英文、拼音等多种语言的全文搜索
+ */
+function buildTextSearchQuery(searchTerm) {
+  if (!searchTerm || typeof searchTerm !== 'string') {
+    return null;
+  }
+  
+  const searchTrimmed = searchTerm.trim();
+  if (!searchTrimmed || searchTrimmed.length < 1) {
+    return null;
+  }
+  
+  // 处理搜索词：MongoDB $text 搜索会自动分词
+  // 对于中文，需要确保搜索词格式正确
+  // 对于英文/拼音，可以支持短语搜索（用引号）或单词搜索
+  
+  // 清理搜索词：移除特殊字符（但保留空格用于短语搜索）
+  let processedSearch = searchTrimmed
+    .replace(/[^\w\s\u4e00-\u9fa5]/g, ' ') // 移除特殊字符，保留字母、数字、中文、空格
+    .replace(/\s+/g, ' ') // 合并多个空格
+    .trim();
+  
+  if (!processedSearch) {
+    return null;
+  }
+  
+  // 构建 $text 查询
+  // MongoDB 文本索引会自动匹配包含这些词的文档
+  return {
+    $text: { 
+      $search: processedSearch,
+      // 可选：指定语言（'none' 表示不进行语言特定处理，适合多语言场景）
+      // $language: 'none'
+    }
+  };
+}
+
+/**
+ * 生成正则表达式搜索查询条件（降级方案）
  * 支持：中文名称（name）、英文名称（enName）、拼音（pinyin）、代码（code）
  * 支持拼写容错（如 beijning -> beijing）
  */
-function buildSearchQuery(searchTerm) {
+function buildRegexSearchQuery(searchTerm) {
   if (!searchTerm || typeof searchTerm !== 'string') {
     return null;
   }
@@ -134,7 +173,8 @@ exports.getLocations = async (req, res) => {
       city, 
       country,
       page = 1,
-      limit = 20
+      limit = 20,
+      includeChildren = false // 新增：是否包含子项（机场、火车站）
     } = req.query;
     
     const query = {};
@@ -153,26 +193,37 @@ exports.getLocations = async (req, res) => {
     if (search) {
       const searchTrimmed = search.trim();
       
-      // 使用优化的搜索查询构建函数，支持 name、enName、pinyin、code 字段搜索
-      // 并支持拼写容错功能
-      const searchQuery = buildSearchQuery(searchTrimmed);
+      // 优先使用文本索引搜索（性能最佳，适合30万条数据）
+      // 文本索引会自动匹配 name、enName、pinyin、code 等字段
+      const textSearchQuery = buildTextSearchQuery(searchTrimmed);
       
-      if (searchQuery && searchQuery.$or && searchQuery.$or.length > 0) {
-        // 合并搜索条件到query中
-        if (query.$or && Array.isArray(query.$or)) {
-          query.$or = [...query.$or, ...searchQuery.$or];
-        } else {
-          query.$or = searchQuery.$or;
+      if (textSearchQuery && textSearchQuery.$text) {
+        // 使用文本索引搜索
+        query.$text = textSearchQuery.$text;
+        useTextSearch = true;
+      } else {
+        // 降级使用正则表达式搜索（当文本索引无法使用时）
+        const regexSearchQuery = buildRegexSearchQuery(searchTrimmed);
+        
+        if (regexSearchQuery && regexSearchQuery.$or && regexSearchQuery.$or.length > 0) {
+          // 合并搜索条件到query中
+          if (query.$or && Array.isArray(query.$or)) {
+            query.$or = [...query.$or, ...regexSearchQuery.$or];
+          } else {
+            query.$or = regexSearchQuery.$or;
+          }
         }
-      }
         useTextSearch = false;
+      }
     }
     
-    // country筛选需要在搜索条件之后添加，确保与$or条件正确组合
+    // country筛选需要在搜索条件之后添加，确保与$text或$or条件正确组合
     if (country) {
-      // 如果有搜索条件（$or），需要在每个$or条件中添加country筛选
-      if (query.$or && Array.isArray(query.$or)) {
-        // 在每个$or条件中添加country筛选
+      if (useTextSearch && query.$text) {
+        // 文本搜索时，country作为额外的过滤条件
+        query.country = { $regex: country, $options: 'i' };
+      } else if (query.$or && Array.isArray(query.$or)) {
+        // 如果有$or条件，需要在每个$or条件中添加country筛选
         query.$or = query.$or.map(condition => ({
           ...condition,
           country: { $regex: country, $options: 'i' }
@@ -185,59 +236,245 @@ exports.getLocations = async (req, res) => {
 
     // 转换分页参数
     const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 20;
+    const limitNum = Math.min(parseInt(limit, 10) || 20, 100); // 限制最大100条，防止性能问题
     const skip = (pageNum - 1) * limitNum;
+    const includeChildrenFlag = includeChildren === 'true' || includeChildren === true;
 
     // 获取总数和分页数据
-    // 如果文本索引查询失败，降级使用正则表达式
+    // 优先使用文本索引搜索，如果失败则降级使用正则表达式
     let total, locations, sortOptions = { type: 1, name: 1 };
     
     try {
       if (useTextSearch) {
         // 文本搜索时，优先按文本相关性排序，然后按类型和名称
+        // $meta: 'textScore' 会根据文本匹配的相关性评分排序
         sortOptions = { score: { $meta: 'textScore' }, type: 1, name: 1 };
+        
+        // 获取分页数据（包含文本相关性评分）
+        const findQuery = { ...query };
+        
+        // MongoDB 4.0+ 支持 countDocuments 与 $text 一起使用
+        // 但对于30万条数据，如果结果很多，countDocuments 可能较慢
+        // 为了提高性能，可以先获取分页数据，然后估算总数
+        try {
+          // 先获取总数（如果数据量大可能较慢）
+          total = await Location.countDocuments(findQuery);
+        } catch (countError) {
+          // 如果 countDocuments 失败，使用 find 估算（限制查询数量以提高性能）
+          console.warn('[LocationController] countDocuments 失败，使用 find 估算总数:', countError.message);
+          const estimateLimit = 10000;
+          const estimateResults = await Location.find(findQuery).limit(estimateLimit + 1).lean();
+          total = estimateResults.length;
+          // 如果返回了 estimateLimit + 1 条，说明可能还有更多
+          if (total > estimateLimit) {
+            total = estimateLimit; // 限制最大显示数量，避免性能问题
+          }
+        }
+        
+        // 获取分页数据（包含文本相关性评分）
+        // 优化：不 populate parentId，减少查询时间（如果需要可以在前端处理）
+        locations = await Location.find(findQuery)
+          .select({ score: { $meta: 'textScore' } }) // 包含文本评分字段
+          .sort(sortOptions)
+          .skip(skip)
+          .limit(limitNum)
+          .lean(); // 使用 lean() 返回纯对象，提高性能
+        
+        // 如果需要包含子项，批量查询
+        if (includeChildrenFlag) {
+          const cityIds = locations
+            .filter(loc => loc.type === 'city' && loc._id)
+            .map(loc => loc._id);
+          
+          if (cityIds.length > 0) {
+            // 批量查询所有城市的子项（一次性查询，性能更好）
+            const childrenLocations = await Location.find({
+              parentId: { $in: cityIds },
+              status: 'active'
+            })
+            .sort({ type: 1, name: 1 })
+            .lean();
+            
+            // 将子项添加到结果中
+            locations = [...locations, ...childrenLocations];
+          }
+        }
+      } else {
+        // 使用正则表达式搜索
+        sortOptions = { type: 1, name: 1 };
+        
+        // 获取总数
+        total = await Location.countDocuments(query);
+        
+        // 获取分页数据
+        // 优化：不 populate parentId，减少查询时间
+        locations = await Location.find(query)
+          .sort(sortOptions)
+          .skip(skip)
+          .limit(limitNum)
+          .lean(); // 使用 lean() 返回纯对象，提高性能
+        
+        // 如果需要包含子项，批量查询
+        if (includeChildrenFlag) {
+          const cityIds = locations
+            .filter(loc => loc.type === 'city' && loc._id)
+            .map(loc => loc._id);
+          
+          if (cityIds.length > 0) {
+            // 批量查询所有城市的子项（一次性查询，性能更好）
+            const childrenLocations = await Location.find({
+              parentId: { $in: cityIds },
+              status: 'active'
+            })
+            .sort({ type: 1, name: 1 })
+            .lean();
+            
+            // 将子项添加到结果中
+            locations = [...locations, ...childrenLocations];
+          }
+        }
       }
-      
-      // 获取总数
-      total = await Location.countDocuments(query);
-      
-      // 获取分页数据
-      locations = await Location.find(query)
-        .populate('parentId', 'name code type city province')
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(limitNum);
     } catch (error) {
-      // 如果文本索引查询失败（例如集合没有文本索引），降级使用正则表达式
-      if (useTextSearch && error.message && error.message.includes('text index')) {
-        console.warn('文本索引查询失败，降级使用正则表达式:', error.message);
+      // 如果文本索引查询失败（例如集合没有文本索引或文本索引未创建），降级使用正则表达式
+      if (useTextSearch && (
+        error.message && (
+          error.message.includes('text index') || 
+          error.message.includes('no text index') ||
+          error.message.includes('$text') ||
+          error.code === 27 // MongoDB error code for text index not found
+        )
+      )) {
+        console.warn('[LocationController] 文本索引查询失败，降级使用正则表达式:', error.message);
         
         // 重新构建查询，使用正则表达式
         const searchTrimmed = search.trim();
         const fallbackQuery = { ...query };
-        delete fallbackQuery.$text;
-        fallbackQuery.$or = [
-          { name: { $regex: searchTrimmed, $options: 'i' } },
-          { code: { $regex: searchTrimmed, $options: 'i' } },
-          { city: { $regex: searchTrimmed, $options: 'i' } },
-          { province: { $regex: searchTrimmed, $options: 'i' } },
-          { district: { $regex: searchTrimmed, $options: 'i' } },
-          { county: { $regex: searchTrimmed, $options: 'i' } },
-          { country: { $regex: searchTrimmed, $options: 'i' } },
-          { countryCode: { $regex: searchTrimmed, $options: 'i' } }
-        ];
+        delete fallbackQuery.$text; // 移除 $text 查询
+        
+        // 使用正则表达式搜索
+        const regexSearchQuery = buildRegexSearchQuery(searchTrimmed);
+        if (regexSearchQuery && regexSearchQuery.$or) {
+          fallbackQuery.$or = regexSearchQuery.$or;
+        } else {
+          // 如果构建失败，使用简单的正则表达式
+          fallbackQuery.$or = [
+            { name: { $regex: searchTrimmed, $options: 'i' } },
+            { code: { $regex: searchTrimmed, $options: 'i' } },
+            { city: { $regex: searchTrimmed, $options: 'i' } },
+            { province: { $regex: searchTrimmed, $options: 'i' } },
+            { district: { $regex: searchTrimmed, $options: 'i' } },
+            { county: { $regex: searchTrimmed, $options: 'i' } },
+            { country: { $regex: searchTrimmed, $options: 'i' } },
+            { countryCode: { $regex: searchTrimmed, $options: 'i' } },
+            { enName: { $regex: searchTrimmed, $options: 'i' } },
+            { pinyin: { $regex: searchTrimmed.toLowerCase(), $options: 'i' } }
+          ];
+        }
+        
+        // 合并其他查询条件（type, status, city, country）
+        if (type) fallbackQuery.type = type;
+        if (status) fallbackQuery.status = status;
+        if (city) fallbackQuery.city = { $regex: city, $options: 'i' };
+        if (country) {
+          if (fallbackQuery.$or && Array.isArray(fallbackQuery.$or)) {
+            fallbackQuery.$or = fallbackQuery.$or.map(condition => ({
+              ...condition,
+              country: { $regex: country, $options: 'i' }
+            }));
+          } else {
+            fallbackQuery.country = { $regex: country, $options: 'i' };
+          }
+        }
         
         // 使用降级查询
         sortOptions = { type: 1, name: 1 };
         total = await Location.countDocuments(fallbackQuery);
         locations = await Location.find(fallbackQuery)
-          .populate('parentId', 'name code type city province')
           .sort(sortOptions)
           .skip(skip)
-          .limit(limitNum);
+          .limit(limitNum)
+          .lean(); // 使用 lean() 返回纯对象，提高性能
+        
+        // 如果需要包含子项，批量查询
+        if (includeChildrenFlag) {
+          const cityIds = locations
+            .filter(loc => loc.type === 'city' && loc._id)
+            .map(loc => loc._id);
+          
+          if (cityIds.length > 0) {
+            const childrenLocations = await Location.find({
+              parentId: { $in: cityIds },
+              status: 'active'
+            })
+            .sort({ type: 1, name: 1 })
+            .lean();
+            
+            locations = [...locations, ...childrenLocations];
+          }
+        }
       } else {
         // 其他错误，直接抛出
+        console.error('[LocationController] 查询失败:', error);
         throw error;
+      }
+    }
+
+    // 批量查询 parentId 对应的城市信息（用于显示）
+    const parentIds = locations
+      .map(loc => {
+        if (!loc.parentId) return null;
+        // parentId 可能是 ObjectId 对象或字符串
+        if (typeof loc.parentId === 'object' && loc.parentId._id) {
+          return loc.parentId._id;
+        }
+        return loc.parentId;
+      })
+      .filter(id => id !== null);
+
+    if (parentIds.length > 0) {
+      try {
+        // 批量查询 parentId 对应的城市信息
+        const parentCities = await Location.find({
+          _id: { $in: parentIds }
+        })
+        .select('name code enName type city province')
+        .lean();
+
+        // 创建 parentId -> city info 的映射
+        const parentCityMap = new Map();
+        parentCities.forEach(city => {
+          parentCityMap.set(city._id.toString(), {
+            name: city.name,
+            code: city.code,
+            enName: city.enName,
+            type: city.type,
+            city: city.city,
+            province: city.province
+          });
+        });
+
+        // 将 parentId 信息合并到 locations 中
+        locations = locations.map(loc => {
+          if (loc.parentId) {
+            let parentIdStr = null;
+            if (typeof loc.parentId === 'object' && loc.parentId._id) {
+              parentIdStr = loc.parentId._id.toString();
+            } else {
+              parentIdStr = loc.parentId.toString();
+            }
+
+            if (parentCityMap.has(parentIdStr)) {
+              loc.parentId = {
+                _id: parentIdStr,
+                ...parentCityMap.get(parentIdStr)
+              };
+            }
+          }
+          return loc;
+        });
+      } catch (parentError) {
+        // 如果查询 parentId 失败，不影响主查询结果
+        console.warn('[LocationController] 批量查询 parentId 失败:', parentError.message);
       }
     }
 

@@ -628,7 +628,17 @@ const LocationManagement = () => {
                         <TableCell>{location.country || '-'}</TableCell>
                         <TableCell>{location.countryCode || '-'}</TableCell>
                         <TableCell>
-                          {location.parentId?.name || location.parentId || '-'}
+                          {(() => {
+                            // 如果 parentId 是对象且包含 name，直接显示名称
+                            if (location.parentId && typeof location.parentId === 'object' && location.parentId.name) {
+                              return location.parentId.name;
+                            }
+                            // 如果 parentId 是字符串（ObjectId），显示 '-'
+                            if (location.parentId) {
+                              return '-';
+                            }
+                            return '-';
+                          })()}
                         </TableCell>
                         <TableCell>
                           {location.type === 'city' ? (
