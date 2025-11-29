@@ -9,23 +9,27 @@
  *   --full         全量同步（默认）
  *   --incremental  增量同步（从上次同步时间开始）
  *   --start-date   指定开始日期（格式：YYYY-MM-DD）
- *   --country-id   指定国家ID（默认：1-中国）
+ *   --country-id   指定国家ID（默认：只同步中国）
+ *   --all          同步所有国家（全球同步）
  * 
  * 环境变量：
  * CTRIP_USE_TEST_ENV=true - 强制使用测试环境
  * 
  * 示例：
- *   # 全量同步全球数据（默认）
+ *   # 全量同步中国数据（默认）
  *   node backend/scripts/syncGlobalLocations.js
  *   
- *   # 增量同步（从上次同步时间开始）
+ *   # 增量同步中国数据（从上次同步时间开始）
  *   node backend/scripts/syncGlobalLocations.js --incremental
  *   
- *   # 从指定日期开始同步
+ *   # 从指定日期开始同步中国数据
  *   node backend/scripts/syncGlobalLocations.js --start-date 2025-11-01
  *   
- *   # 只同步指定国家（例如：中国）
- *   node backend/scripts/syncGlobalLocations.js --country-id 1
+ *   # 同步指定国家（例如：美国）
+ *   node backend/scripts/syncGlobalLocations.js --country-id 2
+ *   
+ *   # 同步所有国家（全球同步）
+ *   node backend/scripts/syncGlobalLocations.js --all
  */
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
@@ -67,6 +71,7 @@ function parseArgs() {
     incremental: false,
     startDate: null,
     countryId: null,
+    all: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -79,6 +84,8 @@ function parseArgs() {
       options.startDate = args[++i];
     } else if (arg === '--country-id' && i + 1 < args.length) {
       options.countryId = parseInt(args[++i], 10);
+    } else if (arg === '--all') {
+      options.all = true;
     }
   }
 
@@ -235,28 +242,33 @@ function convertPOIToLocations(poiData, countryInfo) {
           return;
         }
       
-      // 添加城市信息
+      // 添加城市信息（地级市）
+      const cityCode = city.cityCode || city.cityId?.toString();
       const cityLocation = {
         name: city.cityName.trim(),
-        code: city.cityCode || city.cityId?.toString(),
+        code: cityCode || '',
         type: 'city',
-        city: city.cityName,
-        province: province.provinceName,
-        country: countryInfo.name,
-        countryCode: countryInfo.code,
-        enName: city.cityEnName,
-        pinyin: city.cityPinYin,
+        city: city.cityName || '',
+        province: province.provinceName || '',
+        country: countryInfo.name || '中国',
+        countryCode: countryInfo.code || 'CN',
+        enName: city.cityEnName || '',
+        pinyin: city.cityPinYin || '',
+        district: null, // 城市类型（地级市），区字段应为空
+        county: null, // 城市类型（地级市），县字段应为空
         cityLevel: 4, // 默认4级，需要根据实际情况设置
         status: 'active',
         coordinates: { latitude: 0, longitude: 0 }, // 默认坐标
         timezone: countryInfo.code === 'CN' ? 'Asia/Shanghai' : 'UTC', // 根据国家设置时区
         riskLevel: 'low', // 默认风险等级
         noAirport: false, // 默认有机场
-        ctripCityId: city.cityId, // 携程城市ID
-        ctripProvinceId: province.provinceId, // 携程省份ID
+        parentId: null, // 城市类型，所属城市字段应为空
+        ctripCityId: city.cityId || null, // 携程城市ID
+        ctripProvinceId: province.provinceId || null, // 携程省份ID
+        ctripCountyId: null, // 地级市没有县级市ID
+        ctripDistrictId: null, // 地级市没有行政区ID
         corpTag: city.corpTag || 0, // 非标城市标识：0:标准城市, 1:非标城市
-        districtCode: city.districtCode || '', // 行政区划代码
-        // 标记非标城市（仅用于机票预订）
+        districtCode: cityCode || '', // 行政区划代码 = 城市代码
         remark: city.corpTag === 1 ? '非标城市，仅用于机票预订' : '',
       };
 
@@ -364,62 +376,38 @@ function convertPOIToLocations(poiData, countryInfo) {
             return;
           }
           
+          const countyCode = county.countyCode || county.countyId?.toString();
           locations.push({
             name: county.countyName.trim(),
-            code: county.countyCode || county.countyId?.toString(),
+            code: countyCode || '',
             type: 'city',
-            city: county.countyName,
-            province: province.provinceName,
-            country: countryInfo.name,
-            countryCode: countryInfo.code,
-            enName: county.countyEnName,
-            pinyin: county.countyPinyin,
+            city: city.cityName || '', // 修复：使用地级市名称，而不是县级市名称
+            province: province.provinceName || '',
+            country: countryInfo.name || '中国',
+            countryCode: countryInfo.code || 'CN',
+            enName: county.countyEnName || '',
+            pinyin: county.countyPinyin || '',
+            district: null, // 城市类型（县级市），区字段应为空
+            county: county.countyName || '', // 县级市名称
             cityLevel: 4,
             status: 'active',
             coordinates: { latitude: 0, longitude: 0 }, // 默认坐标
             timezone: countryInfo.code === 'CN' ? 'Asia/Shanghai' : 'UTC', // 根据国家设置时区
             riskLevel: 'low', // 默认风险等级
             noAirport: false, // 默认有机场
-            ctripCountyId: county.countyId, // 携程县级市ID
-            ctripCityId: city.cityId, // 关联的地级市ID
-            ctripProvinceId: province.provinceId, // 携程省份ID
+            parentId: null, // 城市类型，所属城市字段应为空
+            ctripCountyId: county.countyId || null, // 携程县级市ID
+            ctripCityId: city.cityId || null, // 关联的地级市ID
+            ctripProvinceId: province.provinceId || null, // 携程省份ID
+            ctripDistrictId: null, // 县级市没有行政区ID
             corpTag: county.corpTag || 0, // 非标城市标识：0:标准城市, 1:非标城市
+            districtCode: countyCode || '', // 行政区划代码 = 县级市代码
             remark: county.corpTag === 1 ? '非标城市，仅用于机票预订' : '',
           });
         });
       }
 
-      // 处理行政区
-      if (city.districtList) {
-        city.districtList.forEach((district) => {
-          // 跳过没有名称的行政区
-          if (!district.districtName || district.districtName.trim() === '') {
-            return;
-          }
-          
-          locations.push({
-            name: district.districtName.trim(),
-            code: district.districtId?.toString(),
-            type: 'city',
-            city: district.districtName,
-            province: province.provinceName,
-            country: countryInfo.name,
-            countryCode: countryInfo.code,
-            enName: district.districtEnName,
-            district: district.districtName,
-            status: 'active',
-            coordinates: { latitude: 0, longitude: 0 }, // 默认坐标
-            timezone: countryInfo.code === 'CN' ? 'Asia/Shanghai' : 'UTC', // 根据国家设置时区
-            cityLevel: 4, // 默认城市等级
-            riskLevel: 'low', // 默认风险等级
-            noAirport: false, // 默认有机场
-            ctripDistrictId: district.districtId, // 携程行政区ID
-            ctripCityId: city.cityId, // 关联的地级市ID
-            ctripProvinceId: province.provinceId, // 携程省份ID
-            districtCode: city.districtCode || '', // 行政区划代码
-          });
-        });
-      }
+      // 不再处理行政区（districtList），城市只保存到县级市级别
       });
     }
   });
@@ -456,6 +444,26 @@ async function saveOrUpdateLocation(locationData, cityMap) {
     
     // 确保name字段去除首尾空格
     cleanData.name = cleanData.name.trim();
+    
+    // 对于城市类型，确保所有字段都有值（没有值的设为null或空字符串）
+    if (cleanData.type === 'city') {
+      cleanData.code = cleanData.code || '';
+      cleanData.city = cleanData.city || '';
+      cleanData.province = cleanData.province || '';
+      cleanData.country = cleanData.country || '中国';
+      cleanData.countryCode = cleanData.countryCode || 'CN';
+      cleanData.enName = cleanData.enName || '';
+      cleanData.pinyin = cleanData.pinyin || '';
+      cleanData.district = cleanData.district || null; // 城市类型，区字段应为空
+      cleanData.county = cleanData.county || null; // 地级市没有县字段，县级市有县字段
+      cleanData.parentId = cleanData.parentId || null; // 城市类型，所属城市字段应为空
+      cleanData.ctripCityId = cleanData.ctripCityId || null;
+      cleanData.ctripProvinceId = cleanData.ctripProvinceId || null;
+      cleanData.ctripCountyId = cleanData.ctripCountyId || null;
+      cleanData.ctripDistrictId = cleanData.ctripDistrictId || null;
+      cleanData.districtCode = cleanData.districtCode || '';
+      cleanData.remark = cleanData.remark || '';
+    }
     
     // 1. code字段转换为大写（模型要求uppercase）
     if (cleanData.code && typeof cleanData.code === 'string') {
@@ -535,12 +543,16 @@ async function saveOrUpdateLocation(locationData, cityMap) {
     };
 
     // 优先使用携程ID查询（更准确）
-    if (cleanData.type === 'city' && cleanData.ctripCityId) {
+    // 注意：县级市也有ctripCityId（关联的地级市ID），所以需要优先使用ctripCountyId
+    if (cleanData.type === 'city' && cleanData.ctripCountyId) {
+      // 县级市：优先使用ctripCountyId（唯一标识）
+      query.ctripCountyId = cleanData.ctripCountyId;
+    } else if (cleanData.type === 'city' && cleanData.ctripCityId && !cleanData.ctripCountyId) {
+      // 地级市：使用ctripCityId，但必须确保ctripCountyId为null（避免匹配到县级市）
       query.ctripCityId = cleanData.ctripCityId;
+      query.ctripCountyId = null; // 确保是地级市，不是县级市
     } else if (cleanData.type === 'province' && cleanData.ctripProvinceId) {
       query.ctripProvinceId = cleanData.ctripProvinceId;
-    } else if (cleanData.type === 'city' && cleanData.ctripCountyId) {
-      query.ctripCountyId = cleanData.ctripCountyId;
     } else if (cleanData.type === 'city' && cleanData.ctripDistrictId) {
       query.ctripDistrictId = cleanData.ctripDistrictId;
     } else if (cleanData.code) {
@@ -557,9 +569,33 @@ async function saveOrUpdateLocation(locationData, cityMap) {
     const existingLocation = await Location.findOne(query);
 
     if (existingLocation) {
-      // 数据已存在，跳过写入（不更新，不创建）
-      stats.skippedLocations++;
-      return existingLocation;
+      // 对于城市类型的数据，完全替换所有字段
+      if (cleanData.type === 'city') {
+        // 完全替换：删除旧记录，创建新记录
+        await Location.deleteOne({ _id: existingLocation._id });
+        const newLocation = await Location.create(cleanData);
+        stats.createdLocations++; // 统计为更新
+        console.log(`  ✓ 替换城市数据: ${cleanData.name} (${cleanData.city || ''})`);
+        return newLocation;
+      } else {
+        // 非城市类型的数据，检查是否需要更新city字段（修复之前同步的错误数据）
+        // 对于县级市和行政区，如果city字段不正确，需要更新
+        const needsUpdate = 
+          ((cleanData.ctripCountyId || cleanData.ctripDistrictId) &&
+           existingLocation.city !== cleanData.city);
+        
+        if (needsUpdate) {
+          // 更新city字段以修复错误数据
+          existingLocation.city = cleanData.city;
+          await existingLocation.save();
+          console.log(`  ✓ 更新 ${cleanData.name} 的city字段: "${existingLocation.city}" -> "${cleanData.city}"`);
+          return existingLocation;
+        } else {
+          // 数据已存在且正确，跳过写入（不更新，不创建）
+          stats.skippedLocations++;
+          return existingLocation;
+        }
+      }
     } else {
       // 创建新记录
       const newLocation = await Location.create(cleanData);
@@ -771,10 +807,24 @@ async function main() {
       }
       countries = [country];
       console.log(`✓ 将同步指定国家: ${country.name} (ID: ${country.countryId})`);
-    } else {
-      // 默认同步所有国家
+    } else if (options.all) {
+      // 同步所有国家
       countries = allCountries;
-      console.log(`✓ 将同步所有 ${countries.length} 个国家的数据`);
+      console.log(`✓ 将同步所有国家 (共 ${countries.length} 个国家)`);
+    } else {
+      // 默认只同步中国
+      const china = allCountries.find(c => 
+        c.countryId === 1 || c.code === 'CN' || c.name === '中国' || c.name === 'China'
+      );
+      
+      if (china) {
+        countries = [china];
+        console.log(`✓ 将同步中国数据 (ID: ${china.countryId})`);
+        console.log(`  提示: 如需同步所有国家，请使用 --all 参数`);
+        console.log(`  提示: 如需同步其他国家，请使用 --country-id 参数`);
+      } else {
+        throw new Error('未找到中国数据，请检查国家列表');
+      }
     }
     
     stats.totalCountries = countries.length;

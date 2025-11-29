@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const Location = require('../models/Location');
+const logger = require('../utils/logger');
 
 /**
  * 转义正则表达式特殊字符
@@ -84,11 +85,11 @@ function buildTextSearchQuery(searchTerm) {
   
   // 构建 $text 查询
   // MongoDB 文本索引会自动匹配包含这些词的文档
+  // 使用 $language: 'none' 禁用语言特定处理，支持多语言搜索（中文、英文、拼音）
   return {
     $text: { 
       $search: processedSearch,
-      // 可选：指定语言（'none' 表示不进行语言特定处理，适合多语言场景）
-      // $language: 'none'
+      $language: 'none' // 禁用语言特定处理，适合多语言场景
     }
   };
 }
@@ -165,6 +166,9 @@ function buildRegexSearchQuery(searchTerm) {
 // @route   GET /api/locations
 // @access  Private
 exports.getLocations = async (req, res) => {
+  logger.info('[LocationController] ========== getLocations 被调用 ==========');
+  logger.info(`[LocationController] 请求参数: ${JSON.stringify(req.query, null, 2)}`);
+  
   try {
     const { 
       type, 
@@ -192,18 +196,22 @@ exports.getLocations = async (req, res) => {
     
     if (search) {
       const searchTrimmed = search.trim();
+      logger.info(`[LocationController] 搜索关键词: ${searchTrimmed}`);
       
       // 优先使用文本索引搜索（性能最佳，适合30万条数据）
       // 文本索引会自动匹配 name、enName、pinyin、code 等字段
       const textSearchQuery = buildTextSearchQuery(searchTrimmed);
+      logger.info(`[LocationController] 文本索引查询结果: ${JSON.stringify(textSearchQuery)}`);
       
       if (textSearchQuery && textSearchQuery.$text) {
         // 使用文本索引搜索
         query.$text = textSearchQuery.$text;
         useTextSearch = true;
+        logger.info('[LocationController] 使用文本索引搜索');
       } else {
         // 降级使用正则表达式搜索（当文本索引无法使用时）
         const regexSearchQuery = buildRegexSearchQuery(searchTrimmed);
+        logger.info(`[LocationController] 正则表达式查询条件数量: ${regexSearchQuery?.$or?.length || 0}`);
         
         if (regexSearchQuery && regexSearchQuery.$or && regexSearchQuery.$or.length > 0) {
           // 合并搜索条件到query中
@@ -214,7 +222,10 @@ exports.getLocations = async (req, res) => {
           }
         }
         useTextSearch = false;
+        logger.info('[LocationController] 使用正则表达式搜索');
       }
+      
+      logger.info(`[LocationController] 最终查询条件: ${JSON.stringify(query, null, 2)}`);
     }
     
     // country筛选需要在搜索条件之后添加，确保与$text或$or条件正确组合
@@ -273,12 +284,60 @@ exports.getLocations = async (req, res) => {
         
         // 获取分页数据（包含文本相关性评分）
         // 优化：不 populate parentId，减少查询时间（如果需要可以在前端处理）
+        logger.info(`[LocationController] 执行文本索引查询，查询条件: ${JSON.stringify(findQuery, null, 2)}`);
         locations = await Location.find(findQuery)
           .select({ score: { $meta: 'textScore' } }) // 包含文本评分字段
           .sort(sortOptions)
           .skip(skip)
           .limit(limitNum)
           .lean(); // 使用 lean() 返回纯对象，提高性能
+        logger.info(`[LocationController] 文本索引搜索结果数量: ${locations.length}`);
+        if (locations.length > 0) {
+          logger.info(`[LocationController] 前3个结果: ${JSON.stringify(locations.slice(0, 3).map(loc => ({
+            name: loc.name,
+            pinyin: loc.pinyin,
+            enName: loc.enName,
+            code: loc.code,
+            type: loc.type
+          })), null, 2)}`);
+        } else {
+          // 如果文本索引搜索没有找到结果，降级使用正则表达式搜索
+          logger.warn(`[LocationController] 文本索引搜索没有找到结果，降级使用正则表达式搜索`);
+          logger.info(`[LocationController] 原始查询条件: ${JSON.stringify(findQuery, null, 2)}`);
+          
+          // 使用正则表达式搜索
+          const searchTrimmed = search.trim();
+          const regexSearchQuery = buildRegexSearchQuery(searchTrimmed);
+          
+          if (regexSearchQuery && regexSearchQuery.$or && regexSearchQuery.$or.length > 0) {
+            const fallbackQuery = {
+              status: query.status || 'active',
+              $or: regexSearchQuery.$or
+            };
+            
+            logger.info(`[LocationController] 降级查询条件: ${JSON.stringify(fallbackQuery, null, 2)}`);
+            
+            // 使用降级查询
+            sortOptions = { type: 1, name: 1 };
+            total = await Location.countDocuments(fallbackQuery);
+            locations = await Location.find(fallbackQuery)
+              .sort(sortOptions)
+              .skip(skip)
+              .limit(limitNum)
+              .lean();
+            
+            logger.info(`[LocationController] 降级搜索结果数量: ${locations.length}`);
+            if (locations.length > 0) {
+              logger.info(`[LocationController] 降级搜索前3个结果: ${JSON.stringify(locations.slice(0, 3).map(loc => ({
+                name: loc.name,
+                pinyin: loc.pinyin,
+                enName: loc.enName,
+                code: loc.code,
+                type: loc.type
+              })), null, 2)}`);
+            }
+          }
+        }
         
         // 如果需要包含子项，批量查询
         if (includeChildrenFlag) {
@@ -304,7 +363,9 @@ exports.getLocations = async (req, res) => {
         sortOptions = { type: 1, name: 1 };
         
         // 获取总数
+        logger.info(`[LocationController] 执行正则表达式查询，查询条件: ${JSON.stringify(query, null, 2)}`);
         total = await Location.countDocuments(query);
+        logger.info(`[LocationController] 正则表达式查询总数: ${total}`);
         
         // 获取分页数据
         // 优化：不 populate parentId，减少查询时间
@@ -313,6 +374,18 @@ exports.getLocations = async (req, res) => {
           .skip(skip)
           .limit(limitNum)
           .lean(); // 使用 lean() 返回纯对象，提高性能
+        logger.info(`[LocationController] 正则表达式搜索结果数量: ${locations.length}`);
+        if (locations.length > 0) {
+          logger.info(`[LocationController] 前3个结果: ${JSON.stringify(locations.slice(0, 3).map(loc => ({
+            name: loc.name,
+            pinyin: loc.pinyin,
+            enName: loc.enName,
+            code: loc.code,
+            type: loc.type
+          })), null, 2)}`);
+        } else {
+          logger.warn(`[LocationController] 没有找到匹配的结果，查询条件: ${JSON.stringify(query, null, 2)}`);
+        }
         
         // 如果需要包含子项，批量查询
         if (includeChildrenFlag) {
@@ -494,7 +567,11 @@ exports.getLocations = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get locations error:', error);
+    logger.error('[LocationController] Get locations error:', {
+      error: error.message,
+      stack: error.stack,
+      query: req.query
+    });
     res.status(500).json({
       success: false,
       message: 'Server error'
