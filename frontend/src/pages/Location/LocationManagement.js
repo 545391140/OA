@@ -32,7 +32,9 @@ import {
   CircularProgress,
   LinearProgress,
   Grid,
-  Menu
+  Menu,
+  TablePagination,
+  Pagination
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -64,6 +66,16 @@ const LocationManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    totalPages: 0,
+    page: 1,
+    limit: 20,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   
   // 对话框状态
   const [deleteDialog, setDeleteDialog] = useState({ open: false, location: null });
@@ -99,7 +111,7 @@ const LocationManagement = () => {
   useEffect(() => {
     fetchLocations();
     fetchCitiesForParent();
-  }, [typeFilter, statusFilter]);
+  }, [typeFilter, statusFilter, page, rowsPerPage]);
 
   const fetchCitiesForParent = async () => {
     try {
@@ -119,7 +131,10 @@ const LocationManagement = () => {
       setLoading(true);
       setError(null);
       
-      const params = {};
+      const params = {
+        page: page + 1, // 后端从1开始，前端从0开始
+        limit: rowsPerPage
+      };
       if (typeFilter !== 'all') {
         params.type = typeFilter;
       }
@@ -134,6 +149,9 @@ const LocationManagement = () => {
       
       if (response.data && response.data.success) {
         setLocations(response.data.data || []);
+        if (response.data.pagination) {
+          setPagination(response.data.pagination);
+        }
       } else {
         throw new Error(response.data?.message || t('location.management.fetchError'));
       }
@@ -147,6 +165,7 @@ const LocationManagement = () => {
   };
 
   const handleSearch = () => {
+    setPage(0); // 搜索时重置到第一页
     fetchLocations();
   };
 
@@ -154,7 +173,17 @@ const LocationManagement = () => {
     setSearchTerm('');
     setTypeFilter('all');
     setStatusFilter('all');
+    setPage(0); // 重置时回到第一页
     setTimeout(() => fetchLocations(), 100);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // 改变每页数量时重置到第一页
   };
 
   const handleMenuOpen = (event, location) => {
@@ -333,22 +362,6 @@ const LocationManagement = () => {
     return colors[level] || 'default';
   };
 
-  const filteredLocations = locations.filter(location => {
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      return (
-        location.name?.toLowerCase().includes(term) ||
-        location.code?.toLowerCase().includes(term) ||
-        location.city?.toLowerCase().includes(term) ||
-        location.province?.toLowerCase().includes(term) ||
-        location.district?.toLowerCase().includes(term) ||
-        location.county?.toLowerCase().includes(term) ||
-        location.country?.toLowerCase().includes(term) ||
-        location.countryCode?.toLowerCase().includes(term)
-      );
-    }
-    return true;
-  });
 
   if (loading && locations.length === 0) {
     return (
@@ -405,7 +418,10 @@ const LocationManagement = () => {
                 <Select
                   value={typeFilter}
                   label={t('location.management.type')}
-                  onChange={(e) => setTypeFilter(e.target.value)}
+                  onChange={(e) => {
+                    setTypeFilter(e.target.value);
+                    setPage(0); // 改变筛选时重置到第一页
+                  }}
                 >
                   <MenuItem value="all">{t('location.management.all')}</MenuItem>
                   <MenuItem value="airport">{t('location.management.types.airport')}</MenuItem>
@@ -423,7 +439,10 @@ const LocationManagement = () => {
                 <Select
                   value={statusFilter}
                   label={t('location.management.status')}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setPage(0); // 改变筛选时重置到第一页
+                  }}
                 >
                   <MenuItem value="all">{t('location.management.all')}</MenuItem>
                   <MenuItem value="active">{t('location.management.active')}</MenuItem>
@@ -494,7 +513,7 @@ const LocationManagement = () => {
                       <CircularProgress />
                     </TableCell>
                   </TableRow>
-                ) : filteredLocations.length === 0 ? (
+                ) : locations.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={canEdit ? 15 : 14} align="center">
                       <Typography variant="body2" color="text.secondary">
@@ -503,7 +522,7 @@ const LocationManagement = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLocations.map((location) => {
+                  locations.map((location) => {
                     const getRiskLevelLabel = (level) => {
                       return t(`location.management.riskLevels.${level}`) || level;
                     };
@@ -585,6 +604,35 @@ const LocationManagement = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          {/* 分页组件 */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderTop: 1, borderColor: 'divider' }}>
+            <Typography variant="body2" color="text.secondary">
+              {t('location.management.total')}: {pagination.total || 0} {t('location.management.items')}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>{t('location.management.rowsPerPage')}</InputLabel>
+                <Select
+                  value={rowsPerPage}
+                  label={t('location.management.rowsPerPage')}
+                  onChange={handleChangeRowsPerPage}
+                >
+                  <MenuItem value={10}>10</MenuItem>
+                  <MenuItem value={20}>20</MenuItem>
+                  <MenuItem value={50}>50</MenuItem>
+                  <MenuItem value={100}>100</MenuItem>
+                </Select>
+              </FormControl>
+              <Pagination
+                count={pagination.totalPages || 0}
+                page={page + 1}
+                onChange={handleChangePage}
+                color="primary"
+                showFirstButton
+                showLastButton
+              />
+            </Box>
+          </Box>
         </Paper>
 
         {/* Action Menu */}

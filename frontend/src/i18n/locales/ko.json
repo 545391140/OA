@@ -1656,7 +1656,10 @@
         "remark": "비고",
         "yes": "예",
         "no": "아니오"
-      }
+      },
+      "total": "총",
+      "items": "개",
+      "rowsPerPage": "페이지당 행 수"
     }
   },
   "expenseItem": {

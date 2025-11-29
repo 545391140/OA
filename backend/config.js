@@ -29,5 +29,9 @@ module.exports = {
   MISTRAL_API_KEY: process.env.MISTRAL_API_KEY || '',
   
   // Alibaba Cloud DashScope (阿里云百炼) Configuration
-  DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY || ''
+  DASHSCOPE_API_KEY: process.env.DASHSCOPE_API_KEY || '',
+  
+  // 携程商旅API配置
+  CTRIP_APP_KEY: process.env.CTRIP_APP_KEY || 'obk_rjwl',
+  CTRIP_APP_SECURITY: process.env.CTRIP_APP_SECURITY || 'eW5(Np%RrUuU#(Z3x$8@kOW('
 };

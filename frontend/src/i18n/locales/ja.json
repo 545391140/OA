@@ -1656,7 +1656,10 @@
         "remark": "備考",
         "yes": "はい",
         "no": "いいえ"
-      }
+      },
+      "total": "合計",
+      "items": "件",
+      "rowsPerPage": "ページあたりの行数"
     }
   },
   "expenseItem": {

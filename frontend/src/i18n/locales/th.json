@@ -1788,7 +1788,10 @@
         "remark": "Remark",
         "yes": "Yes",
         "no": "No"
-      }
+      },
+      "total": "รวม",
+      "items": "รายการ",
+      "rowsPerPage": "แถวต่อหน้า"
     }
   },
   "expenseItem": {

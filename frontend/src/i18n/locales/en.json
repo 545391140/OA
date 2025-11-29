@@ -1784,7 +1784,10 @@
         "remark": "Remark",
         "yes": "Yes",
         "no": "No"
-      }
+      },
+      "total": "Total",
+      "items": "items",
+      "rowsPerPage": "Rows per page"
     }
   },
   "expenseItem": {

@@ -1784,7 +1784,10 @@
         "remark": "Remark",
         "yes": "Yes",
         "no": "No"
-      }
+      },
+      "total": "الإجمالي",
+      "items": "عنصر",
+      "rowsPerPage": "صفوف في الصفحة"
     }
   },
   "expenseItem": {

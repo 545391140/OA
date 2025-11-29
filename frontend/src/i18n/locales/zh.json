@@ -1864,7 +1864,10 @@
         "remark": "备注",
         "yes": "是",
         "no": "否"
-      }
+      },
+      "total": "总计",
+      "items": "条",
+      "rowsPerPage": "每页显示"
     }
   },
   "expenseItem": {

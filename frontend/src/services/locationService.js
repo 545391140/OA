@@ -4,14 +4,18 @@
  * 提供机场、火车站等地理位置信息的获取和缓存
  */
 
+import apiClient from '../utils/axiosConfig';
+
 // 携程API配置
+// 注意：前端不直接调用携程API，而是通过后端代理
+// 此配置仅用于参考，实际API调用通过后端进行
 const CTRIP_API_CONFIG = {
-  // 生产环境
+  // 生产环境（默认）
   baseURL: 'https://ct.ctrip.com',
-  // 测试环境 (注释掉)
+  // 测试环境（已禁用，如需使用请设置环境变量 CTRIP_USE_TEST_ENV=true）
   // baseURL: 'https://gateway.fat.ctripqa.com',
-  appKey: 'RJW',
-  appSecurity: '2Oxb3x#Cc',
+  appKey: 'obk_rjwl',
+  appSecurity: 'eW5(Np%RrUuU#(Z3x$8@kOW(',
   timeout: 10000,
   // API端点
   endpoints: {
@@ -63,7 +67,7 @@ const getTicket = async () => {
     console.log('从API获取Ticket...');
     
     const requestBody = {
-      appKey: CTRIP_API_CONFIG.appKey,
+      appkey: CTRIP_API_CONFIG.appKey,  // 注意：API要求字段名为 appkey（全小写）
       appSecurity: CTRIP_API_CONFIG.appSecurity
     };
 
@@ -366,7 +370,7 @@ export const getAllStations = async () => {
  * @returns {Promise<Array>} 城市列表
  */
 /**
- * 获取所有国家信息
+ * 获取所有国家信息（使用后端API）
  * @returns {Promise<Array>} 国家列表
  */
 export const getAllCountries = async () => {
@@ -377,80 +381,39 @@ export const getAllCountries = async () => {
   }
 
   try {
-    console.log('从API获取国家数据...');
+    console.log('从后端API获取国家数据...');
     
-    // 获取Ticket
-    const ticket = await getTicket();
-    
-    // 构建请求体
-    const requestBody = {
-      Auth: {
-        AppKey: CTRIP_API_CONFIG.appKey,
-        Ticket: ticket
-      },
-      requestId: `country_${Date.now()}`,
-      locale: 'zh-CN'
-    };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), CTRIP_API_CONFIG.timeout);
-    
-    // 注意：直接调用外部API会有CORS问题，应该使用后端API
-    // 暂时禁用外部API调用，直接返回默认数据或缓存数据
-    console.warn('外部API调用已禁用，使用默认或缓存数据');
-    
-    // 尝试返回缓存数据（即使过期）
-    const fallbackData = getCachedData(CACHE_CONFIG.COUNTRIES_KEY);
-    if (fallbackData) {
-      console.log('使用缓存数据');
-      return fallbackData;
-    }
-    
-    // 返回默认数据
-    return getDefaultCountries();
-    
-    /*
-    // 原始API调用代码（已禁用）
-    const response = await fetch(`${CTRIP_API_CONFIG.baseURL}${CTRIP_API_CONFIG.endpoints.getCountries}`, {
-      method: 'POST',
-      headers: getApiHeaders(ticket),
-      body: JSON.stringify(requestBody),
-      signal: controller.signal
+    // 使用后端API代理
+    const response = await apiClient.get('/ctrip/countries', {
+      params: { locale: 'zh-CN' }
     });
     
-    clearTimeout(timeoutId);
+    if (response.data && response.data.success) {
+      const countries = response.data.data || [];
+      
+      // 标准化数据格式
+      const standardizedCountries = countries.map(country => ({
+        id: country.countryId?.toString(),
+        name: country.name,
+        city: country.name,
+        country: country.name,
+        code: country.code,
+        type: 'country',
+        enName: country.enName,
+        continentId: country.continentId,
+        coordinates: { latitude: 0, longitude: 0 },
+        timezone: 'UTC',
+        status: 'active',
+      }));
 
-    if (!response.ok) {
-      throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+      // 缓存数据
+      setCachedData(CACHE_CONFIG.COUNTRIES_KEY, standardizedCountries);
+      console.log(`国家数据获取成功: ${standardizedCountries.length}条`);
+      
+      return standardizedCountries;
+    } else {
+      throw new Error(response.data?.message || '获取国家数据失败');
     }
-
-    const result = await response.json();
-    console.log('国家API响应:', result);
-    
-    // 处理API返回的数据格式
-    const countries = result.countryList || [];
-    
-    // 标准化数据格式
-    const standardizedCountries = countries.map(country => ({
-      id: country.countryId?.toString(),
-      name: country.name,
-      city: country.name,
-      country: country.name,
-      code: country.code,
-      type: 'country',
-      enName: country.enName,
-      continentId: country.continentId,
-      coordinates: { latitude: 0, longitude: 0 },
-      timezone: 'UTC',
-      status: 'active',
-    }));
-
-    // 缓存数据
-    setCachedData(CACHE_CONFIG.COUNTRIES_KEY, standardizedCountries);
-    console.log(`国家数据获取成功: ${standardizedCountries.length}条`);
-    
-    return standardizedCountries;
-    */
   } catch (error) {
     console.error('获取国家数据失败:', error);
     
@@ -468,175 +431,41 @@ export const getAllCountries = async () => {
 
 /**
  * 获取全量地理信息数据（城市、机场、火车站等）
- * @param {number} countryId - 国家ID，默认为1（中国）
+ * @param {number|null} countryId - 国家ID，默认为1（中国），null表示获取所有国家
  * @returns {Promise<Array>} 地理信息列表
  */
 export const getAllPOIInfo = async (countryId = 1) => {
   // 先检查缓存
-  const cacheKey = `${CACHE_CONFIG.CITIES_KEY}_${countryId}`;
+  const cacheKey = `${CACHE_CONFIG.CITIES_KEY}_${countryId || 'all'}`;
   if (isCacheValid(cacheKey)) {
     console.log('从缓存获取POI数据');
     return getCachedData(cacheKey);
   }
 
   try {
-    console.log('从API获取POI数据...');
+    console.log(`从后端API获取POI数据... (国家ID: ${countryId || '全部'})`);
     
-    // 注意：直接调用外部API会有CORS问题，应该使用后端API
-    // 暂时禁用外部API调用，直接返回默认数据或缓存数据
-    console.warn('外部API调用已禁用，使用默认或缓存数据');
-    
-    // 尝试返回缓存数据（即使过期）
-    const fallbackData = getCachedData(cacheKey);
-    if (fallbackData) {
-      console.log('使用缓存数据');
-      return fallbackData;
-    }
-    
-    // 返回默认数据
-    return getDefaultCities();
-    
-    /*
-    // 原始API调用代码（已禁用）
-    // 获取Ticket
-    const ticket = await getTicket();
-    
-    // 构建请求体
-    const requestBody = {
-      auth: {
-        AppKey: CTRIP_API_CONFIG.appKey,
-        Ticket: ticket
-      },
-      countryId: countryId,
-      provinceConditions: {
-        provinceIds: "",
-        provinceNames: "",
-        prefectureLevelCityConditions: {
-          prefectureLevelCityIds: "",
-          prefectureLevelCityNames: "",
-          returnDistrict: true,
-          returnCounty: true
-        }
-      },
-      poiConditions: {
-        returnAirport: true,
-        returnTrainStation: true,
-        returnBusStation: true
-      }
-    };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), CTRIP_API_CONFIG.timeout);
-    
-    const response = await fetch(`${CTRIP_API_CONFIG.baseURL}${CTRIP_API_CONFIG.endpoints.getPOIInfo}`, {
-      method: 'POST',
-      headers: getApiHeaders(ticket),
-      body: JSON.stringify(requestBody),
-      signal: controller.signal
+    // 使用后端API代理获取POI数据并转换为Location格式
+    const response = await apiClient.post('/ctrip/poi/locations', {
+      countryId: countryId || undefined, // 如果为null，不传countryId参数
+      returnDistrict: true,
+      returnCounty: true,
+      returnAirport: true,
+      returnTrainStation: true,
+      returnBusStation: true,
     });
     
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    console.log('POI API响应:', result);
-    
-    // 处理API返回的数据格式
-    const dataList = result.dataList || [];
-    const allLocations = [];
-    
-    // 解析省份数据
-    dataList.forEach(province => {
-      // 添加省份信息
-      allLocations.push({
-        id: `province_${province.provinceId}`,
-        name: province.provinceName,
-        city: province.provinceName,
-        country: '中国',
-        code: province.provinceId?.toString(),
-        type: 'province',
-        enName: province.provinceEnName,
-        coordinates: { latitude: 0, longitude: 0 },
-        timezone: 'Asia/Shanghai',
-        status: 'active',
-      });
+    if (response.data && response.data.success) {
+      const locations = response.data.data || [];
       
-      // 解析地级市数据
-      province.prefectureLevelCityInfoList?.forEach(city => {
-        // 添加城市信息
-        allLocations.push({
-          id: `city_${city.cityId}`,
-          name: city.cityName,
-          city: city.cityName,
-          country: '中国',
-          code: city.cityCode || city.cityId?.toString(),
-          type: 'city',
-          enName: city.cityEnName,
-          pinyin: city.cityPinYin,
-          coordinates: { latitude: 0, longitude: 0 },
-          timezone: 'Asia/Shanghai',
-          status: 'active',
-        });
-        
-        // 添加机场信息
-        city.stationInfo?.airportList?.forEach(airport => {
-          allLocations.push({
-            id: `airport_${airport.airportCode}`,
-            name: airport.airportName,
-            city: city.cityName,
-            country: '中国',
-            code: airport.airportCode,
-            type: 'airport',
-            enName: airport.airportEnName,
-            coordinates: { latitude: 0, longitude: 0 },
-            timezone: 'Asia/Shanghai',
-            status: 'active',
-          });
-        });
-        
-        // 添加火车站信息
-        city.stationInfo?.trainStationList?.forEach(station => {
-          allLocations.push({
-            id: `train_${station.trainCode}`,
-            name: station.trainName,
-            city: city.cityName,
-            country: '中国',
-            code: station.trainCode,
-            type: 'station',
-            enName: station.trainEnName,
-            coordinates: { latitude: 0, longitude: 0 },
-            timezone: 'Asia/Shanghai',
-            status: 'active',
-          });
-        });
-        
-        // 添加汽车站信息
-        city.stationInfo?.busStationList?.forEach(station => {
-          allLocations.push({
-            id: `bus_${station.busName}`,
-            name: station.busName,
-            city: city.cityName,
-            country: '中国',
-            code: station.busPinYinName,
-            type: 'bus',
-            enName: station.busPinYinName,
-            coordinates: { latitude: 0, longitude: 0 },
-            timezone: 'Asia/Shanghai',
-            status: 'active',
-          });
-        });
-      });
-    });
-
-    // 缓存数据
-    setCachedData(cacheKey, allLocations);
-    console.log(`POI数据获取成功: ${allLocations.length}条`);
-    
-    return allLocations;
-    */
+      // 缓存数据
+      setCachedData(cacheKey, locations);
+      console.log(`POI数据获取成功: ${locations.length}条`);
+      
+      return locations;
+    } else {
+      throw new Error(response.data?.message || '获取POI数据失败');
+    }
   } catch (error) {
     console.error('获取POI数据失败:', error);
     
@@ -653,8 +482,100 @@ export const getAllPOIInfo = async (countryId = 1) => {
 };
 
 export const getAllCities = async () => {
-  // 使用新的POI API获取城市数据
+  // 使用新的POI API获取城市数据（仅中国）
   return getAllPOIInfo(1);
+};
+
+/**
+ * 获取全球所有国家的POI数据
+ * @param {Object} options - 选项
+ * @param {boolean} options.parallel - 是否并行获取（默认false，串行获取避免API限流）
+ * @param {number} options.delay - 每个国家之间的延迟（毫秒），默认1000
+ * @param {Function} options.onProgress - 进度回调函数 (current, total) => void
+ * @returns {Promise<Array>} 全球地理信息列表
+ */
+export const getGlobalPOIInfo = async (options = {}) => {
+  const {
+    parallel = false,
+    delay = 1000,
+    onProgress = null
+  } = options;
+
+  // 检查缓存
+  const globalCacheKey = `${CACHE_CONFIG.CITIES_KEY}_global`;
+  if (isCacheValid(globalCacheKey)) {
+    console.log('从缓存获取全球POI数据');
+    return getCachedData(globalCacheKey);
+  }
+
+  try {
+    console.log('开始获取全球POI数据...');
+    
+    // 先获取所有国家列表
+    const countries = await getAllCountries();
+    console.log(`获取到 ${countries.length} 个国家，开始获取POI数据...`);
+
+    let allLocations = [];
+    
+    if (parallel) {
+      // 并行获取（可能触发API限流）
+      console.log('并行获取模式（可能触发API限流）');
+      const promises = countries.map(country => 
+        getAllPOIInfo(country.id ? parseInt(country.id) : null).catch(err => {
+          console.warn(`获取 ${country.name} 数据失败:`, err.message);
+          return [];
+        })
+      );
+      
+      const results = await Promise.all(promises);
+      allLocations = results.flat();
+    } else {
+      // 串行获取（推荐，避免API限流）
+      console.log('串行获取模式（避免API限流）');
+      for (let i = 0; i < countries.length; i++) {
+        const country = countries[i];
+        const countryId = country.id ? parseInt(country.id) : null;
+        
+        try {
+          console.log(`[${i + 1}/${countries.length}] 获取 ${country.name} 的数据...`);
+          const locations = await getAllPOIInfo(countryId);
+          allLocations = allLocations.concat(locations);
+          
+          // 调用进度回调
+          if (onProgress) {
+            onProgress(i + 1, countries.length);
+          }
+          
+          // 延迟，避免请求过快
+          if (i < countries.length - 1 && delay > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        } catch (error) {
+          console.warn(`获取 ${country.name} 数据失败:`, error.message);
+          // 继续处理下一个国家
+        }
+      }
+    }
+
+    console.log(`全球POI数据获取完成: 共 ${allLocations.length} 条数据`);
+    
+    // 缓存全球数据
+    setCachedData(globalCacheKey, allLocations);
+    
+    return allLocations;
+  } catch (error) {
+    console.error('获取全球POI数据失败:', error);
+    
+    // 如果失败，尝试返回缓存数据
+    const fallbackData = getCachedData(globalCacheKey);
+    if (fallbackData) {
+      console.log('使用过期缓存数据');
+      return fallbackData;
+    }
+    
+    // 返回默认数据
+    return getDefaultCities();
+  }
 };
 
 /**
@@ -1852,6 +1773,7 @@ export default {
   getAllCities,
   getAllCountries,
   getAllPOIInfo,
+  getGlobalPOIInfo,
   getAllLocations,
   searchLocations,
   clearAllCache,
