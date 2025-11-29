@@ -36,6 +36,7 @@ import TrainIcon from '@mui/icons-material/Train';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import { searchLocations } from '../../services/locationService';
 import apiClient from '../../utils/axiosConfig';
+import { useTranslation } from 'react-i18next';
 
 // 拼音映射表（用于中文搜索和字母分类）
 const pinyinMap = {
@@ -355,6 +356,16 @@ const RegionSelector = ({
   transportationType = null // 新增：交通工具类型，用于过滤数据
 }) => {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const currentLanguage = i18n.language || 'zh';
+  const isChinese = currentLanguage.toLowerCase().startsWith('zh');
+  
+  // 获取显示名称的辅助函数
+  const getDisplayName = useCallback((location) => {
+    if (!location) return '';
+    const displayName = isChinese ? location.name : (location.enName || location.name || '');
+    return displayName;
+  }, [isChinese]);
   const [searchValue, setSearchValue] = useState('');
   const [filteredLocations, setFilteredLocations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -381,17 +392,30 @@ const RegionSelector = ({
       // 如果value是对象
       else if (typeof value === 'object' && value !== null) {
         setSelectedLocation(value);
+        // 根据语言选择显示名称
+        const displayName = getDisplayName(value);
         // 汽车站不显示编码
         const displayValue = value.type === 'bus' 
-          ? value.name 
-          : `${value.name}${value.code ? ` (${value.code})` : ''}`;
+          ? displayName 
+          : `${displayName}${value.code ? ` (${value.code})` : ''}`;
         setSearchValue(displayValue);
       }
     } else {
       setSearchValue('');
       setSelectedLocation(null);
     }
-  }, [value]);
+  }, [value, getDisplayName]);
+
+  // 监听语言变化，更新已选择位置的显示
+  useEffect(() => {
+    if (selectedLocation) {
+      const displayName = getDisplayName(selectedLocation);
+      const displayValue = selectedLocation.type === 'bus' 
+        ? displayName 
+        : `${displayName}${selectedLocation.code ? ` (${selectedLocation.code})` : ''}`;
+      setSearchValue(displayValue);
+    }
+  }, [currentLanguage, selectedLocation, getDisplayName]);
 
   // 根据交通工具类型生成动态placeholder
   const getDynamicPlaceholder = () => {
@@ -795,10 +819,12 @@ const RegionSelector = ({
 
   // 处理选择
   const handleSelect = (location) => {
+    // 根据语言选择显示名称
+    const displayName = getDisplayName(location);
     // 汽车站不显示编码
     const displayValue = location.type === 'bus' 
-      ? location.name 
-      : `${location.name}${location.code ? ` (${location.code})` : ''}`;
+      ? displayName 
+      : `${displayName}${location.code ? ` (${location.code})` : ''}`;
     setSearchValue(displayValue);
     setShowDropdown(false);
     
@@ -1222,7 +1248,7 @@ const RegionSelector = ({
                   primary={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
                       <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
-                        {location.name}
+                        {getDisplayName(location)}
                       </Typography>
                       <Chip
                         label={getTypeLabel(location.type)}
@@ -1278,10 +1304,10 @@ const RegionSelector = ({
                         location.province && location.province !== location.city ? location.province : null,
                         location.city,
                         location.district,
-                        location.country
+                        isChinese ? location.country : (location.countryCode || location.country)
                       ].filter(Boolean).join(', ')}
                       {location.parentCity && (
-                        <span> • 隶属: {location.parentCity}</span>
+                        <span> • {isChinese ? '隶属' : 'Parent'}: {isChinese ? location.parentCity : (location.parentCityEnName || location.parentCity)}</span>
                       )}
                     </Typography>
                   }
