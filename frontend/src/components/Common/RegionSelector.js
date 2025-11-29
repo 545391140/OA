@@ -363,8 +363,11 @@ const RegionSelector = ({
   // 获取显示名称的辅助函数
   const getDisplayName = useCallback((location) => {
     if (!location) return '';
-    const displayName = isChinese ? location.name : (location.enName || location.name || '');
-    return displayName;
+    const displayName = isChinese 
+      ? (location.name || '') 
+      : (location.enName || location.name || '');
+    // 确保返回的是字符串，避免返回 undefined 或 null
+    return String(displayName || '');
   }, [isChinese]);
   const [searchValue, setSearchValue] = useState('');
   const [filteredLocations, setFilteredLocations] = useState([]);
@@ -1124,7 +1127,7 @@ const RegionSelector = ({
             {/* 城市网格 */}
             <Box sx={{ p: 1.5 }}>
               <Grid container spacing={0.5}>
-                {cities.map((cityName) => (
+                {cities.filter(cityName => cityName && typeof cityName === 'string').map((cityName) => (
                   <Grid item xs={4} sm={3} md={2} key={cityName}>
                     <Box
                       component="div"
@@ -1171,7 +1174,7 @@ const RegionSelector = ({
                         }
                       }}
                     >
-                      {cityName}
+                      {cityName || ''}
                     </Box>
                   </Grid>
                 ))}
