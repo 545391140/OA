@@ -1577,6 +1577,7 @@
       "searchPlaceholder": "이름, 코드, 도시, 성, 구, 현, 국가 또는 국가 코드로 검색...",
       "type": "유형",
       "status": "상태",
+      "country": "국가",
       "all": "모두",
       "active": "활성",
       "inactive": "비활성",

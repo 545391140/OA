@@ -590,6 +590,39 @@ async function processCountry(country, startDate = null) {
     }
     stats.processedCountries++;
 
+    // 首先创建或更新国家类型的记录
+    const countryLocation = {
+      name: country.name,
+      code: country.code || country.countryId?.toString(),
+      type: 'country',
+      country: country.name,
+      countryCode: country.code,
+      enName: country.enName || country.name,
+      status: 'active',
+      coordinates: { latitude: 0, longitude: 0 }, // 默认坐标，后续可以从API获取
+      timezone: country.code === 'CN' ? 'Asia/Shanghai' : 'UTC',
+    };
+    
+    // 保存国家记录
+    const countryQuery = {
+      type: 'country',
+      country: country.name
+    };
+    const existingCountry = await Location.findOne(countryQuery);
+    if (existingCountry) {
+      // 更新现有国家记录
+      Object.keys(countryLocation).forEach(key => {
+        if (countryLocation[key] !== undefined && countryLocation[key] !== null) {
+          existingCountry[key] = countryLocation[key];
+        }
+      });
+      await existingCountry.save();
+    } else {
+      // 创建新国家记录
+      await Location.create(countryLocation);
+      stats.createdLocations++;
+    }
+
     // 构建POI查询参数
     const poiOptions = {
       countryId: country.countryId,

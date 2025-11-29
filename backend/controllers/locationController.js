@@ -34,15 +34,10 @@ exports.getLocations = async (req, res) => {
     if (search) {
       const searchTrimmed = search.trim();
       
-      // 优化策略：优先使用文本索引（性能最好，支持中文搜索）
-      // 文本索引会自动分词，支持中文搜索，性能比正则表达式好10-100倍
-      try {
-        // 尝试使用文本索引
-        query.$text = { $search: searchTrimmed };
-        useTextSearch = true;
-      } catch (error) {
-        // 如果文本索引不可用，降级使用优化的正则表达式查询
-        console.warn('文本索引不可用，使用正则表达式:', error.message);
+      // 如果同时有country参数和search参数，优先使用正则表达式查询（更精确）
+      // 因为文本索引搜索可能无法与country参数正确组合
+      if (country) {
+        // 有country参数时，使用正则表达式查询，确保country筛选生效
         query.$or = [
           { name: { $regex: searchTrimmed, $options: 'i' } },
           { code: { $regex: searchTrimmed, $options: 'i' } },
@@ -52,10 +47,33 @@ exports.getLocations = async (req, res) => {
           { county: { $regex: searchTrimmed, $options: 'i' } },
           { country: { $regex: searchTrimmed, $options: 'i' } },
           { countryCode: { $regex: searchTrimmed, $options: 'i' } },
-          { enName: { $regex: searchTrimmed, $options: 'i' } }, // 新增：英文名称搜索
-          { pinyin: { $regex: searchTrimmed, $options: 'i' } }  // 新增：拼音搜索
+          { enName: { $regex: searchTrimmed, $options: 'i' } },
+          { pinyin: { $regex: searchTrimmed, $options: 'i' } }
         ];
         useTextSearch = false;
+      } else {
+        // 没有country参数时，优先使用文本索引（性能更好）
+        try {
+          // 尝试使用文本索引
+          query.$text = { $search: searchTrimmed };
+          useTextSearch = true;
+        } catch (error) {
+          // 如果文本索引不可用，降级使用优化的正则表达式查询
+          console.warn('文本索引不可用，使用正则表达式:', error.message);
+          query.$or = [
+            { name: { $regex: searchTrimmed, $options: 'i' } },
+            { code: { $regex: searchTrimmed, $options: 'i' } },
+            { city: { $regex: searchTrimmed, $options: 'i' } },
+            { province: { $regex: searchTrimmed, $options: 'i' } },
+            { district: { $regex: searchTrimmed, $options: 'i' } },
+            { county: { $regex: searchTrimmed, $options: 'i' } },
+            { country: { $regex: searchTrimmed, $options: 'i' } },
+            { countryCode: { $regex: searchTrimmed, $options: 'i' } },
+            { enName: { $regex: searchTrimmed, $options: 'i' } },
+            { pinyin: { $regex: searchTrimmed, $options: 'i' } }
+          ];
+          useTextSearch = false;
+        }
       }
     }
 
@@ -92,6 +110,10 @@ exports.getLocations = async (req, res) => {
         const searchTrimmed = search.trim();
         const fallbackQuery = { ...query };
         delete fallbackQuery.$text;
+        // 保留country参数（如果存在）
+        if (country) {
+          fallbackQuery.country = { $regex: country, $options: 'i' };
+        }
         fallbackQuery.$or = [
           { name: { $regex: searchTrimmed, $options: 'i' } },
           { code: { $regex: searchTrimmed, $options: 'i' } },
@@ -101,8 +123,8 @@ exports.getLocations = async (req, res) => {
           { county: { $regex: searchTrimmed, $options: 'i' } },
           { country: { $regex: searchTrimmed, $options: 'i' } },
           { countryCode: { $regex: searchTrimmed, $options: 'i' } },
-          { enName: { $regex: searchTrimmed, $options: 'i' } }, // 新增：英文名称搜索
-          { pinyin: { $regex: searchTrimmed, $options: 'i' } }  // 新增：拼音搜索
+          { enName: { $regex: searchTrimmed, $options: 'i' } },
+          { pinyin: { $regex: searchTrimmed, $options: 'i' } }
         ];
         
         // 使用降级查询

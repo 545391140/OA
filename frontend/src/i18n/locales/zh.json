@@ -1785,6 +1785,7 @@
       "searchPlaceholder": "搜索名称、代码、城市、省、区、县、国家或国家码...",
       "type": "类型",
       "status": "状态",
+      "country": "国家",
       "all": "全部",
       "active": "启用",
       "inactive": "禁用",

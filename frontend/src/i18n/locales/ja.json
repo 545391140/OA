@@ -1577,6 +1577,7 @@
       "searchPlaceholder": "名前、コード、都市、省、区、県、国または国コードで検索...",
       "type": "タイプ",
       "status": "ステータス",
+      "country": "国",
       "all": "すべて",
       "active": "有効",
       "inactive": "無効",

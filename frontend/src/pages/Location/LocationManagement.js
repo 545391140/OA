@@ -66,6 +66,8 @@ const LocationManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [countryFilter, setCountryFilter] = useState('all');
+  const [countryOptions, setCountryOptions] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [pagination, setPagination] = useState({
@@ -111,7 +113,40 @@ const LocationManagement = () => {
   useEffect(() => {
     fetchLocations();
     fetchCitiesForParent();
-  }, [typeFilter, statusFilter, page, rowsPerPage]);
+  }, [typeFilter, statusFilter, countryFilter, page, rowsPerPage]);
+
+  useEffect(() => {
+    fetchCountries();
+  }, []); // 只在组件加载时获取一次
+
+  const fetchCountries = async () => {
+    try {
+      // 获取所有不同的国家列表（不限制类型，获取所有位置数据中的国家）
+      const response = await apiClient.get('/locations', {
+        params: { 
+          status: 'active',
+          limit: 10000 // 获取足够多的数据以提取所有国家
+        }
+      });
+      if (response.data && response.data.success) {
+        const locations = response.data.data || [];
+        // 提取所有不同的国家
+        const countries = Array.from(
+          new Set(
+            locations
+              .map(loc => loc.country)
+              .filter(country => country && country.trim())
+          )
+        ).sort();
+        setCountryOptions(countries);
+        console.log('已加载国家列表:', countries.length, '个国家');
+      }
+    } catch (err) {
+      console.error('获取国家列表失败:', err);
+      // 如果失败，使用默认国家列表
+      setCountryOptions(['中国', '美国', '日本', '韩国', '新加坡', '英国', '法国', '德国', '意大利', '西班牙']);
+    }
+  };
 
   const fetchCitiesForParent = async () => {
     try {
@@ -140,6 +175,9 @@ const LocationManagement = () => {
       }
       if (statusFilter !== 'all') {
         params.status = statusFilter;
+      }
+      if (countryFilter && countryFilter !== 'all') {
+        params.country = countryFilter;
       }
       if (searchTerm) {
         params.search = searchTerm;
@@ -173,6 +211,7 @@ const LocationManagement = () => {
     setSearchTerm('');
     setTypeFilter('all');
     setStatusFilter('all');
+    setCountryFilter('all');
     setPage(0); // 重置时回到第一页
     setTimeout(() => fetchLocations(), 100);
   };
@@ -376,16 +415,28 @@ const LocationManagement = () => {
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
-        <Typography variant="h4" gutterBottom sx={{ 
-          background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          fontWeight: 700,
-          mb: 3
-        }}>
-          {t('location.management.title')}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h4" sx={{ 
+            background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: 700
+          }}>
+            {t('location.management.title')}
+          </Typography>
+          {canEdit && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={handleAdd}
+              sx={{ flexShrink: 0 }}
+            >
+              {t('location.management.add')}
+            </Button>
+          )}
+        </Box>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -396,7 +447,7 @@ const LocationManagement = () => {
         {/* 搜索和筛选区域 */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
                 placeholder={t('location.management.searchPlaceholder')}
@@ -450,12 +501,33 @@ const LocationManagement = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>{t('location.management.country')}</InputLabel>
+                <Select
+                  value={countryFilter}
+                  label={t('location.management.country')}
+                  onChange={(e) => {
+                    setCountryFilter(e.target.value);
+                    setPage(0); // 改变筛选时重置到第一页
+                  }}
+                >
+                  <MenuItem value="all">{t('location.management.all')}</MenuItem>
+                  {countryOptions.map((country) => (
+                    <MenuItem key={country} value={country}>
+                      {country}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'nowrap' }}>
                 <Button
                   variant="contained"
                   startIcon={<SearchIcon />}
                   onClick={handleSearch}
+                  sx={{ flexShrink: 0, minWidth: 'auto' }}
                 >
                   {t('location.management.search')}
                 </Button>
@@ -463,20 +535,10 @@ const LocationManagement = () => {
                   variant="outlined"
                   startIcon={<RefreshIcon />}
                   onClick={handleReset}
+                  sx={{ flexShrink: 0, minWidth: 'auto' }}
                 >
                   {t('location.management.reset')}
                 </Button>
-                {canEdit && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
-                    onClick={handleAdd}
-                    sx={{ ml: 'auto' }}
-                  >
-                    {t('location.management.add')}
-                  </Button>
-                )}
               </Box>
             </Grid>
           </Grid>

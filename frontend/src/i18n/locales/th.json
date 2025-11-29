@@ -1709,6 +1709,7 @@
       "searchPlaceholder": "Search by name, code, city, province, district, county, country or country code...",
       "type": "Type",
       "status": "Status",
+      "country": "ประเทศ",
       "all": "All",
       "active": "Active",
       "inactive": "Inactive",
