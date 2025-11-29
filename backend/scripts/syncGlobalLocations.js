@@ -51,7 +51,6 @@ const stats = {
   failedCountries: 0,
   totalLocations: 0,
   createdLocations: 0,
-  updatedLocations: 0,
   skippedLocations: 0,
   errors: [],
   syncMode: 'full', // 'full' 或 'incremental'
@@ -224,11 +223,17 @@ function convertPOIToLocations(poiData, countryInfo) {
     locations.push(provinceLocation);
 
     // 处理地级市
-    province.prefectureLevelCityInfoList?.forEach((city) => {
-      // 跳过没有名称的城市
-      if (!city.cityName || city.cityName.trim() === '') {
-        return;
+    if (!province.prefectureLevelCityInfoList || province.prefectureLevelCityInfoList.length === 0) {
+      // 如果没有地级市数据，输出警告（仅在调试时有用）
+      if (process.env.DEBUG_SYNC === 'true') {
+        console.warn(`  警告: 省份 "${province.provinceName}" 没有地级市数据`);
       }
+    } else {
+      province.prefectureLevelCityInfoList.forEach((city) => {
+        // 跳过没有名称的城市
+        if (!city.cityName || city.cityName.trim() === '') {
+          return;
+        }
       
       // 添加城市信息
       const cityLocation = {
@@ -415,7 +420,8 @@ function convertPOIToLocations(poiData, countryInfo) {
           });
         });
       }
-    });
+      });
+    }
   });
 
   return { locations, cityMap };
@@ -551,14 +557,8 @@ async function saveOrUpdateLocation(locationData, cityMap) {
     const existingLocation = await Location.findOne(query);
 
     if (existingLocation) {
-      // 更新现有记录（只更新提供的字段，保留原有字段）
-      Object.keys(cleanData).forEach(key => {
-        if (cleanData[key] !== undefined && cleanData[key] !== null) {
-          existingLocation[key] = cleanData[key];
-        }
-      });
-      await existingLocation.save();
-      stats.updatedLocations++;
+      // 数据已存在，跳过写入（不更新，不创建）
+      stats.skippedLocations++;
       return existingLocation;
     } else {
       // 创建新记录
@@ -610,13 +610,8 @@ async function processCountry(country, startDate = null) {
     };
     const existingCountry = await Location.findOne(countryQuery);
     if (existingCountry) {
-      // 更新现有国家记录
-      Object.keys(countryLocation).forEach(key => {
-        if (countryLocation[key] !== undefined && countryLocation[key] !== null) {
-          existingCountry[key] = countryLocation[key];
-        }
-      });
-      await existingCountry.save();
+      // 国家记录已存在，跳过写入（不更新，不创建）
+      console.log(`  国家 "${country.name}" 已存在，跳过`);
     } else {
       // 创建新国家记录
       await Location.create(countryLocation);
@@ -642,11 +637,37 @@ async function processCountry(country, startDate = null) {
     // 获取该国家的POI数据
     const poiData = await ctripApiService.getAllPOIInfo(poiOptions);
 
+    // 调试：检查API返回的数据结构
+    if (poiData.dataList && poiData.dataList.length > 0) {
+      const firstProvince = poiData.dataList[0];
+      const cityCount = firstProvince.prefectureLevelCityInfoList?.length || 0;
+      console.log(`  调试信息: 第一个省份 "${firstProvince.provinceName}" 包含 ${cityCount} 个地级市`);
+      if (cityCount === 0 && !startDate) {
+        console.warn(`  ⚠ 警告: 全量同步模式下未获取到地级市数据，请检查API返回`);
+      }
+    }
+
     // 转换数据格式
     const { locations, cityMap } = convertPOIToLocations(poiData, country);
     stats.totalLocations += locations.length;
 
+    // 统计各类数据的数量
+    const typeStats = {
+      country: 0,
+      province: 0,
+      city: 0,
+      airport: 0,
+      station: 0,
+      bus: 0
+    };
+    locations.forEach(loc => {
+      if (typeStats.hasOwnProperty(loc.type)) {
+        typeStats[loc.type]++;
+      }
+    });
+
     console.log(`  获取到 ${locations.length} 条地理位置数据`);
+    console.log(`  数据分类统计: 国家=${typeStats.country}, 省份=${typeStats.province}, 城市=${typeStats.city}, 机场=${typeStats.airport}, 火车站=${typeStats.station}, 汽车站=${typeStats.bus}`);
 
     // 批量保存数据
     let savedCount = 0;
@@ -771,7 +792,7 @@ async function main() {
         console.log('当前统计:');
         console.log(`  已处理: ${stats.processedCountries}/${stats.totalCountries}`);
         console.log(`  成功: ${stats.successCountries}, 失败: ${stats.failedCountries}`);
-        console.log(`  总数据: ${stats.totalLocations}, 创建: ${stats.createdLocations}, 更新: ${stats.updatedLocations}`);
+        console.log(`  总数据: ${stats.totalLocations}, 创建: ${stats.createdLocations}, 跳过: ${stats.skippedLocations}`);
         console.log('='.repeat(60));
       }
 
@@ -791,7 +812,6 @@ async function main() {
     console.log(`失败: ${stats.failedCountries}`);
     console.log(`总地理位置数据: ${stats.totalLocations}`);
     console.log(`创建: ${stats.createdLocations}`);
-    console.log(`更新: ${stats.updatedLocations}`);
     console.log(`跳过: ${stats.skippedLocations}`);
 
     if (stats.errors.length > 0) {
