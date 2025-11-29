@@ -733,8 +733,8 @@ const RegionSelector = ({
       );
     }
 
-    // 按层级关系组织数据
-    const organizedLocations = organizeLocationsByHierarchy(filteredLocations);
+    // 按层级关系组织数据（传入搜索关键词用于排序）
+    const organizedLocations = organizeLocationsByHierarchy(filteredLocations, searchValue.trim());
 
     return (
       <List sx={{ p: 0 }}>
@@ -872,12 +872,13 @@ const RegionSelector = ({
   };
 
   // 按层级关系组织位置数据
-  const organizeLocationsByHierarchy = (locations) => {
+  const organizeLocationsByHierarchy = (locations, searchKeyword = '') => {
     if (!locations || locations.length === 0) {
       return [];
     }
 
     console.log('[RegionSelector] organizeLocationsByHierarchy 输入数据数量:', locations.length);
+    console.log('[RegionSelector] organizeLocationsByHierarchy 搜索关键词:', searchKeyword);
     console.log('[RegionSelector] organizeLocationsByHierarchy 输入数据类型分布:', {
       city: locations.filter(l => l.type === 'city').length,
       airport: locations.filter(l => l.type === 'airport').length,
@@ -936,14 +937,6 @@ const RegionSelector = ({
       bus: independentItems.filter(l => l.type === 'bus').length
     });
 
-    // 按层级添加：先添加城市，再添加其下的机场/火车站/汽车站
-    parentMap.forEach((city, cityId) => {
-      result.push(city);
-      const children = childrenMap.get(cityId.toString()) || [];
-      console.log(`- 城市 ${city.name} (${cityId}) 下的子项数量:`, children.length);
-      children.forEach(child => result.push(child));
-    });
-
     // 处理childrenMap中但parent不在parentMap中的子项（parentId关联错误的情况）
     // 这些子项应该作为独立项目显示
     const orphanedChildren = [];
@@ -954,11 +947,144 @@ const RegionSelector = ({
       }
     });
 
-    // 最后添加独立项目（没有关联城市的机场/火车站/汽车站）
-    independentItems.forEach(item => result.push(item));
+    // 合并所有需要显示的机场/火车站/汽车站（优先显示）
+    const allTransportationItems = [
+      ...independentItems,
+      ...orphanedChildren
+    ];
     
-    // 添加orphaned子项（parentId指向的城市不在搜索结果中）
-    orphanedChildren.forEach(item => result.push(item));
+    // 从parentMap的城市中提取其子项
+    parentMap.forEach((city, cityId) => {
+      const children = childrenMap.get(cityId.toString()) || [];
+      allTransportationItems.push(...children);
+    });
+
+    // 对于火车站和汽车站，只保留名称前缀匹配的（如果有关键词）
+    const keywordLower = searchKeyword ? searchKeyword.trim().toLowerCase() : '';
+    if (keywordLower) {
+      const filteredItems = allTransportationItems.filter(item => {
+        // 机场：显示所有匹配的
+        if (item.type === 'airport') {
+          return true;
+        }
+        
+        // 火车站和汽车站：只显示名称前缀匹配的
+        if (item.type === 'station' || item.type === 'bus') {
+          const nameLower = (item.name || '').toLowerCase();
+          // 名称以关键词开头，或者名称完全等于关键词
+          return nameLower.startsWith(keywordLower) || nameLower === keywordLower;
+        }
+        
+        // 其他类型：显示所有
+        return true;
+      });
+      
+      console.log('[RegionSelector] 前缀匹配过滤前数量:', allTransportationItems.length);
+      console.log('[RegionSelector] 前缀匹配过滤后数量:', filteredItems.length);
+      console.log('[RegionSelector] 被过滤掉的火车站/汽车站:', 
+        allTransportationItems
+          .filter(item => !filteredItems.includes(item) && (item.type === 'station' || item.type === 'bus'))
+          .map(item => `${item.type}:${item.name}`)
+      );
+      
+      // 清空原数组并填充过滤后的结果
+      allTransportationItems.length = 0;
+      allTransportationItems.push(...filteredItems);
+    }
+
+    // 按类型优先级排序：city(1) > airport(2) > station(3) > bus(4)
+    // 优先级数字越小，排序越靠前
+    const typePriority = {
+      'city': 1,      // 最高优先级（最先显示）
+      'airport': 2,  // 第二优先级
+      'station': 3,   // 第三优先级
+      'bus': 4        // 最低优先级（最后显示）
+    };
+    
+    // 计算名称匹配度（用于排序）
+    const getMatchScore = (location, keyword) => {
+      if (!keyword || !keyword.trim()) {
+        return 0;
+      }
+      
+      const keywordLower = keyword.trim().toLowerCase();
+      const nameLower = (location.name || '').toLowerCase();
+      const codeLower = (location.code || '').toLowerCase();
+      
+      // 完全匹配（名称完全等于关键词）
+      if (nameLower === keywordLower) {
+        return 100;
+      }
+      
+      // 前缀匹配（名称以关键词开头，如"成都"匹配"成都东站"）
+      if (nameLower.startsWith(keywordLower)) {
+        return 80;
+      }
+      
+      // 代码完全匹配
+      if (codeLower === keywordLower) {
+        return 70;
+      }
+      
+      // 代码前缀匹配
+      if (codeLower.startsWith(keywordLower)) {
+        return 60;
+      }
+      
+      // 包含匹配（名称包含关键词）
+      if (nameLower.includes(keywordLower)) {
+        return 50;
+      }
+      
+      // 代码包含匹配
+      if (codeLower.includes(keywordLower)) {
+        return 40;
+      }
+      
+      return 0;
+    };
+    
+    allTransportationItems.sort((a, b) => {
+      const priorityA = typePriority[a.type] || 99;
+      const priorityB = typePriority[b.type] || 99;
+      
+      // 首先按类型优先级排序
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // 同类型按名称匹配度排序（匹配度高的优先）
+      const matchScoreA = getMatchScore(a, searchKeyword);
+      const matchScoreB = getMatchScore(b, searchKeyword);
+      
+      if (matchScoreA !== matchScoreB) {
+        return matchScoreB - matchScoreA; // 匹配度高的在前
+      }
+      
+      // 匹配度相同，按名称长度排序（短名称优先，如"成都站"优先于"成都东站"）
+      const nameLengthA = (a.name || '').length;
+      const nameLengthB = (b.name || '').length;
+      if (nameLengthA !== nameLengthB) {
+        return nameLengthA - nameLengthB;
+      }
+      
+      // 最后按名称中文排序
+      return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+    });
+    
+    console.log('[RegionSelector] 排序后的交通工具类型顺序（前10条）:', 
+      allTransportationItems.slice(0, 10).map(item => {
+        const matchScore = getMatchScore(item, searchKeyword);
+        return `${item.type}:${item.name} (匹配度:${matchScore})`;
+      }));
+
+    // 先添加城市（优先级最高）
+    parentMap.forEach((city, cityId) => {
+      result.push(city);
+    });
+
+    // 然后添加机场/火车站/汽车站（按优先级排序）
+    allTransportationItems.forEach(item => result.push(item));
 
     console.log('[RegionSelector] organizeLocationsByHierarchy 最终结果数量:', result.length);
     console.log('[RegionSelector] organizeLocationsByHierarchy 最终结果类型分布:', {
