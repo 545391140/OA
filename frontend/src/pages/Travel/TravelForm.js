@@ -38,7 +38,6 @@ import ModernFormSection from '../../components/Common/ModernFormSection';
 import ModernInput from '../../components/Common/ModernInput';
 import ModernExpenseItem from '../../components/Common/ModernExpenseItem';
 import ModernCostOverview from '../../components/Common/ModernCostOverview';
-import CitySearchInput from '../../components/Common/CitySearchInput';
 import RegionSelector from '../../components/Common/RegionSelector';
 import FormSection from '../../components/Common/FormSection';
 import TravelRouteCard from '../../components/Travel/TravelRouteCard';

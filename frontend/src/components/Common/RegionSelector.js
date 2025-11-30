@@ -413,7 +413,6 @@ const RegionSelector = ({
       try {
         return JSON.parse(JSON.stringify(cached.data));
       } catch (error) {
-        console.error('[RegionSelector] 缓存数据深拷贝失败:', error);
         // 如果深拷贝失败，返回原数据（虽然不理想，但至少不会崩溃）
         return cached.data;
       }
@@ -527,7 +526,6 @@ const RegionSelector = ({
         return;
       }
       // 自动补全失败不影响主搜索，静默处理
-      console.warn('[RegionSelector] 获取自动补全建议失败:', error);
       if (!abortController.signal.aborted) {
         setAutocompleteSuggestions([]);
         setShowAutocomplete(false);
@@ -540,41 +538,31 @@ const RegionSelector = ({
     // 防重复搜索：如果关键词与上次相同，跳过
     const trimmedKeyword = keyword?.trim() || '';
     if (trimmedKeyword === lastSearchKeywordRef.current) {
-      console.log('[RegionSelector] 搜索关键词与上次相同，跳过搜索:', trimmedKeyword);
       return;
     }
-    
-    console.log('[RegionSelector] ========== 开始搜索 ==========');
-    console.log('[RegionSelector] 搜索关键词:', trimmedKeyword);
-    console.log('[RegionSelector] 交通工具类型:', transportationType);
     
     // 更新上次搜索关键词
     lastSearchKeywordRef.current = trimmedKeyword;
     
     if (!keyword || keyword.trim().length < 1) {
-      console.log('[RegionSelector] 关键词为空，清空结果');
       setFilteredLocations([]);
       return;
     }
 
     // 检查最小搜索长度
     if (!isValidSearchLength(keyword)) {
-      console.log('[RegionSelector] 搜索长度不符合要求:', keyword.length);
       setFilteredLocations([]);
       setLoading(false);
       return;
     }
-    console.log('[RegionSelector] 搜索长度验证通过');
 
     // 检查缓存
     const cachedResult = getCachedResult(keyword, transportationType);
     if (cachedResult) {
-      console.log('[RegionSelector] 使用缓存结果，数量:', cachedResult.length);
       setFilteredLocations(cachedResult);
       setLoading(false);
       return;
     }
-    console.log('[RegionSelector] 缓存未命中，发送API请求');
 
     // 取消之前的请求
     if (abortControllerRef.current) {
@@ -607,9 +595,6 @@ const RegionSelector = ({
       if (isPinyinOrEnglish) {
         params.searchPriority = 'enName_pinyin'; // 告诉后端优先查询 enName 和 pinyin
       }
-      
-      console.log('[RegionSelector] 初始查询参数:', params);
-      console.log('[RegionSelector] 输入类型检测 - 中文:', hasChinese, '拼音/英语:', isPinyinOrEnglish);
 
       // 根据交通工具类型添加过滤和优化 includeChildren
       if (transportationType) {
@@ -640,32 +625,22 @@ const RegionSelector = ({
         // 没有指定交通工具类型时，不使用 includeChildren
         // 避免返回过多不必要的数据
       }
-
-      console.log('[RegionSelector] 发送API请求，参数:', params);
-      console.log('[RegionSelector] API URL: /locations');
       
       const response = await apiClient.get('/locations', { 
         params,
         signal: abortController.signal
       });
       
-      console.log('[RegionSelector] API响应状态:', response.status);
-      console.log('[RegionSelector] API响应数据:', response.data);
-      
       // 检查请求是否被取消
       if (abortController.signal.aborted) {
-        console.log('[RegionSelector] 请求已被取消');
         return;
       }
       
       if (!response.data || !response.data.success) {
-        console.error('[RegionSelector] API返回失败:', response.data);
         throw new Error(response.data?.message || '搜索地理位置数据失败');
       }
       
       const locations = response.data.data || [];
-      console.log('[RegionSelector] 收到结果数量:', locations.length);
-      console.log('[RegionSelector] 前3个结果:', locations.slice(0, 3));
       
       // 验证并转换数据结构（使用提取的函数）
       const validLocations = locations
@@ -765,30 +740,14 @@ const RegionSelector = ({
       // 保存到缓存
       setCachedResult(keyword, transportationType, uniqueResults);
       
-      console.log('[RegionSelector] 最终返回结果数量:', uniqueResults.length);
-      console.log('[RegionSelector] 最终前3个结果:', uniqueResults.slice(0, 3).map(loc => ({
-        name: loc.name,
-        pinyin: loc.pinyin,
-        enName: loc.enName,
-        code: loc.code,
-        type: loc.type
-      })));
-      
       setFilteredLocations(uniqueResults);
-      console.log('[RegionSelector] ========== 搜索完成 ==========');
     } catch (error) {
       // 如果是取消请求，不显示错误
       if (isCancelError(error) || abortController.signal.aborted) {
-        console.log('[RegionSelector] 请求被取消，不显示错误');
         return;
       }
       
       const errorMessage = error.response?.data?.message || error.message || '搜索地理位置数据失败';
-      console.error('[RegionSelector] 搜索失败:', {
-        error: errorMessage,
-        response: error.response?.data,
-        status: error.response?.status
-      });
       setErrorMessage(errorMessage);
       setFilteredLocations([]);
     } finally {
@@ -863,7 +822,6 @@ const RegionSelector = ({
 
     // 如果已选择位置且不是用户正在输入，跳过搜索（避免已选择位置时重复搜索）
     if (selectedLocation && !isUserTyping) {
-      console.log('[RegionSelector] 已选择位置且非用户输入，跳过搜索');
       return;
     }
 
@@ -1198,7 +1156,7 @@ const RegionSelector = ({
       // 如果搜索到结果，自动选择第一个匹配的城市
       // 注意：这里不自动选择，让用户从搜索结果中选择
     } catch (error) {
-      console.error('搜索热门城市失败:', error);
+      // 搜索失败，静默处理
     }
   }, [searchLocationsFromAPI]);
 
