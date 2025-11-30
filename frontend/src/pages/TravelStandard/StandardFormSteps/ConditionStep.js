@@ -41,6 +41,9 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
   // 用于存储每个条件的加载状态
   const [searchLoading, setSearchLoading] = useState({});
   
+  // 用于存储每个条件的输入值（用于搜索）
+  const [inputValues, setInputValues] = useState({});
+  
   // 防抖定时器
   const searchTimers = React.useRef({});
 
@@ -76,7 +79,7 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
       }
       return [];
     } catch (error) {
-      console.error(`Search ${type} locations error:`, error);
+      // 搜索失败，返回空数组
       return [];
     }
   };
@@ -102,7 +105,7 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
         const results = await searchLocations(type, searchTerm, 500);
         setSearchResults(prev => ({ ...prev, [key]: results }));
       } catch (error) {
-        console.error('Search error:', error);
+        // 搜索失败，设置空结果
         setSearchResults(prev => ({ ...prev, [key]: [] }));
       } finally {
         setSearchLoading(prev => ({ ...prev, [key]: false }));
@@ -182,10 +185,31 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
     const newGroups = [...formData.conditionGroups];
     newGroups[groupIndex].conditions[condIndex][field] = value;
     
-    // 如果改变了类型，清空值和 locationIds
+    // 如果改变了类型，清空值、locationIds 和搜索结果
     if (field === 'type') {
       newGroups[groupIndex].conditions[condIndex].value = '';
       newGroups[groupIndex].conditions[condIndex].locationIds = [];
+      
+      // 清空该条件的搜索结果和输入值
+      const key = `${groupIndex}_${condIndex}`;
+      setSearchResults(prev => {
+        const newResults = { ...prev };
+        delete newResults[key];
+        return newResults;
+      });
+      setInputValues(prev => {
+        const newInputValues = { ...prev };
+        delete newInputValues[key];
+        return newInputValues;
+      });
+      
+      // 如果新类型是 country 或 city，初始化搜索
+      if (value === 'country' || value === 'city') {
+        // 延迟初始化，确保状态更新完成
+        setTimeout(() => {
+          handleSearchInput(groupIndex, condIndex, value, '');
+        }, 100);
+      }
     }
     
     // 如果提供了 locationIds，同时更新 locationIds 字段
@@ -509,27 +533,41 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
                             size="small"
                             options={getOptionsForType(condition.type, groupIndex, condIndex)}
                             value={getDisplaySelectedOptions(condition.type, condition.value, groupIndex, condIndex)}
-                            onChange={(event, newValue) => {
-                              handleMultiSelectChange(groupIndex, condIndex, newValue);
-                            }}
+                            inputValue={inputValues[`${groupIndex}_${condIndex}`] || ''}
                             onInputChange={(event, newInputValue, reason) => {
+                              const key = `${groupIndex}_${condIndex}`;
+                              
+                              // 更新输入值状态
+                              setInputValues(prev => ({ ...prev, [key]: newInputValue || '' }));
+                              
                               // 当用户输入时，触发异步搜索
                               // reason 可能是 'input', 'clear', 'reset'
                               if (condition.type === 'country' || condition.type === 'city') {
-                                if (reason === 'input') {
+                                // 只要输入值发生变化，就触发搜索
+                                // 这样可以确保搜索功能正常工作
+                                if (reason === 'input' || (reason === 'reset' && newInputValue && newInputValue.trim())) {
                                   // 用户输入时触发搜索
                                   handleSearchInput(groupIndex, condIndex, condition.type, newInputValue);
-                                } else if (reason === 'clear') {
+                                } else if (reason === 'clear' || (reason === 'reset' && !newInputValue)) {
                                   // 清空时重新加载初始数据
                                   handleSearchInput(groupIndex, condIndex, condition.type, '');
+                                } else if (newInputValue && newInputValue.trim()) {
+                                  // 如果输入值不为空，也触发搜索（兜底逻辑）
+                                  handleSearchInput(groupIndex, condIndex, condition.type, newInputValue);
                                 }
                               }
+                            }}
+                            onChange={(event, newValue) => {
+                              handleMultiSelectChange(groupIndex, condIndex, newValue);
                             }}
                             onOpen={() => {
                               // 当打开下拉框时，如果没有数据，加载初始数据
                               const key = `${groupIndex}_${condIndex}`;
-                              if ((condition.type === 'country' || condition.type === 'city') && !searchResults[key]) {
-                                handleSearchInput(groupIndex, condIndex, condition.type, '');
+                              if ((condition.type === 'country' || condition.type === 'city')) {
+                                // 如果没有搜索结果或搜索结果为空，加载初始数据
+                                if (!searchResults[key] || searchResults[key].length === 0) {
+                                  handleSearchInput(groupIndex, condIndex, condition.type, '');
+                                }
                               }
                             }}
                             loading={searchLoading[`${groupIndex}_${condIndex}`] || false}
