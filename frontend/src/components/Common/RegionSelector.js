@@ -111,9 +111,93 @@ const DropdownPaper = styled(Paper)(({ theme }) => ({
   },
 }));
 
-// 预编译正则表达式（优化性能）
-const CODE_REGEX = /^[A-Z0-9]{2,4}$/i;
-const CHINESE_REGEX = /[\u4e00-\u9fa5]/;
+// 预编译正则表达式（优化性能，避免重复编译）
+const CODE_REGEX_2_4 = /^[A-Z0-9]{2,4}$/i; // 代码正则（2-4个字符）
+const CODE_REGEX_1_4 = /^[A-Z0-9]{1,4}$/i; // 代码正则（1-4个字符，用于自动补全）
+const CHINESE_REGEX = /[\u4e00-\u9fa5]/; // 中文字符正则
+const PINYIN_ENGLISH_REGEX = /^[a-zA-Z\s]+$/; // 拼音/英文正则（只包含字母和空格）
+
+// 正则表达式匹配结果缓存（优化性能）
+const regexCacheRef = { current: new Map() };
+const MAX_REGEX_CACHE_SIZE = 200; // 最大缓存数量
+
+/**
+ * 检查是否包含中文字符（带缓存）
+ */
+const hasChineseChar = (str) => {
+  if (!str) return false;
+  
+  // 检查缓存
+  const cacheKey = `chinese_${str}`;
+  const cached = regexCacheRef.current.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+  
+  // 执行匹配
+  const result = CHINESE_REGEX.test(str);
+  
+  // 缓存结果（限制缓存大小）
+  if (regexCacheRef.current.size < MAX_REGEX_CACHE_SIZE) {
+    regexCacheRef.current.set(cacheKey, result);
+  }
+  
+  return result;
+};
+
+/**
+ * 检查是否是代码格式（带缓存）
+ */
+const isCodeFormat = (str, minLength = 2, maxLength = 4) => {
+  if (!str) return false;
+  
+  // 检查缓存
+  const cacheKey = `code_${minLength}_${maxLength}_${str}`;
+  const cached = regexCacheRef.current.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+  
+  // 执行匹配
+  const regex = maxLength === 4 && minLength === 2 ? CODE_REGEX_2_4 : CODE_REGEX_1_4;
+  const result = regex.test(str) && str.length >= minLength && str.length <= maxLength;
+  
+  // 缓存结果（限制缓存大小）
+  if (regexCacheRef.current.size < MAX_REGEX_CACHE_SIZE) {
+    regexCacheRef.current.set(cacheKey, result);
+  }
+  
+  return result;
+};
+
+/**
+ * 检查是否是拼音或英文（带缓存）
+ */
+const isPinyinOrEnglish = (str) => {
+  if (!str) return false;
+  
+  // 先检查是否包含中文（如果包含中文，肯定不是拼音/英文）
+  if (hasChineseChar(str)) {
+    return false;
+  }
+  
+  // 检查缓存
+  const cacheKey = `pinyin_${str}`;
+  const cached = regexCacheRef.current.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+  
+  // 执行匹配
+  const result = PINYIN_ENGLISH_REGEX.test(str);
+  
+  // 缓存结果（限制缓存大小）
+  if (regexCacheRef.current.size < MAX_REGEX_CACHE_SIZE) {
+    regexCacheRef.current.set(cacheKey, result);
+  }
+  
+  return result;
+};
 
 // 类型优先级映射（优化性能）
 const TYPE_PRIORITY = {
@@ -121,6 +205,70 @@ const TYPE_PRIORITY = {
   'airport': 2,
   'station': 3,
   'bus': 4
+};
+
+// 获取类型图标（移到组件外部，避免每次渲染重新创建）
+const getTypeIcon = (type) => {
+  switch (type) {
+    case 'airport':
+      return <FlightIcon sx={{ fontSize: 20 }} />;
+    case 'station':
+      return <TrainIcon sx={{ fontSize: 20 }} />;
+    case 'city':
+      return <LocationCityIcon sx={{ fontSize: 20 }} />;
+    default:
+      return <LocationOnIcon sx={{ fontSize: 20 }} />;
+  }
+};
+
+// 获取类型颜色（移到组件外部）
+const getTypeColor = (type) => {
+  switch (type) {
+    case 'airport':
+      return 'primary';
+    case 'station':
+      return 'secondary';
+    case 'city':
+      return 'success';
+    default:
+      return 'default';
+  }
+};
+
+// 获取类型标签（移到组件外部）
+const getTypeLabel = (type) => {
+  switch (type) {
+    case 'airport':
+      return '机场';
+    case 'station':
+      return '火车站';
+    case 'city':
+      return '城市';
+    default:
+      return '地区';
+  }
+};
+
+// 获取风险等级标签（移到组件外部）
+const getRiskLevelLabel = (level) => {
+  const labels = { 
+    low: '低', 
+    medium: '中', 
+    high: '高', 
+    very_high: '很高' 
+  };
+  return labels[level] || level;
+};
+
+// 获取风险等级颜色（移到组件外部）
+const getRiskLevelColor = (level) => {
+  const colors = { 
+    low: 'success', 
+    medium: 'warning', 
+    high: 'error', 
+    very_high: 'error' 
+  };
+  return colors[level] || 'default';
 };
 
 /**
@@ -406,6 +554,174 @@ const organizeLocationsByHierarchy = (locations, searchKeyword = '') => {
   return result;
 };
 
+/**
+ * 位置列表项组件（使用 React.memo 优化性能）
+ * 只在 location 或相关 props 变化时重新渲染
+ */
+const LocationListItem = React.memo(({ 
+  location, 
+  index, 
+  isLast,
+  onSelect,
+  getDisplayName,
+  isChinese,
+  theme,
+  pulse
+}) => {
+  // 判断是否是子项（机场或火车站有parentId）
+  const isChild = (location.type === 'airport' || location.type === 'station') && location.parentId;
+  
+  const displayName = getDisplayName(location);
+  
+  // 汽车站不显示编码，城市类型显示国家代码，其他类型显示编码
+  let codeToShow = '';
+  if (location.type === 'city' && location.countryCode) {
+    codeToShow = location.countryCode;
+  } else if (location.type !== 'bus' && location.code) {
+    codeToShow = location.code;
+  }
+  
+  return (
+    <React.Fragment>
+      <ListItem
+        button
+        onClick={() => onSelect(location)}
+        sx={{
+          py: 1.5,
+          px: isChild ? 4 : 2, // 子项缩进
+          '&:hover': {
+            backgroundColor: alpha(theme.palette.primary.main, 0.04),
+          },
+        }}
+      >
+        <ListItemIcon sx={{ minWidth: 40 }}>
+          {getTypeIcon(location.type)}
+        </ListItemIcon>
+        <ListItemText
+          primary={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                {displayName}
+              </Typography>
+              <Chip
+                label={getTypeLabel(location.type)}
+                size="small"
+                color={getTypeColor(location.type)}
+                sx={{ height: 20, fontSize: '0.75rem' }}
+              />
+              {/* 城市类型显示国家代码，其他类型显示编码 */}
+              {location.type === 'city' && location.countryCode ? (
+                <Chip
+                  label={location.countryCode}
+                  size="small"
+                  variant="outlined"
+                  sx={{ height: 20, fontSize: '0.75rem' }}
+                />
+              ) : location.code && location.type !== 'bus' ? (
+                <Chip
+                  label={location.code}
+                  size="small"
+                  variant="outlined"
+                  sx={{ height: 20, fontSize: '0.75rem' }}
+                />
+              ) : null}
+              {/* 右侧标识区域（风险等级和无机场标识） */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 'auto' }}>
+                {/* 城市类型显示风险等级（低风险不显示） */}
+                {location.type === 'city' && location.riskLevel && location.riskLevel !== 'low' ? (
+                  <Chip
+                    label={`风险${getRiskLevelLabel(location.riskLevel)}`}
+                    size="small"
+                    color={getRiskLevelColor(location.riskLevel)}
+                    sx={{ 
+                      height: 20, 
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      ...(location.riskLevel === 'high' || location.riskLevel === 'very_high' ? {
+                        animation: `${pulse} 2s infinite`
+                      } : {})
+                    }}
+                  />
+                ) : null}
+                {/* 城市类型显示无机场标识 */}
+                {location.type === 'city' && location.noAirport ? (
+                  <Chip
+                    label="无机场"
+                    size="small"
+                    color="warning"
+                    variant="outlined"
+                    sx={{ 
+                      height: 20, 
+                      fontSize: '0.7rem',
+                      fontWeight: 500
+                    }}
+                  />
+                ) : null}
+              </Box>
+            </Box>
+          }
+          secondary={
+            <Typography variant="body2" color="text.secondary">
+              {[
+                location.province && location.province !== location.city ? location.province : null,
+                location.city,
+                location.district,
+                isChinese ? location.country : (location.countryCode || location.country)
+              ].filter(Boolean).join(', ')}
+              {location.parentCity && (
+                <span> • {isChinese ? '隶属' : 'Parent'}: {isChinese ? location.parentCity : (location.parentCityEnName || location.parentCity)}</span>
+              )}
+            </Typography>
+          }
+        />
+      </ListItem>
+      {!isLast && <Divider />}
+    </React.Fragment>
+  );
+}, (prevProps, nextProps) => {
+  // 自定义比较函数：返回 true 表示 props 相等（不需要重新渲染），false 表示需要重新渲染
+  const prevLocation = prevProps.location;
+  const nextLocation = nextProps.location;
+  
+  // 如果 location 对象引用相同，且其他 props 相同，则不需要重新渲染
+  if (prevLocation === nextLocation &&
+      prevProps.index === nextProps.index &&
+      prevProps.isLast === nextProps.isLast &&
+      prevProps.isChinese === nextProps.isChinese &&
+      prevProps.onSelect === nextProps.onSelect &&
+      prevProps.getDisplayName === nextProps.getDisplayName) {
+    return true; // props 相等，不需要重新渲染
+  }
+  
+  // 比较 location 的关键属性
+  const locationEqual = (
+    prevLocation._id === nextLocation._id &&
+    prevLocation.id === nextLocation.id &&
+    prevLocation.name === nextLocation.name &&
+    prevLocation.enName === nextLocation.enName &&
+    prevLocation.type === nextLocation.type &&
+    prevLocation.code === nextLocation.code &&
+    prevLocation.countryCode === nextLocation.countryCode &&
+    prevLocation.riskLevel === nextLocation.riskLevel &&
+    prevLocation.noAirport === nextLocation.noAirport &&
+    prevLocation.parentCity === nextLocation.parentCity &&
+    prevLocation.province === nextLocation.province &&
+    prevLocation.city === nextLocation.city &&
+    prevLocation.district === nextLocation.district &&
+    prevLocation.country === nextLocation.country
+  );
+  
+  // 如果 location 属性相同且其他 props 相同，则不需要重新渲染
+  return locationEqual &&
+         prevProps.index === nextProps.index &&
+         prevProps.isLast === nextProps.isLast &&
+         prevProps.isChinese === nextProps.isChinese &&
+         prevProps.onSelect === nextProps.onSelect &&
+         prevProps.getDisplayName === nextProps.getDisplayName;
+});
+
+LocationListItem.displayName = 'LocationListItem';
+
 const RegionSelector = ({
   label = '选择地区',
   value = '',
@@ -561,14 +877,13 @@ const RegionSelector = ({
     
     const trimmed = keyword.trim();
     
-    // 检查是否是代码（通常是2-4个大写字母或数字）
-    if (/^[A-Z0-9]{2,4}$/i.test(trimmed)) {
+    // 检查是否是代码（通常是2-4个大写字母或数字）- 使用预编译的正则表达式
+    if (isCodeFormat(trimmed, 2, 4)) {
       return trimmed.length >= 2;
     }
     
-    // 检查是否包含中文字符
-    const hasChinese = /[\u4e00-\u9fa5]/.test(trimmed);
-    if (hasChinese) {
+    // 检查是否包含中文字符 - 使用预编译的正则表达式和缓存
+    if (hasChineseChar(trimmed)) {
       // 中文至少2个字符
       return trimmed.length >= 2;
     }
@@ -588,14 +903,13 @@ const RegionSelector = ({
     
     const trimmed = keyword.trim();
     
-    // 检查是否是代码
-    if (/^[A-Z0-9]{1,4}$/i.test(trimmed)) {
+    // 检查是否是代码 - 使用预编译的正则表达式
+    if (isCodeFormat(trimmed, 1, 4)) {
       return trimmed.length >= 1;
     }
     
-    // 检查是否包含中文字符
-    const hasChinese = /[\u4e00-\u9fa5]/.test(trimmed);
-    if (hasChinese) {
+    // 检查是否包含中文字符 - 使用预编译的正则表达式和缓存
+    if (hasChineseChar(trimmed)) {
       // 中文至少1个字符
       return trimmed.length >= 1;
     }
@@ -756,9 +1070,9 @@ const RegionSelector = ({
     autocompleteAbortControllerRef.current = abortController;
 
     try {
-      // 检测输入类型：中文、拼音或英语
-      const hasChinese = /[\u4e00-\u9fa5]/.test(trimmedKeyword);
-      const isPinyinOrEnglish = !hasChinese && /^[a-zA-Z\s]+$/.test(trimmedKeyword);
+      // 检测输入类型：中文、拼音或英语 - 使用预编译的正则表达式和缓存
+      const hasChinese = hasChineseChar(trimmedKeyword);
+      const isPinyinOrEnglishVal = isPinyinOrEnglish(trimmedKeyword);
       
       const params = {
         status: 'active',
@@ -768,7 +1082,7 @@ const RegionSelector = ({
       };
 
       // 如果输入是拼音或英语，添加参数告诉后端优先查询 enName 和 pinyin
-      if (isPinyinOrEnglish) {
+      if (isPinyinOrEnglishVal) {
         params.searchPriority = 'enName_pinyin'; // 告诉后端优先查询 enName 和 pinyin
       }
 
@@ -872,10 +1186,10 @@ const RegionSelector = ({
     setErrorMessage('');
     
     try {
-      // 检测输入类型：中文、拼音或英语
+      // 检测输入类型：中文、拼音或英语 - 使用预编译的正则表达式和缓存
       const trimmedKeyword = keyword.trim();
-      const hasChinese = /[\u4e00-\u9fa5]/.test(trimmedKeyword);
-      const isPinyinOrEnglish = !hasChinese && /^[a-zA-Z\s]+$/.test(trimmedKeyword);
+      const hasChinese = hasChineseChar(trimmedKeyword);
+      const isPinyinOrEnglishVal = isPinyinOrEnglish(trimmedKeyword);
       
       // 优化：根据交通工具类型智能决定是否使用 includeChildren
       // 构建查询参数
@@ -887,7 +1201,7 @@ const RegionSelector = ({
       };
       
       // 如果输入是拼音或英语，添加参数告诉后端优先查询 enName 和 pinyin
-      if (isPinyinOrEnglish) {
+      if (isPinyinOrEnglishVal) {
         params.searchPriority = 'enName_pinyin'; // 告诉后端优先查询 enName 和 pinyin
       }
 
@@ -1195,8 +1509,8 @@ const RegionSelector = ({
     }, 150);
   };
 
-  // 处理选择
-  const handleSelect = (location) => {
+  // 处理选择（使用 useCallback 优化性能）
+  const handleSelect = useCallback((location) => {
     // 根据语言选择显示名称
     const displayName = getDisplayName(location);
     // 汽车站不显示编码，城市类型显示国家代码，其他类型显示编码
@@ -1216,7 +1530,7 @@ const RegionSelector = ({
     
     // 调用onChange回调，传递完整的location对象
     onChange(location);
-  };
+  }, [getDisplayName, onChange]);
 
   // 处理清除
   const handleClear = () => {
@@ -1375,69 +1689,6 @@ const RegionSelector = ({
     }
   }, [getDisplayName, isValidSearchLength, searchLocationsFromAPI, onChange]);
 
-  // 获取类型图标
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'airport':
-        return <FlightIcon sx={{ fontSize: 20 }} />;
-      case 'station':
-        return <TrainIcon sx={{ fontSize: 20 }} />;
-      case 'city':
-        return <LocationCityIcon sx={{ fontSize: 20 }} />;
-      default:
-        return <LocationOnIcon sx={{ fontSize: 20 }} />;
-    }
-  };
-
-  // 获取类型颜色
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'airport':
-        return 'primary';
-      case 'station':
-        return 'secondary';
-      case 'city':
-        return 'success';
-      default:
-        return 'default';
-    }
-  };
-
-  // 获取类型标签
-  const getTypeLabel = (type) => {
-    switch (type) {
-      case 'airport':
-        return '机场';
-      case 'station':
-        return '火车站';
-      case 'city':
-        return '城市';
-      default:
-        return '地区';
-    }
-  };
-
-  // 获取风险等级标签
-  const getRiskLevelLabel = (level) => {
-    const labels = { 
-      low: '低', 
-      medium: '中', 
-      high: '高', 
-      very_high: '很高' 
-    };
-    return labels[level] || level;
-  };
-
-  // 获取风险等级颜色
-  const getRiskLevelColor = (level) => {
-    const colors = { 
-      low: 'success', 
-      medium: 'warning', 
-      high: 'error', 
-      very_high: 'error' 
-    };
-    return colors[level] || 'default';
-  };
 
   // 处理热门城市选择
   const handleHotCitySelect = useCallback(async (city, displayName, searchName) => {
@@ -1605,112 +1856,23 @@ const RegionSelector = ({
     }
 
     // 使用已缓存的 organizedLocations（在组件顶层通过 useMemo 计算）
+    // 使用优化的 LocationListItem 组件（React.memo）
 
     return (
       <List sx={{ p: 0 }}>
-        {organizedLocations.map((location, index) => {
-          // 判断是否是子项（机场或火车站有parentId）
-          const isChild = (location.type === 'airport' || location.type === 'station') && location.parentId;
-          
-          return (
-            <React.Fragment key={location.id || location._id}>
-              <ListItem
-                button
-                onClick={() => handleSelect(location)}
-                sx={{
-                  py: 1.5,
-                  px: isChild ? 4 : 2, // 子项缩进
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  {getTypeIcon(location.type)}
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
-                        {getDisplayName(location)}
-                      </Typography>
-                      <Chip
-                        label={getTypeLabel(location.type)}
-                        size="small"
-                        color={getTypeColor(location.type)}
-                        sx={{ height: 20, fontSize: '0.75rem' }}
-                      />
-                      {/* 汽车站不显示编码 */}
-                      {/* 城市类型显示国家代码，其他类型显示编码 */}
-                      {location.type === 'city' && location.countryCode ? (
-                        <Chip
-                          label={location.countryCode}
-                          size="small"
-                          variant="outlined"
-                          sx={{ height: 20, fontSize: '0.75rem' }}
-                        />
-                      ) : location.code && location.type !== 'bus' ? (
-                        <Chip
-                          label={location.code}
-                          size="small"
-                          variant="outlined"
-                          sx={{ height: 20, fontSize: '0.75rem' }}
-                        />
-                      ) : null}
-                      {/* 右侧标识区域（风险等级和无机场标识） */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 'auto' }}>
-                        {/* 城市类型显示风险等级（低风险不显示） */}
-                        {location.type === 'city' && location.riskLevel && location.riskLevel !== 'low' ? (
-                          <Chip
-                            label={`风险${getRiskLevelLabel(location.riskLevel)}`}
-                            size="small"
-                            color={getRiskLevelColor(location.riskLevel)}
-                            sx={{ 
-                              height: 20, 
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              ...(location.riskLevel === 'high' || location.riskLevel === 'very_high' ? {
-                                animation: `${pulse} 2s infinite`
-                              } : {})
-                            }}
-                          />
-                        ) : null}
-                        {/* 城市类型显示无机场标识（显示在最右侧） */}
-                        {location.type === 'city' && location.noAirport ? (
-                          <Chip
-                            label="无机场"
-                            size="small"
-                            color="warning"
-                            variant="outlined"
-                            sx={{ 
-                              height: 20, 
-                              fontSize: '0.7rem',
-                              fontWeight: 500
-                            }}
-                          />
-                        ) : null}
-                      </Box>
-                    </Box>
-                  }
-                  secondary={
-                    <Typography variant="body2" color="text.secondary">
-                      {[
-                        location.province && location.province !== location.city ? location.province : null,
-                        location.city,
-                        location.district,
-                        isChinese ? location.country : (location.countryCode || location.country)
-                      ].filter(Boolean).join(', ')}
-                      {location.parentCity && (
-                        <span> • {isChinese ? '隶属' : 'Parent'}: {isChinese ? location.parentCity : (location.parentCityEnName || location.parentCity)}</span>
-                      )}
-                    </Typography>
-                  }
-                />
-              </ListItem>
-              {index < organizedLocations.length - 1 && <Divider />}
-            </React.Fragment>
-          );
-        })}
+        {organizedLocations.map((location, index) => (
+          <LocationListItem
+            key={location.id || location._id}
+            location={location}
+            index={index}
+            isLast={index === organizedLocations.length - 1}
+            onSelect={handleSelect}
+            getDisplayName={getDisplayName}
+            isChinese={isChinese}
+            theme={theme}
+            pulse={pulse}
+          />
+        ))}
       </List>
     );
   };
