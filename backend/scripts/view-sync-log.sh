@@ -39,3 +39,5 @@ echo ""
 # 实时查看日志
 tail -f "$LOG_FILE"
 
+
+

@@ -566,7 +566,7 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
                               if ((condition.type === 'country' || condition.type === 'city')) {
                                 // 如果没有搜索结果或搜索结果为空，加载初始数据
                                 if (!searchResults[key] || searchResults[key].length === 0) {
-                                  handleSearchInput(groupIndex, condIndex, condition.type, '');
+                                handleSearchInput(groupIndex, condIndex, condition.type, '');
                                 }
                               }
                             }}
