@@ -50,6 +50,28 @@ const errorHandler = (err, req, res, next) => {
     error = new AppError(message, 401);
   }
 
+  // MongoDB server selection error (副本集选举导致的拓扑信息过时)
+  if (err.name === 'MongoServerSelectionError') {
+    const message = 'Database connection temporarily unavailable. Please try again in a moment.';
+    error = new AppError(message, 503); // 503 Service Unavailable - 服务暂时不可用
+    // 记录详细信息用于调试
+    logger.warn('MongoDB Server Selection Error:', {
+      ...errorDetails,
+      error: err.message,
+      hint: 'This may be due to replica set election. The connection should recover automatically.',
+    });
+  }
+
+  // MongoDB network/timeout errors
+  if (err.name === 'MongoNetworkError' || err.name === 'MongoTimeoutError') {
+    const message = 'Database connection timeout. Please try again.';
+    error = new AppError(message, 503);
+    logger.warn('MongoDB Network/Timeout Error:', {
+      ...errorDetails,
+      error: err.message,
+    });
+  }
+
   // 记录错误日志
   if (error.statusCode >= 500) {
     // 服务器错误 - 记录完整错误信息

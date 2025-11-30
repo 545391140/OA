@@ -105,8 +105,29 @@ router.post('/login', [
 
   logger.info('Login attempt:', { email });
 
-  // Check for user
-  const user = await User.findOne({ email }).select('+password');
+  // Check for user with retry logic for MongoDB topology errors
+  let user;
+  let retryCount = 0;
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1秒
+
+  while (retryCount < maxRetries) {
+    try {
+      user = await User.findOne({ email }).select('+password');
+      break; // 成功，退出重试循环
+    } catch (error) {
+      // 如果是MongoDB拓扑选择错误，进行重试
+      if (error.name === 'MongoServerSelectionError' && retryCount < maxRetries - 1) {
+        retryCount++;
+        logger.warn(`Login query retry ${retryCount}/${maxRetries} due to topology error:`, error.message);
+        // 等待后重试
+        await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount));
+        continue;
+      }
+      // 其他错误或达到最大重试次数，抛出错误
+      throw error;
+    }
+  }
 
   if (!user) {
     logger.warn('Login failed - user not found:', { email });
@@ -131,16 +152,50 @@ router.post('/login', [
 
   logger.info('Login successful:', { userId: user._id, email: user.email });
 
-  // Update last login
+  // Update last login with retry logic
   user.lastLogin = new Date();
-  await user.save();
+  retryCount = 0;
+  while (retryCount < maxRetries) {
+    try {
+      await user.save();
+      break; // 成功，退出重试循环
+    } catch (error) {
+      // 如果是MongoDB拓扑选择错误，进行重试
+      if (error.name === 'MongoServerSelectionError' && retryCount < maxRetries - 1) {
+        retryCount++;
+        logger.warn(`Save lastLogin retry ${retryCount}/${maxRetries} due to topology error:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount));
+        continue;
+      }
+      // 其他错误或达到最大重试次数，记录警告但继续（不影响登录）
+      logger.warn('Failed to update lastLogin:', error.message);
+      break;
+    }
+  }
 
-  // Get user permissions from role
+  // Get user permissions from role with retry logic
   let permissions = [];
   if (user.role) {
-    const role = await Role.findOne({ code: user.role, isActive: true });
-    if (role) {
-      permissions = role.permissions || [];
+    retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        const role = await Role.findOne({ code: user.role, isActive: true });
+        if (role) {
+          permissions = role.permissions || [];
+        }
+        break; // 成功，退出重试循环
+      } catch (error) {
+        // 如果是MongoDB拓扑选择错误，进行重试
+        if (error.name === 'MongoServerSelectionError' && retryCount < maxRetries - 1) {
+          retryCount++;
+          logger.warn(`Role query retry ${retryCount}/${maxRetries} due to topology error:`, error.message);
+          await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount));
+          continue;
+        }
+        // 其他错误或达到最大重试次数，记录警告但继续（使用空权限数组）
+        logger.warn('Failed to fetch role permissions:', error.message);
+        break;
+      }
     }
   }
 
