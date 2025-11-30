@@ -221,49 +221,191 @@ const getDomesticCitiesByLetter = () => {
   return citiesByLetter;
 };
 
-// 热门城市数据
+// 热门城市数据（支持多语言）
+// 格式：{ zh: '中文名', en: 'English Name', ... }
 const hotCitiesData = {
   // 国内热门城市
   domesticHot: [
-    '北京', '上海', '广州', '深圳', '成都', '杭州', '南京', '武汉', '西安', '重庆',
-    '天津', '苏州', '青岛', '长沙', '大连', '厦门', '无锡', '福州', '济南', '宁波',
-    '郑州', '合肥', '石家庄', '哈尔滨', '长春', '沈阳', '昆明', '南宁', '南昌', '太原'
+    { zh: '北京', en: 'Beijing', ja: '北京', ko: '베이징', ar: 'بكين', vi: 'Bắc Kinh', th: 'ปักกิ่ง' },
+    { zh: '上海', en: 'Shanghai', ja: '上海', ko: '상하이', ar: 'شنغهاي', vi: 'Thượng Hải', th: 'เซี่ยงไฮ้' },
+    { zh: '广州', en: 'Guangzhou', ja: '広州', ko: '광저우', ar: 'قوانغتشو', vi: 'Quảng Châu', th: 'กวางโจว' },
+    { zh: '深圳', en: 'Shenzhen', ja: '深圳', ko: '선전', ar: 'شنتشن', vi: 'Thâm Quyến', th: 'เซินเจิ้น' },
+    { zh: '成都', en: 'Chengdu', ja: '成都', ko: '청두', ar: 'تشنغدو', vi: 'Thành Đô', th: 'เฉิงตู' },
+    { zh: '杭州', en: 'Hangzhou', ja: '杭州', ko: '항저우', ar: 'هانغتشو', vi: 'Hàng Châu', th: 'หางโจว' },
+    { zh: '南京', en: 'Nanjing', ja: '南京', ko: '난징', ar: 'نانجينغ', vi: 'Nam Kinh', th: 'หนานจิง' },
+    { zh: '武汉', en: 'Wuhan', ja: '武漢', ko: '우한', ar: 'ووهان', vi: 'Vũ Hán', th: 'อู่ฮั่น' },
+    { zh: '西安', en: 'Xi\'an', ja: '西安', ko: '시안', ar: 'شيان', vi: 'Tây An', th: 'ซีอาน' },
+    { zh: '重庆', en: 'Chongqing', ja: '重慶', ko: '충칭', ar: 'تشونغتشينغ', vi: 'Trùng Khánh', th: 'ฉงชิ่ง' },
+    { zh: '天津', en: 'Tianjin', ja: '天津', ko: '톈진', ar: 'تيانجين', vi: 'Thiên Tân', th: 'เทียนจิน' },
+    { zh: '苏州', en: 'Suzhou', ja: '蘇州', ko: '쑤저우', ar: 'سوتشو', vi: 'Tô Châu', th: 'ซูโจว' },
+    { zh: '青岛', en: 'Qingdao', ja: '青島', ko: '칭다오', ar: 'تشينغداو', vi: 'Thanh Đảo', th: 'ชิงเต่า' },
+    { zh: '长沙', en: 'Changsha', ja: '長沙', ko: '창사', ar: 'تشانغشا', vi: 'Trường Sa', th: 'ฉางชา' },
+    { zh: '大连', en: 'Dalian', ja: '大連', ko: '다롄', ar: 'داليان', vi: 'Đại Liên', th: 'ต้าเหลียน' },
+    { zh: '厦门', en: 'Xiamen', ja: '廈門', ko: '샤먼', ar: 'شيامن', vi: 'Hạ Môn', th: 'เซี่ยเหมิน' },
+    { zh: '无锡', en: 'Wuxi', ja: '無錫', ko: '우시', ar: 'ووشي', vi: 'Vô Tích', th: 'อู๋ซี' },
+    { zh: '福州', en: 'Fuzhou', ja: '福州', ko: '푸저우', ar: 'فوتشو', vi: 'Phúc Châu', th: 'ฝูโจว' },
+    { zh: '济南', en: 'Jinan', ja: '済南', ko: '지난', ar: 'جينان', vi: 'Tế Nam', th: 'จี่หนาน' },
+    { zh: '宁波', en: 'Ningbo', ja: '寧波', ko: '닝보', ar: 'نينغبو', vi: 'Ninh Ba', th: 'หนิงปัว' },
+    { zh: '郑州', en: 'Zhengzhou', ja: '鄭州', ko: '정저우', ar: 'تشنغتشو', vi: 'Trịnh Châu', th: 'เจิ้งโจว' },
+    { zh: '合肥', en: 'Hefei', ja: '合肥', ko: '허페이', ar: 'خفي', vi: 'Hợp Phì', th: 'เหอเฝย์' },
+    { zh: '石家庄', en: 'Shijiazhuang', ja: '石家荘', ko: '스자좡', ar: 'شيجياتشوانغ', vi: 'Thạch Gia Trang', th: 'ฉือเจียจวง' },
+    { zh: '哈尔滨', en: 'Harbin', ja: 'ハルビン', ko: '하얼빈', ar: 'هاربين', vi: 'Cáp Nhĩ Tân', th: 'ฮาร์บิน' },
+    { zh: '长春', en: 'Changchun', ja: '長春', ko: '창춘', ar: 'تشانغتشون', vi: 'Trường Xuân', th: 'ฉางชุน' },
+    { zh: '沈阳', en: 'Shenyang', ja: '瀋陽', ko: '선양', ar: 'شنيانغ', vi: 'Thẩm Dương', th: 'เสิ่นหยาง' },
+    { zh: '昆明', en: 'Kunming', ja: '昆明', ko: '쿤밍', ar: 'كونمينغ', vi: 'Côn Minh', th: 'คุนหมิง' },
+    { zh: '南宁', en: 'Nanning', ja: '南寧', ko: '난닝', ar: 'ناننينغ', vi: 'Nam Ninh', th: 'หนานหนิง' },
+    { zh: '南昌', en: 'Nanchang', ja: '南昌', ko: '난창', ar: 'نانتشانغ', vi: 'Nam Xương', th: 'หนานชาง' },
+    { zh: '太原', en: 'Taiyuan', ja: '太原', ko: '타이위안', ar: 'تاييوان', vi: 'Thái Nguyên', th: 'ไท่หยวน' }
   ],
-  // 国内所有城市（按字母分类）
+  // 国内所有城市（按字母分类）- 保持原格式，因为数量太多
   domesticByLetter: getDomesticCitiesByLetter(),
   // 国际及中国港澳台热门城市
   internationalHot: [
-    '东京', '大阪', '首尔', '曼谷', '新加坡', '札幌', '吉隆坡', '济州岛', '迪拜',
-    '伦敦', '悉尼', '洛杉矶', '巴黎', '墨尔本', '纽约', '伊斯坦布尔', '莫斯科', '普吉岛',
-    '巴厘岛', '奥克兰', '香港', '台北', '澳门'
+    { zh: '东京', en: 'Tokyo', ja: '東京', ko: '도쿄', ar: 'طوكيو', vi: 'Tokyo', th: 'โตเกียว' },
+    { zh: '大阪', en: 'Osaka', ja: '大阪', ko: '오사카', ar: 'أوساكا', vi: 'Osaka', th: 'โอซาก้า' },
+    { zh: '首尔', en: 'Seoul', ja: 'ソウル', ko: '서울', ar: 'سيول', vi: 'Seoul', th: 'โซล' },
+    { zh: '曼谷', en: 'Bangkok', ja: 'バンコク', ko: '방콕', ar: 'بانكوك', vi: 'Bangkok', th: 'กรุงเทพฯ' },
+    { zh: '新加坡', en: 'Singapore', ja: 'シンガポール', ko: '싱가포르', ar: 'سنغافورة', vi: 'Singapore', th: 'สิงคโปร์' },
+    { zh: '札幌', en: 'Sapporo', ja: '札幌', ko: '삿포로', ar: 'سابورو', vi: 'Sapporo', th: 'ซัปโปโร' },
+    { zh: '吉隆坡', en: 'Kuala Lumpur', ja: 'クアラルンプール', ko: '쿠알라룸푸르', ar: 'كوالا لومبور', vi: 'Kuala Lumpur', th: 'กัวลาลัมเปอร์' },
+    { zh: '济州岛', en: 'Jeju Island', ja: '済州島', ko: '제주도', ar: 'جزيرة جيجو', vi: 'Đảo Jeju', th: 'เกาะเชจู' },
+    { zh: '迪拜', en: 'Dubai', ja: 'ドバイ', ko: '두바이', ar: 'دبي', vi: 'Dubai', th: 'ดูไบ' },
+    { zh: '伦敦', en: 'London', ja: 'ロンドン', ko: '런던', ar: 'لندن', vi: 'London', th: 'ลอนดอน' },
+    { zh: '悉尼', en: 'Sydney', ja: 'シドニー', ko: '시드니', ar: 'سيدني', vi: 'Sydney', th: 'ซิดนีย์' },
+    { zh: '洛杉矶', en: 'Los Angeles', ja: 'ロサンゼルス', ko: '로스앤젤레스', ar: 'لوس أنجلوس', vi: 'Los Angeles', th: 'ลอสแองเจลิส' },
+    { zh: '巴黎', en: 'Paris', ja: 'パリ', ko: '파리', ar: 'باريس', vi: 'Paris', th: 'ปารีส' },
+    { zh: '墨尔本', en: 'Melbourne', ja: 'メルボルン', ko: '멜버른', ar: 'ملبورن', vi: 'Melbourne', th: 'เมลเบิร์น' },
+    { zh: '纽约', en: 'New York', ja: 'ニューヨーク', ko: '뉴욕', ar: 'نيويورك', vi: 'New York', th: 'นิวยอร์ก' },
+    { zh: '伊斯坦布尔', en: 'Istanbul', ja: 'イスタンブール', ko: '이스탄불', ar: 'إسطنبول', vi: 'Istanbul', th: 'อิสตันบูล' },
+    { zh: '莫斯科', en: 'Moscow', ja: 'モスクワ', ko: '모스크바', ar: 'موسكو', vi: 'Moscow', th: 'มอสโก' },
+    { zh: '普吉岛', en: 'Phuket', ja: 'プーケット', ko: '푸켓', ar: 'بوكيت', vi: 'Phuket', th: 'ภูเก็ต' },
+    { zh: '巴厘岛', en: 'Bali', ja: 'バリ', ko: '발리', ar: 'بالي', vi: 'Bali', th: 'บาหลี' },
+    { zh: '奥克兰', en: 'Auckland', ja: 'オークランド', ko: '오클랜드', ar: 'أوكلاند', vi: 'Auckland', th: 'โอ๊คแลนด์' },
+    { zh: '香港', en: 'Hong Kong', ja: '香港', ko: '홍콩', ar: 'هونغ كونغ', vi: 'Hồng Kông', th: 'ฮ่องกง' },
+    { zh: '台北', en: 'Taipei', ja: '台北', ko: '타이베이', ar: 'تايبيه', vi: 'Đài Bắc', th: 'ไทเป' },
+    { zh: '澳门', en: 'Macau', ja: 'マカオ', ko: '마카오', ar: 'ماكاو', vi: 'Ma Cao', th: 'มาเก๊า' }
   ],
   // 亚洲
   asia: [
-    '东京', '大阪', '首尔', '曼谷', '新加坡', '吉隆坡', '迪拜', '伊斯坦布尔', '普吉岛',
-    '巴厘岛', '济州岛', '札幌', '名古屋', '福冈', '釜山', '清迈', '河内', '胡志明市',
-    '马尼拉', '雅加达', '新德里', '孟买', '班加罗尔', '科伦坡', '加德满都', '达卡'
+    { zh: '东京', en: 'Tokyo', ja: '東京', ko: '도쿄', ar: 'طوكيو', vi: 'Tokyo', th: 'โตเกียว' },
+    { zh: '大阪', en: 'Osaka', ja: '大阪', ko: '오사카', ar: 'أوساكا', vi: 'Osaka', th: 'โอซาก้า' },
+    { zh: '首尔', en: 'Seoul', ja: 'ソウル', ko: '서울', ar: 'سيول', vi: 'Seoul', th: 'โซล' },
+    { zh: '曼谷', en: 'Bangkok', ja: 'バンコク', ko: '방콕', ar: 'بانكوك', vi: 'Bangkok', th: 'กรุงเทพฯ' },
+    { zh: '新加坡', en: 'Singapore', ja: 'シンガポール', ko: '싱가포르', ar: 'سنغافورة', vi: 'Singapore', th: 'สิงคโปร์' },
+    { zh: '吉隆坡', en: 'Kuala Lumpur', ja: 'クアラルンプール', ko: '쿠알라룸푸르', ar: 'كوالا لومبور', vi: 'Kuala Lumpur', th: 'กัวลาลัมเปอร์' },
+    { zh: '迪拜', en: 'Dubai', ja: 'ドバイ', ko: '두바이', ar: 'دبي', vi: 'Dubai', th: 'ดูไบ' },
+    { zh: '伊斯坦布尔', en: 'Istanbul', ja: 'イスタンブール', ko: '이스탄불', ar: 'إسطنبول', vi: 'Istanbul', th: 'อิสตันบูล' },
+    { zh: '普吉岛', en: 'Phuket', ja: 'プーケット', ko: '푸켓', ar: 'بوكيت', vi: 'Phuket', th: 'ภูเก็ต' },
+    { zh: '巴厘岛', en: 'Bali', ja: 'バリ', ko: '발리', ar: 'بالي', vi: 'Bali', th: 'บาหลี' },
+    { zh: '济州岛', en: 'Jeju Island', ja: '済州島', ko: '제주도', ar: 'جزيرة جيجو', vi: 'Đảo Jeju', th: 'เกาะเชจู' },
+    { zh: '札幌', en: 'Sapporo', ja: '札幌', ko: '삿포로', ar: 'سابورو', vi: 'Sapporo', th: 'ซัปโปโร' },
+    { zh: '名古屋', en: 'Nagoya', ja: '名古屋', ko: '나고야', ar: 'ناغويا', vi: 'Nagoya', th: 'นาโกย่า' },
+    { zh: '福冈', en: 'Fukuoka', ja: '福岡', ko: '후쿠오카', ar: 'فوكوكا', vi: 'Fukuoka', th: 'ฟุกุโอกะ' },
+    { zh: '釜山', en: 'Busan', ja: '釜山', ko: '부산', ar: 'بوسان', vi: 'Busan', th: 'ปูซาน' },
+    { zh: '清迈', en: 'Chiang Mai', ja: 'チェンマイ', ko: '치앙마이', ar: 'تشيانغ ماي', vi: 'Chiang Mai', th: 'เชียงใหม่' },
+    { zh: '河内', en: 'Hanoi', ja: 'ハノイ', ko: '하노이', ar: 'هانوي', vi: 'Hà Nội', th: 'ฮานอย' },
+    { zh: '胡志明市', en: 'Ho Chi Minh City', ja: 'ホーチミン', ko: '호치민', ar: 'هو تشي منه', vi: 'Thành phố Hồ Chí Minh', th: 'โฮจิมินห์' },
+    { zh: '马尼拉', en: 'Manila', ja: 'マニラ', ko: '마닐라', ar: 'مانيلا', vi: 'Manila', th: 'มะนิลา' },
+    { zh: '雅加达', en: 'Jakarta', ja: 'ジャカルタ', ko: '자카르타', ar: 'جاكرتا', vi: 'Jakarta', th: 'จาการ์ตา' },
+    { zh: '新德里', en: 'New Delhi', ja: 'ニューデリー', ko: '뉴델리', ar: 'نيودلهي', vi: 'New Delhi', th: 'นิวเดลี' },
+    { zh: '孟买', en: 'Mumbai', ja: 'ムンバイ', ko: '뭄바이', ar: 'مومباي', vi: 'Mumbai', th: 'มุมไบ' },
+    { zh: '班加罗尔', en: 'Bangalore', ja: 'バンガロール', ko: '방갈로르', ar: 'بنغالور', vi: 'Bangalore', th: 'บังกาลอร์' },
+    { zh: '科伦坡', en: 'Colombo', ja: 'コロンボ', ko: '콜롬보', ar: 'كولومبو', vi: 'Colombo', th: 'โคลัมโบ' },
+    { zh: '加德满都', en: 'Kathmandu', ja: 'カトマンズ', ko: '카트만두', ar: 'كاتماندو', vi: 'Kathmandu', th: 'กาฐมาณฑุ' },
+    { zh: '达卡', en: 'Dhaka', ja: 'ダッカ', ko: '다카', ar: 'داكا', vi: 'Dhaka', th: 'ธากา' }
   ],
   // 欧洲
   europe: [
-    '伦敦', '巴黎', '莫斯科', '罗马', '柏林', '马德里', '阿姆斯特丹', '维也纳', '苏黎世',
-    '布鲁塞尔', '哥本哈根', '斯德哥尔摩', '奥斯陆', '赫尔辛基', '都柏林', '里斯本', '雅典',
-    '布达佩斯', '华沙', '布拉格', '巴塞罗那', '米兰', '慕尼黑', '法兰克福', '爱丁堡'
+    { zh: '伦敦', en: 'London', ja: 'ロンドン', ko: '런던', ar: 'لندن', vi: 'London', th: 'ลอนดอน' },
+    { zh: '巴黎', en: 'Paris', ja: 'パリ', ko: '파리', ar: 'باريس', vi: 'Paris', th: 'ปารีส' },
+    { zh: '莫斯科', en: 'Moscow', ja: 'モスクワ', ko: '모스크바', ar: 'موسكو', vi: 'Moscow', th: 'มอสโก' },
+    { zh: '罗马', en: 'Rome', ja: 'ローマ', ko: '로마', ar: 'روما', vi: 'Rome', th: 'โรม' },
+    { zh: '柏林', en: 'Berlin', ja: 'ベルリン', ko: '베를린', ar: 'برلين', vi: 'Berlin', th: 'เบอร์ลิน' },
+    { zh: '马德里', en: 'Madrid', ja: 'マドリード', ko: '마드리드', ar: 'مدريد', vi: 'Madrid', th: 'มาดริด' },
+    { zh: '阿姆斯特丹', en: 'Amsterdam', ja: 'アムステルダム', ko: '암스테르담', ar: 'أمستردام', vi: 'Amsterdam', th: 'อัมสเตอร์ดัม' },
+    { zh: '维也纳', en: 'Vienna', ja: 'ウィーン', ko: '빈', ar: 'فيينا', vi: 'Vienna', th: 'เวียนนา' },
+    { zh: '苏黎世', en: 'Zurich', ja: 'チューリッヒ', ko: '취리히', ar: 'زيورخ', vi: 'Zurich', th: 'ซูริก' },
+    { zh: '布鲁塞尔', en: 'Brussels', ja: 'ブリュッセル', ko: '브뤼셀', ar: 'بروكسل', vi: 'Brussels', th: 'บรัสเซลส์' },
+    { zh: '哥本哈根', en: 'Copenhagen', ja: 'コペンハーゲン', ko: '코펜하겐', ar: 'كوبنهاغن', vi: 'Copenhagen', th: 'โคเปนเฮเกน' },
+    { zh: '斯德哥尔摩', en: 'Stockholm', ja: 'ストックホルム', ko: '스톡홀름', ar: 'ستوكهولم', vi: 'Stockholm', th: 'สตอกโฮล์ม' },
+    { zh: '奥斯陆', en: 'Oslo', ja: 'オスロ', ko: '오슬로', ar: 'أوسلو', vi: 'Oslo', th: 'ออสโล' },
+    { zh: '赫尔辛基', en: 'Helsinki', ja: 'ヘルシンキ', ko: '헬싱키', ar: 'هلسنكي', vi: 'Helsinki', th: 'เฮลซิงกิ' },
+    { zh: '都柏林', en: 'Dublin', ja: 'ダブリン', ko: '더블린', ar: 'دبلن', vi: 'Dublin', th: 'ดับลิน' },
+    { zh: '里斯本', en: 'Lisbon', ja: 'リスボン', ko: '리스본', ar: 'لشبونة', vi: 'Lisbon', th: 'ลิสบอน' },
+    { zh: '雅典', en: 'Athens', ja: 'アテネ', ko: '아테네', ar: 'أثينا', vi: 'Athens', th: 'เอเธนส์' },
+    { zh: '布达佩斯', en: 'Budapest', ja: 'ブダペスト', ko: '부다페스트', ar: 'بودابست', vi: 'Budapest', th: 'บูดาเปสต์' },
+    { zh: '华沙', en: 'Warsaw', ja: 'ワルシャワ', ko: '바르샤바', ar: 'وارسو', vi: 'Warsaw', th: 'วอร์ซอ' },
+    { zh: '布拉格', en: 'Prague', ja: 'プラハ', ko: '프라하', ar: 'براغ', vi: 'Prague', th: 'ปราก' },
+    { zh: '巴塞罗那', en: 'Barcelona', ja: 'バルセロナ', ko: '바르셀로나', ar: 'برشلونة', vi: 'Barcelona', th: 'บาร์เซโลนา' },
+    { zh: '米兰', en: 'Milan', ja: 'ミラノ', ko: '밀라노', ar: 'ميلانو', vi: 'Milan', th: 'มิลาน' },
+    { zh: '慕尼黑', en: 'Munich', ja: 'ミュンヘン', ko: '뮌헨', ar: 'ميونخ', vi: 'Munich', th: 'มิวนิก' },
+    { zh: '法兰克福', en: 'Frankfurt', ja: 'フランクフルト', ko: '프랑크푸르트', ar: 'فرانكفورت', vi: 'Frankfurt', th: 'แฟรงก์เฟิร์ต' },
+    { zh: '爱丁堡', en: 'Edinburgh', ja: 'エディンバラ', ko: '에든버러', ar: 'إدنبرة', vi: 'Edinburgh', th: 'เอดินบะระ' }
   ],
   // 美洲
   americas: [
-    '纽约', '洛杉矶', '旧金山', '芝加哥', '波士顿', '华盛顿', '多伦多', '温哥华', '墨西哥城',
-    '里约热内卢', '圣保罗', '布宜诺斯艾利斯', '利马', '圣地亚哥', '波哥大', '哈瓦那',
-    '迈阿密', '拉斯维加斯', '西雅图', '休斯顿', '达拉斯', '费城', '亚特兰大', '丹佛'
+    { zh: '纽约', en: 'New York', ja: 'ニューヨーク', ko: '뉴욕', ar: 'نيويورك', vi: 'New York', th: 'นิวยอร์ก' },
+    { zh: '洛杉矶', en: 'Los Angeles', ja: 'ロサンゼルス', ko: '로스앤젤레스', ar: 'لوس أنجلوس', vi: 'Los Angeles', th: 'ลอสแองเจลิส' },
+    { zh: '旧金山', en: 'San Francisco', ja: 'サンフランシスコ', ko: '샌프란시스코', ar: 'سان فرانسيسكو', vi: 'San Francisco', th: 'ซานฟรานซิสโก' },
+    { zh: '芝加哥', en: 'Chicago', ja: 'シカゴ', ko: '시카고', ar: 'شيكاغو', vi: 'Chicago', th: 'ชิคาโก' },
+    { zh: '波士顿', en: 'Boston', ja: 'ボストン', ko: '보스턴', ar: 'بوسطن', vi: 'Boston', th: 'บอสตัน' },
+    { zh: '华盛顿', en: 'Washington', ja: 'ワシントン', ko: '워싱턴', ar: 'واشنطن', vi: 'Washington', th: 'วอชิงตัน' },
+    { zh: '多伦多', en: 'Toronto', ja: 'トロント', ko: '토론토', ar: 'تورونتو', vi: 'Toronto', th: 'โทรอนโต' },
+    { zh: '温哥华', en: 'Vancouver', ja: 'バンクーバー', ko: '밴쿠버', ar: 'فانكوفر', vi: 'Vancouver', th: 'แวนคูเวอร์' },
+    { zh: '墨西哥城', en: 'Mexico City', ja: 'メキシコシティ', ko: '멕시코시티', ar: 'مدينة مكسيكو', vi: 'Thành phố Mexico', th: 'เม็กซิโกซิตี้' },
+    { zh: '里约热内卢', en: 'Rio de Janeiro', ja: 'リオデジャネイロ', ko: '리우데자네이루', ar: 'ريو دي جانيرو', vi: 'Rio de Janeiro', th: 'รีโอเดจาเนโร' },
+    { zh: '圣保罗', en: 'São Paulo', ja: 'サンパウロ', ko: '상파울루', ar: 'ساو باولو', vi: 'São Paulo', th: 'เซาเปาโล' },
+    { zh: '布宜诺斯艾利斯', en: 'Buenos Aires', ja: 'ブエノスアイレス', ko: '부에노스아이레스', ar: 'بوينس آيرس', vi: 'Buenos Aires', th: 'บัวโนสไอเรส' },
+    { zh: '利马', en: 'Lima', ja: 'リマ', ko: '리마', ar: 'ليما', vi: 'Lima', th: 'ลิมา' },
+    { zh: '圣地亚哥', en: 'Santiago', ja: 'サンティアゴ', ko: '산티아고', ar: 'سانتياغو', vi: 'Santiago', th: 'ซานติอาโก' },
+    { zh: '波哥大', en: 'Bogotá', ja: 'ボゴタ', ko: '보고타', ar: 'بوغوتا', vi: 'Bogotá', th: 'โบโกตา' },
+    { zh: '哈瓦那', en: 'Havana', ja: 'ハバナ', ko: '하바나', ar: 'هافانا', vi: 'Havana', th: 'ฮาวานา' },
+    { zh: '迈阿密', en: 'Miami', ja: 'マイアミ', ko: '마이애미', ar: 'ميامي', vi: 'Miami', th: 'ไมอามี' },
+    { zh: '拉斯维加斯', en: 'Las Vegas', ja: 'ラスベガス', ko: '라스베이거스', ar: 'لاس فيغاس', vi: 'Las Vegas', th: 'ลาสเวกัส' },
+    { zh: '西雅图', en: 'Seattle', ja: 'シアトル', ko: '시애틀', ar: 'سياتل', vi: 'Seattle', th: 'ซีแอตเทิล' },
+    { zh: '休斯顿', en: 'Houston', ja: 'ヒューストン', ko: '휴스턴', ar: 'هيوستن', vi: 'Houston', th: 'ฮูสตัน' },
+    { zh: '达拉斯', en: 'Dallas', ja: 'ダラス', ko: '댈러스', ar: 'دالاس', vi: 'Dallas', th: 'ดัลลัส' },
+    { zh: '费城', en: 'Philadelphia', ja: 'フィラデルフィア', ko: '필라델피아', ar: 'فيلادلفيا', vi: 'Philadelphia', th: 'ฟิลาเดลเฟีย' },
+    { zh: '亚特兰大', en: 'Atlanta', ja: 'アトランタ', ko: '애틀랜타', ar: 'أتلانتا', vi: 'Atlanta', th: 'แอตแลนตา' },
+    { zh: '丹佛', en: 'Denver', ja: 'デンバー', ko: '덴버', ar: 'دنفر', vi: 'Denver', th: 'เดนเวอร์' }
   ],
   // 非洲
   africa: [
-    '开罗', '开普敦', '约翰内斯堡', '内罗毕', '拉各斯', '卡萨布兰卡', '突尼斯', '达累斯萨拉姆',
-    '阿克拉', '亚的斯亚贝巴', '达喀尔', '阿尔及尔', '拉巴特', '阿比让', '金沙萨', '卢萨卡'
+    { zh: '开罗', en: 'Cairo', ja: 'カイロ', ko: '카이로', ar: 'القاهرة', vi: 'Cairo', th: 'ไคโร' },
+    { zh: '开普敦', en: 'Cape Town', ja: 'ケープタウン', ko: '케이프타운', ar: 'كيب تاون', vi: 'Cape Town', th: 'เคปทาวน์' },
+    { zh: '约翰内斯堡', en: 'Johannesburg', ja: 'ヨハネスブルク', ko: '요하네스버그', ar: 'جوهانسبرغ', vi: 'Johannesburg', th: 'โจฮันเนสเบิร์ก' },
+    { zh: '内罗毕', en: 'Nairobi', ja: 'ナイロビ', ko: '나이로비', ar: 'نيروبي', vi: 'Nairobi', th: 'ไนโรบี' },
+    { zh: '拉各斯', en: 'Lagos', ja: 'ラゴス', ko: '라고스', ar: 'لاغوس', vi: 'Lagos', th: 'ลากอส' },
+    { zh: '卡萨布兰卡', en: 'Casablanca', ja: 'カサブランカ', ko: '카사블랑카', ar: 'الدار البيضاء', vi: 'Casablanca', th: 'คาซาบลังกา' },
+    { zh: '突尼斯', en: 'Tunis', ja: 'チュニス', ko: '튀니스', ar: 'تونس', vi: 'Tunis', th: 'ตูนิส' },
+    { zh: '达累斯萨拉姆', en: 'Dar es Salaam', ja: 'ダルエスサラーム', ko: '다르에스살람', ar: 'دار السلام', vi: 'Dar es Salaam', th: 'ดาร์เอสซาลาม' },
+    { zh: '阿克拉', en: 'Accra', ja: 'アクラ', ko: '아크라', ar: 'أكرا', vi: 'Accra', th: 'อักกรา' },
+    { zh: '亚的斯亚贝巴', en: 'Addis Ababa', ja: 'アディスアベバ', ko: '아디스아바바', ar: 'أديس أبابا', vi: 'Addis Ababa', th: 'อาดดิสอาบาบา' },
+    { zh: '达喀尔', en: 'Dakar', ja: 'ダカール', ko: '다카르', ar: 'داكار', vi: 'Dakar', th: 'ดาการ์' },
+    { zh: '阿尔及尔', en: 'Algiers', ja: 'アルジェ', ko: '알제', ar: 'الجزائر', vi: 'Algiers', th: 'แอลเจียร์' },
+    { zh: '拉巴特', en: 'Rabat', ja: 'ラバト', ko: '라바트', ar: 'الرباط', vi: 'Rabat', th: 'ราบัต' },
+    { zh: '阿比让', en: 'Abidjan', ja: 'アビジャン', ko: '아비장', ar: 'أبيدجان', vi: 'Abidjan', th: 'อาบิดจัน' },
+    { zh: '金沙萨', en: 'Kinshasa', ja: 'キンシャサ', ko: '킨샤사', ar: 'كينشاسا', vi: 'Kinshasa', th: 'กินชาซา' },
+    { zh: '卢萨卡', en: 'Lusaka', ja: 'ルサカ', ko: '루사카', ar: 'لوساكا', vi: 'Lusaka', th: 'ลูซากา' }
   ],
   // 大洋洲
   oceania: [
-    '悉尼', '墨尔本', '奥克兰', '布里斯班', '珀斯', '阿德莱德', '黄金海岸', '堪培拉',
-    '惠灵顿', '基督城', '皇后镇', '凯恩斯', '达尔文', '霍巴特', '塔斯马尼亚', '斐济'
+    { zh: '悉尼', en: 'Sydney', ja: 'シドニー', ko: '시드니', ar: 'سيدني', vi: 'Sydney', th: 'ซิดนีย์' },
+    { zh: '墨尔本', en: 'Melbourne', ja: 'メルボルン', ko: '멜버른', ar: 'ملبورن', vi: 'Melbourne', th: 'เมลเบิร์น' },
+    { zh: '奥克兰', en: 'Auckland', ja: 'オークランド', ko: '오클랜드', ar: 'أوكلاند', vi: 'Auckland', th: 'โอ๊คแลนด์' },
+    { zh: '布里斯班', en: 'Brisbane', ja: 'ブリスベン', ko: '브리즈번', ar: 'بريسبان', vi: 'Brisbane', th: 'บริสเบน' },
+    { zh: '珀斯', en: 'Perth', ja: 'パース', ko: '퍼스', ar: 'بيرث', vi: 'Perth', th: 'เพิร์ท' },
+    { zh: '阿德莱德', en: 'Adelaide', ja: 'アデレード', ko: '애들레이드', ar: 'أديلايد', vi: 'Adelaide', th: 'แอดิเลด' },
+    { zh: '黄金海岸', en: 'Gold Coast', ja: 'ゴールドコースト', ko: '골드코스트', ar: 'الساحل الذهبي', vi: 'Gold Coast', th: 'โกลด์โคสต์' },
+    { zh: '堪培拉', en: 'Canberra', ja: 'キャンベラ', ko: '캔버라', ar: 'كانبرا', vi: 'Canberra', th: 'แคนเบอร์รา' },
+    { zh: '惠灵顿', en: 'Wellington', ja: 'ウェリントン', ko: '웰링턴', ar: 'ويلينغتون', vi: 'Wellington', th: 'เวลลิงตัน' },
+    { zh: '基督城', en: 'Christchurch', ja: 'クライストチャーチ', ko: '크라이스트처치', ar: 'كرايستشيرش', vi: 'Christchurch', th: 'ไครสต์เชิร์ช' },
+    { zh: '皇后镇', en: 'Queenstown', ja: 'クイーンズタウン', ko: '퀸스타운', ar: 'كوينزتاون', vi: 'Queenstown', th: 'ควีนส์ทาวน์' },
+    { zh: '凯恩斯', en: 'Cairns', ja: 'ケアンズ', ko: '캐언스', ar: 'كيرنز', vi: 'Cairns', th: 'แครนส์' },
+    { zh: '达尔文', en: 'Darwin', ja: 'ダーウィン', ko: '다윈', ar: 'داروين', vi: 'Darwin', th: 'ดาร์วิน' },
+    { zh: '霍巴特', en: 'Hobart', ja: 'ホバート', ko: '호바트', ar: 'هوبارت', vi: 'Hobart', th: 'โฮบาร์ต' },
+    { zh: '塔斯马尼亚', en: 'Tasmania', ja: 'タスマニア', ko: '태즈메이니아', ar: 'تسمانيا', vi: 'Tasmania', th: 'แทสเมเนีย' },
+    { zh: '斐济', en: 'Fiji', ja: 'フィジー', ko: '피지', ar: 'فيجي', vi: 'Fiji', th: 'ฟิจิ' }
   ]
 };
 
@@ -357,8 +499,25 @@ const RegionSelector = ({
 }) => {
   const theme = useTheme();
   const { i18n } = useTranslation();
-  const currentLanguage = i18n.language || 'zh';
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language || 'zh');
   const isChinese = currentLanguage.toLowerCase().startsWith('zh');
+  
+  // 监听语言变化
+  useEffect(() => {
+    const handleLanguageChange = (lng) => {
+      setCurrentLanguage(lng || 'zh');
+    };
+    
+    // 设置初始语言
+    setCurrentLanguage(i18n.language || 'zh');
+    
+    // 监听语言变化事件
+    i18n.on('languageChanged', handleLanguageChange);
+    
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
   
   // 获取显示名称的辅助函数
   const getDisplayName = useCallback((location) => {
@@ -1405,13 +1564,65 @@ const RegionSelector = ({
     return colors[level] || 'default';
   };
 
+  // 获取城市显示名称（根据当前语言）
+  const getCityDisplayName = useCallback((city) => {
+    if (typeof city === 'string') {
+      // 如果是字符串（国内城市按字母分类），直接返回
+      return city;
+    }
+    
+    // 如果是对象（多语言支持）
+    if (typeof city === 'object' && city !== null) {
+      // 根据当前语言返回对应的名称
+      const lang = currentLanguage.toLowerCase();
+      
+      // 处理语言代码变体（如 zh-Hans -> zh, zh-Hans-CN -> zh）
+      const baseLang = lang.split('-')[0];
+      
+      // 优先使用完整语言代码匹配（如 ja, ko, th, vi, ar）
+      if (city[lang]) {
+        return city[lang];
+      }
+      
+      // 其次使用基础语言代码匹配（如 zh, en）
+      if (city[baseLang]) {
+        return city[baseLang];
+      }
+      
+      // 如果是中文相关语言，使用中文
+      if (baseLang === 'zh' || lang.startsWith('zh')) {
+        return city.zh || city.en || Object.values(city)[0] || '';
+      }
+      
+      // 其他语言使用英文
+      return city.en || city.zh || Object.values(city)[0] || '';
+    }
+    
+    return '';
+  }, [currentLanguage]);
+
+  // 获取城市搜索名称（用于API搜索，优先使用中文或英文）
+  const getCitySearchName = useCallback((city) => {
+    if (typeof city === 'string') {
+      // 如果是字符串，直接返回
+      return city;
+    }
+    
+    // 如果是对象，优先使用中文，其次英文
+    if (typeof city === 'object' && city !== null) {
+      return city.zh || city.en || Object.values(city)[0] || '';
+    }
+    
+    return '';
+  }, []);
+
   // 获取热门城市列表
   const getHotCitiesList = () => {
     if (hotCityCategory === 'domestic') {
       if (domesticSubCategory === 'hot') {
         return hotCitiesData.domesticHot;
       } else {
-        // 按字母筛选
+        // 按字母筛选（返回字符串数组）
         return hotCitiesData.domesticByLetter[domesticSubCategory] || [];
       }
     } else {
@@ -1420,14 +1631,18 @@ const RegionSelector = ({
   };
 
   // 处理热门城市选择
-  const handleHotCitySelect = async (cityName) => {
-    // 设置搜索值
-    setSearchValue(cityName);
+  const handleHotCitySelect = async (city) => {
+    // 获取显示名称和搜索名称
+    const displayName = getCityDisplayName(city);
+    const searchName = getCitySearchName(city);
+    
+    // 设置搜索值（显示名称）
+    setSearchValue(displayName);
     setShowHotCities(false);
     
-    // 搜索该城市
+    // 搜索该城市（使用搜索名称，可能是中文或英文）
     try {
-      await searchLocationsFromAPI(cityName);
+      await searchLocationsFromAPI(searchName);
       // 如果搜索到结果，自动选择第一个匹配的城市
       // 注意：这里不自动选择，让用户从搜索结果中选择
     } catch (error) {
@@ -1615,57 +1830,62 @@ const RegionSelector = ({
             {/* 城市网格 */}
             <Box sx={{ p: 1.5 }}>
               <Grid container spacing={0.5}>
-                {cities.filter(cityName => cityName && typeof cityName === 'string').map((cityName) => (
-                  <Grid item xs={4} sm={3} md={2} key={cityName}>
-                    <Box
-                      component="div"
-                      onClick={() => handleHotCitySelect(cityName)}
-                      onMouseDown={(e) => e.preventDefault()}
-                      tabIndex={-1}
-                      sx={{
-                        py: 1,
-                        px: 1.5,
-                        color: '#374151',
-                        fontSize: '0.875rem',
-                        fontWeight: 400,
-                        cursor: 'pointer',
-                        borderRadius: 1,
-                        textAlign: 'center',
-                        transition: 'all 0.2s ease',
-                        border: 'none !important',
-                        outline: 'none !important',
-                        boxShadow: 'none !important',
-                        userSelect: 'none',
-                        WebkitTapHighlightColor: 'transparent',
-                        '&:hover': {
-                          color: '#2563eb',
-                          bgcolor: '#eff6ff',
+                {cities.filter(city => city && (typeof city === 'string' || typeof city === 'object')).map((city, index) => {
+                  const displayName = getCityDisplayName(city);
+                  const cityKey = typeof city === 'string' ? city : (city.zh || city.en || `city-${index}`);
+                  
+                  return (
+                    <Grid item xs={4} sm={3} md={2} key={cityKey}>
+                      <Box
+                        component="div"
+                        onClick={() => handleHotCitySelect(city)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        tabIndex={-1}
+                        sx={{
+                          py: 1,
+                          px: 1.5,
+                          color: '#374151',
+                          fontSize: '0.875rem',
+                          fontWeight: 400,
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          textAlign: 'center',
+                          transition: 'all 0.2s ease',
                           border: 'none !important',
                           outline: 'none !important',
-                          boxShadow: 'none !important'
-                        },
-                        '&:focus': {
-                          outline: 'none !important',
-                          border: 'none !important',
-                          boxShadow: 'none !important'
-                        },
-                        '&:focus-visible': {
-                          outline: 'none !important',
-                          border: 'none !important',
-                          boxShadow: 'none !important'
-                        },
-                        '&:active': {
-                          outline: 'none !important',
-                          border: 'none !important',
                           boxShadow: 'none !important',
-                          bgcolor: '#eff6ff'
-                        }
-                      }}
-                    >
-                      {cityName || ''}
-                    </Box>
-                  </Grid>
-                ))}
+                          userSelect: 'none',
+                          WebkitTapHighlightColor: 'transparent',
+                          '&:hover': {
+                            color: '#2563eb',
+                            bgcolor: '#eff6ff',
+                            border: 'none !important',
+                            outline: 'none !important',
+                            boxShadow: 'none !important'
+                          },
+                          '&:focus': {
+                            outline: 'none !important',
+                            border: 'none !important',
+                            boxShadow: 'none !important'
+                          },
+                          '&:focus-visible': {
+                            outline: 'none !important',
+                            border: 'none !important',
+                            boxShadow: 'none !important'
+                          },
+                          '&:active': {
+                            outline: 'none !important',
+                            border: 'none !important',
+                            boxShadow: 'none !important',
+                            bgcolor: '#eff6ff'
+                          }
+                        }}
+                      >
+                        {displayName || ''}
+                      </Box>
+                    </Grid>
+                  );
+                })}
               </Grid>
             </Box>
           </Box>

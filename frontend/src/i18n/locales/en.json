@@ -1737,7 +1737,9 @@
         "low": "Low",
         "medium": "Medium",
         "high": "High",
-        "very_high": "Very High"
+        "very_high": "Very High",
+        "undefined": "Low",
+        "null": "Low"
       },
       "cityLevels": {
         "1": "Tier 1 City",

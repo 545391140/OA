@@ -1817,7 +1817,9 @@
         "low": "低",
         "medium": "中",
         "high": "高",
-        "very_high": "很高"
+        "very_high": "很高",
+        "undefined": "低",
+        "null": "低"
       },
       "cityLevels": {
         "1": "一线城市",

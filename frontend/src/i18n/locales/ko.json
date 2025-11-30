@@ -1609,7 +1609,9 @@
         "low": "낮음",
         "medium": "중간",
         "high": "높음",
-        "very_high": "매우 높음"
+        "very_high": "매우 높음",
+        "undefined": "낮음",
+        "null": "낮음"
       },
       "cityLevels": {
         "1": "1급 도시",

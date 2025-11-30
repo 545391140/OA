@@ -602,9 +602,23 @@ const LocationManagement = () => {
                 ) : (
                   locations.map((location) => {
                     const getRiskLevelLabel = (level) => {
-                      return t(`location.management.riskLevels.${level}`) || level;
+                      // 处理 undefined、null 或空值
+                      if (!level || level === 'undefined' || level === 'null') {
+                        return t('location.management.riskLevels.low') || 'low';
+                      }
+                      const translationKey = `location.management.riskLevels.${level}`;
+                      const translated = t(translationKey);
+                      // 如果翻译键不存在或返回的是键本身，使用默认值
+                      if (translated === translationKey || !translated) {
+                        return level;
+                      }
+                      return translated;
                     };
                     const getRiskLevelColor = (level) => {
+                      // 处理 undefined、null 或空值
+                      if (!level || level === 'undefined' || level === 'null') {
+                        return 'success'; // 默认低风险
+                      }
                       const colors = { low: 'success', medium: 'warning', high: 'error', very_high: 'error' };
                       return colors[level] || 'default';
                     };
