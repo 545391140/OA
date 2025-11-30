@@ -151,6 +151,9 @@ LocationSchema.index({ noAirport: 1 }); // 用于查询无机场城市
 LocationSchema.index({ cityLevel: 1 }); // 用于按城市等级查询
 LocationSchema.index({ enName: 1 }); // 支持拼音/英语搜索的正则表达式查询（前缀匹配）
 LocationSchema.index({ pinyin: 1 }); // 支持拼音搜索的正则表达式查询（前缀匹配）
+// 复合索引：优化带 status 条件的拼音和英文查询
+LocationSchema.index({ pinyin: 1, status: 1 }); // 用于拼音搜索 + status 过滤
+LocationSchema.index({ enName: 1, status: 1 }); // 用于英文搜索 + status 过滤
 // Text search index - 包含多语言字段（中文、英文、拼音）
 LocationSchema.index({ 
   name: 'text', 
