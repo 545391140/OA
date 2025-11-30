@@ -1027,115 +1027,381 @@ async function getPendingTasksData(userId, userRole, travelQuery = null) {
 }
 
 /**
- * 获取按国家统计的出差数量占比数据
+ * 获取按国家统计的出差数量占比数据（优化版本：使用聚合管道减少数据库往返）
  */
 async function getCountryTravelData(travelQuery) {
   try {
-    // 查询所有符合条件的出差记录
-    const travels = await Travel.find(travelQuery)
-      .select('destination outbound inbound multiCityRoutes')
-      .lean();
-
-    // 收集所有目的地ID（ObjectId类型）
-    const destinationIds = new Set();
-    const stringDestinations = [];
-
-    travels.forEach(travel => {
-      // 处理主目的地
-      if (travel.destination) {
-        if (mongoose.Types.ObjectId.isValid(travel.destination)) {
-          destinationIds.add(new mongoose.Types.ObjectId(travel.destination));
-        } else if (typeof travel.destination === 'string') {
-          stringDestinations.push(travel.destination);
-        }
-      }
-
-      // 处理去程目的地
-      if (travel.outbound && travel.outbound.destination) {
-        if (mongoose.Types.ObjectId.isValid(travel.outbound.destination)) {
-          destinationIds.add(new mongoose.Types.ObjectId(travel.outbound.destination));
-        } else if (typeof travel.outbound.destination === 'string') {
-          stringDestinations.push(travel.outbound.destination);
-        }
-      }
-
-      // 处理返程目的地
-      if (travel.inbound && travel.inbound.destination) {
-        if (mongoose.Types.ObjectId.isValid(travel.inbound.destination)) {
-          destinationIds.add(new mongoose.Types.ObjectId(travel.inbound.destination));
-        } else if (typeof travel.inbound.destination === 'string') {
-          stringDestinations.push(travel.inbound.destination);
-        }
-      }
-
-      // 处理多程目的地
-      if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
-        travel.multiCityRoutes.forEach(route => {
-          if (route.destination) {
-            if (mongoose.Types.ObjectId.isValid(route.destination)) {
-              destinationIds.add(new mongoose.Types.ObjectId(route.destination));
-            } else if (typeof route.destination === 'string') {
-              stringDestinations.push(route.destination);
+    // 第一步：使用聚合管道处理 ObjectId 类型的目的地（最优化路径）
+    const objectIdPipeline = [
+      // 匹配符合条件的差旅记录
+      { $match: travelQuery },
+      
+      // 展开所有目的地到一个数组中（只处理 ObjectId 类型）
+      {
+        $project: {
+          destinations: {
+            $filter: {
+              input: {
+                $concatArrays: [
+                  // 主目的地（只保留 ObjectId）
+                  {
+                    $cond: [
+                      { $and: [{ $ne: ['$destination', null] }, { $eq: [{ $type: '$destination' }, 'objectId'] }] },
+                      ['$destination'],
+                      []
+                    ]
+                  },
+                  // 去程目的地
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$outbound', null] },
+                          { $ne: ['$outbound.destination', null] },
+                          { $eq: [{ $type: '$outbound.destination' }, 'objectId'] }
+                        ]
+                      },
+                      ['$outbound.destination'],
+                      []
+                    ]
+                  },
+                  // 返程目的地
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$inbound', null] },
+                          { $ne: ['$inbound.destination', null] },
+                          { $eq: [{ $type: '$inbound.destination' }, 'objectId'] }
+                        ]
+                      },
+                      ['$inbound.destination'],
+                      []
+                    ]
+                  },
+                  // 多程目的地
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$multiCityRoutes', null] },
+                          { $gt: [{ $size: { $ifNull: ['$multiCityRoutes', []] } }, 0] }
+                        ]
+                      },
+                      {
+                        $map: {
+                          input: {
+                            $filter: {
+                              input: '$multiCityRoutes',
+                              as: 'route',
+                              cond: {
+                                $and: [
+                                  { $ne: ['$$route.destination', null] },
+                                  { $eq: [{ $type: '$$route.destination' }, 'objectId'] }
+                                ]
+                              }
+                            }
+                          },
+                          as: 'route',
+                          in: '$$route.destination'
+                        }
+                      },
+                      []
+                    ]
+                  }
+                ]
+              },
+              as: 'dest',
+              cond: { $ne: ['$$dest', null] }
             }
           }
-        });
+        }
+      },
+      
+      // 展开目的地数组
+      { $unwind: '$destinations' },
+      
+      // 关联 Location 表获取国家信息
+      {
+        $lookup: {
+          from: 'locations',
+          localField: 'destinations',
+          foreignField: '_id',
+          as: 'location'
+        }
+      },
+      
+      // 提取国家信息
+      {
+        $project: {
+          country: {
+            $cond: [
+              { $gt: [{ $size: '$location' }, 0] },
+              { $arrayElemAt: ['$location.country', 0] },
+              null
+            ]
+          }
+        }
+      },
+      
+      // 过滤掉没有国家的记录
+      { $match: { country: { $ne: null, $exists: true } } },
+      
+      // 按国家分组统计
+      {
+        $group: {
+          _id: '$country',
+          count: { $sum: 1 }
+        }
+      }
+    ];
+
+    // 第二步：处理字符串类型的目的地（需要单独处理）
+    const stringPipeline = [
+      { $match: travelQuery },
+      {
+        $project: {
+          destinations: {
+            $filter: {
+              input: {
+                $concatArrays: [
+                  // 主目的地（只保留字符串）
+                  {
+                    $cond: [
+                      { $and: [{ $ne: ['$destination', null] }, { $eq: [{ $type: '$destination' }, 'string'] }] },
+                      ['$destination'],
+                      []
+                    ]
+                  },
+                  // 去程目的地
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$outbound', null] },
+                          { $ne: ['$outbound.destination', null] },
+                          { $eq: [{ $type: '$outbound.destination' }, 'string'] }
+                        ]
+                      },
+                      ['$outbound.destination'],
+                      []
+                    ]
+                  },
+                  // 返程目的地
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$inbound', null] },
+                          { $ne: ['$inbound.destination', null] },
+                          { $eq: [{ $type: '$inbound.destination' }, 'string'] }
+                        ]
+                      },
+                      ['$inbound.destination'],
+                      []
+                    ]
+                  },
+                  // 多程目的地
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$multiCityRoutes', null] },
+                          { $gt: [{ $size: { $ifNull: ['$multiCityRoutes', []] } }, 0] }
+                        ]
+                      },
+                      {
+                        $map: {
+                          input: {
+                            $filter: {
+                              input: '$multiCityRoutes',
+                              as: 'route',
+                              cond: {
+                                $and: [
+                                  { $ne: ['$$route.destination', null] },
+                                  { $eq: [{ $type: '$$route.destination' }, 'string'] }
+                                ]
+                              }
+                            }
+                          },
+                          as: 'route',
+                          in: '$$route.destination'
+                        }
+                      },
+                      []
+                    ]
+                  }
+                ]
+              },
+              as: 'dest',
+              cond: { $ne: ['$$dest', null] }
+            }
+          }
+        }
+      },
+      { $unwind: '$destinations' },
+      {
+        $project: {
+          country: {
+            $cond: [
+              {
+                $gte: [
+                  { $size: { $split: ['$destinations', ','] } },
+                  2
+                ]
+              },
+              {
+                $trim: {
+                  $arrayElemAt: [
+                    { $split: ['$destinations', ','] },
+                    -1
+                  ]
+                }
+              },
+              null
+            ]
+          }
+        }
+      },
+      { $match: { country: { $ne: null, $exists: true } } },
+      {
+        $group: {
+          _id: '$country',
+          count: { $sum: 1 }
+        }
+      }
+    ];
+
+    // 并行执行两个聚合查询
+    const [objectIdResults, stringResults] = await Promise.all([
+      Travel.aggregate(objectIdPipeline),
+      Travel.aggregate(stringPipeline)
+    ]);
+
+    // 合并结果
+    const countryCountMap = new Map();
+    
+    // 处理 ObjectId 结果
+    objectIdResults.forEach(item => {
+      if (item._id) {
+        countryCountMap.set(item._id, (countryCountMap.get(item._id) || 0) + item.count);
+      }
+    });
+    
+    // 处理字符串结果
+    stringResults.forEach(item => {
+      if (item._id) {
+        countryCountMap.set(item._id, (countryCountMap.get(item._id) || 0) + item.count);
       }
     });
 
-    // 统计每个国家的出差数量
-    const countryCountMap = new Map();
-
-    // 查询 Location 对象获取国家信息
-    if (destinationIds.size > 0) {
-      const locations = await Location.find({
-        _id: { $in: Array.from(destinationIds) }
-      }).select('country').lean();
-
-      // 创建 ID 到国家的映射
-      const idToCountryMap = new Map();
-      locations.forEach(loc => {
-        if (loc.country) {
-          idToCountryMap.set(loc._id.toString(), loc.country);
-        }
-      });
-
-      // 统计每个国家的数量
-      travels.forEach(travel => {
-        const destinations = [];
-        
-        if (travel.destination && mongoose.Types.ObjectId.isValid(travel.destination)) {
-          destinations.push(travel.destination.toString());
-        }
-        if (travel.outbound && travel.outbound.destination && mongoose.Types.ObjectId.isValid(travel.outbound.destination)) {
-          destinations.push(travel.outbound.destination.toString());
-        }
-        if (travel.inbound && travel.inbound.destination && mongoose.Types.ObjectId.isValid(travel.inbound.destination)) {
-          destinations.push(travel.inbound.destination.toString());
-        }
-        if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
-          travel.multiCityRoutes.forEach(route => {
-            if (route.destination && mongoose.Types.ObjectId.isValid(route.destination)) {
-              destinations.push(route.destination.toString());
+    // 处理字符串目的地中无法从格式提取国家的情况（需要查询 Location）
+    // 查询所有无法从格式提取的字符串目的地（格式不是"城市, 国家"）
+    const unmatchedStringPipeline = [
+      { $match: travelQuery },
+      {
+        $project: {
+          destinations: {
+            $filter: {
+              input: {
+                $concatArrays: [
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$destination', null] },
+                          { $eq: [{ $type: '$destination' }, 'string'] },
+                          { $lt: [{ $size: { $split: ['$destination', ','] } }, 2] }
+                        ]
+                      },
+                      ['$destination'],
+                      []
+                    ]
+                  },
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$outbound', null] },
+                          { $ne: ['$outbound.destination', null] },
+                          { $eq: [{ $type: '$outbound.destination' }, 'string'] },
+                          { $lt: [{ $size: { $split: ['$outbound.destination', ','] } }, 2] }
+                        ]
+                      },
+                      ['$outbound.destination'],
+                      []
+                    ]
+                  },
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$inbound', null] },
+                          { $ne: ['$inbound.destination', null] },
+                          { $eq: [{ $type: '$inbound.destination' }, 'string'] },
+                          { $lt: [{ $size: { $split: ['$inbound.destination', ','] } }, 2] }
+                        ]
+                      },
+                      ['$inbound.destination'],
+                      []
+                    ]
+                  },
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$multiCityRoutes', null] },
+                          { $gt: [{ $size: { $ifNull: ['$multiCityRoutes', []] } }, 0] }
+                        ]
+                      },
+                      {
+                        $map: {
+                          input: {
+                            $filter: {
+                              input: '$multiCityRoutes',
+                              as: 'route',
+                              cond: {
+                                $and: [
+                                  { $ne: ['$$route.destination', null] },
+                                  { $eq: [{ $type: '$$route.destination' }, 'string'] },
+                                  { $lt: [{ $size: { $split: ['$$route.destination', ','] } }, 2] }
+                                ]
+                              }
+                            }
+                          },
+                          as: 'route',
+                          in: '$$route.destination'
+                        }
+                      },
+                      []
+                    ]
+                  }
+                ]
+              },
+              as: 'dest',
+              cond: { $ne: ['$$dest', null] }
             }
-          });
-        }
-
-        destinations.forEach(destId => {
-          const country = idToCountryMap.get(destId);
-          if (country) {
-            countryCountMap.set(country, (countryCountMap.get(country) || 0) + 1);
           }
-        });
-      });
-    }
+        }
+      },
+      { $unwind: '$destinations' },
+      {
+        $group: {
+          _id: null,
+          destinations: { $addToSet: '$destinations' }
+        }
+      }
+    ];
 
-    // 处理字符串类型的目的地（尝试从字符串中提取国家或查询 Location）
-    if (stringDestinations.length > 0) {
-      // 尝试通过名称匹配 Location
-      const uniqueStringDests = [...new Set(stringDestinations)];
+    const unmatchedResult = await Travel.aggregate(unmatchedStringPipeline);
+    
+    if (unmatchedResult.length > 0 && unmatchedResult[0].destinations.length > 0) {
+      const uniqueStringDests = unmatchedResult[0].destinations;
+      
+      // 查询 Location 匹配这些字符串目的地
       const locationMatches = await Location.find({
         $or: uniqueStringDests.map(dest => ({
-          name: { $regex: dest.split(',')[0].trim(), $options: 'i' }
+          name: { $regex: dest.trim().split(',')[0], $options: 'i' }
         }))
       }).select('country name').lean();
 
@@ -1147,42 +1413,13 @@ async function getCountryTravelData(travelQuery) {
         }
       });
 
-      // 统计字符串目的地的国家
-      travels.forEach(travel => {
-        const stringDests = [];
-        
-        if (travel.destination && typeof travel.destination === 'string') {
-          stringDests.push(travel.destination);
+      // 统计匹配到的国家
+      uniqueStringDests.forEach(dest => {
+        const cityName = dest.trim().split(',')[0].toLowerCase();
+        const country = nameToCountryMap.get(cityName);
+        if (country) {
+          countryCountMap.set(country, (countryCountMap.get(country) || 0) + 1);
         }
-        if (travel.outbound && travel.outbound.destination && typeof travel.outbound.destination === 'string') {
-          stringDests.push(travel.outbound.destination);
-        }
-        if (travel.inbound && travel.inbound.destination && typeof travel.inbound.destination === 'string') {
-          stringDests.push(travel.inbound.destination);
-        }
-        if (travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes)) {
-          travel.multiCityRoutes.forEach(route => {
-            if (route.destination && typeof route.destination === 'string') {
-              stringDests.push(route.destination);
-            }
-          });
-        }
-
-        stringDests.forEach(dest => {
-          // 尝试从字符串中提取国家（格式：城市, 国家）
-          const parts = dest.split(',').map(s => s.trim());
-          if (parts.length >= 2) {
-            const country = parts[parts.length - 1];
-            countryCountMap.set(country, (countryCountMap.get(country) || 0) + 1);
-          } else {
-            // 尝试通过名称匹配
-            const cityName = parts[0].toLowerCase();
-            const country = nameToCountryMap.get(cityName);
-            if (country) {
-              countryCountMap.set(country, (countryCountMap.get(country) || 0) + 1);
-            }
-          }
-        });
       });
     }
 
@@ -1190,70 +1427,60 @@ async function getCountryTravelData(travelQuery) {
       return [];
     }
 
-    // 查询国家记录以获取英文名称
-    const countryNames = Array.from(countryCountMap.keys());
-    const countryLocations = await Location.find({
-      type: 'country',
-      name: { $in: countryNames }
-    }).select('name enName').lean();
+    // 转换为数组并排序
+    const countryStats = Array.from(countryCountMap.entries())
+      .map(([country, count]) => ({ _id: country, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // 计算总数
+    const total = countryStats.reduce((sum, item) => sum + item.count, 0);
+
+    // 获取国家名称列表，用于查询英文名称
+    const countryNames = countryStats.map(item => item._id);
+
+    // 一次性查询所有国家的英文名称
+    const [countryLocations, allLocations] = await Promise.all([
+      Location.find({
+        type: 'country',
+        name: { $in: countryNames }
+      }).select('name enName').lean(),
+      Location.find({
+        country: { $in: countryNames },
+        enName: { $exists: true, $ne: null }
+      }).select('country enName').lean()
+    ]);
 
     // 创建国家名称到英文名称的映射
     const countryToEnNameMap = new Map();
+    
     countryLocations.forEach(loc => {
       if (loc.name) {
-        // 如果有英文名称则使用，否则使用中文名称作为后备
         countryToEnNameMap.set(loc.name, loc.enName || loc.name);
       }
     });
     
-    // 如果某些国家没有找到对应的记录，尝试从其他类型的Location记录中查找
-    const missingCountries = countryNames.filter(name => !countryToEnNameMap.has(name));
-    if (missingCountries.length > 0) {
-      // 尝试从所有Location记录中查找这些国家的英文名称
-      const allLocations = await Location.find({
-        country: { $in: missingCountries }
-      }).select('country enName').lean();
-      
-      // 按国家分组，取第一个有enName的记录
-      const countryEnNameMap = new Map();
-      allLocations.forEach(loc => {
-        if (loc.country && loc.enName && !countryEnNameMap.has(loc.country)) {
-          countryEnNameMap.set(loc.country, loc.enName);
-        }
-      });
-      
-      // 补充缺失的国家英文名称
-      missingCountries.forEach(country => {
-        if (countryEnNameMap.has(country)) {
-          countryToEnNameMap.set(country, countryEnNameMap.get(country));
-        } else {
-          // 如果仍然找不到，使用中文名称作为后备
-          countryToEnNameMap.set(country, country);
-        }
-      });
-    }
-
-    // 计算总数
-    const total = Array.from(countryCountMap.values()).reduce((sum, count) => sum + count, 0);
+    allLocations.forEach(loc => {
+      if (loc.country && loc.enName && !countryToEnNameMap.has(loc.country)) {
+        countryToEnNameMap.set(loc.country, loc.enName);
+      }
+    });
 
     // 转换为图表数据格式
-    const countryData = Array.from(countryCountMap.entries())
-      .map(([country, count], index) => {
-        // 优先使用数据库中的英文名称，其次使用映射表，最后使用中文名称
-        let enName = countryToEnNameMap.get(country);
-        if (!enName || enName === country) {
-          enName = COUNTRY_NAME_MAP[country] || country;
-        }
-        return {
-          name: country,
-          enName: enName,
-          value: Math.round((count / total) * 100 * 100) / 100, // 保留两位小数
-          count: count,
-          color: COLORS[index % COLORS.length]
-        };
-      })
-      .sort((a, b) => b.count - a.count) // 按数量降序排序
-      .slice(0, 10); // 只取前10个国家
+    const countryData = countryStats.map((item, index) => {
+      const country = item._id;
+      let enName = countryToEnNameMap.get(country);
+      if (!enName || enName === country) {
+        enName = COUNTRY_NAME_MAP[country] || country;
+      }
+      return {
+        name: country,
+        enName: enName,
+        value: Math.round((item.count / total) * 100 * 100) / 100,
+        count: item.count,
+        color: COLORS[index % COLORS.length]
+      };
+    });
 
     return countryData;
   } catch (error) {
