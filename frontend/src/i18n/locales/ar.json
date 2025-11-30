@@ -1794,6 +1794,20 @@
       "total": "الإجمالي",
       "items": "عنصر",
       "rowsPerPage": "صفوف في الصفحة"
+    },
+    "selector": {
+      "hotCities": {
+        "domestic": "محلي",
+        "international": "دولي و",
+        "hongKongMacauTaiwan": "الصين هونغ كونغ، ماكاو، تايوان",
+        "hot": "شائع",
+        "internationalHot": "دولي والصين هونغ كونغ، ماكاو، تايوان شائع",
+        "asia": "آسيا",
+        "europe": "أوروبا",
+        "americas": "الأمريكتان",
+        "africa": "أفريقيا",
+        "oceania": "أوقيانوسيا"
+      }
     }
   },
   "expenseItem": {

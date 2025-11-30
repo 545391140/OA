@@ -206,6 +206,73 @@ const TravelForm = () => {
     updateStepStatus();
   }, [formData]);
 
+  // 自动填充出行安排：当基本信息页面的字段变化时，自动填充到出行安排页面
+  useEffect(() => {
+    setFormData(prev => {
+      const newData = { ...prev };
+      let hasChanges = false;
+
+      // 1. 去程出发日期 = 基本信息页的开始日期（如果去程日期为空）
+      if (prev.startDate && !prev.outbound.date) {
+        newData.outbound = {
+          ...newData.outbound,
+          date: prev.startDate
+        };
+        hasChanges = true;
+      }
+
+      // 2. 去程目的地 = 基本信息的目的地（如果去程目的地为空）
+      if (prev.destination && !hasLocationValue(prev.outbound.destination)) {
+        // 处理 destination 可能是字符串或对象的情况
+        let destinationValue = prev.destination;
+        if (typeof prev.destination === 'object' && prev.destination !== null) {
+          // 如果是对象，保持对象格式（RegionSelector 需要对象格式）
+          destinationValue = prev.destination;
+        } else if (typeof prev.destination === 'string' && prev.destination.trim()) {
+          // 如果是字符串，保持字符串格式
+          destinationValue = prev.destination;
+        }
+        
+        newData.outbound = {
+          ...newData.outbound,
+          destination: destinationValue
+        };
+        hasChanges = true;
+      }
+
+      // 3. 返程出发日期 = 基本信息结束日期（如果返程日期为空）
+      if (prev.endDate && !prev.inbound.date) {
+        newData.inbound = {
+          ...newData.inbound,
+          date: prev.endDate
+        };
+        hasChanges = true;
+      }
+
+      // 4. 返程出发地 = 去程目的地（如果返程出发地为空且去程目的地有值）
+      if (hasLocationValue(prev.outbound.destination) && !hasLocationValue(prev.inbound.departure)) {
+        // 处理去程目的地可能是字符串或对象的情况
+        let departureValue = prev.outbound.destination;
+        if (typeof prev.outbound.destination === 'object' && prev.outbound.destination !== null) {
+          // 如果是对象，保持对象格式
+          departureValue = prev.outbound.destination;
+        } else if (typeof prev.outbound.destination === 'string' && prev.outbound.destination.trim()) {
+          // 如果是字符串，保持字符串格式
+          departureValue = prev.outbound.destination;
+        }
+        
+        newData.inbound = {
+          ...newData.inbound,
+          departure: departureValue
+        };
+        hasChanges = true;
+      }
+
+      // 只有当有变化时才返回新数据
+      return hasChanges ? newData : prev;
+    });
+  }, [formData.startDate, formData.endDate, formData.destination, formData.outbound.destination]);
+
   // 匹配单个行程的差旅标准
   const matchRouteStandard = async (destination, routeDate, routeType, routeIndex = null, overrideFormData = null) => {
     if (!destination || !routeDate) return null;

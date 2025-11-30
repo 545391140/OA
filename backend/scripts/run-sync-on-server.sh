@@ -1,13 +1,16 @@
 #!/bin/bash
 
-# 同步脚本后台执行脚本
-# 使用方法: ./run-sync-background.sh [选项]
-# 选项: --full, --incremental, --start-date YYYY-MM-DD, --country-id ID
+# ==========================================
+# 在AWS服务器上执行后台同步脚本
+# 使用方法: 
+#   1. 上传此脚本到服务器
+#   2. SSH连接到服务器
+#   3. 执行: ./run-sync-on-server.sh [选项]
+# ==========================================
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BACKEND_DIR="$PROJECT_ROOT/backend"
+BACKEND_DIR="$SCRIPT_DIR/.."
 
 # 日志文件路径
 LOG_DIR="$BACKEND_DIR/logs"

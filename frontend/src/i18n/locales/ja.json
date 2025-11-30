@@ -1666,6 +1666,20 @@
       "total": "合計",
       "items": "件",
       "rowsPerPage": "ページあたりの行数"
+    },
+    "selector": {
+      "hotCities": {
+        "domestic": "国内",
+        "international": "国際及び",
+        "hongKongMacauTaiwan": "中国香港・マカオ・台湾",
+        "hot": "人気",
+        "internationalHot": "国際・中国香港・マカオ・台湾人気",
+        "asia": "アジア",
+        "europe": "ヨーロッパ",
+        "americas": "アメリカ",
+        "africa": "アフリカ",
+        "oceania": "オセアニア"
+      }
     }
   },
   "expenseItem": {

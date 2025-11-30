@@ -1666,6 +1666,20 @@
       "total": "총",
       "items": "개",
       "rowsPerPage": "페이지당 행 수"
+    },
+    "selector": {
+      "hotCities": {
+        "domestic": "국내",
+        "international": "국제 및",
+        "hongKongMacauTaiwan": "중국 홍콩, 마카오, 대만",
+        "hot": "인기",
+        "internationalHot": "국제 및 중국 홍콩, 마카오, 대만 인기",
+        "asia": "아시아",
+        "europe": "유럽",
+        "americas": "아메리카",
+        "africa": "아프리카",
+        "oceania": "오세아니아"
+      }
     }
   },
   "expenseItem": {

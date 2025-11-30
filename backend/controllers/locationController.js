@@ -553,7 +553,7 @@ exports.getLocations = async (req, res) => {
         const parentCities = await Location.find({
           _id: { $in: parentIds }
         })
-        .select('name code enName type city province')
+        .select('name code enName type city province noAirport')
         .lean();
 
         // 创建 parentId -> city info 的映射
@@ -565,7 +565,8 @@ exports.getLocations = async (req, res) => {
             enName: city.enName,
             type: city.type,
             city: city.city,
-            province: city.province
+            province: city.province,
+            noAirport: city.noAirport || false
           });
         });
 
@@ -628,7 +629,7 @@ exports.getLocations = async (req, res) => {
 exports.getLocationById = async (req, res) => {
   try {
     const location = await Location.findById(req.params.id)
-      .populate('parentId', 'name code type city province');
+      .populate('parentId', 'name code type city province noAirport');
 
     if (!location) {
       return res.status(404).json({
@@ -656,7 +657,7 @@ exports.getLocationById = async (req, res) => {
 exports.getLocationsByParent = async (req, res) => {
   try {
     const locations = await Location.find({ parentId: req.params.parentId })
-      .populate('parentId', 'name code type city province')
+      .populate('parentId', 'name code type city province noAirport')
       .sort({ type: 1, name: 1 });
 
     res.json({

@@ -1798,6 +1798,20 @@
       "total": "Tổng",
       "items": "mục",
       "rowsPerPage": "Số dòng mỗi trang"
+    },
+    "selector": {
+      "hotCities": {
+        "domestic": "Trong nước",
+        "international": "Quốc tế và",
+        "hongKongMacauTaiwan": "Trung Quốc Hồng Kông, Ma Cao, Đài Loan",
+        "hot": "Phổ biến",
+        "internationalHot": "Quốc tế và Trung Quốc Hồng Kông, Ma Cao, Đài Loan Phổ biến",
+        "asia": "Châu Á",
+        "europe": "Châu Âu",
+        "americas": "Châu Mỹ",
+        "africa": "Châu Phi",
+        "oceania": "Châu Đại Dương"
+      }
     }
   },
   "expenseItem": {

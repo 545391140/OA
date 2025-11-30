@@ -1798,6 +1798,20 @@
       "total": "รวม",
       "items": "รายการ",
       "rowsPerPage": "แถวต่อหน้า"
+    },
+    "selector": {
+      "hotCities": {
+        "domestic": "ในประเทศ",
+        "international": "ระหว่างประเทศและ",
+        "hongKongMacauTaiwan": "จีน ฮ่องกง มาเก๊า ไต้หวัน",
+        "hot": "ยอดนิยม",
+        "internationalHot": "ระหว่างประเทศและจีน ฮ่องกง มาเก๊า ไต้หวัน ยอดนิยม",
+        "asia": "เอเชีย",
+        "europe": "ยุโรป",
+        "americas": "อเมริกา",
+        "africa": "แอฟริกา",
+        "oceania": "โอเชียเนีย"
+      }
     }
   },
   "expenseItem": {

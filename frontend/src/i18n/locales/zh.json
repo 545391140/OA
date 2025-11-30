@@ -1874,6 +1874,20 @@
       "total": "总计",
       "items": "条",
       "rowsPerPage": "每页显示"
+    },
+    "selector": {
+      "hotCities": {
+        "domestic": "国内",
+        "international": "国际及",
+        "hongKongMacauTaiwan": "中国港澳台",
+        "hot": "热门",
+        "internationalHot": "国际•中国港澳台热门",
+        "asia": "亚洲",
+        "europe": "欧洲",
+        "americas": "美洲",
+        "africa": "非洲",
+        "oceania": "大洋洲"
+      }
     }
   },
   "expenseItem": {

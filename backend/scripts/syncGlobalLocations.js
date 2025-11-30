@@ -55,6 +55,7 @@ const stats = {
   failedCountries: 0,
   totalLocations: 0,
   createdLocations: 0,
+  updatedLocations: 0, // 新增：更新操作统计
   skippedLocations: 0,
   errors: [],
   syncMode: 'full', // 'full' 或 'incremental'
@@ -195,6 +196,37 @@ function validateDate(dateString) {
 }
 
 /**
+ * 检查城市是否有有效机场
+ * @param {Object} city - 城市数据对象
+ * @returns {boolean} - true表示有有效机场，false表示无机场
+ */
+function hasValidAirport(city) {
+  // 检查是否有机场列表
+  if (!city.stationInfo?.airportList || !Array.isArray(city.stationInfo.airportList)) {
+    return false;
+  }
+
+  // 检查是否有至少一个有效机场
+  const hasValid = city.stationInfo.airportList.some((airport) => {
+    // 过滤无效机场
+    const airportTypes = airport.airportTypeList || [];
+    if (airportTypes.includes('2') || airportTypes.includes('3')) {
+      // 2: 无效废弃机场, 3: 火车站/停机坪/城市等
+      return false;
+    }
+
+    // 检查是否有名称
+    if (!airport.airportName || airport.airportName.trim() === '') {
+      return false;
+    }
+
+    return true;
+  });
+
+  return hasValid;
+}
+
+/**
  * 将POI数据转换为Location格式并建立关联
  */
 function convertPOIToLocations(poiData, countryInfo) {
@@ -242,7 +274,13 @@ function convertPOIToLocations(poiData, countryInfo) {
           return;
         }
       
-      // 添加城市信息（地级市）
+      // 1. 先检查城市是否有机场
+      const hasAirport = hasValidAirport(city);
+      
+      // 2. 根据检查结果设置 noAirport 字段
+      const noAirport = !hasAirport;
+      
+      // 3. 创建城市对象（地级市）
       const cityCode = city.cityCode || city.cityId?.toString();
       const cityLocation = {
         name: city.cityName.trim(),
@@ -261,7 +299,7 @@ function convertPOIToLocations(poiData, countryInfo) {
         coordinates: { latitude: 0, longitude: 0 }, // 默认坐标
         timezone: countryInfo.code === 'CN' ? 'Asia/Shanghai' : 'UTC', // 根据国家设置时区
         riskLevel: 'low', // 默认风险等级
-        noAirport: false, // 默认有机场
+        noAirport: noAirport, // 根据实际检查结果设置
         parentId: null, // 城市类型，所属城市字段应为空
         ctripCityId: city.cityId || null, // 携程城市ID
         ctripProvinceId: province.provinceId || null, // 携程省份ID
@@ -276,7 +314,7 @@ function convertPOIToLocations(poiData, countryInfo) {
       cityMap.set(cityKey, cityLocation);
       locations.push(cityLocation);
 
-      // 处理机场
+      // 4. 处理机场
       if (city.stationInfo?.airportList) {
         city.stationInfo.airportList.forEach((airport) => {
           // 过滤无效机场
@@ -376,6 +414,11 @@ function convertPOIToLocations(poiData, countryInfo) {
             return;
           }
           
+          // 1. 县级市使用地级市的机场（检查地级市是否有机场）
+          // 注意：县级市通常使用所属地级市的机场，所以使用地级市的机场检查结果
+          const countyNoAirport = noAirport; // 使用地级市的 noAirport 值
+          
+          // 2. 创建县级市对象
           const countyCode = county.countyCode || county.countyId?.toString();
           locations.push({
             name: county.countyName.trim(),
@@ -394,7 +437,7 @@ function convertPOIToLocations(poiData, countryInfo) {
             coordinates: { latitude: 0, longitude: 0 }, // 默认坐标
             timezone: countryInfo.code === 'CN' ? 'Asia/Shanghai' : 'UTC', // 根据国家设置时区
             riskLevel: 'low', // 默认风险等级
-            noAirport: false, // 默认有机场
+            noAirport: countyNoAirport, // 使用地级市的机场检查结果
             parentId: null, // 城市类型，所属城市字段应为空
             ctripCountyId: county.countyId || null, // 携程县级市ID
             ctripCityId: city.cityId || null, // 关联的地级市ID
@@ -569,14 +612,18 @@ async function saveOrUpdateLocation(locationData, cityMap) {
     const existingLocation = await Location.findOne(query);
 
     if (existingLocation) {
-      // 对于城市类型的数据，完全替换所有字段
+      // 对于城市类型的数据，只更新 noAirport 字段
       if (cleanData.type === 'city') {
-        // 完全替换：删除旧记录，创建新记录
-        await Location.deleteOne({ _id: existingLocation._id });
-        const newLocation = await Location.create(cleanData);
-        stats.createdLocations++; // 统计为更新
-        console.log(`  ✓ 替换城市数据: ${cleanData.name} (${cleanData.city || ''})`);
-        return newLocation;
+        // 只更新 noAirport 字段，不更新其他字段
+        if (existingLocation.noAirport !== cleanData.noAirport) {
+          existingLocation.noAirport = cleanData.noAirport;
+          await existingLocation.save();
+          console.log(`  ✓ 更新城市 noAirport 字段: ${cleanData.name} (${cleanData.city || ''}) -> ${cleanData.noAirport ? '无机场' : '有机场'}`);
+          stats.updatedLocations++; // 统计为更新
+        } else {
+          stats.skippedLocations++; // noAirport 值相同，跳过
+        }
+        return existingLocation;
       } else {
         // 非城市类型的数据，检查是否需要更新city字段（修复之前同步的错误数据）
         // 对于县级市和行政区，如果city字段不正确，需要更新
@@ -842,7 +889,7 @@ async function main() {
         console.log('当前统计:');
         console.log(`  已处理: ${stats.processedCountries}/${stats.totalCountries}`);
         console.log(`  成功: ${stats.successCountries}, 失败: ${stats.failedCountries}`);
-        console.log(`  总数据: ${stats.totalLocations}, 创建: ${stats.createdLocations}, 跳过: ${stats.skippedLocations}`);
+        console.log(`  总数据: ${stats.totalLocations}, 创建: ${stats.createdLocations}, 更新: ${stats.updatedLocations}, 跳过: ${stats.skippedLocations}`);
         console.log('='.repeat(60));
       }
 
@@ -862,6 +909,7 @@ async function main() {
     console.log(`失败: ${stats.failedCountries}`);
     console.log(`总地理位置数据: ${stats.totalLocations}`);
     console.log(`创建: ${stats.createdLocations}`);
+    console.log(`更新: ${stats.updatedLocations}`);
     console.log(`跳过: ${stats.skippedLocations}`);
 
     if (stats.errors.length > 0) {

@@ -1794,6 +1794,20 @@
       "total": "Total",
       "items": "items",
       "rowsPerPage": "Rows per page"
+    },
+    "selector": {
+      "hotCities": {
+        "domestic": "Domestic",
+        "international": "International &",
+        "hongKongMacauTaiwan": "China Hong Kong, Macau, Taiwan",
+        "hot": "Hot",
+        "internationalHot": "International & China Hong Kong, Macau, Taiwan Hot",
+        "asia": "Asia",
+        "europe": "Europe",
+        "americas": "Americas",
+        "africa": "Africa",
+        "oceania": "Oceania"
+      }
     }
   },
   "expenseItem": {

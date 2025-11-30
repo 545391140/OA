@@ -498,7 +498,7 @@ const RegionSelector = ({
   transportationType = null // 新增：交通工具类型，用于过滤数据
 }) => {
   const theme = useTheme();
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language || 'zh');
   const isChinese = currentLanguage.toLowerCase().startsWith('zh');
   
@@ -1096,7 +1096,7 @@ const RegionSelector = ({
                   parentCity: null,
                   parentIdObj: null,
                   riskLevel: 'low',
-                  noAirport: false
+                  noAirport: parentCity.noAirport || false
                 };
                 cityMap.set(parentIdStr, cityInfo);
                 validLocations.push(cityInfo);
@@ -1705,7 +1705,7 @@ const RegionSelector = ({
                 }
               }}
             >
-              国内
+              {t('location.selector.hotCities.domestic')}
             </Button>
             <Button
               fullWidth
@@ -1749,7 +1749,7 @@ const RegionSelector = ({
                 }
               }}
             >
-              国际及<br />中国港澳台
+              {t('location.selector.hotCities.international')}<br />{t('location.selector.hotCities.hongKongMacauTaiwan')}
             </Button>
           </Box>
 
@@ -1782,7 +1782,7 @@ const RegionSelector = ({
                     }
                   }}
                 >
-                  <Tab label="热门" value="hot" />
+                  <Tab label={t('location.selector.hotCities.hot')} value="hot" />
                   <Tab label="ABCDEF" value="ABCDEF" />
                   <Tab label="GHIJ" value="GHIJ" />
                   <Tab label="KLMN" value="KLMN" />
@@ -1817,12 +1817,12 @@ const RegionSelector = ({
                     }
                   }}
                 >
-                  <Tab label="国际•中国港澳台热门" value="internationalHot" />
-                  <Tab label="亚洲" value="asia" />
-                  <Tab label="欧洲" value="europe" />
-                  <Tab label="美洲" value="americas" />
-                  <Tab label="非洲" value="africa" />
-                  <Tab label="大洋洲" value="oceania" />
+                  <Tab label={t('location.selector.hotCities.internationalHot')} value="internationalHot" />
+                  <Tab label={t('location.selector.hotCities.asia')} value="asia" />
+                  <Tab label={t('location.selector.hotCities.europe')} value="europe" />
+                  <Tab label={t('location.selector.hotCities.americas')} value="americas" />
+                  <Tab label={t('location.selector.hotCities.africa')} value="africa" />
+                  <Tab label={t('location.selector.hotCities.oceania')} value="oceania" />
                 </Tabs>
               </Box>
             )}
@@ -1950,6 +1950,23 @@ const RegionSelector = ({
                           sx={{ height: 18, fontSize: '0.7rem' }}
                         />
                       ) : null}
+                      {/* 右侧标识区域（无机场标识显示在最右侧） */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 'auto' }}>
+                        {/* 城市类型显示无机场标识 */}
+                        {suggestion.type === 'city' && suggestion.noAirport ? (
+                          <Chip
+                            label="无机场"
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                            sx={{ 
+                              height: 18, 
+                              fontSize: '0.7rem',
+                              fontWeight: 500
+                            }}
+                          />
+                        ) : null}
+                      </Box>
                     </Box>
                   }
                   secondary={
@@ -2066,37 +2083,39 @@ const RegionSelector = ({
                           sx={{ height: 20, fontSize: '0.75rem' }}
                         />
                       ) : null}
-                      {/* 城市类型显示风险等级（低风险不显示，显示在右侧） */}
-                      {location.type === 'city' && location.riskLevel && location.riskLevel !== 'low' ? (
-                        <Chip
-                          label={`风险${getRiskLevelLabel(location.riskLevel)}`}
-                          size="small"
-                          color={getRiskLevelColor(location.riskLevel)}
-                          sx={{ 
-                            height: 20, 
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            marginLeft: 'auto',
-                            ...(location.riskLevel === 'high' || location.riskLevel === 'very_high' ? {
-                              animation: `${pulse} 2s infinite`
-                            } : {})
-                          }}
-                        />
-                      ) : null}
-                      {/* 城市类型显示无机场标识 */}
-                      {location.type === 'city' && location.noAirport ? (
-                        <Chip
-                          label="无机场"
-                          size="small"
-                          color="warning"
-                          variant="outlined"
-                          sx={{ 
-                            height: 20, 
-                            fontSize: '0.7rem',
-                            fontWeight: 500
-                          }}
-                        />
-                      ) : null}
+                      {/* 右侧标识区域（风险等级和无机场标识） */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 'auto' }}>
+                        {/* 城市类型显示风险等级（低风险不显示） */}
+                        {location.type === 'city' && location.riskLevel && location.riskLevel !== 'low' ? (
+                          <Chip
+                            label={`风险${getRiskLevelLabel(location.riskLevel)}`}
+                            size="small"
+                            color={getRiskLevelColor(location.riskLevel)}
+                            sx={{ 
+                              height: 20, 
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              ...(location.riskLevel === 'high' || location.riskLevel === 'very_high' ? {
+                                animation: `${pulse} 2s infinite`
+                              } : {})
+                            }}
+                          />
+                        ) : null}
+                        {/* 城市类型显示无机场标识（显示在最右侧） */}
+                        {location.type === 'city' && location.noAirport ? (
+                          <Chip
+                            label="无机场"
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                            sx={{ 
+                              height: 20, 
+                              fontSize: '0.7rem',
+                              fontWeight: 500
+                            }}
+                          />
+                        ) : null}
+                      </Box>
                     </Box>
                   }
                   secondary={
