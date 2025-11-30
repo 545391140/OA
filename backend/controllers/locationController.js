@@ -287,7 +287,10 @@ exports.getLocations = async (req, res) => {
 
     // 转换分页参数
     const pageNum = parseInt(page, 10) || 1;
-    const limitNum = Math.min(parseInt(limit, 10) || 20, 100); // 限制最大100条，防止性能问题
+    // 如果没有搜索关键词（获取全部数据），允许更大的 limit（用于差旅规则配置等场景）
+    // 如果有搜索关键词，限制最大100条以防止性能问题
+    const maxLimit = search ? 100 : 10000; // 无搜索时允许10000条，有搜索时限制100条
+    const limitNum = Math.min(parseInt(limit, 10) || 20, maxLimit);
     const skip = (pageNum - 1) * limitNum;
     const includeChildrenFlag = includeChildren === 'true' || includeChildren === true;
 

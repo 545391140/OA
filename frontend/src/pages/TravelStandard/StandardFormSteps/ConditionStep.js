@@ -34,6 +34,15 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
     cities: [],
     loading: false
   });
+  
+  // 用于存储每个条件的搜索结果（key: `${groupIndex}_${condIndex}`, value: 搜索结果数组）
+  const [searchResults, setSearchResults] = useState({});
+  
+  // 用于存储每个条件的加载状态
+  const [searchLoading, setSearchLoading] = useState({});
+  
+  // 防抖定时器
+  const searchTimers = React.useRef({});
 
   // 确保conditionGroups是数组
   useEffect(() => {
@@ -45,67 +54,71 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
     }
   }, []);
 
-  // 加载地理位置数据
-  useEffect(() => {
-    const fetchLocationData = async () => {
-      setLocationsData(prev => ({ ...prev, loading: true }));
-      try {
-        // 从地理位置管理API获取数据（同时获取城市和国家）
-        const [citiesResponse, countriesResponse] = await Promise.all([
-          apiClient.get('/locations', {
-            params: { type: 'city', status: 'active' }
-          }),
-          apiClient.get('/locations', {
-            params: { type: 'country', status: 'active' }
-          }).catch(() => ({ data: { success: false, data: [] } })) // 如果国家类型不存在，返回空数组
-        ]);
-        
-        const citiesResult = citiesResponse.data?.success ? (citiesResponse.data.data || []) : [];
-        const countriesResult = countriesResponse.data?.success ? (countriesResponse.data.data || []) : [];
-        
-        // 从城市数据中提取唯一的国家信息（作为补充，因为可能有些国家没有单独的国家记录）
-        const countryMap = new Map();
-        citiesResult.forEach(city => {
-          if (city.country) {
-            const countryKey = city.country.toLowerCase();
-            if (!countryMap.has(countryKey)) {
-              countryMap.set(countryKey, {
-                _id: null, // 从城市数据提取的国家没有独立的 _id
-                name: city.country,
-                countryCode: city.countryCode || '',
-                type: 'country'
-              });
-            }
-          }
-        });
-        
-        // 合并国家数据：优先使用独立的国家记录，补充从城市数据提取的国家
-        const countriesFromCities = Array.from(countryMap.values());
-        const allCountries = [...countriesResult];
-        
-        // 添加从城市数据提取的国家（如果不存在）
-        countriesFromCities.forEach(countryFromCity => {
-          const exists = allCountries.some(c => 
-            c.name?.toLowerCase() === countryFromCity.name.toLowerCase() ||
-            c.country?.toLowerCase() === countryFromCity.name.toLowerCase()
-          );
-          if (!exists) {
-            allCountries.push(countryFromCity);
-          }
-        });
-        
-        setLocationsData({
-          countries: allCountries || [],
-          cities: citiesResult || [],
-          loading: false
-        });
-      } catch (error) {
-        console.error('Fetch location data error:', error);
-        setLocationsData(prev => ({ ...prev, loading: false }));
+  // 异步搜索地理位置数据（按需加载，避免一次性加载过多数据）
+  const searchLocations = async (type, searchTerm = '', limit = 500) => {
+    try {
+      const params = {
+        type,
+        status: 'active',
+        limit,
+        page: 1
+      };
+      
+      // 如果有搜索关键词，添加搜索参数
+      if (searchTerm && searchTerm.trim()) {
+        params.search = searchTerm.trim();
       }
-    };
-
-    fetchLocationData();
+      
+      const response = await apiClient.get('/locations', { params });
+      
+      if (response.data?.success) {
+        return response.data.data || [];
+      }
+      return [];
+    } catch (error) {
+      console.error(`Search ${type} locations error:`, error);
+      return [];
+    }
+  };
+  
+  // 处理异步搜索（带防抖）
+  const handleSearchInput = async (groupIndex, condIndex, type, inputValue) => {
+    const key = `${groupIndex}_${condIndex}`;
+    
+    // 清除之前的定时器
+    if (searchTimers.current[key]) {
+      clearTimeout(searchTimers.current[key]);
+    }
+    
+    // 如果输入为空，加载前500条数据
+    const searchTerm = inputValue || '';
+    
+    // 设置加载状态
+    setSearchLoading(prev => ({ ...prev, [key]: true }));
+    
+    // 防抖：500ms 后执行搜索
+    searchTimers.current[key] = setTimeout(async () => {
+      try {
+        const results = await searchLocations(type, searchTerm, 500);
+        setSearchResults(prev => ({ ...prev, [key]: results }));
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults(prev => ({ ...prev, [key]: [] }));
+      } finally {
+        setSearchLoading(prev => ({ ...prev, [key]: false }));
+      }
+    }, 500);
+  };
+  
+  // 初始化时只加载少量常用数据（可选）
+  useEffect(() => {
+    // 不再一次性加载所有数据，改为按需搜索加载
+    // 这样可以避免页面卡死
+    setLocationsData({
+      countries: [],
+      cities: [],
+      loading: false
+    });
   }, []);
   const conditionTypes = [
     { value: 'country', label: '国家' },
@@ -184,12 +197,15 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
   };
 
   // 根据条件类型获取选项列表（包含全选选项）
-  const getOptionsForType = (type) => {
+  const getOptionsForType = (type, groupIndex = null, condIndex = null) => {
     let baseOptions = [];
     
     switch (type) {
       case 'country':
-        baseOptions = locationsData.countries.map(country => ({
+        // 使用搜索结果，如果没有则返回空数组（通过异步搜索加载）
+        const countryKey = groupIndex !== null && condIndex !== null ? `${groupIndex}_${condIndex}` : null;
+        const countryResults = countryKey ? (searchResults[countryKey] || []) : [];
+        baseOptions = countryResults.map(country => ({
           id: country._id || country.id || `country_${country.name || country.country}`,
           name: country.name || country.country,
           label: `${country.name || country.country}${country.countryCode ? ` (${country.countryCode})` : ''}`,
@@ -201,7 +217,10 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
         baseOptions.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
         break;
       case 'city':
-        baseOptions = locationsData.cities.map(city => ({
+        // 使用搜索结果，如果没有则返回空数组（通过异步搜索加载）
+        const cityKey = groupIndex !== null && condIndex !== null ? `${groupIndex}_${condIndex}` : null;
+        const cityResults = cityKey ? (searchResults[cityKey] || []) : [];
+        baseOptions = cityResults.map(city => ({
           id: city._id || city.id || `city_${city.name || city.city}`,
           name: city.name || city.city,
           label: `${city.name || city.city}${city.province ? `, ${city.province}` : ''}${city.country ? `, ${city.country}` : ''}`,
@@ -285,14 +304,17 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
 
   // 处理多选变化（包含全选逻辑）
   const handleMultiSelectChange = (groupIndex, condIndex, selectedOptions) => {
-    const allOptions = getOptionsForType(formData.conditionGroups[groupIndex].conditions[condIndex].type);
+    const conditionType = formData.conditionGroups[groupIndex].conditions[condIndex].type;
+    const allOptions = getOptionsForType(conditionType, groupIndex, condIndex);
     const realOptions = allOptions.filter(opt => !opt.isSelectAll);
     
     // 检查是否点击了全选选项
     const selectAllOption = selectedOptions.find(opt => opt.isSelectAll);
     const wasSelectAllSelected = getSelectedOptions(
-      formData.conditionGroups[groupIndex].conditions[condIndex].type,
-      formData.conditionGroups[groupIndex].conditions[condIndex].value
+      conditionType,
+      formData.conditionGroups[groupIndex].conditions[condIndex].value,
+      groupIndex,
+      condIndex
     ).some(opt => opt.isSelectAll);
     
     let finalSelectedOptions;
@@ -319,7 +341,6 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
     const values = finalSelectedOptions.map(opt => opt.name || opt.id);
     
     // 对于城市和国家类型，同时保存 Location ID 数组
-    const conditionType = formData.conditionGroups[groupIndex].conditions[condIndex].type;
     let locationIds = null;
     
     if (conditionType === 'city' || conditionType === 'country') {
@@ -334,8 +355,8 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
   };
   
   // 获取显示用的选中选项（包含全选状态判断）
-  const getDisplaySelectedOptions = (type, valueString) => {
-    const allOptions = getOptionsForType(type);
+  const getDisplaySelectedOptions = (type, valueString, groupIndex, condIndex) => {
+    const allOptions = getOptionsForType(type, groupIndex, condIndex);
     const realOptions = allOptions.filter(opt => !opt.isSelectAll);
     const selectedValues = getSelectedValues(valueString);
     const selectedRealOptions = realOptions.filter(opt => 
@@ -352,8 +373,8 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
   };
 
   // 获取已选中的选项
-  const getSelectedOptions = (type, valueString) => {
-    const allOptions = getOptionsForType(type);
+  const getSelectedOptions = (type, valueString, groupIndex, condIndex) => {
+    const allOptions = getOptionsForType(type, groupIndex, condIndex);
     const selectedValues = getSelectedValues(valueString);
     return allOptions.filter(opt => selectedValues.includes(opt.name) || selectedValues.includes(opt.id));
   };
@@ -486,17 +507,46 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
                           <Autocomplete
                             multiple
                             size="small"
-                            options={getOptionsForType(condition.type)}
-                            value={getDisplaySelectedOptions(condition.type, condition.value)}
+                            options={getOptionsForType(condition.type, groupIndex, condIndex)}
+                            value={getDisplaySelectedOptions(condition.type, condition.value, groupIndex, condIndex)}
                             onChange={(event, newValue) => {
                               handleMultiSelectChange(groupIndex, condIndex, newValue);
                             }}
+                            onInputChange={(event, newInputValue, reason) => {
+                              // 当用户输入时，触发异步搜索
+                              // reason 可能是 'input', 'clear', 'reset'
+                              if (condition.type === 'country' || condition.type === 'city') {
+                                if (reason === 'input') {
+                                  // 用户输入时触发搜索
+                                  handleSearchInput(groupIndex, condIndex, condition.type, newInputValue);
+                                } else if (reason === 'clear') {
+                                  // 清空时重新加载初始数据
+                                  handleSearchInput(groupIndex, condIndex, condition.type, '');
+                                }
+                              }
+                            }}
+                            onOpen={() => {
+                              // 当打开下拉框时，如果没有数据，加载初始数据
+                              const key = `${groupIndex}_${condIndex}`;
+                              if ((condition.type === 'country' || condition.type === 'city') && !searchResults[key]) {
+                                handleSearchInput(groupIndex, condIndex, condition.type, '');
+                              }
+                            }}
+                            loading={searchLoading[`${groupIndex}_${condIndex}`] || false}
                             getOptionLabel={(option) => option.label || option.name}
                             isOptionEqualToValue={(option, value) => option.id === value.id || option.name === value.name}
+                            // 禁用默认过滤，使用异步搜索（关键：允许输入搜索）
+                            filterOptions={(options) => options}
+                            // 确保可以输入搜索文本
+                            selectOnFocus={false}
+                            clearOnBlur={false}
+                            handleHomeEndKeys={true}
+                            // 允许输入任意文本进行搜索
+                            openOnFocus={true}
                             renderInput={(params) => (
                               <TextField
                                 {...params}
-                                placeholder={`请选择${conditionTypes.find(t => t.value === condition.type)?.label || ''}（支持全选）`}
+                                placeholder={`请选择${conditionTypes.find(t => t.value === condition.type)?.label || ''}（支持搜索和多选）`}
                               />
                             )}
                             renderOption={(props, option, { selected }) => (
@@ -549,12 +599,21 @@ const ConditionStep = ({ formData, setFormData, options, loadingOptions }) => {
                               );
                             }}
                             disableCloseOnSelect
-                            noOptionsText="暂无数据"
+                            noOptionsText={
+                              searchLoading[`${groupIndex}_${condIndex}`] 
+                                ? "搜索中..." 
+                                : (condition.type === 'country' || condition.type === 'city')
+                                  ? "请输入关键词搜索（支持中文、英文、拼音）"
+                                  : "暂无数据"
+                            }
                             limitTags={5}
                           />
                         )}
                         <FormHelperText>
-                          {condition.value ? `已选择 ${getSelectedValues(condition.value).length} 项` : '支持多选，可全选'}
+                          {condition.value ? `已选择 ${getSelectedValues(condition.value).length} 项` : 
+                            (condition.type === 'country' || condition.type === 'city')
+                              ? '支持搜索和多选，输入关键词可搜索'
+                              : '支持多选，可全选'}
                         </FormHelperText>
                       </FormControl>
                     ) : (
