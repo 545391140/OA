@@ -1291,7 +1291,8 @@
       "submitSuccess": "経費が正常に提出されました",
       "saveFailed": "経費の保存に失敗しました",
       "noExpenseItems": "少なくとも1つの費用項目を追加してください",
-      "autoMatchedInvoices": "{count}件の請求書を費用項目に自動的にマッチングしました"
+      "autoMatchedInvoices": "{count}件の請求書を費用項目に自動的にマッチングしました",
+      "validationError": "フォームエラーを確認してください"
     }
   },
   "approval": {

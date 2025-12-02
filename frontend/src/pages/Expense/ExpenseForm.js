@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Container,
@@ -161,6 +161,26 @@ const ExpenseForm = () => {
   const [expenseItemInvoices, setExpenseItemInvoices] = useState({}); // { expenseItemId: [invoices] }
   const [expenseItemInvoiceDialogs, setExpenseItemInvoiceDialogs] = useState({}); // { expenseItemId: open }
   const [expenseItemReimbursementAmounts, setExpenseItemReimbursementAmounts] = useState({}); // { expenseItemId: amount }
+
+  // 统一获取“有效金额”：优先使用用户填写的金额，如果未填写则回退到各费用项自动计算的核销金额之和
+  const getEffectiveAmount = useCallback(() => {
+    const rawAmount = parseFloat(formData.amount);
+    if (!isNaN(rawAmount) && rawAmount > 0) {
+      return rawAmount;
+    }
+
+    // 根据各费用项的报销金额求和（这些金额已根据发票自动计算）
+    const autoAmount = Object.values(expenseItemReimbursementAmounts || {}).reduce((sum, val) => {
+      const num = parseFloat(val);
+      return sum + (isNaN(num) ? 0 : num);
+    }, 0);
+
+    if (autoAmount > 0) {
+      return autoAmount;
+    }
+
+    return NaN;
+  }, [formData.amount, expenseItemReimbursementAmounts]);
 
   const currencies = [
     { value: 'USD', label: `USD - ${t('expense.currencies.USD')}` },
@@ -1746,7 +1766,8 @@ const ExpenseForm = () => {
       newErrors.category = t('expense.form.categoryRequired');
     }
 
-    if (!formData.amount || formData.amount <= 0) {
+    const effectiveAmount = getEffectiveAmount();
+    if (isNaN(effectiveAmount) || effectiveAmount <= 0) {
       newErrors.amount = t('validation.validAmountRequired');
     }
 
@@ -1761,12 +1782,23 @@ const ExpenseForm = () => {
   const handleSave = async (status = 'draft') => {
     // 防止重复提交
     if (saving) {
+      console.log('[EXPENSE_FORM] Already saving, ignoring request');
       return;
     }
 
+    console.log('[EXPENSE_FORM] Starting save with status:', status);
+    console.log('[EXPENSE_FORM] Form data:', formData);
+    console.log('[EXPENSE_FORM] Calculated amounts:', calculatedAmounts);
+
     if (!validateForm()) {
+      console.log('[EXPENSE_FORM] Validation failed, errors:', errors);
+      showNotification(t('expense.form.validationError') || '请检查表单错误', 'error');
       return;
     }
+
+    // 使用统一的有效金额（用户填写优先，其次是自动计算的核销金额）
+    const effectiveAmount = getEffectiveAmount();
+    console.log('[EXPENSE_FORM] Validation passed, proceeding with save. Effective amount:', effectiveAmount);
 
     try {
       setSaving(true);
@@ -1972,7 +2004,7 @@ const ExpenseForm = () => {
         description: formData.description || '',
         category: formData.category,
         subcategory: formData.subcategory || '',
-        amount: parseFloat(formData.amount) || 0,
+        amount: effectiveAmount || 0,
         currency: formData.currency || 'USD',
         date: formData.date ? (formData.date.toISOString ? formData.date.toISOString() : new Date(formData.date).toISOString()) : new Date().toISOString(),
         status: status,
@@ -2429,13 +2461,17 @@ const ExpenseForm = () => {
         }, 100);
       }
     } catch (error) {
+      console.error('[EXPENSE_FORM] Failed to save expense:', error);
+      console.error('[EXPENSE_FORM] Error details:', error.response?.data);
+      console.error('[EXPENSE_FORM] Error stack:', error.stack);
       devError('Failed to save expense:', error);
       devError('Error details:', error.response?.data);
-      showNotification(
-        error.response?.data?.message || error.message || (t('expense.saveError') || '保存费用申请失败'),
-        'error'
-      );
+      
+      const errorMessage = error.response?.data?.message || error.message || (t('expense.saveError') || '保存费用申请失败');
+      console.error('[EXPENSE_FORM] Showing error notification:', errorMessage);
+      showNotification(errorMessage, 'error');
     } finally {
+      console.log('[EXPENSE_FORM] Save completed, resetting saving state');
       setSaving(false);
     }
   };

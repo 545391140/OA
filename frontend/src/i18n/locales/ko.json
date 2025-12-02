@@ -1291,7 +1291,8 @@
       "submitSuccess": "비용이 성공적으로 제출되었습니다",
       "saveFailed": "비용 저장 실패",
       "noExpenseItems": "최소한 하나의 비용 항목을 추가하세요",
-      "autoMatchedInvoices": "{count}개의 송장을 비용 항목에 자동으로 매칭했습니다"
+      "autoMatchedInvoices": "{count}개의 송장을 비용 항목에 자동으로 매칭했습니다",
+      "validationError": "양식 오류를 확인하세요"
     }
   },
   "approval": {

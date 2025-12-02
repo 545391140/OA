@@ -1433,7 +1433,8 @@
       "submitSuccess": "Expense submitted successfully",
       "saveFailed": "Failed to save expense",
       "noExpenseItems": "Please add at least one expense item",
-      "autoMatchedInvoices": "Automatically matched {count} invoices to expense items"
+      "autoMatchedInvoices": "Automatically matched {count} invoices to expense items",
+      "validationError": "Please check form errors"
     }
   },
   "approval": {

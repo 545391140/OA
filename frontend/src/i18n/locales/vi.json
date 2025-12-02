@@ -1436,7 +1436,8 @@
       "submitSuccess": "Chi phí đã được gửi thành công",
       "saveFailed": "Không thể lưu chi phí",
       "noExpenseItems": "Vui lòng thêm ít nhất một mục chi phí",
-      "autoMatchedInvoices": "Đã tự động khớp {count} hóa đơn với các mục chi phí"
+      "autoMatchedInvoices": "Đã tự động khớp {count} hóa đơn với các mục chi phí",
+      "validationError": "Vui lòng kiểm tra lỗi biểu mẫu"
     }
   },
   "approval": {

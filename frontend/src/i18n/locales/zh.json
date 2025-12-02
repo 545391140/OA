@@ -1439,7 +1439,8 @@
       "submitSuccess": "费用申请已提交",
       "saveFailed": "保存费用申请失败",
       "noExpenseItems": "请至少添加一个费用项",
-      "autoMatchedInvoices": "已自动匹配 {count} 张发票到费用项"
+      "autoMatchedInvoices": "已自动匹配 {count} 张发票到费用项",
+      "validationError": "请检查表单错误"
     }
   },
   "approval": {

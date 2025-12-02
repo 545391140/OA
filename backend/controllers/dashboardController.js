@@ -103,9 +103,14 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const userId = req.user.id;
     const userRole = req.user.role;
+    
+    // 使用UTC时间计算月份，避免时区问题
     const currentDate = new Date();
-    const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const year = currentDate.getUTCFullYear();
+    const month = currentDate.getUTCMonth();
+    const currentMonth = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+    const lastMonth = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+    const nextMonth = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0, 0));
 
     // 获取用户角色以确定数据权限范围
     const role = await Role.findOne({ code: req.user.role, isActive: true });
@@ -113,6 +118,18 @@ exports.getDashboardStats = async (req, res) => {
     // 构建数据权限查询条件
     const travelQuery = await buildDataScopeQuery(req.user, role, 'employee');
     const expenseQuery = await buildDataScopeQuery(req.user, role, 'employee');
+    
+    // 转换 expenseQuery 中的 employee 字段为 ObjectId（用于聚合查询）
+    const expenseQueryForAggregate = { ...expenseQuery };
+    if (expenseQueryForAggregate.employee) {
+      if (typeof expenseQueryForAggregate.employee === 'string') {
+        expenseQueryForAggregate.employee = new mongoose.Types.ObjectId(expenseQueryForAggregate.employee);
+      } else if (expenseQueryForAggregate.employee.$in && Array.isArray(expenseQueryForAggregate.employee.$in)) {
+        expenseQueryForAggregate.employee.$in = expenseQueryForAggregate.employee.$in.map(id => 
+          typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id
+        );
+      }
+    }
 
     // 并行查询所有统计数据
     const [
@@ -140,8 +157,8 @@ exports.getDashboardStats = async (req, res) => {
       // 当月支出
       Expense.aggregate([
         {
-          $match: Object.assign({}, expenseQuery, {
-            date: { $gte: currentMonth }
+          $match: Object.assign({}, expenseQueryForAggregate, {
+            date: { $gte: currentMonth, $lt: nextMonth }
           })
         },
         {
@@ -155,7 +172,7 @@ exports.getDashboardStats = async (req, res) => {
       // 上月支出
       Expense.aggregate([
         {
-          $match: Object.assign({}, expenseQuery, {
+          $match: Object.assign({}, expenseQueryForAggregate, {
             date: { $gte: lastMonth, $lt: currentMonth }
           })
         },
@@ -722,42 +739,59 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
     };
   }
   
-  const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const lastMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+  // 使用UTC时间计算月份，避免时区问题
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const currentMonth = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+  const lastMonth = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const nextMonth = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0, 0));
 
-  // 合并当前月和上月的聚合查询为一个，减少数据库查询次数
+  console.log('[DASHBOARD_STATS] Date ranges:', {
+    now: now.toISOString(),
+    currentMonth: currentMonth.toISOString(),
+    lastMonth: lastMonth.toISOString(),
+    nextMonth: nextMonth.toISOString(),
+    expenseQuery: JSON.stringify(expenseQueryForAggregate, null, 2)
+  });
+
+  // 分别查询当前月和上月的费用，确保日期比较正确
   const [
     totalTravelRequests,
     pendingApprovals,
     approvedRequests,
-    monthlySpendingData,
+    currentMonthSpendingData,
+    lastMonthSpendingData,
     totalExpenses,
     countryCount
   ] = await Promise.all([
     Travel.countDocuments(travelQuery),
     Travel.countDocuments({ ...travelQuery, status: 'submitted' }),
     Travel.countDocuments({ ...travelQuery, status: 'approved' }),
+    // 当前月支出
     Expense.aggregate([
       { 
         $match: Object.assign({}, expenseQueryForAggregate, { 
-          date: { $gte: lastMonth } 
+          date: { $gte: currentMonth, $lt: nextMonth }
         }) 
       },
       {
-        $project: {
-          date: 1,
-          amount: 1
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' }
         }
+      }
+    ]),
+    // 上月支出
+    Expense.aggregate([
+      { 
+        $match: Object.assign({}, expenseQueryForAggregate, { 
+          date: { $gte: lastMonth, $lt: currentMonth }
+        }) 
       },
       {
         $group: {
-          _id: {
-            $cond: [
-              { $gte: ['$date', currentMonth] },
-              'currentMonth',
-              'lastMonth'
-            ]
-          },
+          _id: null,
           total: { $sum: '$amount' }
         }
       }
@@ -767,12 +801,20 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
     Location.distinct('country', { status: 'active', country: { $exists: true, $ne: null, $ne: '' } })
   ]);
 
-  // 从合并的聚合结果中分离当前月和上月的数据
-  const currentMonthTotal = monthlySpendingData.find(item => item._id === 'currentMonth')?.total || 0;
-  const lastMonthTotal = monthlySpendingData.find(item => item._id === 'lastMonth')?.total || 0;
+  // 从聚合结果中提取总额
+  const currentMonthTotal = currentMonthSpendingData[0]?.total || 0;
+  const lastMonthTotal = lastMonthSpendingData[0]?.total || 0;
   const spendingTrend = lastMonthTotal > 0 
     ? ((currentMonthTotal - lastMonthTotal) / lastMonthTotal * 100).toFixed(1)
     : 0;
+
+  console.log('[DASHBOARD_STATS] Monthly spending results:', {
+    currentMonthTotal,
+    lastMonthTotal,
+    spendingTrend,
+    currentMonthData: currentMonthSpendingData,
+    lastMonthData: lastMonthSpendingData
+  });
 
   return {
     totalTravelRequests,

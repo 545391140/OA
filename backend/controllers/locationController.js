@@ -333,6 +333,7 @@ exports.getLocations = async (req, res) => {
           .sort(sortOptions)
           .skip(skip)
           .limit(limitNum)
+          .allowDiskUse(true) // 避免大数据量排序时内存超限
           .lean(); // 使用 lean() 返回纯对象，提高性能
         logger.info(`[LocationController] 文本索引搜索结果数量: ${locations.length}`);
         if (locations.length > 0) {
@@ -367,6 +368,7 @@ exports.getLocations = async (req, res) => {
               .sort(sortOptions)
               .skip(skip)
               .limit(limitNum)
+              .allowDiskUse(true) // 避免大数据量排序时内存超限
               .lean();
             
             logger.info(`[LocationController] 降级搜索结果数量: ${locations.length}`);
@@ -416,6 +418,7 @@ exports.getLocations = async (req, res) => {
           .sort(sortOptions)
           .skip(skip)
           .limit(limitNum)
+          .allowDiskUse(true) // 避免大数据量排序时内存超限
           .lean(); // 使用 lean() 返回纯对象，提高性能
         logger.info(`[LocationController] 正则表达式搜索结果数量: ${locations.length}`);
         if (locations.length > 0) {
@@ -509,6 +512,7 @@ exports.getLocations = async (req, res) => {
           .sort(sortOptions)
           .skip(skip)
           .limit(limitNum)
+          .allowDiskUse(true) // 避免大数据量排序时内存超限
           .lean(); // 使用 lean() 返回纯对象，提高性能
         
         // 如果需要包含子项，批量查询
