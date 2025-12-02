@@ -161,6 +161,8 @@ const ExpenseForm = () => {
   const [expenseItemInvoices, setExpenseItemInvoices] = useState({}); // { expenseItemId: [invoices] }
   const [expenseItemInvoiceDialogs, setExpenseItemInvoiceDialogs] = useState({}); // { expenseItemId: open }
   const [expenseItemReimbursementAmounts, setExpenseItemReimbursementAmounts] = useState({}); // { expenseItemId: amount }
+  // 标记用户是否手动修改过日期，一旦手动修改，就不再被差旅/发票自动覆盖
+  const [isDateManuallyEdited, setIsDateManuallyEdited] = useState(false);
 
   // 统一获取“有效金额”：优先使用用户填写的金额，如果未填写则回退到各费用项自动计算的核销金额之和
   const getEffectiveAmount = useCallback(() => {
@@ -610,6 +612,8 @@ const ExpenseForm = () => {
       notes: expenseData.notes || '',
       receipts: expenseData.receipts || []
     });
+    // 从后端加载的数据视为“系统默认值”，此时尚未手动修改日期
+    setIsDateManuallyEdited(false);
     setRelatedInvoicesNormalized(expenseData.relatedInvoices || []);
     // 更新URL为编辑模式
     navigate(`/expenses/${expenseData._id}`, { replace: true });
@@ -674,15 +678,23 @@ const ExpenseForm = () => {
         const travelData = response.data.data;
         setSelectedTravel(travelData);
         
-        // 填充表单基本信息
-        setFormData(prev => ({
-          ...prev,
-          travel: travelData._id,
-          currency: travelData.currency || prev.currency,
-          date: travelData.endDate ? dayjs(travelData.endDate) : prev.date,
-          title: travelData.title || `${travelData.travelNumber || ''} 费用申请`,
-          description: travelData.purpose || travelData.tripDescription || prev.description
-        }));
+        // 填充表单基本信息：
+        // - 初次从差旅生成时可以用差旅结束日期作为默认值
+        // - 一旦用户手动修改过日期（isDateManuallyEdited=true），就不再覆盖
+        setFormData(prev => {
+          const nextDate = (!isDateManuallyEdited && travelData.endDate)
+            ? dayjs(travelData.endDate)
+            : prev.date;
+
+          return {
+            ...prev,
+            travel: travelData._id,
+            currency: travelData.currency || prev.currency,
+            date: nextDate,
+            title: travelData.title || `${travelData.travelNumber || ''} 费用申请`,
+            description: travelData.purpose || travelData.tripDescription || prev.description
+          };
+        });
 
         // 初始化费用项发票管理
         const budgets = extractExpenseBudgets(travelData);
@@ -1404,6 +1416,8 @@ const ExpenseForm = () => {
           receipts: expenseData.receipts || [],
           travel: expenseData.travel?._id || expenseData.travel || null
         });
+        // 从后端加载现有费用时，当前日期是服务器真实值，尚未手动编辑
+        setIsDateManuallyEdited(false);
         // 后端已经populate了relatedInvoices，直接使用
         // 使用统一的规范化函数
         setRelatedInvoicesNormalized(expenseData.relatedInvoices || []);
@@ -3249,7 +3263,11 @@ const ExpenseForm = () => {
               <DatePicker
                 label={`${t('expense.date')} *`}
                 value={formData.date}
-                onChange={(date) => handleChange('date', date)}
+                onChange={(date) => {
+                  // 用户手动修改日期时，标记为已手动编辑，之后不再被差旅/发票自动覆盖
+                  setIsDateManuallyEdited(true);
+                  handleChange('date', date);
+                }}
                 slotProps={{
                   textField: {
                     fullWidth: true,
