@@ -67,7 +67,7 @@ const TravelForm = () => {
     title: '',
     purpose: '',
     travelType: 'domestic', // 新增：差旅类型 (international/domestic)
-    tripType: 'mainland_china', // 新增：行程类型 (international/mainland_china)
+    tripType: 'domestic', // 新增：行程类型 (domestic/cross_border) - 根据常驻国自动判断
     // 新增字段
     costOwingDepartment: '', // 费用承担部门
     destination: '', // 目的地
@@ -153,10 +153,10 @@ const TravelForm = () => {
     { value: 'international', label: t('travel.international'), icon: '✈️' }
   ];
 
-  // 新增：行程类型选项
+  // 新增：行程类型选项（境内/跨境）
   const tripTypes = [
-    { value: 'international', label: t('travel.tripTypes.international'), icon: '🌍' },
-    { value: 'mainland_china', label: t('travel.tripTypes.mainland_china'), icon: '🇨🇳' }
+    { value: 'domestic', label: t('travel.tripTypes.domestic'), icon: '🏠' },
+    { value: 'cross_border', label: t('travel.tripTypes.cross_border'), icon: '✈️' }
   ];
 
   // 费用承担部门选项
@@ -181,14 +181,6 @@ const TravelForm = () => {
     { value: 'paris', label: t('travel.destinations.paris') }
   ];
 
-  // 申请人姓名选项
-  const requestNames = [
-    { value: 'john_doe', label: t('travel.requestNames.john_doe') },
-    { value: 'jane_smith', label: t('travel.requestNames.jane_smith') },
-    { value: 'mike_johnson', label: t('travel.requestNames.mike_johnson') },
-    { value: 'sarah_wilson', label: t('travel.requestNames.sarah_wilson') },
-    { value: 'david_brown', label: t('travel.requestNames.david_brown') }
-  ];
 
 
 
@@ -200,10 +192,256 @@ const TravelForm = () => {
     updateStepStatus();
   }, [id, isEdit]);
 
+  // 新建模式下，设置申请人姓名为当前登录用户（仅在requestName为空时设置）
+  useEffect(() => {
+    if (!isEdit && user && user.firstName && user.lastName) {
+      setFormData(prev => {
+        // 仅在requestName为空时设置默认值
+        if (!prev.requestName || prev.requestName.trim() === '') {
+          const currentUserName = `${user.firstName} ${user.lastName}`.trim();
+          return {
+            ...prev,
+            requestName: currentUserName
+          };
+        }
+        return prev;
+      });
+    }
+  }, [isEdit, user]);
+
   // 监听表单数据变化，实时更新步骤状态
   useEffect(() => {
     updateStepStatus();
   }, [formData]);
+
+  // 辅助函数：从Location对象或字符串中提取国家信息
+  const extractCountryFromLocation = (location) => {
+    if (!location) {
+      console.log('[extractCountryFromLocation] No location provided');
+      return null;
+    }
+    
+    console.log('[extractCountryFromLocation] Input:', location, 'Type:', typeof location);
+    
+    if (typeof location === 'string') {
+      // 如果是字符串格式 "城市, 国家"
+      const parts = location.split(',');
+      if (parts.length >= 2) {
+        const country = parts[parts.length - 1].trim(); // 取最后一部分作为国家
+        if (country) {
+          console.log('[extractCountryFromLocation] Extracted from string:', country);
+          return country;
+        }
+      }
+      console.log('[extractCountryFromLocation] String format invalid, parts:', parts);
+      return null;
+    }
+    
+    if (typeof location === 'object' && location !== null) {
+      // 如果是对象，优先使用 country 字段
+      if (location.country) {
+        let country = null;
+        if (typeof location.country === 'string') {
+          country = location.country.trim(); // 去除首尾空格
+        } else if (typeof location.country === 'object' && location.country.name) {
+          country = location.country.name.trim();
+        }
+        
+        // 确保提取到的国家名称不为空
+        if (country && country.length > 0) {
+          console.log('[extractCountryFromLocation] Extracted from country field:', country);
+          return country;
+        }
+      }
+      
+      // 如果没有 country 字段或 country 为空，尝试从 name 中提取（如果是国家类型）
+      if (location.type === 'country' && location.name) {
+        const countryName = typeof location.name === 'string' ? location.name.trim() : location.name;
+        if (countryName) {
+          console.log('[extractCountryFromLocation] Extracted from name (country type):', countryName);
+          return countryName;
+        }
+      }
+      
+      // 如果对象有 parentIdObj（父级城市对象），尝试从父级提取国家
+      if (location.parentIdObj && typeof location.parentIdObj === 'object') {
+        if (location.parentIdObj.country) {
+          const parentCountry = typeof location.parentIdObj.country === 'string' 
+            ? location.parentIdObj.country.trim() 
+            : (location.parentIdObj.country.name || '').trim();
+          if (parentCountry) {
+            console.log('[extractCountryFromLocation] Extracted from parentIdObj.country:', parentCountry);
+            return parentCountry;
+          }
+        }
+      }
+      
+      // 尝试从其他可能的字段提取（作为最后的备选方案）
+      if (location.name && location.type !== 'country') {
+        // 可能是城市对象，但缺少 country 字段
+        // 这种情况不应该发生（因为 RegionSelector 的 transformLocationData 会设置默认值）
+        // 但为了健壮性，我们记录警告
+        console.warn('[extractCountryFromLocation] Object has name but no valid country field:', {
+          name: location.name,
+          type: location.type,
+          country: location.country,
+          countryCode: location.countryCode
+        });
+      }
+    }
+    
+    console.log('[extractCountryFromLocation] Could not extract country, returning null');
+    return null;
+  };
+
+  // 辅助函数：判断是否是跨境行程
+  const determineTripType = (userResidenceCountry, destinations) => {
+    // 如果没有常驻国信息，默认返回境内
+    if (!userResidenceCountry) {
+      console.log('[determineTripType] No residenceCountry, returning domestic');
+      return 'domestic';
+    }
+
+    // 获取常驻国名称（可能是字符串或对象）
+    let residenceCountryName = null;
+    if (typeof userResidenceCountry === 'string') {
+      residenceCountryName = userResidenceCountry.trim();
+    } else if (typeof userResidenceCountry === 'object' && userResidenceCountry !== null) {
+      // 尝试从多个可能的字段提取
+      residenceCountryName = (userResidenceCountry.name || userResidenceCountry.country || '').toString().trim();
+      // 如果还是空，尝试直接使用对象本身（可能是字符串化的对象）
+      if (!residenceCountryName && typeof userResidenceCountry.toString === 'function') {
+        const str = userResidenceCountry.toString();
+        if (str && str !== '[object Object]') {
+          residenceCountryName = str.trim();
+        }
+      }
+    }
+
+    console.log('[determineTripType] Residence country name:', residenceCountryName);
+
+    if (!residenceCountryName || residenceCountryName.length === 0) {
+      console.log('[determineTripType] Could not extract residence country name, returning domestic');
+      return 'domestic';
+    }
+
+    // 检查所有行程目的地
+    const allDestinations = [
+      destinations.outbound,
+      destinations.inbound,
+      ...(destinations.multiCity || [])
+    ].filter(Boolean);
+
+    console.log('[determineTripType] All destinations:', allDestinations);
+
+    // 如果没有任何目的地，默认返回境内
+    if (allDestinations.length === 0) {
+      console.log('[determineTripType] No destinations, returning domestic');
+      return 'domestic';
+    }
+
+    // 检查是否有任何一个目的地不在常驻国
+    // 使用不区分大小写的比较，因为国家名称可能有大小写差异
+    const normalizedResidenceCountry = residenceCountryName.toLowerCase().trim();
+    
+    for (const dest of allDestinations) {
+      const destCountry = extractCountryFromLocation(dest);
+      console.log('[determineTripType] Destination:', dest, '-> Country:', destCountry);
+      
+      if (destCountry) {
+        const normalizedDestCountry = destCountry.toLowerCase().trim();
+        // 如果目的地国家与常驻国不同，返回跨境
+        if (normalizedDestCountry !== normalizedResidenceCountry) {
+          console.log('[determineTripType] Found cross-border destination:', destCountry, '!=', residenceCountryName);
+          return 'cross_border';
+        }
+      } else {
+        // 如果无法提取目的地国家，记录警告但继续检查其他目的地
+        console.warn('[determineTripType] Could not extract country from destination:', dest);
+      }
+    }
+
+    // 所有目的地都在常驻国，返回境内
+    console.log('[determineTripType] All destinations in residence country, returning domestic');
+    return 'domestic';
+  };
+
+  // 自动判断行程类型：根据申请人常驻国和行程目的地
+  useEffect(() => {
+    // 调试日志
+    console.log('[TripType Auto-Detect] ===== START =====');
+    console.log('[TripType Auto-Detect] User:', user ? { id: user.id, email: user.email, hasResidenceCountry: !!user.residenceCountry } : 'null');
+    console.log('[TripType Auto-Detect] User residenceCountry:', user?.residenceCountry);
+    console.log('[TripType Auto-Detect] User residenceCountry type:', typeof user?.residenceCountry);
+    console.log('[TripType Auto-Detect] FormData tripType:', formData.tripType);
+    console.log('[TripType Auto-Detect] FormData destinations:', {
+      outbound: formData.outbound?.destination,
+      inbound: formData.inbound?.destination,
+      multiCity: formData.multiCityRoutes?.map(route => route.destination) || []
+    });
+    console.log('[TripType Auto-Detect] isEdit:', isEdit);
+    console.log('[TripType Auto-Detect] isLoadingTravelData:', isLoadingTravelData);
+
+    // 如果正在加载差旅数据，跳过自动判断（避免覆盖 fetchTravelData 中的判断结果）
+    if (isLoadingTravelData) {
+      console.log('[TripType Auto-Detect] Skipping: isLoadingTravelData is true');
+      return;
+    }
+
+    if (!user) {
+      console.log('[TripType Auto-Detect] No user, keeping current value');
+      return;
+    }
+
+    if (!user.residenceCountry) {
+      console.log('[TripType Auto-Detect] No residenceCountry, keeping current value');
+      console.log('[TripType Auto-Detect] User object keys:', Object.keys(user));
+      return;
+    }
+
+    const destinations = {
+      outbound: formData.outbound?.destination,
+      inbound: formData.inbound?.destination,
+      multiCity: formData.multiCityRoutes?.map(route => route.destination) || []
+    };
+
+    // 只有当至少有一个目的地时才自动判断
+    const hasAnyDestination = destinations.outbound || destinations.inbound || destinations.multiCity.length > 0;
+    
+    console.log('[TripType Auto-Detect] hasAnyDestination:', hasAnyDestination);
+    
+    if (hasAnyDestination) {
+      const autoTripType = determineTripType(user.residenceCountry, destinations);
+      console.log('[TripType Auto-Detect] Determined trip type:', autoTripType);
+      console.log('[TripType Auto-Detect] Current tripType:', formData.tripType);
+      
+      setFormData(prev => {
+        // 只有当自动判断的结果与当前值不同时才更新
+        if (prev.tripType !== autoTripType) {
+          console.log('[TripType Auto-Detect] ✅ Updating tripType from', prev.tripType, 'to', autoTripType);
+          return {
+            ...prev,
+            tripType: autoTripType
+          };
+        } else {
+          console.log('[TripType Auto-Detect] No update needed, tripType already correct');
+        }
+        return prev;
+      });
+    } else {
+      console.log('[TripType Auto-Detect] No destinations found, skipping auto-detect');
+    }
+    
+    console.log('[TripType Auto-Detect] ===== END =====\n');
+  }, [
+    user,
+    user?.residenceCountry,
+    formData.outbound?.destination,
+    formData.inbound?.destination,
+    formData.multiCityRoutes,
+    isLoadingTravelData,
+    isEdit
+  ]);
 
   // 自动填充出行安排：当基本信息页面的字段变化时，自动填充到出行安排页面
   useEffect(() => {
@@ -545,6 +783,16 @@ const TravelForm = () => {
             return processed;
           };
           
+          // 辅助函数：保留 Location 对象格式（用于自动判断行程类型）
+          const preserveLocationForAutoDetect = (val) => {
+            // 如果是对象，保留对象格式（用于自动判断）
+            if (typeof val === 'object' && val !== null) {
+              return val;
+            }
+            // 如果是字符串，转换为字符串（用于显示）
+            return convertLocationToString(val);
+          };
+          
           const processedData = {
             ...formData, // 先保留默认值
             ...data, // 然后覆盖从API获取的数据
@@ -555,21 +803,24 @@ const TravelForm = () => {
               ...data.outbound || {},
               date: data.outbound?.date ? dayjs(data.outbound.date) : null,
               departure: convertLocationToString(data.outbound?.departure),
-              destination: convertLocationToString(data.outbound?.destination),
+              // 保留原始格式用于自动判断，但转换为字符串用于显示
+              destination: data.outbound?.destination || '',
               transportation: data.outbound?.transportation || ''
             },
             inbound: {
               ...data.inbound || {},
               date: data.inbound?.date ? dayjs(data.inbound.date) : null,
               departure: convertLocationToString(data.inbound?.departure),
-              destination: convertLocationToString(data.inbound?.destination),
+              // 保留原始格式用于自动判断
+              destination: data.inbound?.destination || '',
               transportation: data.inbound?.transportation || ''
             },
             multiCityRoutes: (data.multiCityRoutes || []).map(route => ({
               ...route,
               date: route.date ? dayjs(route.date) : null,
               departure: convertLocationToString(route.departure),
-              destination: convertLocationToString(route.destination),
+              // 保留原始格式用于自动判断
+              destination: route.destination || '',
               transportation: route.transportation || ''
             })),
             outboundBudget: processBudget(data.outboundBudget),
@@ -704,6 +955,16 @@ const TravelForm = () => {
           if (finalRouteMatches.outbound) {
             setMatchedExpenseItems(finalRouteMatches.outbound);
           }
+          
+          // 编辑模式下，重新判断行程类型会在 useEffect 中自动执行
+          // 这里只记录日志，不执行判断（避免 user 信息未加载的问题）
+          console.log('[fetchTravelData] Data loaded, tripType auto-detect will be triggered by useEffect');
+          console.log('[fetchTravelData] Current tripType:', processedData.tripType);
+          console.log('[fetchTravelData] Destinations:', {
+            outbound: processedData.outbound?.destination,
+            inbound: processedData.inbound?.destination,
+            multiCity: processedData.multiCityRoutes?.map(route => route.destination) || []
+          });
         }
       }
     } catch (error) {
@@ -1496,8 +1757,8 @@ const TravelForm = () => {
       newErrors.destination = t('travel.form.pleaseSelectDestination');
     }
 
-    if (!formData.requestName) {
-      newErrors.requestName = t('travel.form.pleaseSelectRequestName');
+    if (!formData.requestName || !formData.requestName.trim()) {
+      newErrors.requestName = t('travel.form.pleaseEnterRequestName');
     }
 
     if (!formData.startDate) {
@@ -1627,8 +1888,22 @@ const TravelForm = () => {
       // 准备提交数据，转换dayjs对象为ISO字符串，转换Location对象为字符串
       // 深度序列化费用预算数据，确保所有数据都能正确提交
       // 如果要提交审批，先保存为draft状态，然后通过submit API提交
+      
+      // 确保 requestName 有值：如果为空，使用当前登录用户的姓名
+      let requestName = formData.requestName;
+      if (!requestName || !requestName.trim()) {
+        if (user && user.firstName && user.lastName) {
+          requestName = `${user.firstName} ${user.lastName}`.trim();
+        } else if (user && user.email) {
+          requestName = user.email;
+        } else {
+          requestName = user?.employeeId || '';
+        }
+      }
+      
       const submitData = {
         ...formData,
+        requestName: requestName, // 确保 requestName 有值
         status: status === 'submitted' ? 'draft' : status, // 提交审批时先保存为draft
         destination: convertLocationToString(formData.destination),
         startDate: formData.startDate ? formData.startDate.toISOString() : null,
@@ -1804,7 +2079,7 @@ const TravelForm = () => {
             statusLabel={errorSteps.includes(0) ? t('travel.form.pendingFill') : undefined}
           >
             <Grid container spacing={3}>
-              {/* Trip Type */}
+              {/* Trip Type - 自动判断，只读显示 */}
               <Grid item xs={12} md={6}>
           <ModernInput
             type="select"
@@ -1814,6 +2089,8 @@ const TravelForm = () => {
             error={!!errors.tripType}
             required={true}
             options={tripTypes}
+            disabled={true}
+            helperText={t('travel.form.tripTypeAutoDetected') || '根据您的常驻国和行程目的地自动判断'}
                 />
               </Grid>
 
@@ -1846,13 +2123,13 @@ const TravelForm = () => {
               {/* Request Name */}
               <Grid item xs={12} md={6}>
           <ModernInput
-            type="select"
+            type="text"
             label={t('travel.requestName')}
                     value={formData.requestName}
                     onChange={(e) => handleChange('requestName', e.target.value)}
                     error={!!errors.requestName}
             required={true}
-            options={requestNames}
+            placeholder={user && user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : t('travel.requestName')}
               />
             </Grid>
 
