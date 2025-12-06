@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
@@ -63,7 +63,23 @@ const TravelForm = () => {
     { value: 'bus', label: t('travel.form.transportation.bus'), icon: <BusIcon /> },
   ];
 
-  const [formData, setFormData] = useState({
+  // 获取用户默认货币（从用户资料中读取）
+  // 注意：这个函数在组件初始化时调用，此时 user 可能还未加载
+  // 因此我们会在 useEffect 中再次更新货币值
+  const getDefaultCurrency = (currentUser) => {
+    if (currentUser && currentUser.preferences && currentUser.preferences.currency) {
+      const userCurrency = currentUser.preferences.currency;
+      // 验证货币值是否有效
+      const validCurrencies = ['USD', 'CNY', 'JPY', 'KRW', 'EUR'];
+      if (validCurrencies.includes(userCurrency)) {
+        return userCurrency;
+      }
+    }
+    return 'USD'; // 默认值
+  };
+
+  // 使用函数式初始化，确保能正确获取用户默认货币
+  const [formData, setFormData] = useState(() => ({
     title: '',
     purpose: '',
     travelType: 'domestic', // 新增：差旅类型 (international/domestic)
@@ -100,9 +116,9 @@ const TravelForm = () => {
     // 费用预算 - 多程行程（数组，每个元素对应一个多程行程的费用预算）
     multiCityRoutesBudget: [],
     estimatedCost: '',
-    currency: 'USD',
+    currency: getDefaultCurrency(user), // 使用用户默认货币（如果user已加载）
     notes: ''
-  });
+  }));
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -187,6 +203,11 @@ const TravelForm = () => {
   useEffect(() => {
     if (isEdit) {
       fetchTravelData();
+      // 编辑模式下，重置货币初始化标记（因为会从API加载数据）
+      currencyInitializedRef.current = true;
+    } else {
+      // 新建模式下，重置货币初始化标记，允许设置用户默认货币
+      currencyInitializedRef.current = false;
     }
     // 初始化时更新步骤状态
     updateStepStatus();
@@ -206,6 +227,32 @@ const TravelForm = () => {
         }
         return prev;
       });
+    }
+  }, [isEdit, user]);
+
+  // 新建模式下，设置默认货币为用户个人资料中的货币
+  // 使用 useRef 跟踪是否已经设置过货币，避免重复设置
+  const currencyInitializedRef = useRef(false);
+  
+  useEffect(() => {
+    // 只在新建模式下设置，且用户信息已加载，且货币还未初始化
+    if (!isEdit && user && user.preferences && user.preferences.currency && !currencyInitializedRef.current) {
+      const userCurrency = user.preferences.currency;
+      // 验证货币值是否有效
+      const validCurrencies = ['USD', 'CNY', 'JPY', 'KRW', 'EUR'];
+      if (validCurrencies.includes(userCurrency)) {
+        setFormData(prev => {
+          // 如果当前货币与用户默认货币不同，则更新
+          if (prev.currency !== userCurrency) {
+            currencyInitializedRef.current = true;
+            return {
+              ...prev,
+              currency: userCurrency
+            };
+          }
+          return prev;
+        });
+      }
     }
   }, [isEdit, user]);
 
@@ -1147,6 +1194,32 @@ const TravelForm = () => {
     calculateCityDistance();
   }, [formData.outbound.departure, formData.outbound.destination, formData.tripType]);
 
+  // 辅助函数：根据 calcUnit 计算费用项数量
+  const calculateExpenseQuantity = (expense, routeQuantity, calcUnit) => {
+    // 确定使用的 calcUnit（优先级：expense.calcUnit > calcUnit 参数 > 默认值）
+    const unit = expense.calcUnit || calcUnit || expense.unit || 'PER_DAY';
+    const normalizedUnit = typeof unit === 'string' ? unit.toUpperCase() : unit;
+    
+    // 根据计算单位确定数量
+    switch (normalizedUnit) {
+      case 'PER_DAY':
+        // 按天计算：使用行程的天数
+        return routeQuantity || 1;
+      case 'PER_TRIP':
+        // 按次计算：每个行程1次
+        return 1;
+      case 'PER_KM':
+        // 按公里计算：需要距离信息，暂时返回1（后续可以改进）
+        return 1;
+      case 'PER_PERSON':
+        // 按人计算：需要人数信息，暂时返回1（后续可以改进）
+        return 1;
+      default:
+        // 默认情况：如果不是 PER_DAY，返回1
+        return normalizedUnit === 'PER_DAY' ? (routeQuantity || 1) : 1;
+    }
+  };
+
   // 自动计算费用数量（基于日期）- 适配动态费用项和多程行程
   useEffect(() => {
     const calculateBudgetQuantities = () => {
@@ -1188,11 +1261,11 @@ const TravelForm = () => {
         return a.date.isBefore(b.date) ? -1 : 1;
       });
       
-      // 计算每个行程的数量
+      // 计算每个行程的数量（天数）
       const quantities = {};
       routes.forEach((route, index) => {
         if (index === routes.length - 1) {
-          // 最后一程数量固定为1
+          // 最后一程数量固定为1天
           if (route.type === 'outbound') {
             quantities.outbound = 1;
           } else if (route.type === 'inbound') {
@@ -1216,7 +1289,7 @@ const TravelForm = () => {
               quantities[`multiCity_${route.index}`] = days;
             }
           } else {
-            // 如果日期无效，默认为1
+            // 如果日期无效，默认为1天
             if (route.type === 'outbound') {
               quantities.outbound = 1;
             } else if (route.type === 'inbound') {
@@ -1250,8 +1323,6 @@ const TravelForm = () => {
         const outboundExpenseItems = routeMatchedExpenseItems.outbound || matchedExpenseItems;
         if (outboundExpenseItems) {
           Object.entries(outboundExpenseItems).forEach(([itemId, expense]) => {
-          const isPerDay = expense.unit === t('travel.form.unitPerDay') || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
-          
             // 计算新的 unitPrice（根据匹配的标准）
             let newUnitPrice = 0;
             if (expense.limitType === 'FIXED') {
@@ -1259,24 +1330,28 @@ const TravelForm = () => {
             } else if (expense.limitType === 'RANGE') {
               newUnitPrice = expense.limitMax || expense.limitMin || 0;
             } else if (expense.limitType === 'ACTUAL') {
+              // 实报实销类型：unitPrice 设为0，但允许用户手动输入
               newUnitPrice = 0;
             } else if (expense.limitType === 'PERCENTAGE') {
               newUnitPrice = expense.baseAmount ? (expense.baseAmount * (expense.percentage || 0) / 100) : 0;
             }
             
+            // 根据 calcUnit 计算数量
+            const quantity = calculateExpenseQuantity(expense, quantities.outbound, expense.calcUnit);
+            
             // 如果预算项不存在，初始化它
             if (!newOutboundBudget[itemId]) {
-              const quantity = isPerDay ? (quantities.outbound || 1) : 1;
               newOutboundBudget[itemId] = {
                 itemId: itemId,
                 itemName: expense.itemName || '未知费用项',
                 unitPrice: newUnitPrice > 0 ? String(newUnitPrice) : '',
                 quantity: quantity,
-                subtotal: newUnitPrice > 0 ? (newUnitPrice * quantity).toFixed(2) : ''
+                subtotal: newUnitPrice > 0 ? (newUnitPrice * quantity).toFixed(2) : '',
+                calcUnit: expense.calcUnit || 'PER_DAY', // 保存 calcUnit 用于后续计算
+                limitType: expense.limitType || 'FIXED' // 保存 limitType
               };
             } else {
               // 预算项已存在：更新 unitPrice（使用新标准）和数量
-              const quantity = isPerDay ? (quantities.outbound || 1) : 1;
               const currentUnitPrice = parseFloat(newOutboundBudget[itemId].unitPrice) || 0;
               
               // 如果新标准的价格与当前不同，更新 unitPrice
@@ -1285,10 +1360,21 @@ const TravelForm = () => {
                 newOutboundBudget[itemId].itemName = expense.itemName || newOutboundBudget[itemId].itemName;
               }
               
+              // 更新 calcUnit 和 limitType（如果变化）
+              if (expense.calcUnit) {
+                newOutboundBudget[itemId].calcUnit = expense.calcUnit;
+              }
+              if (expense.limitType) {
+                newOutboundBudget[itemId].limitType = expense.limitType;
+              }
+              
               // 更新数量和总价
               newOutboundBudget[itemId].quantity = quantity;
-              newOutboundBudget[itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
-              newOutboundBudget[itemId].subtotal = newOutboundBudget[itemId].subtotal.toFixed(2);
+              // 对于实报实销类型，不自动计算 subtotal（允许用户手动输入）
+              if (expense.limitType !== 'ACTUAL') {
+                newOutboundBudget[itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
+                newOutboundBudget[itemId].subtotal = newOutboundBudget[itemId].subtotal.toFixed(2);
+              }
             }
           });
         }
@@ -1297,8 +1383,6 @@ const TravelForm = () => {
         const inboundExpenseItems = routeMatchedExpenseItems.inbound || matchedExpenseItems;
         if (inboundExpenseItems) {
           Object.entries(inboundExpenseItems).forEach(([itemId, expense]) => {
-            const isPerDay = expense.unit === t('travel.form.unitPerDay') || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
-            
             // 计算新的 unitPrice（根据匹配的标准）
             let newUnitPrice = 0;
             if (expense.limitType === 'FIXED') {
@@ -1306,24 +1390,28 @@ const TravelForm = () => {
             } else if (expense.limitType === 'RANGE') {
               newUnitPrice = expense.limitMax || expense.limitMin || 0;
             } else if (expense.limitType === 'ACTUAL') {
+              // 实报实销类型：unitPrice 设为0，但允许用户手动输入
               newUnitPrice = 0;
             } else if (expense.limitType === 'PERCENTAGE') {
               newUnitPrice = expense.baseAmount ? (expense.baseAmount * (expense.percentage || 0) / 100) : 0;
             }
             
+            // 根据 calcUnit 计算数量
+            const quantity = calculateExpenseQuantity(expense, quantities.inbound, expense.calcUnit);
+            
             // 如果预算项不存在，初始化它
             if (!newInboundBudget[itemId]) {
-              const quantity = isPerDay ? (quantities.inbound || 1) : 1;
               newInboundBudget[itemId] = {
                 itemId: itemId,
                 itemName: expense.itemName || '未知费用项',
                 unitPrice: newUnitPrice > 0 ? String(newUnitPrice) : '',
                 quantity: quantity,
-                subtotal: newUnitPrice > 0 ? (newUnitPrice * quantity).toFixed(2) : ''
+                subtotal: newUnitPrice > 0 ? (newUnitPrice * quantity).toFixed(2) : '',
+                calcUnit: expense.calcUnit || 'PER_DAY', // 保存 calcUnit 用于后续计算
+                limitType: expense.limitType || 'FIXED' // 保存 limitType
               };
             } else {
               // 预算项已存在：更新 unitPrice（使用新标准）和数量
-              const quantity = isPerDay ? (quantities.inbound || 1) : 1;
               const currentUnitPrice = parseFloat(newInboundBudget[itemId].unitPrice) || 0;
               
               // 如果新标准的价格与当前不同，更新 unitPrice
@@ -1332,16 +1420,37 @@ const TravelForm = () => {
                 newInboundBudget[itemId].itemName = expense.itemName || newInboundBudget[itemId].itemName;
               }
               
+              // 更新 calcUnit 和 limitType（如果变化）
+              if (expense.calcUnit) {
+                newInboundBudget[itemId].calcUnit = expense.calcUnit;
+              }
+              if (expense.limitType) {
+                newInboundBudget[itemId].limitType = expense.limitType;
+              }
+              
               // 更新数量和总价
               newInboundBudget[itemId].quantity = quantity;
-              newInboundBudget[itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
-              newInboundBudget[itemId].subtotal = newInboundBudget[itemId].subtotal.toFixed(2);
+              // 对于实报实销类型，不自动计算 subtotal（允许用户手动输入）
+              if (expense.limitType !== 'ACTUAL') {
+                newInboundBudget[itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
+                newInboundBudget[itemId].subtotal = newInboundBudget[itemId].subtotal.toFixed(2);
+              }
             }
           });
         }
         
         // 处理多程行程费用项
+        // 确保 multiCityRoutesBudget 数组长度与 multiCityRoutes 一致
         if (formData.multiCityRoutes && formData.multiCityRoutes.length > 0) {
+          // 确保数组长度一致
+          while (newMultiCityRoutesBudget.length < formData.multiCityRoutes.length) {
+            newMultiCityRoutesBudget.push({});
+          }
+          // 如果数组过长，截断（不应该发生，但为了安全）
+          if (newMultiCityRoutesBudget.length > formData.multiCityRoutes.length) {
+            newMultiCityRoutesBudget = newMultiCityRoutesBudget.slice(0, formData.multiCityRoutes.length);
+          }
+          
           formData.multiCityRoutes.forEach((route, index) => {
             const multiCityExpenseItems = routeMatchedExpenseItems.multiCity[index] || matchedExpenseItems;
             if (multiCityExpenseItems) {
@@ -1350,46 +1459,38 @@ const TravelForm = () => {
               }
               
               Object.entries(multiCityExpenseItems).forEach(([itemId, expense]) => {
-                const isPerDay = expense.unit === t('travel.form.unitPerDay') || expense.unit === 'PER_DAY' || expense.calcUnit === 'PER_DAY';
                 const quantityKey = `multiCity_${index}`;
+                
+                // 计算新的 unitPrice（根据匹配的标准）
+                let newUnitPrice = 0;
+                if (expense.limitType === 'FIXED') {
+                  newUnitPrice = expense.limit || 0;
+                } else if (expense.limitType === 'RANGE') {
+                  newUnitPrice = expense.limitMax || expense.limitMin || 0;
+                } else if (expense.limitType === 'ACTUAL') {
+                  // 实报实销类型：unitPrice 设为0，但允许用户手动输入
+                  newUnitPrice = 0;
+                } else if (expense.limitType === 'PERCENTAGE') {
+                  newUnitPrice = expense.baseAmount ? (expense.baseAmount * (expense.percentage || 0) / 100) : 0;
+                }
+                
+                // 根据 calcUnit 计算数量
+                const quantity = calculateExpenseQuantity(expense, quantities[quantityKey], expense.calcUnit);
                 
                 // 如果预算项不存在，初始化它
                 if (!newMultiCityRoutesBudget[index][itemId]) {
-                  let unitPrice = 0;
-                  if (expense.limitType === 'FIXED') {
-                    unitPrice = expense.limit || 0;
-                  } else if (expense.limitType === 'RANGE') {
-                    unitPrice = expense.limitMax || expense.limitMin || 0;
-                  } else if (expense.limitType === 'ACTUAL') {
-                    unitPrice = 0;
-                  } else if (expense.limitType === 'PERCENTAGE') {
-                    unitPrice = expense.baseAmount ? (expense.baseAmount * (expense.percentage || 0) / 100) : 0;
-                  }
-                  
-                  const quantity = isPerDay ? (quantities[quantityKey] || 1) : 1;
                   newMultiCityRoutesBudget[index][itemId] = {
                     itemId: itemId,
                     itemName: expense.itemName || '未知费用项',
-                    unitPrice: unitPrice > 0 ? String(unitPrice) : '',
+                    unitPrice: newUnitPrice > 0 ? String(newUnitPrice) : '',
                     quantity: quantity,
-                    subtotal: unitPrice > 0 ? (unitPrice * quantity).toFixed(2) : ''
+                    subtotal: newUnitPrice > 0 ? (newUnitPrice * quantity).toFixed(2) : '',
+                    calcUnit: expense.calcUnit || 'PER_DAY', // 保存 calcUnit 用于后续计算
+                    limitType: expense.limitType || 'FIXED' // 保存 limitType
                   };
                 } else {
                   // 预算项已存在：更新 unitPrice（使用新标准）和数量
-                  const quantity = isPerDay ? (quantities[quantityKey] || 1) : 1;
                   const currentUnitPrice = parseFloat(newMultiCityRoutesBudget[index][itemId].unitPrice) || 0;
-                  
-                  // 计算新的 unitPrice（根据匹配的标准）
-                  let newUnitPrice = 0;
-                  if (expense.limitType === 'FIXED') {
-                    newUnitPrice = expense.limit || 0;
-                  } else if (expense.limitType === 'RANGE') {
-                    newUnitPrice = expense.limitMax || expense.limitMin || 0;
-                  } else if (expense.limitType === 'ACTUAL') {
-                    newUnitPrice = 0;
-                  } else if (expense.limitType === 'PERCENTAGE') {
-                    newUnitPrice = expense.baseAmount ? (expense.baseAmount * (expense.percentage || 0) / 100) : 0;
-                  }
                   
                   // 如果新标准的价格与当前不同，更新 unitPrice
                   if (Math.abs(newUnitPrice - currentUnitPrice) > 0.01) {
@@ -1397,10 +1498,21 @@ const TravelForm = () => {
                     newMultiCityRoutesBudget[index][itemId].itemName = expense.itemName || newMultiCityRoutesBudget[index][itemId].itemName;
                   }
                   
+                  // 更新 calcUnit 和 limitType（如果变化）
+                  if (expense.calcUnit) {
+                    newMultiCityRoutesBudget[index][itemId].calcUnit = expense.calcUnit;
+                  }
+                  if (expense.limitType) {
+                    newMultiCityRoutesBudget[index][itemId].limitType = expense.limitType;
+                  }
+                  
                   // 更新数量和总价
                   newMultiCityRoutesBudget[index][itemId].quantity = quantity;
-                  newMultiCityRoutesBudget[index][itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
-                  newMultiCityRoutesBudget[index][itemId].subtotal = newMultiCityRoutesBudget[index][itemId].subtotal.toFixed(2);
+                  // 对于实报实销类型，不自动计算 subtotal（允许用户手动输入）
+                  if (expense.limitType !== 'ACTUAL') {
+                    newMultiCityRoutesBudget[index][itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
+                    newMultiCityRoutesBudget[index][itemId].subtotal = newMultiCityRoutesBudget[index][itemId].subtotal.toFixed(2);
+                  }
                 }
               });
             }
@@ -1938,12 +2050,22 @@ const TravelForm = () => {
           }
           // 确保数组长度与 multiCityRoutes 一致
           const budgets = [];
+          const existingBudgets = formData.multiCityRoutesBudget || [];
+          
           for (let i = 0; i < routesLength; i++) {
-            const budget = formData.multiCityRoutesBudget && formData.multiCityRoutesBudget[i]
-              ? formData.multiCityRoutesBudget[i]
-              : {};
-            budgets.push(budget ? JSON.parse(JSON.stringify(budget)) : {});
+            // 如果存在对应的预算，使用它；否则创建空对象
+            const budget = existingBudgets[i] || {};
+            // 深度复制预算对象，确保包含所有字段（calcUnit, limitType 等）
+            budgets.push(budget && typeof budget === 'object' 
+              ? JSON.parse(JSON.stringify(budget)) 
+              : {});
           }
+          
+          // 验证数组长度
+          if (budgets.length !== routesLength) {
+            console.warn(`[TravelForm] multiCityRoutesBudget length mismatch: ${budgets.length} vs ${routesLength}`);
+          }
+          
           return budgets;
         })(),
         estimatedCost: parseFloat(calculatedCost) || 0

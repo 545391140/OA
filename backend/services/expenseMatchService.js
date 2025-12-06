@@ -207,9 +207,19 @@ function extractExpenseBudgets(travel) {
     }
     if (typeof budgetItem === 'object' && budgetItem !== null) {
       // 优先使用 subtotal，如果没有则尝试其他字段
-      return parseFloat(budgetItem.subtotal) || 
-             parseFloat(budgetItem.amount) || 
+      // 注意：subtotal 可能是字符串，需要转换为数字
+      const subtotal = typeof budgetItem.subtotal === 'string' 
+        ? parseFloat(budgetItem.subtotal) 
+        : (budgetItem.subtotal || 0);
+      
+      if (!isNaN(subtotal) && subtotal > 0) {
+        return subtotal;
+      }
+      
+      // 尝试其他字段
+      return parseFloat(budgetItem.amount) || 
              parseFloat(budgetItem.total) || 
+             (typeof budgetItem.unitPrice === 'string' ? parseFloat(budgetItem.unitPrice) : (budgetItem.unitPrice || 0)) * (budgetItem.quantity || 1) ||
              0;
     }
     return 0;
@@ -221,8 +231,18 @@ function extractExpenseBudgets(travel) {
       const budgetItem = travel.outboundBudget[expenseItemId];
       const amount = extractAmount(budgetItem);
       
-      // 只添加有金额的预算项
-      if (amount > 0) {
+      // 添加预算项（包括实报实销类型，因为实际金额可能为0但需要匹配发票）
+      if (budgetItem && typeof budgetItem === 'object') {
+        budgets.push({
+          expenseItemId: expenseItemId,
+          route: 'outbound',
+          amount: amount,
+          // 保存额外的元数据，用于后续处理
+          calcUnit: budgetItem.calcUnit || 'PER_DAY',
+          limitType: budgetItem.limitType || 'FIXED'
+        });
+      } else if (amount > 0) {
+        // 兼容旧格式：只有金额的情况
         budgets.push({
           expenseItemId: expenseItemId,
           route: 'outbound',
@@ -238,8 +258,18 @@ function extractExpenseBudgets(travel) {
       const budgetItem = travel.inboundBudget[expenseItemId];
       const amount = extractAmount(budgetItem);
       
-      // 只添加有金额的预算项
-      if (amount > 0) {
+      // 添加预算项（包括实报实销类型，因为实际金额可能为0但需要匹配发票）
+      if (budgetItem && typeof budgetItem === 'object') {
+        budgets.push({
+          expenseItemId: expenseItemId,
+          route: 'inbound',
+          amount: amount,
+          // 保存额外的元数据，用于后续处理
+          calcUnit: budgetItem.calcUnit || 'PER_DAY',
+          limitType: budgetItem.limitType || 'FIXED'
+        });
+      } else if (amount > 0) {
+        // 兼容旧格式：只有金额的情况
         budgets.push({
           expenseItemId: expenseItemId,
           route: 'inbound',
@@ -250,15 +280,36 @@ function extractExpenseBudgets(travel) {
   }
   
   // 多程行程预算
+  // 确保数组长度与 multiCityRoutes 一致
   if (travel.multiCityRoutesBudget && Array.isArray(travel.multiCityRoutesBudget)) {
+    const multiCityRoutesLength = travel.multiCityRoutes && Array.isArray(travel.multiCityRoutes) 
+      ? travel.multiCityRoutes.length 
+      : travel.multiCityRoutesBudget.length;
+    
     travel.multiCityRoutesBudget.forEach((routeBudget, index) => {
+      // 只处理有效的索引（确保不超过 multiCityRoutes 的长度）
+      if (index >= multiCityRoutesLength) {
+        return;
+      }
+      
       if (routeBudget && typeof routeBudget === 'object') {
         Object.keys(routeBudget).forEach(expenseItemId => {
           const budgetItem = routeBudget[expenseItemId];
           const amount = extractAmount(budgetItem);
           
-          // 只添加有金额的预算项
-          if (amount > 0) {
+          // 只添加有金额的预算项（包括实报实销类型，因为实际金额可能为0但需要匹配发票）
+          // 注意：实报实销类型的 amount 可能为0，但仍然需要创建费用申请
+          if (budgetItem && typeof budgetItem === 'object') {
+            budgets.push({
+              expenseItemId: expenseItemId,
+              route: `multiCity-${index}`,
+              amount: amount,
+              // 保存额外的元数据，用于后续处理
+              calcUnit: budgetItem.calcUnit || 'PER_DAY',
+              limitType: budgetItem.limitType || 'FIXED'
+            });
+          } else if (amount > 0) {
+            // 兼容旧格式：只有金额的情况
             budgets.push({
               expenseItemId: expenseItemId,
               route: `multiCity-${index}`,

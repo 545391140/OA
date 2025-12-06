@@ -251,7 +251,30 @@ exports.matchStandard = async (req, res) => {
       : 0;
     const transportLimitType = transportMaxItem?.limitType || 'FIXED';
     
-    // 对于住宿：按天计算，同时检查是否有实报实销
+    // 辅助函数：根据 calcUnit 计算费用金额
+    const calculateAmountByCalcUnit = (item, days) => {
+      if (!item || item.limitType === 'ACTUAL') {
+        return 0;
+      }
+      
+      const calcUnit = (item.calcUnit || 'PER_DAY').toUpperCase();
+      const limitAmount = item.limitAmount || 0;
+      
+      switch (calcUnit) {
+        case 'PER_DAY':
+          return limitAmount * (days || 1);
+        case 'PER_TRIP':
+          return limitAmount; // 按次计算，不乘以天数
+        case 'PER_KM':
+          // 按公里计算，需要距离信息，暂时返回固定金额
+          return limitAmount;
+        default:
+          // 默认按天计算
+          return limitAmount * (days || 1);
+      }
+    };
+    
+    // 对于住宿：按 calcUnit 计算，同时检查是否有实报实销
     const accommodationMaxItem = accommodationItems.length > 0
       ? accommodationItems.reduce((max, item) => {
           if (item.limitType === 'ACTUAL') return { ...item, limitType: 'ACTUAL' };
@@ -260,16 +283,14 @@ exports.matchStandard = async (req, res) => {
         }, accommodationItems[0])
       : null;
     const accommodationAmount = accommodationMaxItem && accommodationMaxItem.limitType !== 'ACTUAL'
-      ? (accommodationMaxItem.calcUnit === 'PER_DAY' 
-          ? (accommodationMaxItem.limitAmount || 0) * (days || 1) 
-          : (accommodationMaxItem.limitAmount || 0))
+      ? calculateAmountByCalcUnit(accommodationMaxItem, days)
       : 0;
     const accommodationLimitType = accommodationMaxItem?.limitType || 'FIXED';
     const accommodationMaxPerNight = accommodationMaxItem && accommodationMaxItem.limitType !== 'ACTUAL'
       ? (accommodationMaxItem.limitAmount || 0)
       : 0;
     
-    // 对于餐饮：按天计算，同时检查是否有实报实销
+    // 对于餐饮：按 calcUnit 计算，同时检查是否有实报实销
     const mealMaxItem = mealItems.length > 0
       ? mealItems.reduce((max, item) => {
           if (item.limitType === 'ACTUAL') return { ...item, limitType: 'ACTUAL' };
@@ -278,9 +299,7 @@ exports.matchStandard = async (req, res) => {
         }, mealItems[0])
       : null;
     const mealAmount = mealMaxItem && mealMaxItem.limitType !== 'ACTUAL'
-      ? (mealMaxItem.calcUnit === 'PER_DAY' 
-          ? (mealMaxItem.limitAmount || 0) * (days || 1) 
-          : (mealMaxItem.limitAmount || 0))
+      ? calculateAmountByCalcUnit(mealMaxItem, days)
       : 0;
     const mealLimitType = mealMaxItem?.limitType || 'FIXED';
     const mealDailyTotal = mealMaxItem && mealMaxItem.limitType !== 'ACTUAL'
