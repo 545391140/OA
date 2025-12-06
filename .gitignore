@@ -1,10 +1,27 @@
 *.log
 node_modules/
-.env
 .DS_Store
+
+# 环境变量文件 (敏感信息)
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+backend/.env
+backend/.env.local
+backend/.env.*.local
+backend/*.env
+!backend/.env.example
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/*.env
+!frontend/.env.example
+
+# 依赖目录
 backend/node_modules/
 frontend/node_modules/
-backend/.env
 
 # 构建产物
 frontend/build/
@@ -22,3 +39,18 @@ hardcoded-scan-results.json
 # 上传文件目录
 backend/uploads/
 uploads/
+
+# 备份文件
+*.backup
+*.bak
+
+# IDE配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
