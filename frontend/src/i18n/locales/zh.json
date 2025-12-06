@@ -44,6 +44,8 @@
     "submitting": "提交中...",
     "sheet": "张",
     "actualReimbursement": "实报实销",
+    "active": "启用",
+    "inactive": "禁用",
     "months": {
       "Jan": "一月",
       "Feb": "二月",
@@ -370,6 +372,7 @@
         "description": "描述",
         "permissionsCount": "权限数量",
         "level": "级别",
+        "dataScope": "数据权限范围",
         "isSystem": "系统角色",
         "status": "状态",
         "createdAt": "创建时间",
@@ -743,7 +746,7 @@
   "travelStandard": {
     "untitled": "未命名标准",
     "query": {
-      "title": "我的差旅标准查询",
+      "title": "差旅标准查询",
       "tripInfo": "出差信息",
       "destination": "目的地",
       "departureDate": "出发日期",

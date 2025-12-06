@@ -43,6 +43,8 @@
     "submitting": "جاري الإرسال...",
     "sheet": "ورقة",
     "actualReimbursement": "استرداد فعلي",
+    "active": "نشط",
+    "inactive": "غير نشط",
     "months": {
       "Jan": "يناير",
       "Feb": "فبراير",

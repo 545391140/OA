@@ -43,6 +43,8 @@
     "submitting": "Đang gửi...",
     "sheet": "tờ",
     "actualReimbursement": "Hoàn lại thực tế",
+    "active": "Kích hoạt",
+    "inactive": "Vô hiệu hóa",
     "months": {
       "Jan": "Tháng Một",
       "Feb": "Tháng Hai",

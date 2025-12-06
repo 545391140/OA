@@ -43,6 +43,8 @@
     "submitting": "กำลังส่ง...",
     "sheet": "แผ่น",
     "actualReimbursement": "คืนเงินจริง",
+    "active": "เปิดใช้งาน",
+    "inactive": "ปิดใช้งาน",
     "months": {
       "Jan": "มกราคม",
       "Feb": "กุมภาพันธ์",

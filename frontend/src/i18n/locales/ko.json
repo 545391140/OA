@@ -42,6 +42,8 @@
     "reset": "재설정",
     "submitting": "제출 중...",
     "actualReimbursement": "실제 지급",
+    "active": "활성",
+    "inactive": "비활성",
     "months": {
       "Jan": "1월",
       "Feb": "2월",

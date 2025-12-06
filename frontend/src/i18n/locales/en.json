@@ -43,6 +43,8 @@
     "submitting": "Submitting...",
     "sheet": "sheet",
     "actualReimbursement": "Actual Reimbursement",
+    "active": "Active",
+    "inactive": "Inactive",
     "months": {
       "Jan": "January",
       "Feb": "February",

@@ -42,6 +42,8 @@
     "reset": "リセット",
     "submitting": "送信中...",
     "actualReimbursement": "実報実銷",
+    "active": "有効",
+    "inactive": "無効",
     "months": {
       "Jan": "1月",
       "Feb": "2月",
