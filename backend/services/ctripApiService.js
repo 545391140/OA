@@ -5,6 +5,7 @@
  */
 
 const axios = require('axios');
+const logger = require('../utils/logger');
 const config = require('../config');
 
 // 携程API配置
@@ -78,7 +79,7 @@ async function getTicket() {
         expiresAt: Date.now() + 2 * 60 * 60 * 1000 - 60000, // 提前1分钟过期，确保安全
       };
 
-      console.log('携程Ticket获取成功');
+      logger.debug('携程Ticket获取成功');
       return ticket;
     } else {
       throw new Error(
@@ -87,7 +88,7 @@ async function getTicket() {
       );
     }
   } catch (error) {
-    console.error('获取携程Ticket失败:', error.message);
+    logger.error('获取携程Ticket失败:', error.message);
     throw new Error(`获取携程Ticket失败: ${error.message}`);
   }
 }
@@ -137,11 +138,11 @@ async function getAllCountries(locale = 'zh-CN') {
       );
     }
   } catch (error) {
-    console.error('获取国家数据失败:', error.message);
+    logger.error('获取国家数据失败:', error.message);
     
     // 如果是认证错误，尝试刷新Ticket后重试一次
     if (error.response?.data?.responseCode === 309 || error.message.includes('Ticket')) {
-      console.log('Ticket可能过期，尝试刷新后重试...');
+      logger.debug('Ticket可能过期，尝试刷新后重试...');
       await refreshTicket();
       return getAllCountries(locale);
     }
@@ -241,11 +242,11 @@ async function getAllPOIInfo(options = {}) {
       );
     }
   } catch (error) {
-    console.error('获取POI数据失败:', error.message);
+    logger.error('获取POI数据失败:', error.message);
     
     // 如果是认证错误，尝试刷新Ticket后重试一次
     if (error.response?.data?.status?.errorCode === 309 || error.message.includes('Ticket')) {
-      console.log('Ticket可能过期，尝试刷新后重试...');
+      logger.debug('Ticket可能过期，尝试刷新后重试...');
       await refreshTicket();
       return getAllPOIInfo(options);
     }

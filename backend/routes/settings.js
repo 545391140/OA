@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { protect, authorize } = require('../middleware/auth');
 const Settings = require('../models/Settings');
 
@@ -20,7 +21,7 @@ router.get('/system', protect, authorize('admin'), async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get system settings error:', error);
+    logger.error('Get system settings error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -44,7 +45,7 @@ router.get('/user', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get user settings error:', error);
+    logger.error('Get user settings error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -85,7 +86,7 @@ router.get('/', protect, async (req, res) => {
       data: effectiveSettings
     });
   } catch (error) {
-    console.error('Get effective settings error:', error);
+    logger.error('Get effective settings error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -116,7 +117,7 @@ router.put('/system', protect, authorize('admin'), async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update system settings error:', error);
+    logger.error('Update system settings error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -147,7 +148,7 @@ router.put('/user', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update user settings error:', error);
+    logger.error('Update user settings error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -179,7 +180,7 @@ router.put('/', protect, async (req, res) => {
       message: 'Settings saved successfully'
     });
   } catch (error) {
-    console.error('Update settings error:', error);
+    logger.error('Update settings error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'

@@ -2,13 +2,14 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const logger = require('../utils/logger');
 
 // Protect routes
 const protect = async (req, res, next) => {
-  // 添加日志以追踪请求
+  // 调试日志（仅开发环境）
   if (req.path && req.path.includes('/dashboard')) {
-    console.log('[AUTH_PROTECT] Dashboard route protected:', req.method, req.path);
-    console.log('[AUTH_PROTECT] Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+    logger.debug('Dashboard route protected', { method: req.method, path: req.path });
+    logger.debug('Authorization header', { present: req.headers.authorization ? 'Yes' : 'No' });
   }
   
   let token;
@@ -42,7 +43,7 @@ const protect = async (req, res, next) => {
           if (realUser) {
             // 使用真实用户数据
             req.user = realUser;
-            console.log(`✅ [AUTH] Development mode: Using real user from database - ${realUser.email}`);
+            logger.debug('Development mode: Using real user from database', { email: realUser.email });
           } else {
             // 如果数据库中没有用户，使用 mock user
             req.user = {
@@ -58,10 +59,10 @@ const protect = async (req, res, next) => {
               currency: 'USD',
               timezone: 'UTC'
             };
-            console.log('⚠️  [AUTH] Development mode: No users in database, using mock user');
+            logger.warn('Development mode: No users in database, using mock user');
           }
         } catch (error) {
-          console.error('Error fetching user in dev mode:', error);
+          logger.error('Error fetching user in dev mode:', error);
           // 出错时使用 mock user
           req.user = {
             _id: '507f1f77bcf86cd799439011',
@@ -76,13 +77,13 @@ const protect = async (req, res, next) => {
             currency: 'USD',
             timezone: 'UTC'
           };
-          console.log('⚠️  [AUTH] Development mode: Error fetching user, using mock user');
+          logger.warn('Development mode: Error fetching user, using mock user');
         }
         return next();
       }
       
       if (isMockToken) {
-        console.log('⚠️  [AUTH] Mock token detected but not in dev mode. NODE_ENV:', process.env.NODE_ENV);
+        logger.warn('Mock token detected but not in dev mode', { nodeEnv: process.env.NODE_ENV });
       }
 
       // Verify token
@@ -101,7 +102,7 @@ const protect = async (req, res, next) => {
 
       next();
     } catch (error) {
-      console.error('Token verification error:', error);
+      logger.error('Token verification error:', error);
       return res.status(401).json({
         success: false,
         message: 'Not authorized, token failed'
@@ -187,7 +188,7 @@ const authorize = (...roles) => {
         message: `User role ${req.user.role} is not authorized to access this route`
       });
     } catch (error) {
-      console.error('Authorization check error:', error);
+      logger.error('Authorization check error:', error);
       return res.status(500).json({
         success: false,
         message: 'Error checking authorization'
@@ -238,7 +239,7 @@ const checkPermission = (...requiredPermissions) => {
 
       next();
     } catch (error) {
-      console.error('Permission check error:', error);
+      logger.error('Permission check error:', error);
       return res.status(500).json({
         success: false,
         message: 'Error checking permissions'

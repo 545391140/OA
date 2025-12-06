@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const logger = require('../utils/logger');
 const NotificationTemplate = require('../models/NotificationTemplate');
 const Settings = require('../models/Settings');
 const pushNotificationService = require('./pushNotificationService');
@@ -24,7 +25,7 @@ class NotificationService {
           emailContent = rendered.email;
           pushContent = rendered.push;
         } catch (error) {
-          console.warn(`Template ${templateCode} not found, using provided content or default`);
+          logger.warn(`Template ${templateCode} not found, using provided content or default`);
           // 如果模板不存在，使用默认内容
           if (!finalTitle && type === 'approval_request') {
             finalTitle = variables?.requestType ? `${variables.requestType}审批请求` : '审批请求';
@@ -62,7 +63,7 @@ class NotificationService {
       }
 
       // 创建站内通知
-      console.log(`Creating notification: recipient=${recipient}, type=${type}, title=${finalTitle}`);
+      logger.debug(`Creating notification: recipient=${recipient}, type=${type}, title=${finalTitle}`);
       const notification = await Notification.create({
         recipient,
         sender,
@@ -72,7 +73,7 @@ class NotificationService {
         relatedData,
         priority
       });
-      console.log(`Notification created successfully: ${notification._id}`);
+      logger.debug(`Notification created successfully: ${notification._id}`);
 
       // 获取用户设置，检查通知偏好
       const userSettings = await Settings.getUserSettings(recipient);
@@ -109,7 +110,7 @@ class NotificationService {
 
       return notification;
     } catch (error) {
-      console.error('Create notification error:', error);
+      logger.error('Create notification error:', error);
       throw error;
     }
   }
@@ -122,7 +123,7 @@ class NotificationService {
       const created = await Notification.insertMany(notifications);
       return created;
     } catch (error) {
-      console.error('Create batch notifications error:', error);
+      logger.error('Create batch notifications error:', error);
       throw error;
     }
   }
@@ -137,7 +138,7 @@ class NotificationService {
     
     // 确保 approvers 是数组且包含有效的审批人ID
     if (!approvers || !Array.isArray(approvers) || approvers.length === 0) {
-      console.warn('No approvers provided for approval request notification');
+      logger.warn('No approvers provided for approval request notification');
       return [];
     }
 
@@ -156,11 +157,11 @@ class NotificationService {
       .filter(id => id !== null);
 
     if (approverIds.length === 0) {
-      console.warn('No valid approver IDs found for approval request notification');
+      logger.warn('No valid approver IDs found for approval request notification');
       return [];
     }
 
-    console.log(`Sending approval request notifications to ${approverIds.length} approvers`);
+    logger.debug(`Sending approval request notifications to ${approverIds.length} approvers`);
     
     const notifications = await Promise.all(
       approverIds.map(async (approverId) => {
@@ -174,17 +175,17 @@ class NotificationService {
               requesterName: requesterName,
               requestType: requestType === 'travel' ? '差旅' : '费用',
               requestTitle: requestTitle || '申请',
-              url: `/${requestType}/${requestId}`
+              url: `/approvals/${requestType}/${requestId}`
             },
             relatedData: {
               type: requestType,
               id: requestId,
-              url: `/${requestType}/${requestId}`
+              url: `/approvals/${requestType}/${requestId}`
             },
             priority: 'high'
           });
         } catch (error) {
-          console.error(`Failed to create notification for approver ${approverId}:`, error);
+          logger.error(`Failed to create notification for approver ${approverId}:`, error);
           return null;
         }
       })
@@ -192,7 +193,7 @@ class NotificationService {
 
     // 过滤掉创建失败的通知
     const successfulNotifications = notifications.filter(n => n !== null);
-    console.log(`Successfully created ${successfulNotifications.length} approval request notifications`);
+    logger.debug(`Successfully created ${successfulNotifications.length} approval request notifications`);
 
     return successfulNotifications;
   }
@@ -214,12 +215,12 @@ class NotificationService {
         requestType: requestType === 'travel' ? '差旅' : '费用',
         requestTitle: requestTitle,
         approverName: approverName,
-        url: `/${requestType}/${requestId}`
+        url: `/approvals/${requestType}/${requestId}`
       },
       relatedData: {
         type: requestType,
         id: requestId,
-        url: `/${requestType}/${requestId}`
+        url: `/approvals/${requestType}/${requestId}`
       },
       priority: 'normal'
     });
@@ -243,12 +244,12 @@ class NotificationService {
         requestTitle: requestTitle,
         approverName: approverName,
         comments: comments || '无',
-        url: `/${requestType}/${requestId}`
+        url: `/approvals/${requestType}/${requestId}`
       },
       relatedData: {
         type: requestType,
         id: requestId,
-        url: `/${requestType}/${requestId}`
+        url: `/approvals/${requestType}/${requestId}`
       },
       priority: 'high'
     });
@@ -336,7 +337,7 @@ class NotificationService {
       });
       return count || 0;
     } catch (error) {
-      console.error('Get unread count error:', error);
+      logger.error('Get unread count error:', error);
       throw error;
     }
   }

@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize, checkPermission } = require('../middleware/auth');
 const { PERMISSIONS } = require('../config/permissions');
@@ -93,7 +94,7 @@ router.get('/', protect, checkPermission(PERMISSIONS.POSITION_VIEW), async (req,
       data: positions
     });
   } catch (error) {
-    console.error('Get positions error:', error);
+    logger.error('Get positions error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -122,7 +123,7 @@ router.get('/:id', protect, checkPermission(PERMISSIONS.POSITION_VIEW), async (r
       data: position
     });
   } catch (error) {
-    console.error('Get position error:', error);
+    logger.error('Get position error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -199,7 +200,7 @@ router.post('/', [
       data: position
     });
   } catch (error) {
-    console.error('Create position error:', error);
+    logger.error('Create position error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -274,7 +275,7 @@ router.put('/:id', [
       data: position
     });
   } catch (error) {
-    console.error('Update position error:', error);
+    logger.error('Update position error:', error);
     
     // Handle validation errors
     if (error.name === 'ValidationError') {
@@ -333,7 +334,7 @@ router.delete('/:id', protect, checkPermission(PERMISSIONS.POSITION_DELETE), asy
       message: 'Position deleted successfully'
     });
   } catch (error) {
-    console.error('Delete position error:', error);
+    logger.error('Delete position error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -371,7 +372,7 @@ router.patch('/:id/toggle-active', protect, checkPermission(PERMISSIONS.POSITION
       data: position
     });
   } catch (error) {
-    console.error('Toggle position active error:', error);
+    logger.error('Toggle position active error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'

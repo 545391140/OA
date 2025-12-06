@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 const Travel = require('../models/Travel');
 const User = require('../models/User');
 const Location = require('../models/Location');
@@ -167,7 +168,7 @@ exports.getTravels = async (req, res) => {
       data: travelObjects
     });
   } catch (error) {
-    console.error('Get travels error:', error);
+    logger.error('Get travels error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -218,7 +219,7 @@ exports.getTravelById = async (req, res) => {
             };
           }
         } catch (userError) {
-          console.error('Error populating employee:', userError.message);
+          logger.error('Error populating employee:', userError.message);
           // employee保持为ObjectId，不影响后续逻辑
         }
       }
@@ -261,7 +262,7 @@ exports.getTravelById = async (req, res) => {
             );
           }
         } catch (approverError) {
-          console.error('Error populating approvers:', approverError.message);
+          logger.error('Error populating approvers:', approverError.message);
           // 继续执行，approver保持为ObjectId
         }
       }
@@ -285,10 +286,10 @@ exports.getTravelById = async (req, res) => {
         // 如果没有employee字段，在开发模式下允许访问，否则返回错误
         const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
         if (isDevMode) {
-          console.warn('Travel request missing employee field, allowing access in dev mode:', req.params.id);
+          logger.warn('Travel request missing employee field, allowing access in dev mode:', req.params.id);
           // 在开发模式下允许访问，继续执行
         } else {
-          console.error('Travel request missing employee field:', req.params.id);
+          logger.error('Travel request missing employee field:', req.params.id);
           return res.status(500).json({
             success: false,
             message: 'Travel request data is incomplete'
@@ -326,10 +327,10 @@ exports.getTravelById = async (req, res) => {
       data: travel
     });
   } catch (error) {
-    console.error('Get travel error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Request params:', req.params);
-    console.error('User ID:', req.user?.id);
+    logger.error('Get travel error:', error);
+    logger.error('Error stack:', error.stack);
+    logger.error('Request params:', req.params);
+    logger.error('User ID:', req.user?.id);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -425,7 +426,7 @@ exports.createTravel = async (req, res) => {
       data: travel
     });
   } catch (error) {
-    console.error('Create travel error:', error);
+    logger.error('Create travel error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -458,7 +459,7 @@ exports.updateTravel = async (req, res) => {
         // 如果没有employee字段，在开发模式下允许更新，否则返回错误
         const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
         if (!isDevMode) {
-          console.error('Travel request missing employee field:', req.params.id);
+          logger.error('Travel request missing employee field:', req.params.id);
           return res.status(500).json({
             success: false,
             message: 'Travel request data is incomplete'
@@ -566,7 +567,7 @@ exports.updateTravel = async (req, res) => {
       data: travel
     });
   } catch (error) {
-    console.error('Update travel error:', error);
+    logger.error('Update travel error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -599,7 +600,7 @@ exports.deleteTravel = async (req, res) => {
         // 如果没有employee字段，在开发模式下允许删除，否则返回错误
         const isDevMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
         if (!isDevMode) {
-          console.error('Travel request missing employee field:', req.params.id);
+          logger.error('Travel request missing employee field:', req.params.id);
           return res.status(500).json({
             success: false,
             message: 'Travel request data is incomplete'
@@ -643,10 +644,10 @@ exports.deleteTravel = async (req, res) => {
       message: 'Travel request deleted successfully'
     });
   } catch (error) {
-    console.error('Delete travel error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Request params:', req.params);
-    console.error('User ID:', req.user?.id);
+    logger.error('Delete travel error:', error);
+    logger.error('Error stack:', error.stack);
+    logger.error('Request params:', req.params);
+    logger.error('User ID:', req.user?.id);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'

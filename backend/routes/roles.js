@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
 const Role = require('../models/Role');
@@ -17,7 +18,7 @@ router.get('/permissions', protect, authorize('admin'), async (req, res) => {
       data: PERMISSION_GROUPS
     });
   } catch (error) {
-    console.error('Get permissions error:', error);
+    logger.error('Get permissions error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -104,7 +105,7 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
       data: roles
     });
   } catch (error) {
-    console.error('Get roles error:', error);
+    logger.error('Get roles error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -133,7 +134,7 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
       data: role
     });
   } catch (error) {
-    console.error('Get role error:', error);
+    logger.error('Get role error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -187,7 +188,7 @@ router.post('/', [
       data: role
     });
   } catch (error) {
-    console.error('Create role error:', error);
+    logger.error('Create role error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -252,7 +253,7 @@ router.put('/:id', [
       data: role
     });
   } catch (error) {
-    console.error('Update role error:', error);
+    logger.error('Update role error:', error);
     
     // Handle validation errors
     if (error.name === 'ValidationError') {
@@ -311,7 +312,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       message: 'Role deleted successfully'
     });
   } catch (error) {
-    console.error('Delete role error:', error);
+    logger.error('Delete role error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -349,7 +350,7 @@ router.patch('/:id/toggle-active', protect, authorize('admin'), async (req, res)
       data: role
     });
   } catch (error) {
-    console.error('Toggle role active error:', error);
+    logger.error('Toggle role active error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'

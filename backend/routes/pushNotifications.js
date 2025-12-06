@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { protect } = require('../middleware/auth');
 const pushNotificationService = require('../services/pushNotificationService');
 
@@ -17,7 +18,7 @@ router.get('/vapid-key', protect, (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get VAPID key error:', error);
+    logger.error('Get VAPID key error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -53,7 +54,7 @@ router.post('/subscribe', protect, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Subscribe push notification error:', error);
+    logger.error('Subscribe push notification error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -80,7 +81,7 @@ router.post('/unsubscribe', protect, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Unsubscribe push notification error:', error);
+    logger.error('Unsubscribe push notification error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

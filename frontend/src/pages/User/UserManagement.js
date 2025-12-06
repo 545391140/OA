@@ -49,12 +49,18 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import RegionSelector from '../../components/Common/RegionSelector';
+import { PERMISSIONS } from '../../config/permissions';
 
 const UserManagement = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
-  const { user } = useAuth();
-  const canEdit = user?.role === 'admin';
+  const { user, hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.USER_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.USER_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.USER_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.USER_DELETE);
+  const canToggleActive = hasPermission(PERMISSIONS.USER_TOGGLE_ACTIVE);
 
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -81,10 +87,14 @@ const UserManagement = () => {
     position: '',
     jobLevel: '',
     phone: '',
-    manager: ''
+    manager: '',
+    residenceCountry: null,
+    residenceCity: null
   });
   const [saving, setSaving] = useState(false);
   const [managers, setManagers] = useState([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
     fetchUsers();
@@ -196,8 +206,9 @@ const UserManagement = () => {
     }
   };
 
-  const handleEdit = (userItem) => {
-    setFormData({
+  const handleEdit = async (userItem) => {
+    // 初始化表单数据
+    const initialData = {
       employeeId: userItem.employeeId || '',
       firstName: userItem.firstName || '',
       lastName: userItem.lastName || '',
@@ -208,8 +219,59 @@ const UserManagement = () => {
       position: userItem.position || '',
       jobLevel: userItem.jobLevel || '',
       phone: userItem.phone || '',
-      manager: userItem.manager?._id || ''
-    });
+      manager: userItem.manager?._id || '',
+      residenceCountry: null,
+      residenceCity: null
+    };
+
+    // 加载常驻国和常驻城市数据（如果是ID）
+    setLoadingLocations(true);
+    try {
+      if (userItem.residenceCountry) {
+        if (typeof userItem.residenceCountry === 'object' && userItem.residenceCountry._id) {
+          initialData.residenceCountry = userItem.residenceCountry;
+        } else {
+          const countryId = typeof userItem.residenceCountry === 'object' 
+            ? (userItem.residenceCountry._id || userItem.residenceCountry.id)
+            : userItem.residenceCountry;
+          if (countryId) {
+            try {
+              const countryResponse = await apiClient.get(`/locations/${countryId}`);
+              if (countryResponse.data?.success) {
+                initialData.residenceCountry = countryResponse.data.data;
+              }
+            } catch (err) {
+              console.warn('Failed to load residence country:', err);
+            }
+          }
+        }
+      }
+
+      if (userItem.residenceCity) {
+        if (typeof userItem.residenceCity === 'object' && userItem.residenceCity._id) {
+          initialData.residenceCity = userItem.residenceCity;
+        } else {
+          const cityId = typeof userItem.residenceCity === 'object'
+            ? (userItem.residenceCity._id || userItem.residenceCity.id)
+            : userItem.residenceCity;
+          if (cityId) {
+            try {
+              const cityResponse = await apiClient.get(`/locations/${cityId}`);
+              if (cityResponse.data?.success) {
+                initialData.residenceCity = cityResponse.data.data;
+              }
+            } catch (err) {
+              console.warn('Failed to load residence city:', err);
+            }
+          }
+        }
+      }
+    } finally {
+      setLoadingLocations(false);
+    }
+
+    setFormData(initialData);
+    setFormErrors({});
     setFormDialog({ open: true, user: userItem, mode: 'edit' });
   };
 
@@ -225,12 +287,65 @@ const UserManagement = () => {
       position: '',
       jobLevel: '',
       phone: '',
-      manager: ''
+      manager: '',
+      residenceCountry: null,
+      residenceCity: null
     });
+    setFormErrors({});
     setFormDialog({ open: true, user: null, mode: 'create' });
   };
 
+  // 表单验证函数
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.employeeId || !formData.employeeId.trim()) {
+      newErrors.employeeId = t('user.management.errors.employeeIdRequired') || '员工编号不能为空';
+    }
+    
+    if (!formData.firstName || !formData.firstName.trim()) {
+      newErrors.firstName = t('user.management.errors.firstNameRequired') || '名字不能为空';
+    }
+    
+    if (!formData.lastName || !formData.lastName.trim()) {
+      newErrors.lastName = t('user.management.errors.lastNameRequired') || '姓氏不能为空';
+    }
+    
+    if (!formData.email || !formData.email.trim()) {
+      newErrors.email = t('user.management.errors.emailRequired') || '邮箱不能为空';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = t('user.management.errors.emailInvalid') || '请输入有效的邮箱地址';
+    }
+    
+    if (formDialog.mode === 'create' && (!formData.password || !formData.password.trim())) {
+      newErrors.password = t('user.management.errors.passwordRequired') || '密码不能为空';
+    } else if (formData.password && formData.password.length < 6) {
+      newErrors.password = t('user.management.errors.passwordMinLength') || '密码至少需要6个字符';
+    }
+    
+    if (!formData.role) {
+      newErrors.role = t('user.management.errors.roleRequired') || '请选择角色';
+    }
+    
+    if (!formData.position) {
+      newErrors.position = t('user.management.errors.positionRequired') || '请选择岗位';
+    }
+    
+    if (!formData.department || !formData.department.trim()) {
+      newErrors.department = t('user.management.errors.departmentRequired') || '部门不能为空';
+    }
+    
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async () => {
+    // 先进行表单验证
+    if (!validateForm()) {
+      showNotification(t('user.management.validationError') || '请检查表单错误', 'error');
+      return;
+    }
+    
     try {
       setSaving(true);
       
@@ -242,6 +357,30 @@ const UserManagement = () => {
       // Don't send manager if it's empty
       if (!saveData.manager) {
         delete saveData.manager;
+      }
+      // 处理常驻国和常驻城市：如果是对象，提取ID或name
+      if (saveData.residenceCountry) {
+        if (typeof saveData.residenceCountry === 'object') {
+          saveData.residenceCountry = saveData.residenceCountry._id || saveData.residenceCountry.id || saveData.residenceCountry.name || null;
+        }
+        // 如果是null或空字符串，删除字段
+        if (!saveData.residenceCountry || saveData.residenceCountry === '') {
+          delete saveData.residenceCountry;
+        }
+      } else {
+        delete saveData.residenceCountry;
+      }
+      
+      if (saveData.residenceCity) {
+        if (typeof saveData.residenceCity === 'object') {
+          saveData.residenceCity = saveData.residenceCity._id || saveData.residenceCity.id || saveData.residenceCity.name || null;
+        }
+        // 如果是null或空字符串，删除字段
+        if (!saveData.residenceCity || saveData.residenceCity === '') {
+          delete saveData.residenceCity;
+        }
+      } else {
+        delete saveData.residenceCity;
       }
       
       console.log('Saving user data:', { mode: formDialog.mode, data: saveData });
@@ -327,7 +466,7 @@ const UserManagement = () => {
               {t('user.management.title')}
             </Typography>
           </Box>
-          {canEdit && (
+          {canCreate && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -460,6 +599,8 @@ const UserManagement = () => {
                 <TableCell>{t('user.management.tableHeaders.jobLevel')}</TableCell>
                 <TableCell>{t('user.management.tableHeaders.manager')}</TableCell>
                 <TableCell>{t('user.management.tableHeaders.phone')}</TableCell>
+                <TableCell>{t('user.residenceCountry') || '常驻国家'}</TableCell>
+                <TableCell>{t('user.residenceCity') || '常驻城市'}</TableCell>
                 <TableCell>{t('user.management.tableHeaders.status')}</TableCell>
                 <TableCell>{t('user.management.tableHeaders.lastLogin')}</TableCell>
                 <TableCell align="right">{t('user.management.tableHeaders.actions')}</TableCell>
@@ -468,7 +609,7 @@ const UserManagement = () => {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={14} align="center" sx={{ py: 4 }}>
                     {loading ? <CircularProgress /> : t('user.management.noData')}
                   </TableCell>
                 </TableRow>
@@ -499,6 +640,24 @@ const UserManagement = () => {
                     </TableCell>
                     <TableCell>{userItem.phone || '-'}</TableCell>
                     <TableCell>
+                      {userItem.residenceCountry 
+                        ? (typeof userItem.residenceCountry === 'object' && userItem.residenceCountry.name
+                          ? (userItem.residenceCountry.name || userItem.residenceCountry.enName || '-')
+                          : (typeof userItem.residenceCountry === 'string' && userItem.residenceCountry.length > 10
+                            ? '-' // 如果是很长的字符串（可能是ID），显示为'-'，等待后端populate
+                            : userItem.residenceCountry))
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {userItem.residenceCity 
+                        ? (typeof userItem.residenceCity === 'object' && userItem.residenceCity.name
+                          ? (userItem.residenceCity.name || userItem.residenceCity.enName || '-')
+                          : (typeof userItem.residenceCity === 'string' && userItem.residenceCity.length > 10
+                            ? '-' // 如果是很长的字符串（可能是ID），显示为'-'，等待后端populate
+                            : userItem.residenceCity))
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
                       <Chip
                         label={userItem.isActive ? t('user.management.active') : t('user.management.inactive')}
                         color={userItem.isActive ? 'success' : 'default'}
@@ -512,36 +671,38 @@ const UserManagement = () => {
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        {canToggleActive && (
+                          <Tooltip title={userItem.isActive ? t('user.management.disable') : t('user.management.enable')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleToggleActive(userItem)}
+                              color={userItem.isActive ? 'warning' : 'success'}
+                            >
+                              {userItem.isActive ? <BlockIcon /> : <CheckCircleIcon />}
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         {canEdit && (
-                          <>
-                            <Tooltip title={userItem.isActive ? t('user.management.disable') : t('user.management.enable')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleToggleActive(userItem)}
-                                color={userItem.isActive ? 'warning' : 'success'}
-                              >
-                                {userItem.isActive ? <BlockIcon /> : <CheckCircleIcon />}
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={t('common.edit')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleEdit(userItem)}
-                                color="primary"
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={t('common.delete')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDelete(userItem)}
-                                color="error"
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </>
+                          <Tooltip title={t('common.edit')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEdit(userItem)}
+                              color="primary"
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canDelete && (
+                          <Tooltip title={t('common.delete')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDelete(userItem)}
+                              color="error"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
                         )}
                       </Box>
                     </TableCell>
@@ -592,9 +753,16 @@ const UserManagement = () => {
                   fullWidth
                   label={t('user.employeeId')}
                   value={formData.employeeId}
-                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, employeeId: e.target.value });
+                    if (formErrors.employeeId) {
+                      setFormErrors({ ...formErrors, employeeId: '' });
+                    }
+                  }}
                   required
                   disabled={formDialog.mode === 'edit'}
+                  error={!!formErrors.employeeId}
+                  helperText={formErrors.employeeId}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -603,8 +771,15 @@ const UserManagement = () => {
                   label={t('auth.email')}
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    if (formErrors.email) {
+                      setFormErrors({ ...formErrors, email: '' });
+                    }
+                  }}
                   required
+                  error={!!formErrors.email}
+                  helperText={formErrors.email}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -612,8 +787,15 @@ const UserManagement = () => {
                   fullWidth
                   label={t('user.firstName')}
                   value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, firstName: e.target.value });
+                    if (formErrors.firstName) {
+                      setFormErrors({ ...formErrors, firstName: '' });
+                    }
+                  }}
                   required
+                  error={!!formErrors.firstName}
+                  helperText={formErrors.firstName}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -621,8 +803,15 @@ const UserManagement = () => {
                   fullWidth
                   label={t('user.lastName')}
                   value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, lastName: e.target.value });
+                    if (formErrors.lastName) {
+                      setFormErrors({ ...formErrors, lastName: '' });
+                    }
+                  }}
                   required
+                  error={!!formErrors.lastName}
+                  helperText={formErrors.lastName}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -631,9 +820,15 @@ const UserManagement = () => {
                   label={t('user.management.password')}
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    if (formErrors.password) {
+                      setFormErrors({ ...formErrors, password: '' });
+                    }
+                  }}
                   required={formDialog.mode === 'create'}
-                  helperText={formDialog.mode === 'edit' ? t('user.management.passwordHint') : t('user.management.passwordRequirement')}
+                  error={!!formErrors.password}
+                  helperText={formErrors.password || (formDialog.mode === 'edit' ? t('user.management.passwordHint') : t('user.management.passwordRequirement'))}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -645,12 +840,17 @@ const UserManagement = () => {
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth required>
+                <FormControl fullWidth required error={!!formErrors.role}>
                   <InputLabel>{t('user.role')}</InputLabel>
                   <Select
                     value={formData.role}
                     label={t('user.role')}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, role: e.target.value });
+                      if (formErrors.role) {
+                        setFormErrors({ ...formErrors, role: '' });
+                      }
+                    }}
                   >
                     {roles.map(role => (
                       <MenuItem key={role._id} value={role.code}>
@@ -658,15 +858,25 @@ const UserManagement = () => {
                       </MenuItem>
                     ))}
                   </Select>
+                  {formErrors.role && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                      {formErrors.role}
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth required>
+                <FormControl fullWidth required error={!!formErrors.position}>
                   <InputLabel>{t('user.position')}</InputLabel>
                   <Select
                     value={formData.position}
                     label={t('user.position')}
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, position: e.target.value });
+                      if (formErrors.position) {
+                        setFormErrors({ ...formErrors, position: '' });
+                      }
+                    }}
                   >
                     {positions.map(position => (
                       <MenuItem key={position._id} value={position.code}>
@@ -674,6 +884,11 @@ const UserManagement = () => {
                       </MenuItem>
                     ))}
                   </Select>
+                  {formErrors.position && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                      {formErrors.position}
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
@@ -681,8 +896,15 @@ const UserManagement = () => {
                   fullWidth
                   label={t('user.department')}
                   value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, department: e.target.value });
+                    if (formErrors.department) {
+                      setFormErrors({ ...formErrors, department: '' });
+                    }
+                  }}
                   required
+                  error={!!formErrors.department}
+                  helperText={formErrors.department}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -711,6 +933,46 @@ const UserManagement = () => {
                       ))}
                   </Select>
                 </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <RegionSelector
+                  label={t('user.residenceCountry') || '常驻国家'}
+                  value={formData.residenceCountry}
+                  onChange={(value) => {
+                    // 只允许选择国家类型
+                    if (value === null) {
+                      setFormData({ ...formData, residenceCountry: null });
+                    } else if (value && value.type === 'country') {
+                      setFormData({ ...formData, residenceCountry: value });
+                    } else if (value && value.type !== 'country') {
+                      // 如果选择了非国家类型，显示提示并拒绝
+                      showNotification(t('user.management.invalidCountryType') || '请选择国家类型', 'warning');
+                    }
+                  }}
+                  placeholder={t('user.residenceCountryPlaceholder') || '搜索国家'}
+                  showHotCitiesOnFocus={false}
+                  allowedTypes={['country']}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <RegionSelector
+                  label={t('user.residenceCity') || '常驻城市'}
+                  value={formData.residenceCity}
+                  onChange={(value) => {
+                    // 只允许选择城市类型
+                    if (value === null) {
+                      setFormData({ ...formData, residenceCity: null });
+                    } else if (value && value.type === 'city') {
+                      setFormData({ ...formData, residenceCity: value });
+                    } else if (value && value.type !== 'city') {
+                      // 如果选择了非城市类型，显示提示并拒绝
+                      showNotification(t('user.management.invalidCityType') || '请选择城市类型', 'warning');
+                    }
+                  }}
+                  placeholder={t('user.residenceCityPlaceholder') || '搜索城市'}
+                  showHotCitiesOnFocus={false}
+                  allowedTypes={['city']}
+                />
               </Grid>
             </Grid>
           </DialogContent>

@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 const TravelStandard = require('../models/TravelStandard');
 const { convertFromCNYSyncSync } = require('../utils/currencyConverter');
 
@@ -38,7 +39,7 @@ exports.getStandards = async (req, res) => {
       data: standards
     });
   } catch (error) {
-    console.error('Get standards error:', error);
+    logger.error('Get standards error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -75,7 +76,7 @@ exports.getStandardById = async (req, res) => {
       data: standard
     });
   } catch (error) {
-    console.error('Get standard error:', error);
+    logger.error('Get standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -124,7 +125,7 @@ exports.createStandard = async (req, res) => {
       updatedBy: req.user.id || req.user._id
     };
 
-    console.log('[CREATE] Standard data:', JSON.stringify({
+    logger.debug('[CREATE] Standard data:', JSON.stringify({
       ...standardData,
       conditionGroupsLength: standardData.conditionGroups?.length,
       expenseStandardsLength: standardData.expenseStandards?.length,
@@ -137,7 +138,7 @@ exports.createStandard = async (req, res) => {
 
     const standard = await TravelStandard.create(standardData);
 
-    console.log('[CREATE] Created standard (from DB):', JSON.stringify({
+    logger.debug('[CREATE] Created standard (from DB):', JSON.stringify({
       _id: standard._id,
       conditionGroupsLength: standard.conditionGroups?.length,
       expenseStandardsLength: standard.expenseStandards?.length,
@@ -164,7 +165,7 @@ exports.createStandard = async (req, res) => {
       data: populatedStandard
     });
   } catch (error) {
-    console.error('Create standard error:', error);
+    logger.error('Create standard error:', error);
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -192,7 +193,7 @@ exports.updateStandard = async (req, res) => {
       });
     }
 
-    console.log('[UPDATE] Received req.body:', JSON.stringify({
+    logger.debug('[UPDATE] Received req.body:', JSON.stringify({
       conditionGroupsLength: req.body.conditionGroups?.length,
       expenseStandardsLength: req.body.expenseStandards?.length,
       conditionGroups: req.body.conditionGroups,
@@ -220,7 +221,7 @@ exports.updateStandard = async (req, res) => {
         .filter(es => es.expenseItemId !== null && es.expenseItemId !== undefined && es.expenseItemId !== ''); // 过滤掉无效的项
     }
 
-    console.log('[UPDATE] Processed update data:', JSON.stringify({
+    logger.debug('[UPDATE] Processed update data:', JSON.stringify({
       ...processedBody,
       expenseStandards: processedBody.expenseStandards?.map(es => ({
         ...es,
@@ -257,9 +258,9 @@ exports.updateStandard = async (req, res) => {
       });
     }
 
-    console.log('[UPDATE] Before update - existingStandard conditionGroups:', existingStandard.conditionGroups?.length || 0);
-    console.log('[UPDATE] Before update - existingStandard expenseStandards:', existingStandard.expenseStandards?.length || 0);
-    console.log('[UPDATE] updateData keys:', Object.keys(updateData));
+    logger.debug('[UPDATE] Before update - existingStandard conditionGroups:', existingStandard.conditionGroups?.length || 0);
+    logger.debug('[UPDATE] Before update - existingStandard expenseStandards:', existingStandard.expenseStandards?.length || 0);
+    logger.debug('[UPDATE] updateData keys:', Object.keys(updateData));
     
     // 使用 findByIdAndUpdate 配合 $set 来确保嵌套数组被正确更新
     // 这是更可靠的方法来更新嵌套数组
@@ -267,14 +268,14 @@ exports.updateStandard = async (req, res) => {
     Object.keys(updateData).forEach(key => {
       if (updateData[key] !== undefined) {
         $setData[key] = updateData[key];
-        console.log(`[UPDATE] Adding to $set: ${key}`, 
+        logger.debug(`[UPDATE] Adding to $set: ${key}`, 
           Array.isArray(updateData[key]) ? `ARRAY(${updateData[key].length})` : 
           typeof updateData[key]);
       }
     });
 
-    console.log('[UPDATE] $setData conditionGroups length:', $setData.conditionGroups?.length || 0);
-    console.log('[UPDATE] $setData expenseStandards length:', $setData.expenseStandards?.length || 0);
+    logger.debug('[UPDATE] $setData conditionGroups length:', $setData.conditionGroups?.length || 0);
+    logger.debug('[UPDATE] $setData expenseStandards length:', $setData.expenseStandards?.length || 0);
 
     try {
       const updatedStandard = await TravelStandard.findByIdAndUpdate(
@@ -294,11 +295,11 @@ exports.updateStandard = async (req, res) => {
         });
       }
 
-      console.log('[UPDATE] After findByIdAndUpdate - conditionGroups:', updatedStandard.conditionGroups?.length || 0);
-      console.log('[UPDATE] After findByIdAndUpdate - expenseStandards:', updatedStandard.expenseStandards?.length || 0);
-      console.log('[UPDATE] Save successful via findByIdAndUpdate');
+      logger.debug('[UPDATE] After findByIdAndUpdate - conditionGroups:', updatedStandard.conditionGroups?.length || 0);
+      logger.debug('[UPDATE] After findByIdAndUpdate - expenseStandards:', updatedStandard.expenseStandards?.length || 0);
+      logger.debug('[UPDATE] Save successful via findByIdAndUpdate');
     } catch (saveError) {
-      console.error('[UPDATE] Save error:', saveError);
+      logger.error('[UPDATE] Save error:', saveError);
       throw saveError;
     }
 
@@ -315,7 +316,7 @@ exports.updateStandard = async (req, res) => {
       );
     }
 
-    console.log('[UPDATE] Saved standard (from DB after save):', JSON.stringify({
+    logger.debug('[UPDATE] Saved standard (from DB after save):', JSON.stringify({
       _id: standardDoc._id.toString(),
       conditionGroupsLength: standardDoc.conditionGroups?.length || 0,
       expenseStandardsLength: standardDoc.expenseStandards?.length || 0,
@@ -335,8 +336,8 @@ exports.updateStandard = async (req, res) => {
       data: standardDoc
     });
   } catch (error) {
-    console.error('Update standard error:', error);
-    console.error('Update standard error stack:', error.stack);
+    logger.error('Update standard error:', error);
+    logger.error('Update standard error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Server error: ' + (error.message || 'Unknown error')
@@ -373,7 +374,7 @@ exports.deleteStandard = async (req, res) => {
       message: 'Travel standard deleted successfully'
     });
   } catch (error) {
-    console.error('Delete standard error:', error);
+    logger.error('Delete standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -408,7 +409,7 @@ exports.activateStandard = async (req, res) => {
       data: standard
     });
   } catch (error) {
-    console.error('Activate standard error:', error);
+    logger.error('Activate standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -443,7 +444,7 @@ exports.deactivateStandard = async (req, res) => {
       data: standard
     });
   } catch (error) {
-    console.error('Deactivate standard error:', error);
+    logger.error('Deactivate standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -493,10 +494,10 @@ exports.matchStandard = async (req, res) => {
         });
         if (cityLocation) {
           matchParams.cityLocationId = cityLocation._id;
-          console.log(`[STANDARD_MATCH] Found city location ID: ${cityLocation._id} for city: ${matchParams.city}`);
+          logger.debug(`[STANDARD_MATCH] Found city location ID: ${cityLocation._id} for city: ${matchParams.city}`);
         }
       } catch (err) {
-        console.warn(`[STANDARD_MATCH] Failed to find city location:`, err);
+        logger.warn(`[STANDARD_MATCH] Failed to find city location:`, err);
       }
     }
     
@@ -512,15 +513,15 @@ exports.matchStandard = async (req, res) => {
         });
         if (countryLocation) {
           matchParams.countryLocationId = countryLocation._id;
-          console.log(`[STANDARD_MATCH] Found country location ID: ${countryLocation._id} for country: ${matchParams.country}`);
+          logger.debug(`[STANDARD_MATCH] Found country location ID: ${countryLocation._id} for country: ${matchParams.country}`);
         }
       } catch (err) {
-        console.warn(`[STANDARD_MATCH] Failed to find country location:`, err);
+        logger.warn(`[STANDARD_MATCH] Failed to find country location:`, err);
       }
     }
     
     // 记录匹配参数，便于调试
-    console.log(`[STANDARD_MATCH] Matching standards with params:`, {
+    logger.debug(`[STANDARD_MATCH] Matching standards with params:`, {
       userId: req.user.id,
       ...matchParams,
       source: {
@@ -545,14 +546,14 @@ exports.matchStandard = async (req, res) => {
       .sort({ priority: -1, effectiveDate: -1 }); // Sort by priority (highest first)
     
     // 添加调试日志，检查条件组数据
-    console.log(`[STANDARD_MATCH] Found ${standards.length} active standards`);
+    logger.debug(`[STANDARD_MATCH] Found ${standards.length} active standards`);
     standards.forEach((std, index) => {
-      console.log(`[STANDARD_MATCH] Standard ${index + 1}: ${std.standardCode}, conditionGroups: ${std.conditionGroups?.length || 0}`);
+      logger.debug(`[STANDARD_MATCH] Standard ${index + 1}: ${std.standardCode}, conditionGroups: ${std.conditionGroups?.length || 0}`);
       if (std.conditionGroups && std.conditionGroups.length > 0) {
         std.conditionGroups.forEach((group, gIndex) => {
           const cityConditions = group.conditions?.filter(c => c.type === 'city') || [];
           if (cityConditions.length > 0) {
-            console.log(`[STANDARD_MATCH]   Group ${gIndex + 1} city conditions:`, cityConditions.map(c => `${c.operator} ${c.value}`).join(', '));
+            logger.debug(`[STANDARD_MATCH]   Group ${gIndex + 1} city conditions:`, cityConditions.map(c => `${c.operator} ${c.value}`).join(', '));
           }
         });
       }
@@ -567,7 +568,7 @@ exports.matchStandard = async (req, res) => {
       // 条件组之间是OR关系，组内条件是AND关系
       if (matchConditions(standard, matchParams)) {
         matchedStandards.push(standard);
-        console.log(`[STANDARD_MATCH] Standard matched: ${standard.standardCode} (${standard.standardName})`);
+        logger.debug(`[STANDARD_MATCH] Standard matched: ${standard.standardCode} (${standard.standardName})`);
       }
     }
 
@@ -614,7 +615,7 @@ exports.matchStandard = async (req, res) => {
     }));
 
     // 记录匹配日志
-    console.log(`[STANDARD_MATCH] Matched ${matchedStandards.length} standards for user:`, {
+    logger.debug(`[STANDARD_MATCH] Matched ${matchedStandards.length} standards for user:`, {
       userId: req.user.id,
       matchParams: matchParams,
       matchedStandards: matchedStandardsInfo.map(s => ({
@@ -642,7 +643,7 @@ exports.matchStandard = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Match standard error:', error);
+    logger.error('Match standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error during standard matching'
@@ -1003,7 +1004,7 @@ function matchSingleCondition(condition, testData) {
         case 'IN':
           // IN: 测试 Location ID 在条件 Location ID 列表中
           if (conditionIds.includes(testIdString)) {
-            console.log(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} IN [${conditionIds.join(', ')}]`);
+            logger.debug(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} IN [${conditionIds.join(', ')}]`);
             return true;
           }
           // ID 不匹配，降级到名称匹配
@@ -1011,7 +1012,7 @@ function matchSingleCondition(condition, testData) {
         case 'NOT_IN':
           // NOT_IN: 测试 Location ID 不在条件 Location ID 列表中
           if (!conditionIds.includes(testIdString)) {
-            console.log(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} NOT_IN [${conditionIds.join(', ')}]`);
+            logger.debug(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} NOT_IN [${conditionIds.join(', ')}]`);
             return true;
           }
           // ID 在排除列表中，不匹配
@@ -1019,7 +1020,7 @@ function matchSingleCondition(condition, testData) {
         case 'EQUAL':
           // EQUAL: 测试 Location ID 等于条件 Location ID 列表中的任意一个
           if (conditionIds.includes(testIdString)) {
-            console.log(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} EQUAL [${conditionIds.join(', ')}]`);
+            logger.debug(`[STANDARD_MATCH] Matched by Location ID: ${testIdString} EQUAL [${conditionIds.join(', ')}]`);
             return true;
           }
           // ID 不匹配，降级到名称匹配
@@ -1061,7 +1062,7 @@ function matchSingleCondition(condition, testData) {
       testValue = projectCode || '';
       break;
     default:
-      console.warn(`[STANDARD_MATCH] Unknown condition type: ${type}`);
+      logger.warn(`[STANDARD_MATCH] Unknown condition type: ${type}`);
       return false;
   }
 
@@ -1106,7 +1107,7 @@ function matchSingleCondition(condition, testData) {
       // <=: 测试值小于等于条件值（用于数字比较）
       return Number(testValue) <= Number(value);
     default:
-      console.warn(`[STANDARD_MATCH] Unknown operator: ${operator}`);
+      logger.warn(`[STANDARD_MATCH] Unknown operator: ${operator}`);
       return false;
   }
 }

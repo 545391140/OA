@@ -44,13 +44,17 @@ import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { PERMISSIONS } from '../../config/permissions';
 
 const ExpenseItemsMaintenance = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
-  const { user } = useAuth();
-  const canEdit = user?.role === 'admin' || user?.role === 'finance';
+  const { user, hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.EXPENSE_ITEM_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.EXPENSE_ITEM_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.EXPENSE_ITEM_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.EXPENSE_ITEM_DELETE);
 
   // 数据状态
   const [expenseItems, setExpenseItems] = useState([]);

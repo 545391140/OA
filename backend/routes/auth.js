@@ -276,6 +276,27 @@ router.get('/me', protect, asyncHandler(async (req, res) => {
       }
     }
 
+    // 处理常驻国和常驻城市（如果是 ObjectId，需要 populate）
+    const Location = require('../models/Location');
+    let residenceCountry = user.residenceCountry;
+    let residenceCity = user.residenceCity;
+    
+    // 如果 residenceCountry 是 ObjectId，尝试 populate
+    if (residenceCountry && mongoose.Types.ObjectId.isValid(residenceCountry)) {
+      const countryLocation = await Location.findById(residenceCountry).lean();
+      if (countryLocation) {
+        residenceCountry = countryLocation;
+      }
+    }
+    
+    // 如果 residenceCity 是 ObjectId，尝试 populate
+    if (residenceCity && mongoose.Types.ObjectId.isValid(residenceCity)) {
+      const cityLocation = await Location.findById(residenceCity).lean();
+      if (cityLocation) {
+        residenceCity = cityLocation;
+      }
+    }
+
     logger.debug('User found in database:', { userId: user._id, email: user.email });
     return res.json({
       success: true,
@@ -294,6 +315,8 @@ router.get('/me', protect, asyncHandler(async (req, res) => {
         jobLevel: user.jobLevel,
         manager: user.manager,
         phone: user.phone,
+        residenceCountry: residenceCountry,
+        residenceCity: residenceCity,
         avatar: user.avatar,
         preferences: user.preferences || {},
         lastLogin: user.lastLogin,

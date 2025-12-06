@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 const Currency = require('../models/Currency');
 
 // @desc    Get all currencies
@@ -32,7 +33,7 @@ exports.getCurrencies = async (req, res) => {
       data: currencies
     });
   } catch (error) {
-    console.error('Get currencies error:', error);
+    logger.error('Get currencies error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -55,7 +56,7 @@ exports.getActiveCurrencies = async (req, res) => {
       data: currencies
     });
   } catch (error) {
-    console.error('Get active currencies error:', error);
+    logger.error('Get active currencies error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -84,7 +85,7 @@ exports.getCurrencyByCode = async (req, res) => {
       data: currency
     });
   } catch (error) {
-    console.error('Get currency error:', error);
+    logger.error('Get currency error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -111,7 +112,7 @@ exports.getCurrencyById = async (req, res) => {
       data: currency
     });
   } catch (error) {
-    console.error('Get currency error:', error);
+    logger.error('Get currency error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -152,7 +153,7 @@ exports.createCurrency = async (req, res) => {
       data: currency
     });
   } catch (error) {
-    console.error('Create currency error:', error);
+    logger.error('Create currency error:', error);
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -215,7 +216,7 @@ exports.updateCurrency = async (req, res) => {
       data: currency
     });
   } catch (error) {
-    console.error('Update currency error:', error);
+    logger.error('Update currency error:', error);
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -253,7 +254,7 @@ exports.deleteCurrency = async (req, res) => {
       message: 'Currency deleted successfully'
     });
   } catch (error) {
-    console.error('Delete currency error:', error);
+    logger.error('Delete currency error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -280,7 +281,7 @@ exports.getExchangeRates = async (req, res) => {
       data: rates
     });
   } catch (error) {
-    console.error('Get exchange rates error:', error);
+    logger.error('Get exchange rates error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

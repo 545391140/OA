@@ -1,13 +1,15 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { protect, checkPermission } = require('../middleware/auth');
+const { PERMISSIONS } = require('../config/permissions');
 const ApprovalWorkflow = require('../models/ApprovalWorkflow');
 const User = require('../models/User');
 
 // @route   GET /api/approval-workflows
 // @desc    获取所有审批流程
 // @access  Private
-router.get('/', protect, async (req, res) => {
+router.get('/', protect, checkPermission(PERMISSIONS.APPROVAL_WORKFLOW_VIEW), async (req, res) => {
   try {
     const { type, isActive } = req.query;
     
@@ -73,7 +75,7 @@ router.get('/', protect, async (req, res) => {
       data: workflows
     });
   } catch (error) {
-    console.error('Get workflows error:', error);
+    logger.error('Get workflows error:', error);
     res.status(500).json({
       success: false,
       message: '获取审批流程失败',
@@ -85,7 +87,7 @@ router.get('/', protect, async (req, res) => {
 // @route   GET /api/approval-workflows/:id
 // @desc    获取单个审批流程
 // @access  Private
-router.get('/:id', protect, async (req, res) => {
+router.get('/:id', protect, checkPermission(PERMISSIONS.APPROVAL_WORKFLOW_VIEW), async (req, res) => {
   try {
     const workflow = await ApprovalWorkflow.findById(req.params.id)
       .populate('createdBy', 'firstName lastName')
@@ -103,7 +105,7 @@ router.get('/:id', protect, async (req, res) => {
       data: workflow
     });
   } catch (error) {
-    console.error('Get workflow error:', error);
+    logger.error('Get workflow error:', error);
     res.status(500).json({
       success: false,
       message: '获取审批流程失败',
@@ -114,8 +116,8 @@ router.get('/:id', protect, async (req, res) => {
 
 // @route   POST /api/approval-workflows
 // @desc    创建审批流程
-// @access  Private (Admin only)
-router.post('/', protect, async (req, res) => {
+// @access  Private
+router.post('/', protect, checkPermission(PERMISSIONS.APPROVAL_WORKFLOW_CREATE), async (req, res) => {
   try {
     const {
       name,
@@ -189,7 +191,7 @@ router.post('/', protect, async (req, res) => {
       data: workflow
     });
   } catch (error) {
-    console.error('Create workflow error:', error);
+    logger.error('Create workflow error:', error);
     res.status(500).json({
       success: false,
       message: '创建审批流程失败',
@@ -200,8 +202,8 @@ router.post('/', protect, async (req, res) => {
 
 // @route   PUT /api/approval-workflows/:id
 // @desc    更新审批流程
-// @access  Private (Admin only)
-router.put('/:id', protect, async (req, res) => {
+// @access  Private
+router.put('/:id', protect, checkPermission(PERMISSIONS.APPROVAL_WORKFLOW_EDIT), async (req, res) => {
   try {
     const workflow = await ApprovalWorkflow.findById(req.params.id);
 
@@ -279,7 +281,7 @@ router.put('/:id', protect, async (req, res) => {
       data: workflow
     });
   } catch (error) {
-    console.error('Update workflow error:', error);
+    logger.error('Update workflow error:', error);
     res.status(500).json({
       success: false,
       message: '更新审批流程失败',
@@ -290,8 +292,8 @@ router.put('/:id', protect, async (req, res) => {
 
 // @route   DELETE /api/approval-workflows/:id
 // @desc    删除审批流程
-// @access  Private (Admin only)
-router.delete('/:id', protect, async (req, res) => {
+// @access  Private
+router.delete('/:id', protect, checkPermission(PERMISSIONS.APPROVAL_WORKFLOW_DELETE), async (req, res) => {
   try {
     const workflow = await ApprovalWorkflow.findById(req.params.id);
 
@@ -309,7 +311,7 @@ router.delete('/:id', protect, async (req, res) => {
       message: '审批流程删除成功'
     });
   } catch (error) {
-    console.error('Delete workflow error:', error);
+    logger.error('Delete workflow error:', error);
     res.status(500).json({
       success: false,
       message: '删除审批流程失败',
@@ -365,7 +367,7 @@ router.post('/test', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Test workflow error:', error);
+    logger.error('Test workflow error:', error);
     res.status(500).json({
       success: false,
       message: '测试审批流程失败',

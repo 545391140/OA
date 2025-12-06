@@ -44,11 +44,18 @@ import {
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { PERMISSIONS } from '../../config/permissions';
 import apiClient from '../../utils/axiosConfig';
 
 const ApprovalWorkflowManagement = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
+  const { hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.APPROVAL_WORKFLOW_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.APPROVAL_WORKFLOW_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.APPROVAL_WORKFLOW_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.APPROVAL_WORKFLOW_DELETE);
   const [workflows, setWorkflows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -268,13 +275,15 @@ const ApprovalWorkflowManagement = () => {
         <Typography variant="h4" fontWeight={600}>
           {t('approval.workflow.title')}
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          {t('approval.workflow.create')}
-        </Button>
+        {canCreate && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            {t('approval.workflow.create')}
+          </Button>
+        )}
       </Box>
 
       <TableContainer component={Paper}>
@@ -338,35 +347,43 @@ const ApprovalWorkflowManagement = () => {
                   />
                 </TableCell>
                 <TableCell align="right">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleViewWorkflow(workflow)}
-                    title={t('approval.workflow.view')}
-                  >
-                    <ViewIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenDialog(workflow)}
-                    title={t('approval.workflow.edit')}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleToggleActive(workflow)}
-                    title={workflow.isActive ? t('approval.workflow.disabled') : t('approval.workflow.enabled')}
-                  >
-                    <Switch checked={workflow.isActive} size="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(workflow._id)}
-                    title={t('approval.workflow.delete')}
-                    color="error"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                  {canView && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleViewWorkflow(workflow)}
+                      title={t('approval.workflow.view')}
+                    >
+                      <ViewIcon />
+                    </IconButton>
+                  )}
+                  {canEdit && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenDialog(workflow)}
+                      title={t('approval.workflow.edit')}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  )}
+                  {canEdit && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleToggleActive(workflow)}
+                      title={workflow.isActive ? t('approval.workflow.disabled') : t('approval.workflow.enabled')}
+                    >
+                      <Switch checked={workflow.isActive} size="small" />
+                    </IconButton>
+                  )}
+                  {canDelete && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(workflow._id)}
+                      title={t('approval.workflow.delete')}
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

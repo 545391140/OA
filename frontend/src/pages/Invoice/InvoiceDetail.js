@@ -49,6 +49,8 @@ import {
 } from '@mui/icons-material';
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { PERMISSIONS } from '../../config/permissions';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
@@ -57,6 +59,9 @@ import { useCurrencies } from '../../hooks/useCurrencies';
 const InvoiceDetail = () => {
   const { t, i18n } = useTranslation();
   const { showNotification } = useNotification();
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission(PERMISSIONS.INVOICE_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.INVOICE_DELETE);
   const { id } = useParams();
   const navigate = useNavigate();
   const { currencyOptions } = useCurrencies();
@@ -459,36 +464,40 @@ const InvoiceDetail = () => {
           >
             {t('invoice.detail.download')}
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<EditIcon />}
-            onClick={() => navigate(`/invoices/upload?edit=${id}&hideUpload=true`)}
-            sx={{ 
-              mr: 1,
-              borderRadius: 1.5,
-              px: 2.5,
-              py: 1,
-              textTransform: 'none',
-              fontWeight: 500,
-            }}
-          >
-            {t('invoice.detail.edit')}
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={() => setDeleteDialogOpen(true)}
-            sx={{
-              borderRadius: 1.5,
-              px: 2.5,
-              py: 1,
-              textTransform: 'none',
-              fontWeight: 500,
-            }}
-          >
-            {t('invoice.detail.delete')}
-          </Button>
+          {canEdit && (
+            <Button
+              variant="contained"
+              startIcon={<EditIcon />}
+              onClick={() => navigate(`/invoices/upload?edit=${id}&hideUpload=true`)}
+              sx={{ 
+                mr: 1,
+                borderRadius: 1.5,
+                px: 2.5,
+                py: 1,
+                textTransform: 'none',
+                fontWeight: 500,
+              }}
+            >
+              {t('invoice.detail.edit')}
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => setDeleteDialogOpen(true)}
+              sx={{
+                borderRadius: 1.5,
+                px: 2.5,
+                py: 1,
+                textTransform: 'none',
+                fontWeight: 500,
+              }}
+            >
+              {t('invoice.detail.delete')}
+            </Button>
+          )}
         </Box>
 
         <Grid container spacing={3}>

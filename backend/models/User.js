@@ -63,6 +63,16 @@ const UserSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  residenceCountry: {
+    type: mongoose.Schema.Types.Mixed, // 可以是字符串或Location ObjectId
+    default: null,
+    comment: '常驻国家，引用Location表'
+  },
+  residenceCity: {
+    type: mongoose.Schema.Types.Mixed, // 可以是字符串或Location ObjectId
+    default: null,
+    comment: '常驻城市，引用Location表'
+  },
   avatar: {
     type: String,
     default: ''

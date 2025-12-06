@@ -30,10 +30,11 @@ import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import pushNotificationService from '../../services/pushNotificationService';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import { PERMISSIONS } from '../../config/permissions';
 
 const Settings = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { showNotification } = useNotification();
 
   const [loading, setLoading] = useState(false);
@@ -188,9 +189,9 @@ const Settings = () => {
       setLoading(true);
       setError(null);
       
-      // 准备保存的数据：如果不是管理员，不包含companyName（公司名称只能由管理员修改）
+      // 准备保存的数据：如果没有编辑权限，不包含companyName（公司名称只能由有权限的用户修改）
       const saveData = { ...settings };
-      if (user?.role !== 'admin') {
+      if (!hasPermission(PERMISSIONS.SETTINGS_EDIT)) {
         // 普通用户不能修改公司名称，删除该字段
         delete saveData.general.companyName;
       }
@@ -258,8 +259,8 @@ const Settings = () => {
                 label={t('settings.companyName')}
                 value={settings.general.companyName || ''}
                 onChange={(e) => handleSettingChange('general', 'companyName', e.target.value)}
-                disabled={user?.role !== 'admin'}
-                helperText={user?.role !== 'admin' ? t('settings.companyNameReadOnly') || 'Only administrators can modify company name' : ''}
+                disabled={!hasPermission(PERMISSIONS.SETTINGS_EDIT)}
+                helperText={!hasPermission(PERMISSIONS.SETTINGS_EDIT) ? t('settings.companyNameReadOnly') || 'Only users with edit permission can modify company name' : ''}
               />
             </Grid>
             <Grid item xs={12} md={6}>

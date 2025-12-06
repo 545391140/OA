@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 
 // 导入所有费用项标准模型
@@ -18,7 +19,7 @@ const TravelStandard = require('../models/TravelStandard');
 // @access  Private
 exports.getExpenseItems = async (req, res) => {
   try {
-    console.log('Get expense items - Request params:', req.params);
+    logger.debug('Get expense items - Request params:', req.params);
     const query = {};
     
     // 如果提供了standardId参数，则过滤该标准的费用项
@@ -27,13 +28,13 @@ exports.getExpenseItems = async (req, res) => {
       query.standard = req.params.standardId;
     }
 
-    console.log('Get expense items - Query:', JSON.stringify(query));
+    logger.debug('Get expense items - Query:', JSON.stringify(query));
 
     // 先查询数据，不使用populate，避免populate失败
     let items = await ExpenseItem.find(query)
       .sort({ isSystemDefault: -1, status: 1, createdAt: -1 }); // 系统默认项优先，启用状态优先显示
 
-    console.log(`Get expense items - Found ${items.length} items`);
+    logger.debug(`Get expense items - Found ${items.length} items`);
 
     // 手动populate standard（如果存在）
     if (items.length > 0) {
@@ -62,7 +63,7 @@ exports.getExpenseItems = async (req, res) => {
             return item;
           });
         } catch (standardError) {
-          console.error('Error populating standards:', standardError.message);
+          logger.error('Error populating standards:', standardError.message);
           // 继续执行，standard保持为ObjectId
         }
       }
@@ -92,7 +93,7 @@ exports.getExpenseItems = async (req, res) => {
             return item;
           });
         } catch (parentError) {
-          console.error('Error populating parent items:', parentError.message);
+          logger.error('Error populating parent items:', parentError.message);
           // 继续执行，parentItem保持为ObjectId
         }
       }
@@ -104,8 +105,8 @@ exports.getExpenseItems = async (req, res) => {
       data: items
     });
   } catch (error) {
-    console.error('Get expense items error:', error);
-    console.error('Error stack:', error.stack);
+    logger.error('Get expense items error:', error);
+    logger.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: error.message || '获取费用项失败',
@@ -130,20 +131,20 @@ exports.createExpenseItem = async (req, res) => {
 
     // 构建费用项数据 - 先处理parentItem，确保它在对象中
     const parentItemValue = req.body.parentItem || req.body.parentItemId;
-    console.log('[DEBUG] Received parentItem value:', parentItemValue, 'Type:', typeof parentItemValue);
-    console.log('[DEBUG] Full req.body:', JSON.stringify(req.body, null, 2));
+    logger.debug('[DEBUG] Received parentItem value:', parentItemValue, 'Type:', typeof parentItemValue);
+    logger.debug('[DEBUG] Full req.body:', JSON.stringify(req.body, null, 2));
     
     // 先处理parentItem，确保它被正确设置
     let parentItemObjectId = null;
     if (parentItemValue && parentItemValue !== '' && parentItemValue !== null && parentItemValue !== undefined) {
       if (mongoose.Types.ObjectId.isValid(parentItemValue)) {
         parentItemObjectId = new mongoose.Types.ObjectId(parentItemValue);
-        console.log('[DEBUG] Valid parentItem ObjectId:', parentItemObjectId.toString());
+        logger.debug('[DEBUG] Valid parentItem ObjectId:', parentItemObjectId.toString());
       } else {
-        console.warn('[DEBUG] Invalid parentItem ObjectId format:', parentItemValue);
+        logger.warn('[DEBUG] Invalid parentItem ObjectId format:', parentItemValue);
       }
     } else {
-      console.log('[DEBUG] No parentItem provided');
+      logger.debug('[DEBUG] No parentItem provided');
     }
 
     // 检查费用项名称唯一性
@@ -183,24 +184,24 @@ exports.createExpenseItem = async (req, res) => {
     // 关键：在这里设置parentItem
     if (parentItemObjectId) {
       itemData.parentItem = parentItemObjectId;
-      console.log('[DEBUG] Added parentItem to itemData:', itemData.parentItem.toString());
+      logger.debug('[DEBUG] Added parentItem to itemData:', itemData.parentItem.toString());
     }
 
-    console.log('[CREATE] Final itemData before create:', JSON.stringify({
+    logger.debug('[CREATE] Final itemData before create:', JSON.stringify({
       ...itemData,
       parentItem: itemData.parentItem ? itemData.parentItem.toString() : null,
       parentItemType: itemData.parentItem ? typeof itemData.parentItem : 'null'
     }, null, 2));
     
     const expenseItem = await ExpenseItem.create(itemData);
-    console.log('[CREATE] Created expense item _id:', expenseItem._id.toString());
-    console.log('[CREATE] Created expense item parentItem:', expenseItem.parentItem);
-    console.log('[CREATE] Created expense item parentItem type:', typeof expenseItem.parentItem);
+    logger.debug('[CREATE] Created expense item _id:', expenseItem._id.toString());
+    logger.debug('[CREATE] Created expense item parentItem:', expenseItem.parentItem);
+    logger.debug('[CREATE] Created expense item parentItem type:', typeof expenseItem.parentItem);
     
     // 重新查询以确保 parentItem 被正确保存
     const savedItem = await ExpenseItem.findById(expenseItem._id);
-    console.log('[CREATE] Saved expense item parentItem:', savedItem.parentItem);
-    console.log('[CREATE] Saved expense item parentItem type:', typeof savedItem.parentItem);
+    logger.debug('[CREATE] Saved expense item parentItem:', savedItem.parentItem);
+    logger.debug('[CREATE] Saved expense item parentItem type:', typeof savedItem.parentItem);
 
     // 返回创建的费用项，确保包含 parentItem
     // 直接使用Mongoose文档，让JSON序列化自动处理
@@ -220,7 +221,7 @@ exports.createExpenseItem = async (req, res) => {
       result.parentItem = savedItem.parentItem.toString();
     }
     
-    console.log('[CREATE] Final result parentItem:', result.parentItem);
+    logger.debug('[CREATE] Final result parentItem:', result.parentItem);
     
     res.status(201).json({
       success: true,
@@ -228,7 +229,7 @@ exports.createExpenseItem = async (req, res) => {
       data: result
     });
   } catch (error) {
-    console.error('Create expense item error:', error);
+    logger.error('Create expense item error:', error);
     
     // 处理唯一性约束错误（数据库层面）
     if (error.code === 11000 || error.name === 'MongoServerError' || (error.message && error.message.includes('duplicate'))) {
@@ -328,7 +329,7 @@ exports.updateExpenseItem = async (req, res) => {
       }
     }
 
-    console.log('[UPDATE] Update data:', JSON.stringify({
+    logger.debug('[UPDATE] Update data:', JSON.stringify({
       ...updateData,
       parentItem: updateData.parentItem ? updateData.parentItem.toString() : null
     }, null, 2));
@@ -353,7 +354,7 @@ exports.updateExpenseItem = async (req, res) => {
       data: expenseItem
     });
   } catch (error) {
-    console.error('Update expense item error:', error);
+    logger.error('Update expense item error:', error);
     
     // 处理唯一性约束错误（数据库层面）
     if (error.code === 11000 || error.name === 'MongoServerError' || (error.message && error.message.includes('duplicate'))) {
@@ -408,7 +409,7 @@ exports.deleteExpenseItem = async (req, res) => {
       message: 'Expense item deleted successfully'
     });
   } catch (error) {
-    console.error('Delete expense item error:', error);
+    logger.error('Delete expense item error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -440,7 +441,7 @@ exports.enableExpenseItem = async (req, res) => {
       data: expenseItem
     });
   } catch (error) {
-    console.error('Enable expense item error:', error);
+    logger.error('Enable expense item error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -472,7 +473,7 @@ exports.disableExpenseItem = async (req, res) => {
       data: expenseItem
     });
   } catch (error) {
-    console.error('Disable expense item error:', error);
+    logger.error('Disable expense item error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -496,7 +497,7 @@ exports.getTransportStandards = async (req, res) => {
       data: standards
     });
   } catch (error) {
-    console.error('Get transport standards error:', error);
+    logger.error('Get transport standards error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -536,7 +537,7 @@ exports.createTransportStandard = async (req, res) => {
       data: transportStandard
     });
   } catch (error) {
-    console.error('Create transport standard error:', error);
+    logger.error('Create transport standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error: ' + (error.message || 'Unknown error')
@@ -577,7 +578,7 @@ exports.updateTransportStandard = async (req, res) => {
       data: transportStandard
     });
   } catch (error) {
-    console.error('Update transport standard error:', error);
+    logger.error('Update transport standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -614,7 +615,7 @@ exports.deleteTransportStandard = async (req, res) => {
       message: 'Transport standard deleted successfully'
     });
   } catch (error) {
-    console.error('Delete transport standard error:', error);
+    logger.error('Delete transport standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -638,7 +639,7 @@ exports.getAccommodationStandards = async (req, res) => {
       data: standards
     });
   } catch (error) {
-    console.error('Get accommodation standards error:', error);
+    logger.error('Get accommodation standards error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -678,7 +679,7 @@ exports.createAccommodationStandard = async (req, res) => {
       data: accommodationStandard
     });
   } catch (error) {
-    console.error('Create accommodation standard error:', error);
+    logger.error('Create accommodation standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error: ' + (error.message || 'Unknown error')
@@ -719,7 +720,7 @@ exports.updateAccommodationStandard = async (req, res) => {
       data: accommodationStandard
     });
   } catch (error) {
-    console.error('Update accommodation standard error:', error);
+    logger.error('Update accommodation standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -756,7 +757,7 @@ exports.deleteAccommodationStandard = async (req, res) => {
       message: 'Accommodation standard deleted successfully'
     });
   } catch (error) {
-    console.error('Delete accommodation standard error:', error);
+    logger.error('Delete accommodation standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -780,7 +781,7 @@ exports.getMealStandards = async (req, res) => {
       data: standards
     });
   } catch (error) {
-    console.error('Get meal standards error:', error);
+    logger.error('Get meal standards error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -820,7 +821,7 @@ exports.createMealStandard = async (req, res) => {
       data: mealStandard
     });
   } catch (error) {
-    console.error('Create meal standard error:', error);
+    logger.error('Create meal standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error: ' + (error.message || 'Unknown error')
@@ -861,7 +862,7 @@ exports.updateMealStandard = async (req, res) => {
       data: mealStandard
     });
   } catch (error) {
-    console.error('Update meal standard error:', error);
+    logger.error('Update meal standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -898,7 +899,7 @@ exports.deleteMealStandard = async (req, res) => {
       message: 'Meal standard deleted successfully'
     });
   } catch (error) {
-    console.error('Delete meal standard error:', error);
+    logger.error('Delete meal standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -922,7 +923,7 @@ exports.getAllowanceStandards = async (req, res) => {
       data: standards
     });
   } catch (error) {
-    console.error('Get allowance standards error:', error);
+    logger.error('Get allowance standards error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -962,7 +963,7 @@ exports.createAllowanceStandard = async (req, res) => {
       data: allowanceStandard
     });
   } catch (error) {
-    console.error('Create allowance standard error:', error);
+    logger.error('Create allowance standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error: ' + (error.message || 'Unknown error')
@@ -1003,7 +1004,7 @@ exports.updateAllowanceStandard = async (req, res) => {
       data: allowanceStandard
     });
   } catch (error) {
-    console.error('Update allowance standard error:', error);
+    logger.error('Update allowance standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -1040,7 +1041,7 @@ exports.deleteAllowanceStandard = async (req, res) => {
       message: 'Allowance standard deleted successfully'
     });
   } catch (error) {
-    console.error('Delete allowance standard error:', error);
+    logger.error('Delete allowance standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -1071,7 +1072,7 @@ exports.getOtherExpenseStandards = async (req, res) => {
       data: standards
     });
   } catch (error) {
-    console.error('Get other expense standards error:', error);
+    logger.error('Get other expense standards error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -1114,7 +1115,7 @@ exports.getOtherExpenseTypes = async (req, res) => {
       data: types
     });
   } catch (error) {
-    console.error('Get expense types error:', error);
+    logger.error('Get expense types error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -1159,7 +1160,7 @@ exports.createOtherExpenseStandard = async (req, res) => {
       data: expenseStandard
     });
   } catch (error) {
-    console.error('Create other expense standard error:', error);
+    logger.error('Create other expense standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error: ' + (error.message || 'Unknown error')
@@ -1200,7 +1201,7 @@ exports.updateOtherExpenseStandard = async (req, res) => {
       data: expenseStandard
     });
   } catch (error) {
-    console.error('Update other expense standard error:', error);
+    logger.error('Update other expense standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -1244,7 +1245,7 @@ exports.deleteOtherExpenseStandard = async (req, res) => {
       message: 'Other expense standard deleted successfully'
     });
   } catch (error) {
-    console.error('Delete other expense standard error:', error);
+    logger.error('Delete other expense standard error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

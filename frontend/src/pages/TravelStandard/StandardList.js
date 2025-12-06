@@ -39,6 +39,7 @@ import apiClient from '../../utils/axiosConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import dayjs from 'dayjs';
 import { useDateFormat } from '../../utils/dateFormatter';
+import { PERMISSIONS } from '../../config/permissions';
 
 const StandardList = () => {
   const { t } = useTranslation();
@@ -247,7 +248,11 @@ const StandardList = () => {
     return t('travelStandard.management.priorities.low');
   };
 
-  const canEdit = user?.role === 'admin' || user?.role === 'finance';
+  const { hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.TRAVEL_STANDARD_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.TRAVEL_STANDARD_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.TRAVEL_STANDARD_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.TRAVEL_STANDARD_DELETE);
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>

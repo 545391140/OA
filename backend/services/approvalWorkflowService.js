@@ -1,4 +1,5 @@
 const ApprovalWorkflow = require('../models/ApprovalWorkflow');
+const logger = require('../utils/logger');
 const User = require('../models/User');
 
 class ApprovalWorkflowService {
@@ -43,7 +44,7 @@ class ApprovalWorkflowService {
       // 没有匹配的工作流，返回null
       return null;
     } catch (error) {
-      console.error('Match workflow error:', error);
+      logger.error('Match workflow error:', error);
       throw error;
     }
   }
@@ -148,7 +149,7 @@ class ApprovalWorkflowService {
 
       return approvals;
     } catch (error) {
-      console.error('Generate approvers error:', error);
+      logger.error('Generate approvers error:', error);
       throw error;
     }
   }
@@ -161,7 +162,7 @@ class ApprovalWorkflowService {
       // 检查是否已存在默认流程
       const existing = await ApprovalWorkflow.findOne({ name: '默认差旅审批流程' });
       if (existing) {
-        console.log('Default workflows already exist');
+        logger.debug('Default workflows already exist');
         return;
       }
 
@@ -262,9 +263,9 @@ class ApprovalWorkflowService {
       ];
 
       await ApprovalWorkflow.insertMany(defaultWorkflows);
-      console.log('Default workflows created successfully');
+      logger.debug('Default workflows created successfully');
     } catch (error) {
-      console.error('Create default workflows error:', error);
+      logger.error('Create default workflows error:', error);
       throw error;
     }
   }

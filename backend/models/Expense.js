@@ -45,7 +45,7 @@ const ExpenseSchema = new mongoose.Schema({
   currency: {
     type: String,
     default: 'USD',
-    enum: ['USD', 'CNY', 'JPY', 'KRW', 'EUR']
+    enum: ['USD', 'CNY', 'JPY', 'KRW', 'EUR', 'GBP']
   },
   exchangeRate: {
     type: Number,

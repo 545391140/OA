@@ -195,8 +195,8 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/search', searchRoutes);
 // Dashboard routes with logging
 app.use('/api/dashboard', (req, res, next) => {
-  console.log('[SERVER] Dashboard route accessed:', req.method, req.originalUrl);
-  console.log('[SERVER] Headers:', {
+  logger.debug('[SERVER] Dashboard route accessed:', { method: req.method, url: req.originalUrl });
+  logger.debug('[SERVER] Headers:', {
     authorization: req.headers.authorization ? 'Present' : 'Missing',
     'content-type': req.headers['content-type'],
     'user-agent': req.headers['user-agent']
@@ -221,7 +221,7 @@ if (frontendExists) {
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {
-      console.error(`❌ index.html not found at: ${indexPath}`);
+      logger.error(`index.html not found at: ${indexPath}`);
       res.status(404).json({ error: 'Frontend index.html not found' });
     }
   });
@@ -233,11 +233,11 @@ if (frontendExists) {
     fallthrough: true  // Continue to next middleware if file not found
   }));
   
-  console.log(`✅ 前端静态文件服务已启用: ${path.resolve(frontendBuildPath)}`);
-  console.log(`    index.html 路径: ${path.resolve(frontendBuildPath, 'index.html')}`);
-  console.log(`    index.html 存在: ${fs.existsSync(path.resolve(frontendBuildPath, 'index.html'))}`);
+  logger.info(`前端静态文件服务已启用: ${path.resolve(frontendBuildPath)}`);
+  logger.info(`index.html 路径: ${path.resolve(frontendBuildPath, 'index.html')}`);
+  logger.info(`index.html 存在: ${fs.existsSync(path.resolve(frontendBuildPath, 'index.html'))}`);
 } else {
-  console.log(`⚠️  前端目录不存在: ${path.resolve(frontendBuildPath)}`);
+  logger.warn(`前端目录不存在: ${path.resolve(frontendBuildPath)}`);
 }
 
 // Serve frontend for all non-API routes (SPA fallback)
@@ -270,7 +270,7 @@ if (frontendExists) {
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {
-      console.error(`❌ SPA fallback: index.html not found at ${indexPath}`);
+      logger.error(`SPA fallback: index.html not found at ${indexPath}`);
       next(); // Pass to error handler if file doesn't exist
     }
   });

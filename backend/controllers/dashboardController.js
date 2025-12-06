@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 const Travel = require('../models/Travel');
 const Expense = require('../models/Expense');
 const User = require('../models/User');
@@ -213,7 +214,7 @@ exports.getDashboardStats = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get dashboard stats error:', error);
+    logger.error('Get dashboard stats error:', error);
     res.status(500).json({
       success: false,
       message: '获取统计数据失败',
@@ -251,7 +252,7 @@ exports.getRecentTravels = async (req, res) => {
       data: recentTravels
     });
   } catch (error) {
-    console.error('Get recent travels error:', error);
+    logger.error('Get recent travels error:', error);
     res.status(500).json({
       success: false,
       message: '获取最近差旅失败',
@@ -287,7 +288,7 @@ exports.getRecentExpenses = async (req, res) => {
       data: recentExpenses
     });
   } catch (error) {
-    console.error('Get recent expenses error:', error);
+    logger.error('Get recent expenses error:', error);
     res.status(500).json({
       success: false,
       message: '获取最近费用失败',
@@ -303,18 +304,18 @@ exports.getRecentExpenses = async (req, res) => {
  */
 exports.getMonthlySpending = async (req, res) => {
   try {
-    console.log('[MONTHLY_SPENDING_API] Request received');
+    logger.debug('[MONTHLY_SPENDING_API] Request received');
     const userId = req.user.id;
     const userRole = req.user.role;
     const months = parseInt(req.query.months) || 6;
 
-    console.log('[MONTHLY_SPENDING_API] userId:', userId, 'userRole:', userRole, 'months:', months);
+    logger.debug('[MONTHLY_SPENDING_API] userId:', userId, 'userRole:', userRole, 'months:', months);
 
     // 获取用户角色以确定数据权限范围
     const role = await Role.findOne({ code: req.user.role, isActive: true });
     const query = await buildDataScopeQuery(req.user, role, 'employee');
 
-    console.log('[MONTHLY_SPENDING_API] Data scope query:', JSON.stringify(query, null, 2));
+    logger.debug('[MONTHLY_SPENDING_API] Data scope query:', JSON.stringify(query, null, 2));
 
     // 计算起始日期（往前N个月）
     const startDate = new Date();
@@ -323,17 +324,17 @@ exports.getMonthlySpending = async (req, res) => {
     startDate.setHours(0, 0, 0, 0);
     startDate.setMilliseconds(0);
 
-    console.log('[MONTHLY_SPENDING_API] Date range - startDate:', startDate.toISOString());
+    logger.debug('[MONTHLY_SPENDING_API] Date range - startDate:', startDate.toISOString());
 
     const matchQuery = Object.assign({}, query, {
       date: { $gte: startDate }
     });
     
-    console.log('[MONTHLY_SPENDING_API] Match query:', JSON.stringify(matchQuery, null, 2));
+    logger.debug('[MONTHLY_SPENDING_API] Match query:', JSON.stringify(matchQuery, null, 2));
     
     // 先检查是否有符合条件的数据
     const totalCount = await Expense.countDocuments(matchQuery);
-    console.log('[MONTHLY_SPENDING_API] Total expenses matching query:', totalCount);
+    logger.debug('[MONTHLY_SPENDING_API] Total expenses matching query:', totalCount);
 
     const monthlyData = await Expense.aggregate([
       {
@@ -354,7 +355,7 @@ exports.getMonthlySpending = async (req, res) => {
       }
     ]);
 
-    console.log('[MONTHLY_SPENDING_API] Aggregation result:', JSON.stringify(monthlyData, null, 2));
+    logger.debug('[MONTHLY_SPENDING_API] Aggregation result:', JSON.stringify(monthlyData, null, 2));
 
     // 格式化数据
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -365,7 +366,7 @@ exports.getMonthlySpending = async (req, res) => {
       count: item.count
     }));
 
-    console.log('[MONTHLY_SPENDING_API] Final formatted data:', JSON.stringify(formattedData, null, 2));
+    logger.debug('[MONTHLY_SPENDING_API] Final formatted data:', JSON.stringify(formattedData, null, 2));
 
     // 禁用缓存
     res.set({
@@ -380,8 +381,8 @@ exports.getMonthlySpending = async (req, res) => {
       data: formattedData
     });
   } catch (error) {
-    console.error('[MONTHLY_SPENDING_API] Error:', error);
-    console.error('[MONTHLY_SPENDING_API] Error stack:', error.stack);
+    logger.error('[MONTHLY_SPENDING_API] Error:', error);
+    logger.error('[MONTHLY_SPENDING_API] Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: '获取月度支出失败',
@@ -418,29 +419,29 @@ exports.getCategoryBreakdown = async (req, res) => {
       startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
     }
 
-    console.log('[CATEGORY_BREAKDOWN_API] userId:', userId, 'userRole:', userRole, 'period:', period);
-    console.log('[CATEGORY_BREAKDOWN_API] Data scope query:', JSON.stringify(query, null, 2));
-    console.log('[CATEGORY_BREAKDOWN_API] Date range:');
-    console.log('[CATEGORY_BREAKDOWN_API] - Now:', now.toISOString());
-    console.log('[CATEGORY_BREAKDOWN_API] - Start date:', startDate.toISOString());
-    console.log('[CATEGORY_BREAKDOWN_API] - Start date local:', startDate.toString());
+    logger.debug('[CATEGORY_BREAKDOWN_API] userId:', userId, 'userRole:', userRole, 'period:', period);
+    logger.debug('[CATEGORY_BREAKDOWN_API] Data scope query:', JSON.stringify(query, null, 2));
+    logger.debug('[CATEGORY_BREAKDOWN_API] Date range:');
+    logger.debug('[CATEGORY_BREAKDOWN_API] - Now:', now.toISOString());
+    logger.debug('[CATEGORY_BREAKDOWN_API] - Start date:', startDate.toISOString());
+    logger.debug('[CATEGORY_BREAKDOWN_API] - Start date local:', startDate.toString());
 
     const matchQuery = Object.assign({}, query, {
       date: { $gte: startDate }
     });
     
-    console.log('[CATEGORY_BREAKDOWN_API] Match query:', JSON.stringify(matchQuery, null, 2));
+    logger.debug('[CATEGORY_BREAKDOWN_API] Match query:', JSON.stringify(matchQuery, null, 2));
     
     // 先检查是否有符合条件的数据
     const totalCount = await Expense.countDocuments(matchQuery);
-    console.log('[CATEGORY_BREAKDOWN_API] Total expenses matching query:', totalCount);
+    logger.debug('[CATEGORY_BREAKDOWN_API] Total expenses matching query:', totalCount);
     
     // 检查是否有 category 字段的数据
     const expensesWithCategory = await Expense.countDocuments({
       ...matchQuery,
       category: { $exists: true, $ne: null }
     });
-    console.log('[CATEGORY_BREAKDOWN_API] Expenses with category field:', expensesWithCategory);
+    logger.debug('[CATEGORY_BREAKDOWN_API] Expenses with category field:', expensesWithCategory);
 
     const categoryData = await Expense.aggregate([
       {
@@ -460,8 +461,8 @@ exports.getCategoryBreakdown = async (req, res) => {
 
     // 计算总额
     const totalAmount = categoryData.reduce((sum, item) => sum + item.total, 0);
-    console.log('[CATEGORY_BREAKDOWN_API] Aggregation result:', JSON.stringify(categoryData, null, 2));
-    console.log('[CATEGORY_BREAKDOWN_API] Total amount:', totalAmount);
+    logger.debug('[CATEGORY_BREAKDOWN_API] Aggregation result:', JSON.stringify(categoryData, null, 2));
+    logger.debug('[CATEGORY_BREAKDOWN_API] Total amount:', totalAmount);
 
     // 定义类别颜色（使用实际的类别名称）
     const categoryColors = {
@@ -489,7 +490,7 @@ exports.getCategoryBreakdown = async (req, res) => {
       };
     });
 
-    console.log('[CATEGORY_BREAKDOWN_API] Final formatted data:', JSON.stringify(formattedData, null, 2));
+    logger.debug('[CATEGORY_BREAKDOWN_API] Final formatted data:', JSON.stringify(formattedData, null, 2));
 
     // 禁用缓存
     res.set({
@@ -505,7 +506,7 @@ exports.getCategoryBreakdown = async (req, res) => {
       total: parseFloat(totalAmount.toFixed(2))
     });
   } catch (error) {
-    console.error('Get category breakdown error:', error);
+    logger.error('Get category breakdown error:', error);
     res.status(500).json({
       success: false,
       message: '获取类别分布失败',
@@ -588,7 +589,7 @@ exports.getPendingTasks = async (req, res) => {
       data: tasks
     });
   } catch (error) {
-    console.error('Get pending tasks error:', error);
+    logger.error('Get pending tasks error:', error);
     res.status(500).json({
       success: false,
       message: '获取待办事项失败',
@@ -604,10 +605,10 @@ exports.getPendingTasks = async (req, res) => {
  */
 exports.getDashboardData = async (req, res) => {
   try {
-    console.log('[DASHBOARD_DATA] ========== 开始获取Dashboard数据 ==========');
+    logger.debug('[DASHBOARD_DATA] ========== 开始获取Dashboard数据 ==========');
     const userId = req.user.id;
     const userRole = req.user.role;
-    console.log('[DASHBOARD_DATA] 用户ID:', userId, '角色:', userRole);
+    logger.debug('[DASHBOARD_DATA] 用户ID:', userId, '角色:', userRole);
 
     // 一次性查询用户和角色，避免重复查询
     const [user, role] = await Promise.all([
@@ -616,27 +617,27 @@ exports.getDashboardData = async (req, res) => {
     ]);
 
     if (!user) {
-      console.error('[DASHBOARD_DATA] ❌ 用户不存在');
+      logger.error('[DASHBOARD_DATA] ❌ 用户不存在');
       return res.status(404).json({
         success: false,
         message: '用户不存在'
       });
     }
 
-    console.log('[DASHBOARD_DATA] ✅ 用户和角色查询完成');
+    logger.debug('[DASHBOARD_DATA] ✅ 用户和角色查询完成');
 
     // 一次性构建数据权限查询条件（travelQuery 和 expenseQuery 相同，只需调用一次）
     const dataScopeQuery = await buildDataScopeQuery(user, role, 'employee');
     const travelQuery = dataScopeQuery;
     const expenseQuery = dataScopeQuery;
-    console.log('[DASHBOARD_DATA] 数据权限查询条件:', JSON.stringify(travelQuery));
+    logger.debug('[DASHBOARD_DATA] 数据权限查询条件:', JSON.stringify(travelQuery));
 
     // 转换 expenseQuery 中的 employee 字段为 ObjectId（用于聚合查询）
     const expenseQueryForAggregate = convertEmployeeToObjectId({ ...expenseQuery });
     // 同样转换 travelQuery 中的 employee 字段为 ObjectId（用于聚合查询）
     const travelQueryForAggregate = convertEmployeeToObjectId({ ...travelQuery });
 
-    console.log('[DASHBOARD_DATA] 开始并行查询所有数据...');
+    logger.debug('[DASHBOARD_DATA] 开始并行查询所有数据...');
     const startTime = Date.now();
     
     // 并行获取所有数据，使用 Promise.allSettled 避免一个失败导致全部失败
@@ -651,7 +652,7 @@ exports.getDashboardData = async (req, res) => {
     ]);
     
     const queryTime = Date.now() - startTime;
-    console.log(`[DASHBOARD_DATA] 数据查询完成，耗时: ${queryTime}ms`);
+    logger.debug(`[DASHBOARD_DATA] 数据查询完成，耗时: ${queryTime}ms`);
 
     // 处理结果，如果失败则使用默认值
     const stats = results[0].status === 'fulfilled' ? results[0].value : {};
@@ -667,8 +668,8 @@ exports.getDashboardData = async (req, res) => {
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
         const functionNames = ['getDashboardStatsData', 'getRecentTravelsData', 'getRecentExpensesData', 'getMonthlySpendingAndCategoryData', 'getPendingTasksData', 'getCountryTravelData'];
-        console.error(`[DASHBOARD_DATA] ❌ ${functionNames[index]} failed:`, result.reason);
-        console.error(`[DASHBOARD_DATA] ❌ ${functionNames[index]} error stack:`, result.reason?.stack);
+        logger.error(`[DASHBOARD_DATA] ❌ ${functionNames[index]} failed:`, result.reason);
+        logger.error(`[DASHBOARD_DATA] ❌ ${functionNames[index]} error stack:`, result.reason?.stack);
       }
     });
 
@@ -685,14 +686,14 @@ exports.getDashboardData = async (req, res) => {
       }
     };
     
-    console.log('[DASHBOARD_DATA] 响应数据统计:');
-    console.log(`  - stats: ${Object.keys(stats || {}).length} 个字段`);
-    console.log(`  - recentTravels: ${recentTravels?.length || 0} 条`);
-    console.log(`  - recentExpenses: ${recentExpenses?.length || 0} 条`);
-    console.log(`  - monthlySpending: ${monthlySpending?.length || 0} 条`);
-    console.log(`  - categoryBreakdown: ${categoryBreakdown?.length || 0} 条`);
-    console.log(`  - pendingTasks: ${pendingTasks?.length || 0} 条`);
-    console.log(`  - countryTravelData: ${countryTravelData?.length || 0} 条`);
+    logger.debug('[DASHBOARD_DATA] 响应数据统计:');
+    logger.debug(`  - stats: ${Object.keys(stats || {}).length} 个字段`);
+    logger.debug(`  - recentTravels: ${recentTravels?.length || 0} 条`);
+    logger.debug(`  - recentExpenses: ${recentExpenses?.length || 0} 条`);
+    logger.debug(`  - monthlySpending: ${monthlySpending?.length || 0} 条`);
+    logger.debug(`  - categoryBreakdown: ${categoryBreakdown?.length || 0} 条`);
+    logger.debug(`  - pendingTasks: ${pendingTasks?.length || 0} 条`);
+    logger.debug(`  - countryTravelData: ${countryTravelData?.length || 0} 条`);
     
     // 禁用缓存，确保每次请求都执行服务器端逻辑
     res.set({
@@ -702,10 +703,10 @@ exports.getDashboardData = async (req, res) => {
       'ETag': false
     });
     
-    console.log('[DASHBOARD_DATA] ========== 发送响应 ==========');
+    logger.debug('[DASHBOARD_DATA] ========== 发送响应 ==========');
     res.json(responseData);
   } catch (error) {
-    console.error('[DASHBOARD_DATA] Error:', error);
+    logger.error('[DASHBOARD_DATA] Error:', error);
     res.status(500).json({
       success: false,
       message: '获取Dashboard数据失败',
@@ -751,7 +752,7 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
   const lastMonth = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
   const nextMonth = new Date(Date.UTC(year, month + 1, 1, 0, 0, 0, 0));
 
-  console.log('[DASHBOARD_STATS] Date ranges:', {
+  logger.debug('[DASHBOARD_STATS] Date ranges:', {
     now: now.toISOString(),
     currentMonth: currentMonth.toISOString(),
     lastMonth: lastMonth.toISOString(),
@@ -812,7 +813,7 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
     ? ((currentMonthTotal - lastMonthTotal) / lastMonthTotal * 100).toFixed(1)
     : 0;
 
-  console.log('[DASHBOARD_STATS] Monthly spending results:', {
+  logger.debug('[DASHBOARD_STATS] Monthly spending results:', {
     currentMonthTotal,
     lastMonthTotal,
     spendingTrend,
@@ -864,7 +865,7 @@ async function populateDestinations(travels) {
         }
       });
     } catch (error) {
-      console.error('Populate destinations error:', error);
+      logger.error('Populate destinations error:', error);
     }
   }
   return travels;
@@ -1064,7 +1065,7 @@ async function getMonthlySpendingAndCategoryData(expenseQueryForAggregate, month
     }
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('[MONTHLY_SPENDING_AND_CATEGORY_DATA] Error:', error);
+      logger.error('[MONTHLY_SPENDING_AND_CATEGORY_DATA] Error:', error);
     }
     return {
       monthlySpending: [],
@@ -1080,7 +1081,7 @@ async function getMonthlySpendingData(expenseQueryForAggregate, months) {
     return result.monthlySpending;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('[MONTHLY_SPENDING_DATA] Error:', error);
+      logger.error('[MONTHLY_SPENDING_DATA] Error:', error);
     }
     return [];
   }
@@ -1092,7 +1093,7 @@ async function getCategoryBreakdownData(expenseQueryForAggregate, period) {
     return result.categoryBreakdown;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('[CATEGORY_BREAKDOWN] Error:', error);
+      logger.error('[CATEGORY_BREAKDOWN] Error:', error);
     }
     return [];
   }
@@ -1139,7 +1140,7 @@ async function getPendingTasksData(userId, userRole, travelQuery = null) {
  */
 async function getCountryTravelData(travelQuery) {
   try {
-    console.log('[COUNTRY_TRAVEL_DATA] 开始查询国家差旅数据...');
+    logger.debug('[COUNTRY_TRAVEL_DATA] 开始查询国家差旅数据...');
     const startTime = Date.now();
     
     // 第一步：使用聚合管道处理 ObjectId 类型的目的地（最优化路径）
@@ -1392,12 +1393,12 @@ async function getCountryTravelData(travelQuery) {
     ];
 
     // 并行执行两个聚合查询
-    console.log('[COUNTRY_TRAVEL_DATA] 执行聚合查询...');
+    logger.debug('[COUNTRY_TRAVEL_DATA] 执行聚合查询...');
     const [objectIdResults, stringResults] = await Promise.all([
       Travel.aggregate(objectIdPipeline).allowDiskUse(true),
       Travel.aggregate(stringPipeline).allowDiskUse(true)
     ]);
-    console.log(`[COUNTRY_TRAVEL_DATA] ObjectId结果: ${objectIdResults.length}, 字符串结果: ${stringResults.length}`);
+    logger.debug(`[COUNTRY_TRAVEL_DATA] ObjectId结果: ${objectIdResults.length}, 字符串结果: ${stringResults.length}`);
 
     // 合并结果
     const countryCountMap = new Map();
@@ -1514,12 +1515,12 @@ async function getCountryTravelData(travelQuery) {
       }
     ];
 
-    console.log('[COUNTRY_TRAVEL_DATA] 处理未匹配的字符串目的地...');
+    logger.debug('[COUNTRY_TRAVEL_DATA] 处理未匹配的字符串目的地...');
     const unmatchedResult = await Travel.aggregate(unmatchedStringPipeline).allowDiskUse(true);
     
     if (unmatchedResult.length > 0 && unmatchedResult[0].destinations && unmatchedResult[0].destinations.length > 0) {
       const uniqueStringDests = unmatchedResult[0].destinations;
-      console.log(`[COUNTRY_TRAVEL_DATA] 找到 ${uniqueStringDests.length} 个未匹配的字符串目的地`);
+      logger.debug(`[COUNTRY_TRAVEL_DATA] 找到 ${uniqueStringDests.length} 个未匹配的字符串目的地`);
       
       // 限制查询数量，避免查询过多导致性能问题
       const limitedDests = uniqueStringDests.slice(0, 100);
@@ -1538,7 +1539,7 @@ async function getCountryTravelData(travelQuery) {
           nameToCountryMap.set(loc.name.toLowerCase(), loc.country);
         }
       });
-      console.log(`[COUNTRY_TRAVEL_DATA] 创建了 ${nameToCountryMap.size} 个名称到国家的映射`);
+      logger.debug(`[COUNTRY_TRAVEL_DATA] 创建了 ${nameToCountryMap.size} 个名称到国家的映射`);
 
       // 统计匹配到的国家（只处理限制后的目的地）
       limitedDests.forEach(dest => {
@@ -1548,15 +1549,15 @@ async function getCountryTravelData(travelQuery) {
           countryCountMap.set(country, (countryCountMap.get(country) || 0) + 1);
         }
       });
-      console.log(`[COUNTRY_TRAVEL_DATA] 处理未匹配字符串目的地完成，当前国家数量: ${countryCountMap.size}`);
+      logger.debug(`[COUNTRY_TRAVEL_DATA] 处理未匹配字符串目的地完成，当前国家数量: ${countryCountMap.size}`);
     } else {
-      console.log('[COUNTRY_TRAVEL_DATA] 没有未匹配的字符串目的地需要处理');
+      logger.debug('[COUNTRY_TRAVEL_DATA] 没有未匹配的字符串目的地需要处理');
     }
 
-    console.log(`[COUNTRY_TRAVEL_DATA] 合并后国家数量: ${countryCountMap.size}`);
+    logger.debug(`[COUNTRY_TRAVEL_DATA] 合并后国家数量: ${countryCountMap.size}`);
     
     if (countryCountMap.size === 0) {
-      console.log('[COUNTRY_TRAVEL_DATA] 没有找到国家数据，返回空数组');
+      logger.debug('[COUNTRY_TRAVEL_DATA] 没有找到国家数据，返回空数组');
       return [];
     }
 
@@ -1568,11 +1569,11 @@ async function getCountryTravelData(travelQuery) {
 
     // 计算总数
     const total = countryStats.reduce((sum, item) => sum + item.count, 0);
-    console.log(`[COUNTRY_TRAVEL_DATA] 前10个国家统计完成，总数: ${total}`);
+    logger.debug(`[COUNTRY_TRAVEL_DATA] 前10个国家统计完成，总数: ${total}`);
 
     // 获取国家名称列表，用于查询英文名称
     const countryNames = countryStats.map(item => item._id);
-    console.log(`[COUNTRY_TRAVEL_DATA] 查询 ${countryNames.length} 个国家的英文名称...`);
+    logger.debug(`[COUNTRY_TRAVEL_DATA] 查询 ${countryNames.length} 个国家的英文名称...`);
 
     // 一次性查询所有国家的英文名称
     const [countryLocations, allLocations] = await Promise.all([
@@ -1585,7 +1586,7 @@ async function getCountryTravelData(travelQuery) {
         enName: { $exists: true, $ne: null }
       }).select('country enName').limit(100).lean()
     ]);
-    console.log(`[COUNTRY_TRAVEL_DATA] 找到 ${countryLocations.length} 个国家类型Location，${allLocations.length} 个其他Location`);
+    logger.debug(`[COUNTRY_TRAVEL_DATA] 找到 ${countryLocations.length} 个国家类型Location，${allLocations.length} 个其他Location`);
 
     // 创建国家名称到英文名称的映射
     const countryToEnNameMap = new Map();
@@ -1619,11 +1620,11 @@ async function getCountryTravelData(travelQuery) {
     });
 
     const totalTime = Date.now() - startTime;
-    console.log(`[COUNTRY_TRAVEL_DATA] 查询完成，耗时: ${totalTime}ms，返回 ${countryData.length} 个国家`);
+    logger.debug(`[COUNTRY_TRAVEL_DATA] 查询完成，耗时: ${totalTime}ms，返回 ${countryData.length} 个国家`);
     return countryData;
   } catch (error) {
-    console.error('[COUNTRY_TRAVEL_DATA] Error:', error);
-    console.error('[COUNTRY_TRAVEL_DATA] Error stack:', error.stack);
+    logger.error('[COUNTRY_TRAVEL_DATA] Error:', error);
+    logger.error('[COUNTRY_TRAVEL_DATA] Error stack:', error.stack);
     // 返回空数组而不是抛出错误，避免影响整个dashboard
     return [];
   }

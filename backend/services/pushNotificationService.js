@@ -1,4 +1,5 @@
 const webpush = require('web-push');
+const logger = require('../utils/logger');
 
 // Web Push配置
 // 在生产环境中，这些应该从环境变量中读取
@@ -22,7 +23,7 @@ class PushNotificationService {
       const user = await User.findById(userId).select('pushSubscription');
       
       if (!user || !user.pushSubscription) {
-        console.log(`User ${userId} has no push subscription`);
+        logger.debug(`User ${userId} has no push subscription`);
         return false;
       }
 
@@ -37,21 +38,21 @@ class PushNotificationService {
 
       try {
         await webpush.sendNotification(user.pushSubscription, payload);
-        console.log(`Push notification sent to user ${userId}`);
+        logger.debug(`Push notification sent to user ${userId}`);
         return true;
       } catch (error) {
-        console.error(`Failed to send push notification to user ${userId}:`, error);
+        logger.error(`Failed to send push notification to user ${userId}:`, error);
         
         // 如果订阅已过期，清除订阅
         if (error.statusCode === 410) {
           await User.findByIdAndUpdate(userId, { $unset: { pushSubscription: 1 } });
-          console.log(`Removed expired push subscription for user ${userId}`);
+          logger.debug(`Removed expired push subscription for user ${userId}`);
         }
         
         return false;
       }
     } catch (error) {
-      console.error('Send push notification error:', error);
+      logger.error('Send push notification error:', error);
       return false;
     }
   }
@@ -84,7 +85,7 @@ class PushNotificationService {
       });
       return true;
     } catch (error) {
-      console.error('Save push subscription error:', error);
+      logger.error('Save push subscription error:', error);
       return false;
     }
   }
@@ -99,7 +100,7 @@ class PushNotificationService {
       });
       return true;
     } catch (error) {
-      console.error('Remove push subscription error:', error);
+      logger.error('Remove push subscription error:', error);
       return false;
     }
   }

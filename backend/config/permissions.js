@@ -59,12 +59,14 @@ const PERMISSIONS = {
   ROLE_CREATE: 'role.create',
   ROLE_EDIT: 'role.edit',
   ROLE_DELETE: 'role.delete',
+  ROLE_TOGGLE_ACTIVE: 'role.toggleActive',
   
   // 职位管理
   POSITION_VIEW: 'position.view',
   POSITION_CREATE: 'position.create',
   POSITION_EDIT: 'position.edit',
   POSITION_DELETE: 'position.delete',
+  POSITION_TOGGLE_ACTIVE: 'position.toggleActive',
   
   // 用户管理
   USER_VIEW: 'user.view',
@@ -110,6 +112,13 @@ const PERMISSIONS = {
   JOB_LEVEL_EDIT: 'job.level.edit',
   JOB_LEVEL_DELETE: 'job.level.delete',
   
+  // 币种管理
+  CURRENCY_VIEW: 'currency.view',
+  CURRENCY_CREATE: 'currency.create',
+  CURRENCY_EDIT: 'currency.edit',
+  CURRENCY_DELETE: 'currency.delete',
+  CURRENCY_TOGGLE_ACTIVE: 'currency.toggleActive',
+  
   // 标准匹配
   STANDARD_MATCH_VIEW: 'standard.match.view',
   STANDARD_MATCH_USE: 'standard.match.use',
@@ -142,10 +151,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'travel',
-    label: '差旅管理',
-    labelEn: 'Travel Management',
-    labelJa: '出張管理',
-    labelKo: '출장 관리',
+    label: '差旅',
+    labelEn: 'Travel',
+    labelJa: '出張',
+    labelKo: '출장',
     permissions: [
       { code: PERMISSIONS.TRAVEL_VIEW, label: '查看差旅', labelEn: 'View Travel', labelJa: '出張を表示', labelKo: '출장 보기' },
       { code: PERMISSIONS.TRAVEL_CREATE, label: '创建差旅', labelEn: 'Create Travel', labelJa: '出張を作成', labelKo: '출장 생성' },
@@ -156,10 +165,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'expense',
-    label: '费用管理',
-    labelEn: 'Expense Management',
-    labelJa: '経費管理',
-    labelKo: '비용 관리',
+    label: '费用',
+    labelEn: 'Expense',
+    labelJa: '経費',
+    labelKo: '비용',
     permissions: [
       { code: PERMISSIONS.EXPENSE_VIEW, label: '查看费用', labelEn: 'View Expense', labelJa: '経費を表示', labelKo: '비용 보기' },
       { code: PERMISSIONS.EXPENSE_CREATE, label: '创建费用', labelEn: 'Create Expense', labelJa: '経費を作成', labelKo: '비용 생성' },
@@ -170,10 +179,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'approval',
-    label: '审批管理',
-    labelEn: 'Approval Management',
-    labelJa: '承認管理',
-    labelKo: '승인 관리',
+    label: '审批',
+    labelEn: 'Approval',
+    labelJa: '承認',
+    labelKo: '승인',
     permissions: [
       { code: PERMISSIONS.APPROVAL_VIEW, label: '查看审批', labelEn: 'View Approval', labelJa: '承認を表示', labelKo: '승인 보기' },
       { code: PERMISSIONS.APPROVAL_APPROVE, label: '审批通过', labelEn: 'Approve', labelJa: '承認', labelKo: '승인' },
@@ -182,10 +191,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'report',
-    label: '报告分析',
-    labelEn: 'Reports & Analytics',
-    labelJa: 'レポート分析',
-    labelKo: '보고서 분석',
+    label: '报告',
+    labelEn: 'Reports',
+    labelJa: 'レポート',
+    labelKo: '보고서',
     permissions: [
       { code: PERMISSIONS.REPORT_VIEW, label: '查看报告', labelEn: 'View Reports', labelJa: 'レポートを表示', labelKo: '보고서 보기' },
       { code: PERMISSIONS.REPORT_EXPORT, label: '导出报告', labelEn: 'Export Reports', labelJa: 'レポートをエクスポート', labelKo: '보고서 내보내기' }
@@ -193,10 +202,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'travelStandard',
-    label: '差旅标准',
-    labelEn: 'Travel Standards',
-    labelJa: '出張基準',
-    labelKo: '출장 기준',
+    label: '差旅标准管理',
+    labelEn: 'Travel Standards Management',
+    labelJa: '出張基準管理',
+    labelKo: '출장 기준 관리',
     permissions: [
       { code: PERMISSIONS.TRAVEL_STANDARD_QUERY, label: '查询差旅标准', labelEn: 'Query Travel Standards', labelJa: '出張基準を検索', labelKo: '출장 기준 조회' },
       { code: PERMISSIONS.TRAVEL_STANDARD_VIEW, label: '查看差旅标准', labelEn: 'View Travel Standards', labelJa: '出張基準を表示', labelKo: '출장 기준 보기' },
@@ -207,10 +216,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'expenseItem',
-    label: '费用项目',
-    labelEn: 'Expense Items',
-    labelJa: '経費項目',
-    labelKo: '비용 항목',
+    label: '费用项目维护',
+    labelEn: 'Expense Items Maintenance',
+    labelJa: '経費項目メンテナンス',
+    labelKo: '비용 항목 유지보수',
     permissions: [
       { code: PERMISSIONS.EXPENSE_ITEM_VIEW, label: '查看费用项目', labelEn: 'View Expense Items', labelJa: '経費項目を表示', labelKo: '비용 항목 보기' },
       { code: PERMISSIONS.EXPENSE_ITEM_CREATE, label: '创建费用项目', labelEn: 'Create Expense Items', labelJa: '経費項目を作成', labelKo: '비용 항목 생성' },
@@ -220,10 +229,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'location',
-    label: '位置管理',
+    label: '地理位置管理',
     labelEn: 'Location Management',
-    labelJa: '場所管理',
-    labelKo: '위치 관리',
+    labelJa: '地理場所管理',
+    labelKo: '지리 위치 관리',
     permissions: [
       { code: PERMISSIONS.LOCATION_VIEW, label: '查看位置', labelEn: 'View Locations', labelJa: '場所を表示', labelKo: '위치 보기' },
       { code: PERMISSIONS.LOCATION_CREATE, label: '创建位置', labelEn: 'Create Locations', labelJa: '場所を作成', labelKo: '위치 생성' },
@@ -233,10 +242,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'i18n',
-    label: '国际化',
-    labelEn: 'Internationalization',
-    labelJa: '国際化',
-    labelKo: '국제화',
+    label: '国际化监控',
+    labelEn: 'Internationalization Monitor',
+    labelJa: '国際化監視',
+    labelKo: '국제화 모니터',
     permissions: [
       { code: PERMISSIONS.I18N_VIEW, label: '查看国际化', labelEn: 'View I18n', labelJa: '国際化を表示', labelKo: '국제화 보기' }
     ]
@@ -251,7 +260,8 @@ const PERMISSION_GROUPS = [
       { code: PERMISSIONS.ROLE_VIEW, label: '查看角色', labelEn: 'View Roles', labelJa: '役割を表示', labelKo: '역할 보기' },
       { code: PERMISSIONS.ROLE_CREATE, label: '创建角色', labelEn: 'Create Roles', labelJa: '役割を作成', labelKo: '역할 생성' },
       { code: PERMISSIONS.ROLE_EDIT, label: '编辑角色', labelEn: 'Edit Roles', labelJa: '役割を編集', labelKo: '역할 편집' },
-      { code: PERMISSIONS.ROLE_DELETE, label: '删除角色', labelEn: 'Delete Roles', labelJa: '役割を削除', labelKo: '역할 삭제' }
+      { code: PERMISSIONS.ROLE_DELETE, label: '删除角色', labelEn: 'Delete Roles', labelJa: '役割を削除', labelKo: '역할 삭제' },
+      { code: PERMISSIONS.ROLE_TOGGLE_ACTIVE, label: '启用/禁用角色', labelEn: 'Toggle Role Active Status', labelJa: '役割を有効/無効化', labelKo: '역할 활성화/비활성화' }
     ]
   },
   {
@@ -264,7 +274,8 @@ const PERMISSION_GROUPS = [
       { code: PERMISSIONS.POSITION_VIEW, label: '查看岗位', labelEn: 'View Positions', labelJa: '職位を表示', labelKo: '직위 보기' },
       { code: PERMISSIONS.POSITION_CREATE, label: '创建岗位', labelEn: 'Create Positions', labelJa: '職位を作成', labelKo: '직위 생성' },
       { code: PERMISSIONS.POSITION_EDIT, label: '编辑岗位', labelEn: 'Edit Positions', labelJa: '職位を編集', labelKo: '직위 편집' },
-      { code: PERMISSIONS.POSITION_DELETE, label: '删除岗位', labelEn: 'Delete Positions', labelJa: '職位を削除', labelKo: '직위 삭제' }
+      { code: PERMISSIONS.POSITION_DELETE, label: '删除岗位', labelEn: 'Delete Positions', labelJa: '職位を削除', labelKo: '직위 삭제' },
+      { code: PERMISSIONS.POSITION_TOGGLE_ACTIVE, label: '启用/禁用岗位', labelEn: 'Toggle Position Active Status', labelJa: '職位を有効/無効化', labelKo: '직위 활성화/비활성화' }
     ]
   },
   {
@@ -283,10 +294,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'approvalWorkflow',
-    label: '审批工作流',
-    labelEn: 'Approval Workflows',
-    labelJa: '承認ワークフロー',
-    labelKo: '승인 워크플로우',
+    label: '审批流程管理',
+    labelEn: 'Approval Workflow Management',
+    labelJa: '承認プロセス管理',
+    labelKo: '승인 프로세스 관리',
     permissions: [
       { code: PERMISSIONS.APPROVAL_WORKFLOW_VIEW, label: '查看工作流', labelEn: 'View Workflows', labelJa: 'ワークフローを表示', labelKo: '워크플로우 보기' },
       { code: PERMISSIONS.APPROVAL_WORKFLOW_CREATE, label: '创建工作流', labelEn: 'Create Workflows', labelJa: 'ワークフローを作成', labelKo: '워크플로우 생성' },
@@ -296,10 +307,10 @@ const PERMISSION_GROUPS = [
   },
   {
     name: 'approvalStatistics',
-    label: '审批统计',
-    labelEn: 'Approval Statistics',
-    labelJa: '承認統計',
-    labelKo: '승인 통계',
+    label: '审批统计分析',
+    labelEn: 'Approval Statistics & Analysis',
+    labelJa: '承認統計分析',
+    labelKo: '승인 통계 분석',
     permissions: [
       { code: PERMISSIONS.APPROVAL_STATISTICS_VIEW, label: '查看统计', labelEn: 'View Statistics', labelJa: '統計を表示', labelKo: '통계 보기' }
     ]
@@ -365,6 +376,20 @@ const PERMISSION_GROUPS = [
       { code: PERMISSIONS.JOB_LEVEL_CREATE, label: '创建职位级别', labelEn: 'Create Job Levels', labelJa: '職位レベルを作成', labelKo: '직위 레벨 생성' },
       { code: PERMISSIONS.JOB_LEVEL_EDIT, label: '编辑职位级别', labelEn: 'Edit Job Levels', labelJa: '職位レベルを編集', labelKo: '직위 레벨 편집' },
       { code: PERMISSIONS.JOB_LEVEL_DELETE, label: '删除职位级别', labelEn: 'Delete Job Levels', labelJa: '職位レベルを削除', labelKo: '직위 레벨 삭제' }
+    ]
+  },
+  {
+    name: 'currency',
+    label: '币种管理',
+    labelEn: 'Currency Management',
+    labelJa: '通貨管理',
+    labelKo: '통화 관리',
+    permissions: [
+      { code: PERMISSIONS.CURRENCY_VIEW, label: '查看币种', labelEn: 'View Currencies', labelJa: '通貨を表示', labelKo: '통화 보기' },
+      { code: PERMISSIONS.CURRENCY_CREATE, label: '创建币种', labelEn: 'Create Currencies', labelJa: '通貨を作成', labelKo: '통화 생성' },
+      { code: PERMISSIONS.CURRENCY_EDIT, label: '编辑币种', labelEn: 'Edit Currencies', labelJa: '通貨を編集', labelKo: '통화 편집' },
+      { code: PERMISSIONS.CURRENCY_DELETE, label: '删除币种', labelEn: 'Delete Currencies', labelJa: '通貨を削除', labelKo: '통화 삭제' },
+      { code: PERMISSIONS.CURRENCY_TOGGLE_ACTIVE, label: '启用/禁用币种', labelEn: 'Toggle Currency Active Status', labelJa: '通貨を有効/無効化', labelKo: '통화 활성화/비활성화' }
     ]
   },
   {
@@ -437,6 +462,7 @@ const MENU_PERMISSIONS = {
   '/notifications': PERMISSIONS.NOTIFICATION_VIEW,
   '/city-levels': PERMISSIONS.CITY_LEVEL_VIEW,
   '/job-levels': PERMISSIONS.JOB_LEVEL_VIEW,
+  '/currencies': PERMISSIONS.CURRENCY_VIEW,
   '/standard-match': PERMISSIONS.STANDARD_MATCH_VIEW,
   '/search': PERMISSIONS.SEARCH_VIEW,
   '/budgets': PERMISSIONS.BUDGET_VIEW,

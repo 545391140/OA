@@ -55,8 +55,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import { PERMISSIONS } from '../../config/permissions';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
 
 // 开发环境日志辅助函数
 const devLog = (...args) => {
@@ -72,11 +74,19 @@ const devError = (...args) => {
 };
 
 const ExpenseDetail = () => {
-  const { t } = useTranslation();
-  const { user } = useAuth();
+  const { t, i18n } = useTranslation();
+  const { user, hasPermission } = useAuth();
   const { showNotification } = useNotification();
+  const canEdit = hasPermission(PERMISSIONS.EXPENSE_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.EXPENSE_DELETE);
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // 货币格式化函数（使用国际化）
+  const formatCurrency = (amount, currency = 'USD') => {
+    const locale = i18n.language || 'en';
+    return formatCurrencyUtil(parseFloat(amount || 0), currency, locale);
+  };
 
   const [expense, setExpense] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -336,21 +346,25 @@ const ExpenseDetail = () => {
           <Box sx={{ display: 'flex', gap: 1 }}>
             {expense.status === 'draft' && (
               <>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  onClick={handleEdit}
-                >
-                  {t('common.edit')}
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DeleteIcon />}
-                  onClick={handleDelete}
-                >
-                  {t('common.delete')}
-                </Button>
+                {(canEdit || expense.employee?._id === user?.id) && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={handleEdit}
+                  >
+                    {t('common.edit')}
+                  </Button>
+                )}
+                {(canDelete || expense.employee?._id === user?.id) && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={handleDelete}
+                  >
+                    {t('common.delete')}
+                  </Button>
+                )}
               </>
             )}
           </Box>
@@ -386,11 +400,11 @@ const ExpenseDetail = () => {
                     </Typography>
                   </Box>
                   <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
-                    {expense.currency} {expense.amount?.toLocaleString() || 0}
+                    {formatCurrency(expense.amount, expense.currency)}
                   </Typography>
                   {expense.localAmount && expense.localCurrency && (
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      ({expense.localCurrency} {expense.localAmount?.toLocaleString()})
+                      ({formatCurrency(expense.localAmount, expense.localCurrency)})
                       {expense.exchangeRate && expense.exchangeRate !== 1 && (
                         <span> • {t('expense.exchangeRate')}: {expense.exchangeRate}</span>
                       )}
@@ -671,7 +685,7 @@ const ExpenseDetail = () => {
                                 {invoice.invoiceNumber || t('invoice.noNumber')}
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
-                                {invoice.currency} {(invoice.totalAmount || invoice.amount || 0).toLocaleString()}
+                                {formatCurrency(invoice.totalAmount || invoice.amount || 0, invoice.currency)}
                               </Typography>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
                                 {invoice.vendor?.name && (
@@ -832,7 +846,7 @@ const ExpenseDetail = () => {
                   <CardContent sx={{ textAlign: 'center', py: 2 }}>
                     <MoneyIcon color="primary" sx={{ fontSize: 32, mb: 1 }} />
                     <Typography variant="h6" color="primary">
-                      {expense.currency} {expense.amount?.toLocaleString() || 0}
+                      {formatCurrency(expense.amount, expense.currency)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {t('expense.amount')}

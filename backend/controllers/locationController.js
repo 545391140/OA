@@ -315,7 +315,7 @@ exports.getLocations = async (req, res) => {
           total = await Location.countDocuments(findQuery);
         } catch (countError) {
           // 如果 countDocuments 失败，使用 find 估算（限制查询数量以提高性能）
-          console.warn('[LocationController] countDocuments 失败，使用 find 估算总数:', countError.message);
+          logger.warn('[LocationController] countDocuments 失败，使用 find 估算总数:', countError.message);
           const estimateLimit = 10000;
           const estimateResults = await Location.find(findQuery).limit(estimateLimit + 1).lean();
           total = estimateResults.length;
@@ -463,7 +463,7 @@ exports.getLocations = async (req, res) => {
           error.code === 27 // MongoDB error code for text index not found
         )
       )) {
-        console.warn('[LocationController] 文本索引查询失败，降级使用正则表达式:', error.message);
+        logger.warn('[LocationController] 文本索引查询失败，降级使用正则表达式:', error.message);
         
         // 重新构建查询，使用正则表达式
         const searchTrimmed = search.trim();
@@ -534,7 +534,7 @@ exports.getLocations = async (req, res) => {
         }
       } else {
         // 其他错误，直接抛出
-        console.error('[LocationController] 查询失败:', error);
+        logger.error('[LocationController] 查询失败:', error);
         throw error;
       }
     }
@@ -595,7 +595,7 @@ exports.getLocations = async (req, res) => {
         });
       } catch (parentError) {
         // 如果查询 parentId 失败，不影响主查询结果
-        console.warn('[LocationController] 批量查询 parentId 失败:', parentError.message);
+        logger.warn('[LocationController] 批量查询 parentId 失败:', parentError.message);
       }
     }
 
@@ -647,7 +647,7 @@ exports.getLocationById = async (req, res) => {
       data: location
     });
   } catch (error) {
-    console.error('Get location error:', error);
+    logger.error('Get location error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -670,7 +670,7 @@ exports.getLocationsByParent = async (req, res) => {
       data: locations
     });
   } catch (error) {
-    console.error('Get locations by parent error:', error);
+    logger.error('Get locations by parent error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -704,7 +704,7 @@ exports.createLocation = async (req, res) => {
       data: location
     });
   } catch (error) {
-    console.error('Create location error:', error);
+    logger.error('Create location error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -756,7 +756,7 @@ exports.updateLocation = async (req, res) => {
       data: location
     });
   } catch (error) {
-    console.error('Update location error:', error);
+    logger.error('Update location error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -785,7 +785,7 @@ exports.deleteLocation = async (req, res) => {
       message: 'Location deleted successfully'
     });
   } catch (error) {
-    console.error('Delete location error:', error);
+    logger.error('Delete location error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -823,7 +823,7 @@ exports.batchCreateLocations = async (req, res) => {
       data: createdLocations
     });
   } catch (error) {
-    console.error('Batch create locations error:', error);
+    logger.error('Batch create locations error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',

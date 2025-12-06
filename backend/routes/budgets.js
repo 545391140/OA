@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -33,7 +34,7 @@ router.get('/', protect, async (req, res) => {
       data: budgetData
     });
   } catch (error) {
-    console.error('Get budget error:', error);
+    logger.error('Get budget error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

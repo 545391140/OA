@@ -61,10 +61,12 @@ import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 import { numberToChinese } from '../../utils/numberToChinese';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
+import { PERMISSIONS } from '../../config/permissions';
 
 const TravelDetail = () => {
   const { t, i18n } = useTranslation();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { showNotification } = useNotification();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -283,8 +285,11 @@ const TravelDetail = () => {
     return icons[type] || <FlightIcon />;
   };
 
-  const formatCurrency = (amount) => {
-    return `¥${parseFloat(amount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  // 货币格式化函数（使用国际化）
+  const formatCurrency = (amount, currency = null) => {
+    const currencyCode = currency || travel?.currency || 'USD';
+    const locale = i18n.language || 'en';
+    return formatCurrencyUtil(parseFloat(amount || 0), currencyCode, locale);
   };
 
   // 统一的金额提取函数 - 从数据库预算项中提取subtotal
@@ -294,13 +299,31 @@ const TravelDetail = () => {
     }
     if (typeof item === 'object' && item !== null) {
       // 数据库中的预算项结构：{ itemId, itemName, quantity, unitPrice, subtotal }
-      // 优先使用subtotal字段
+      // 优先使用subtotal字段（可能是字符串或数字）
       const subtotal = item.subtotal;
       if (subtotal !== undefined && subtotal !== null) {
+        // 处理字符串格式的金额（前端表单中保存的格式）
+        if (typeof subtotal === 'string') {
+          const parsed = parseFloat(subtotal.replace(/[^\d.-]/g, '')); // 移除货币符号等
+          return isNaN(parsed) ? 0 : parsed;
+        }
         return parseFloat(subtotal) || 0;
       }
       // 降级处理：尝试其他可能的字段
-      return parseFloat(item.amount) || parseFloat(item.total) || 0;
+      if (item.amount !== undefined && item.amount !== null) {
+        return parseFloat(item.amount) || 0;
+      }
+      if (item.total !== undefined && item.total !== null) {
+        return parseFloat(item.total) || 0;
+      }
+      // 如果都没有，尝试计算：unitPrice * quantity
+      if (item.unitPrice !== undefined && item.quantity !== undefined) {
+        const unitPrice = typeof item.unitPrice === 'string' 
+          ? parseFloat(item.unitPrice.replace(/[^\d.-]/g, '')) 
+          : parseFloat(item.unitPrice) || 0;
+        const quantity = parseFloat(item.quantity) || 0;
+        return unitPrice * quantity;
+      }
     }
     return 0;
   };
@@ -325,6 +348,46 @@ const TravelDetail = () => {
     
     // 最后降级显示itemId或fallbackKey
     return itemId || fallbackKey;
+  };
+
+  // 统一处理目的地显示（支持字符串和对象格式）
+  const formatDestination = (destination) => {
+    if (!destination) return '-';
+    
+    // 如果是字符串，直接返回
+    if (typeof destination === 'string') {
+      return destination.trim() || '-';
+    }
+    
+    // 如果是对象，提取显示文本
+    if (typeof destination === 'object' && destination !== null) {
+      // 优先使用 name 字段
+      if (destination.name) {
+        const name = typeof destination.name === 'string' ? destination.name : (destination.name.name || destination.name.city || '');
+        const country = destination.country || '';
+        if (name && country) {
+          return `${name}, ${country}`;
+        }
+        return name || '-';
+      }
+      
+      // 其次使用 city 字段
+      if (destination.city) {
+        const city = typeof destination.city === 'string' ? destination.city : '';
+        const country = destination.country || '';
+        if (city && country) {
+          return `${city}, ${country}`;
+        }
+        return city || '-';
+      }
+      
+      // 最后尝试直接使用 country
+      if (destination.country) {
+        return destination.country;
+      }
+    }
+    
+    return '-';
   };
 
   // 计算预算总和 - 累加所有预算项的subtotal
@@ -633,23 +696,27 @@ const TravelDetail = () => {
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
           {/* 编辑和删除按钮 - 仅草稿状态 */}
-          {(user?.role === 'admin' || travel.employee?._id === user?.id) && travel.status === 'draft' && (
+          {((hasPermission(PERMISSIONS.TRAVEL_EDIT) && hasPermission(PERMISSIONS.TRAVEL_DELETE)) || travel.employee?._id === user?.id) && travel.status === 'draft' && (
             <>
-            <Button
+            {((hasPermission(PERMISSIONS.TRAVEL_EDIT) || travel.employee?._id === user?.id)) && (
+              <Button
                 variant="contained"
-              startIcon={<EditIcon />}
-              onClick={handleEdit}
-            >
+                startIcon={<EditIcon />}
+                onClick={handleEdit}
+              >
                 {t('common.edit')}
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={handleDelete}
-            >
+              </Button>
+            )}
+            {((hasPermission(PERMISSIONS.TRAVEL_DELETE) || travel.employee?._id === user?.id)) && (
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleDelete}
+              >
                 {t('common.delete')}
               </Button>
+            )}
             </>
           )}
           
@@ -675,8 +742,8 @@ const TravelDetail = () => {
             </>
           )}
           
-          {/* 标记为已完成按钮 - 仅已批准状态，申请人或管理员可见 */}
-          {(user?.role === 'admin' || travel.employee?._id === user?.id) && 
+          {/* 标记为已完成按钮 - 仅已批准状态，申请人或有编辑权限的用户可见 */}
+          {((hasPermission(PERMISSIONS.TRAVEL_EDIT) || travel.employee?._id === user?.id)) && 
            travel.status === 'approved' && (
             <Button
               variant="contained"
@@ -733,8 +800,12 @@ const TravelDetail = () => {
                     {t('travel.detail.travelType')}
                   </Typography>
                   <Typography variant="body2">
-                    {travel.tripType === 'international' ? t('travel.international') : t('travel.domestic')}
-                    </Typography>
+                    {travel.tripType === 'cross_border' 
+                      ? t('travel.tripTypes.cross_border') 
+                      : travel.tripType === 'international' 
+                        ? t('travel.international') 
+                        : t('travel.domestic')}
+                  </Typography>
                 </Box>
                 </Grid>
 
@@ -744,9 +815,7 @@ const TravelDetail = () => {
                     {t('travel.detail.destination')}
                   </Typography>
                   <Typography variant="body2">
-                    {typeof travel.destination === 'string' 
-                      ? travel.destination 
-                      : (travel.destination?.city || travel.destination?.name || '-')}
+                    {formatDestination(travel.destination)}
                   </Typography>
                 </Box>
                 </Grid>
@@ -820,7 +889,7 @@ const TravelDetail = () => {
                         {t('travel.detail.from')}
                       </Typography>
                       <Typography variant="body2">
-                        {travel.outbound.departure || '-'}
+                        {formatDestination(travel.outbound.departure)}
                       </Typography>
                     </Grid>
                     <Grid item xs={6} md={3}>
@@ -828,7 +897,7 @@ const TravelDetail = () => {
                         {t('travel.detail.to')}
                       </Typography>
                       <Typography variant="body2">
-                        {travel.outbound.destination || '-'}
+                        {formatDestination(travel.outbound.destination)}
                       </Typography>
                     </Grid>
                     <Grid item xs={6} md={3}>
@@ -868,7 +937,7 @@ const TravelDetail = () => {
                         {t('travel.detail.from')}
                       </Typography>
                       <Typography variant="body2">
-                        {travel.inbound.departure || '-'}
+                        {formatDestination(travel.inbound.departure)}
                       </Typography>
           </Grid>
                     <Grid item xs={6} md={3}>
@@ -876,7 +945,7 @@ const TravelDetail = () => {
                         {t('travel.detail.to')}
               </Typography>
                       <Typography variant="body2">
-                        {travel.inbound.destination || '-'}
+                        {formatDestination(travel.inbound.destination)}
                   </Typography>
                     </Grid>
                     <Grid item xs={6} md={3}>
@@ -920,7 +989,7 @@ const TravelDetail = () => {
                           {t('travel.detail.from')}
                         </Typography>
                         <Typography variant="body2">
-                          {route.departure || '-'}
+                          {formatDestination(route.departure)}
                         </Typography>
                       </Grid>
                       <Grid item xs={6} md={3}>
@@ -928,7 +997,7 @@ const TravelDetail = () => {
                           {t('travel.detail.to')}
                         </Typography>
                         <Typography variant="body2">
-                          {route.destination || '-'}
+                          {formatDestination(route.destination)}
                         </Typography>
                       </Grid>
                       <Grid item xs={6} md={3}>
@@ -1437,7 +1506,7 @@ const TravelDetail = () => {
                               {t('expense.amount') || '金额'}
                             </Typography>
                             <Typography variant="body2" fontWeight={600}>
-                              {expense.currency} {expense.amount?.toLocaleString() || 0}
+                              {formatCurrency(expense.amount, expense.currency)}
                             </Typography>
                           </Grid>
                           <Grid item xs={6} sm={3}>

@@ -1,4 +1,3 @@
-const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 
 const TravelSchema = new mongoose.Schema({
@@ -276,10 +275,10 @@ TravelSchema.post('save', async function(doc) {
         if (travel && travel.status === 'completed' && 
             travel.expenseGenerationStatus === 'pending') {
           await expenseMatchService.autoGenerateExpenses(travel);
-          logger.info(`Auto-generated expenses for travel ${travel.travelNumber || travel._id}`);
+          console.log(`Auto-generated expenses for travel ${travel.travelNumber || travel._id}`);
         }
       } catch (error) {
-        logger.error('Failed to auto-generate expenses:', error);
+        console.error('Failed to auto-generate expenses:', error);
         // 更新错误状态（使用updateOne避免触发save hook）
         try {
           const Travel = mongoose.model('Travel');
@@ -293,7 +292,7 @@ TravelSchema.post('save', async function(doc) {
             }
           );
         } catch (updateError) {
-          logger.error('Failed to update travel error status:', updateError);
+          console.error('Failed to update travel error status:', updateError);
         }
       } finally {
         // 清除标记

@@ -1185,6 +1185,7 @@
     "generationType.ai": "AI生成",
     "generationType.manual": "手动生成",
     "vendor": "供应商",
+    "vendorName": "供应商名称",
     "receipts": "附件",
     "project": "项目",
     "costCenter": "成本中心",

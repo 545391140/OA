@@ -4,6 +4,7 @@
  */
 
 const ctripApiService = require('../services/ctripApiService');
+const logger = require('../utils/logger');
 
 /**
  * 获取Ticket
@@ -21,7 +22,7 @@ exports.getTicket = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('获取Ticket失败:', error);
+    logger.error('获取Ticket失败:', error);
     res.status(500).json({
       success: false,
       message: error.message || '获取Ticket失败',
@@ -45,7 +46,7 @@ exports.getCountries = async (req, res) => {
       data: countries,
     });
   } catch (error) {
-    console.error('获取国家数据失败:', error);
+    logger.error('获取国家数据失败:', error);
     res.status(500).json({
       success: false,
       message: error.message || '获取国家数据失败',
@@ -100,7 +101,7 @@ exports.getPOIInfo = async (req, res) => {
       data: poiData,
     });
   } catch (error) {
-    console.error('获取POI数据失败:', error);
+    logger.error('获取POI数据失败:', error);
     res.status(500).json({
       success: false,
       message: error.message || '获取POI数据失败',
@@ -157,7 +158,7 @@ exports.getPOIAsLocations = async (req, res) => {
       invalidGeoList: poiData.invalidGeoList || [],
     });
   } catch (error) {
-    console.error('获取Location数据失败:', error);
+    logger.error('获取Location数据失败:', error);
     res.status(500).json({
       success: false,
       message: error.message || '获取Location数据失败',

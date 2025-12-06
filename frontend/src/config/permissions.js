@@ -59,12 +59,14 @@ export const PERMISSIONS = {
   ROLE_CREATE: 'role.create',
   ROLE_EDIT: 'role.edit',
   ROLE_DELETE: 'role.delete',
+  ROLE_TOGGLE_ACTIVE: 'role.toggleActive',
   
   // 职位管理
   POSITION_VIEW: 'position.view',
   POSITION_CREATE: 'position.create',
   POSITION_EDIT: 'position.edit',
   POSITION_DELETE: 'position.delete',
+  POSITION_TOGGLE_ACTIVE: 'position.toggleActive',
   
   // 用户管理
   USER_VIEW: 'user.view',
@@ -110,6 +112,13 @@ export const PERMISSIONS = {
   JOB_LEVEL_EDIT: 'job.level.edit',
   JOB_LEVEL_DELETE: 'job.level.delete',
   
+  // 币种管理
+  CURRENCY_VIEW: 'currency.view',
+  CURRENCY_CREATE: 'currency.create',
+  CURRENCY_EDIT: 'currency.edit',
+  CURRENCY_DELETE: 'currency.delete',
+  CURRENCY_TOGGLE_ACTIVE: 'currency.toggleActive',
+  
   // 标准匹配
   STANDARD_MATCH_VIEW: 'standard.match.view',
   STANDARD_MATCH_USE: 'standard.match.use',
@@ -151,6 +160,7 @@ export const MENU_PERMISSIONS = {
   '/notifications': PERMISSIONS.NOTIFICATION_VIEW,
   '/city-levels': PERMISSIONS.CITY_LEVEL_VIEW,
   '/job-levels': PERMISSIONS.JOB_LEVEL_VIEW,
+  '/currencies': PERMISSIONS.CURRENCY_VIEW,
   '/standard-match': PERMISSIONS.STANDARD_MATCH_VIEW,
   '/search': PERMISSIONS.SEARCH_VIEW,
   '/budgets': PERMISSIONS.BUDGET_VIEW,

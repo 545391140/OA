@@ -32,6 +32,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+import { PERMISSIONS } from '../../config/permissions';
 
 const StandardDetail = () => {
   const { t } = useTranslation();
@@ -66,7 +67,11 @@ const StandardDetail = () => {
     }
   };
 
-  const canEdit = user?.role === 'admin' || user?.role === 'finance';
+  const { hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.TRAVEL_STANDARD_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.TRAVEL_STANDARD_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.TRAVEL_STANDARD_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.TRAVEL_STANDARD_DELETE);
 
   const getStatusColor = (status) => {
     const colorMap = {

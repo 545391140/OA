@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { protect, authorize } = require('../middleware/auth');
 const Department = require('../models/Department');
 const User = require('../models/User');
@@ -125,7 +126,7 @@ router.get('/', protect, async (req, res) => {
       data: departments
     });
   } catch (error) {
-    console.error('Get departments error:', error);
+    logger.error('Get departments error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -155,7 +156,7 @@ router.get('/:id', protect, async (req, res) => {
       data: department
     });
   } catch (error) {
-    console.error('Get department error:', error);
+    logger.error('Get department error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -218,7 +219,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
       data: department
     });
   } catch (error) {
-    console.error('Create department error:', error);
+    logger.error('Create department error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -301,7 +302,7 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
       data: department
     });
   } catch (error) {
-    console.error('Update department error:', error);
+    logger.error('Update department error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -348,7 +349,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       message: 'Department deleted successfully'
     });
   } catch (error) {
-    console.error('Delete department error:', error);
+    logger.error('Delete department error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'

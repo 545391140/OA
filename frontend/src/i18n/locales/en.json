@@ -1181,6 +1181,7 @@
     "generationType.ai": "AI Generated",
     "generationType.manual": "Manual",
     "vendor": "Vendor",
+    "vendorName": "Vendor Name",
     "vendorAddress": "Vendor Address",
     "taxId": "Tax ID",
     "receipts": "Receipts",

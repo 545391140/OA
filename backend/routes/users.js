@@ -1,12 +1,15 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, checkPermission } = require('../middleware/auth');
+const { PERMISSIONS } = require('../config/permissions');
 const asyncHandler = require('../utils/asyncHandler');
 const logger = require('../utils/logger');
 const { ErrorFactory } = require('../utils/AppError');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const Position = require('../models/Position');
+const Location = require('../models/Location');
 const { clearDepartmentUserCache } = require('../utils/dataScope');
 
 const router = express.Router();
@@ -14,7 +17,7 @@ const router = express.Router();
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Private/Admin
-router.get('/', protect, authorize('admin'), async (req, res) => {
+router.get('/', protect, checkPermission(PERMISSIONS.USER_VIEW), async (req, res) => {
   try {
     const { isActive, search, role, position, department } = req.query;
     
@@ -55,22 +58,102 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
         .map(id => id.toString ? id.toString() : id)
     )];
 
-    // 步骤 2：批量查询关联数据（只在有 ID 时才查询）
+    // 步骤 2：收集所有需要 populate 的 Location ID（常驻国和常驻城市）
+    const locationIds = new Set();
+    users.forEach(user => {
+      // 处理常驻国
+      if (user.residenceCountry) {
+        if (typeof user.residenceCountry === 'object' && user.residenceCountry._id) {
+          // 已经是对象，不需要populate
+          locationIds.add(user.residenceCountry._id.toString());
+        } else if (typeof user.residenceCountry === 'string') {
+          // 如果是字符串，检查是否是有效的ObjectId
+          if (mongoose.Types.ObjectId.isValid(user.residenceCountry) && user.residenceCountry.length === 24) {
+            locationIds.add(user.residenceCountry);
+          }
+          // 如果不是有效的ObjectId（可能是代码或名称），保持原样，不populate
+        }
+      }
+      // 处理常驻城市
+      if (user.residenceCity) {
+        if (typeof user.residenceCity === 'object' && user.residenceCity._id) {
+          // 已经是对象，不需要populate
+          locationIds.add(user.residenceCity._id.toString());
+        } else if (typeof user.residenceCity === 'string') {
+          // 如果是字符串，检查是否是有效的ObjectId
+          if (mongoose.Types.ObjectId.isValid(user.residenceCity) && user.residenceCity.length === 24) {
+            locationIds.add(user.residenceCity);
+          }
+          // 如果不是有效的ObjectId（可能是代码或名称），保持原样，不populate
+        }
+      }
+    });
+
+    // 步骤 3：批量查询关联数据
     const managers = managerIds.length > 0
       ? await User.find({ _id: { $in: managerIds } })
           .select('firstName lastName email')
           .lean()
       : [];
 
-    // 步骤 3：创建 ID 到数据的映射表
-    const managerMap = new Map(managers.map(m => [m._id.toString(), m]));
+    const locations = locationIds.size > 0
+      ? await Location.find({ _id: { $in: [...locationIds] } })
+          .select('name enName code type country countryCode')
+          .lean()
+      : [];
 
-    // 步骤 4：合并数据到原始文档中（模拟 Mongoose populate 的行为）
+    // 步骤 4：创建 ID 到数据的映射表
+    const managerMap = new Map(managers.map(m => [m._id.toString(), m]));
+    const locationMap = new Map(locations.map(loc => [loc._id.toString(), loc]));
+
+    // 步骤 5：合并数据到原始文档中（模拟 Mongoose populate 的行为）
     users.forEach(user => {
       // Populate manager
       if (user.manager) {
         const managerId = user.manager.toString ? user.manager.toString() : user.manager;
         user.manager = managerMap.get(managerId) || null;
+      }
+      
+      // Populate residenceCountry
+      if (user.residenceCountry) {
+        if (typeof user.residenceCountry === 'object' && user.residenceCountry._id) {
+          // 已经是对象，尝试从map中获取更新版本
+          const countryId = user.residenceCountry._id.toString();
+          const populatedCountry = locationMap.get(countryId);
+          if (populatedCountry) {
+            user.residenceCountry = populatedCountry;
+          }
+        } else if (typeof user.residenceCountry === 'string') {
+          // 如果是字符串，检查是否是有效的ObjectId
+          if (mongoose.Types.ObjectId.isValid(user.residenceCountry) && user.residenceCountry.length === 24) {
+            const populatedCountry = locationMap.get(user.residenceCountry);
+            if (populatedCountry) {
+              user.residenceCountry = populatedCountry;
+            }
+          }
+          // 如果不是有效的ObjectId（可能是代码或名称），保持原样
+        }
+      }
+      
+      // Populate residenceCity
+      if (user.residenceCity) {
+        if (typeof user.residenceCity === 'object' && user.residenceCity._id) {
+          // 已经是对象，尝试从map中获取更新版本
+          const cityId = user.residenceCity._id.toString();
+          const populatedCity = locationMap.get(cityId);
+          if (populatedCity) {
+            user.residenceCity = populatedCity;
+          }
+        } else if (typeof user.residenceCity === 'string') {
+          // 如果是字符串，检查是否是有效的ObjectId
+          if (mongoose.Types.ObjectId.isValid(user.residenceCity) && user.residenceCity.length === 24) {
+            const populatedCity = locationMap.get(user.residenceCity);
+            if (populatedCity) {
+              user.residenceCity = populatedCity;
+            }
+          }
+          // 如果不是有效的ObjectId（可能是代码或名称），保持原样
+        }
       }
     });
 
@@ -125,7 +208,7 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
 // @access  Private/Admin
 router.post('/', [
   protect,
-  authorize('admin'),
+  checkPermission(PERMISSIONS.USER_CREATE),
   body('employeeId').notEmpty().withMessage('Employee ID is required'),
   body('firstName').notEmpty().withMessage('First name is required'),
   body('lastName').notEmpty().withMessage('Last name is required'),
@@ -156,7 +239,9 @@ router.post('/', [
       position,
       jobLevel,
       manager,
-      phone
+      phone,
+      residenceCountry,
+      residenceCity
     } = req.body;
 
     // Check if user exists
@@ -193,7 +278,8 @@ router.post('/', [
       }
     }
 
-    const user = await User.create({
+    // 构建用户数据对象
+    const userData = {
       employeeId,
       firstName,
       lastName,
@@ -202,10 +288,20 @@ router.post('/', [
       role,
       department,
       position,
-      jobLevel,
+      jobLevel: jobLevel || undefined,
       manager: manager || undefined,
-      phone
-    });
+      phone: phone || undefined,
+    };
+    
+    // 只有当residenceCountry和residenceCity有值时才添加
+    if (residenceCountry) {
+      userData.residenceCountry = residenceCountry;
+    }
+    if (residenceCity) {
+      userData.residenceCity = residenceCity;
+    }
+    
+    const user = await User.create(userData);
 
     const userResponse = await User.findById(user._id)
       .select('-password')
@@ -234,7 +330,7 @@ router.post('/', [
 // @access  Private/Admin
 router.put('/:id', [
   protect,
-  authorize('admin'),
+  checkPermission(PERMISSIONS.USER_EDIT),
   body('email').optional().isEmail().withMessage('Please include a valid email'),
   body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
 ], async (req, res) => {
@@ -346,7 +442,7 @@ router.put('/:id', [
 // @desc    Delete user
 // @route   DELETE /api/users/:id
 // @access  Private/Admin
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+router.delete('/:id', protect, checkPermission(PERMISSIONS.USER_DELETE), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
@@ -376,7 +472,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
 // @desc    Toggle user active status
 // @route   PATCH /api/users/:id/toggle-active
 // @access  Private/Admin
-router.patch('/:id/toggle-active', protect, authorize('admin'), async (req, res) => {
+router.patch('/:id/toggle-active', protect, checkPermission(PERMISSIONS.USER_TOGGLE_ACTIVE), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {

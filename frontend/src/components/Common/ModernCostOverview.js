@@ -19,6 +19,8 @@ import {
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
+import { convertFromCNY, convertToCNY } from '../../utils/currencyConverter';
 
 const ModernCostOverview = ({
   formData,
@@ -28,7 +30,12 @@ const ModernCostOverview = ({
   sx = {},
 }) => {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  
+  // 确保currency是大写的有效货币代码
+  const normalizedCurrency = (currency && typeof currency === 'string') 
+    ? currency.toUpperCase() 
+    : 'USD';
 
   // 根据费用项信息将其分类到对应的费用类别
   const categorizeExpense = (expense) => {
@@ -60,6 +67,40 @@ const ModernCostOverview = ({
     return 'other';
   };
 
+  // 辅助函数：将金额转换为目标币种
+  // formData 中的金额应该已经是以 formData.currency 存储的
+  // 如果 formData.currency 和传入的 currency prop 不同，需要进行转换
+  // 但是，由于 currency prop 总是等于 formData.currency，所以理论上不需要转换
+  // 这里保留转换逻辑是为了处理边缘情况（比如数据加载时的币种不一致）
+  const convertAmount = (amount, sourceCurrency = null) => {
+    if (!amount || amount === 0) return 0;
+    
+    // 如果源币种未指定，使用 formData.currency 或默认 CNY
+    const srcCurrency = sourceCurrency || formData.currency || 'CNY';
+    const srcCurrencyUpper = srcCurrency.toUpperCase();
+    const targetCurrencyUpper = normalizedCurrency;
+    
+    // 如果源币种和目标币种相同，直接返回（不需要转换）
+    // 这是最常见的情况，因为 currency prop 应该总是等于 formData.currency
+    if (srcCurrencyUpper === targetCurrencyUpper) {
+      return amount;
+    }
+    
+    // 如果源币种是 CNY，直接转换为目标币种
+    if (srcCurrencyUpper === 'CNY') {
+      return convertFromCNY(amount, targetCurrencyUpper, null, false);
+    }
+    
+    // 如果目标币种是 CNY，直接转换
+    if (targetCurrencyUpper === 'CNY') {
+      return convertToCNY(amount, srcCurrencyUpper, null, false);
+    }
+    
+    // 否则，需要先转换为 CNY，再转换为目标币种
+    const amountCNY = convertToCNY(amount, srcCurrencyUpper, null, false);
+    return convertFromCNY(amountCNY, targetCurrencyUpper, null, false);
+  };
+
   // 计算各项费用
   const calculateCosts = () => {
     const costs = {
@@ -79,22 +120,28 @@ const ModernCostOverview = ({
     if (!matchedExpenseItems || Object.keys(matchedExpenseItems).length === 0) {
       // 计算去程费用（旧方式，向后兼容）
     if (formData.outboundBudget) {
-      costs.flight += parseFloat(formData.outboundBudget.flight?.subtotal || 0);
-      costs.accommodation += parseFloat(formData.outboundBudget.accommodation?.subtotal || 0);
-      costs.localTransport += parseFloat(formData.outboundBudget.localTransport?.subtotal || 0);
-      costs.airportTransfer += parseFloat(formData.outboundBudget.airportTransfer?.subtotal || 0);
-      costs.allowance += parseFloat(formData.outboundBudget.allowance?.subtotal || 0);
-      costs.outboundTotal = costs.flight + costs.accommodation + costs.localTransport + costs.airportTransfer + costs.allowance;
+      const flightAmount = convertAmount(parseFloat(formData.outboundBudget.flight?.subtotal || 0));
+      const accommodationAmount = convertAmount(parseFloat(formData.outboundBudget.accommodation?.subtotal || 0));
+      const localTransportAmount = convertAmount(parseFloat(formData.outboundBudget.localTransport?.subtotal || 0));
+      const airportTransferAmount = convertAmount(parseFloat(formData.outboundBudget.airportTransfer?.subtotal || 0));
+      const allowanceAmount = convertAmount(parseFloat(formData.outboundBudget.allowance?.subtotal || 0));
+      
+      costs.flight += flightAmount;
+      costs.accommodation += accommodationAmount;
+      costs.localTransport += localTransportAmount;
+      costs.airportTransfer += airportTransferAmount;
+      costs.allowance += allowanceAmount;
+      costs.outboundTotal = flightAmount + accommodationAmount + localTransportAmount + airportTransferAmount + allowanceAmount;
     }
 
       // 计算返程费用（旧方式，向后兼容）
       const isRoundTrip = formData.tripType === 'roundTrip' || (formData.inbound && formData.inbound.date);
       if (isRoundTrip && formData.inboundBudget) {
-      const inboundFlight = parseFloat(formData.inboundBudget.flight?.subtotal || 0);
-      const inboundAccommodation = parseFloat(formData.inboundBudget.accommodation?.subtotal || 0);
-      const inboundLocalTransport = parseFloat(formData.inboundBudget.localTransport?.subtotal || 0);
-      const inboundAirportTransfer = parseFloat(formData.inboundBudget.airportTransfer?.subtotal || 0);
-      const inboundAllowance = parseFloat(formData.inboundBudget.allowance?.subtotal || 0);
+      const inboundFlight = convertAmount(parseFloat(formData.inboundBudget.flight?.subtotal || 0));
+      const inboundAccommodation = convertAmount(parseFloat(formData.inboundBudget.accommodation?.subtotal || 0));
+      const inboundLocalTransport = convertAmount(parseFloat(formData.inboundBudget.localTransport?.subtotal || 0));
+      const inboundAirportTransfer = convertAmount(parseFloat(formData.inboundBudget.airportTransfer?.subtotal || 0));
+      const inboundAllowance = convertAmount(parseFloat(formData.inboundBudget.allowance?.subtotal || 0));
       
       costs.inboundTotal = inboundFlight + inboundAccommodation + inboundLocalTransport + inboundAirportTransfer + inboundAllowance;
       
@@ -109,11 +156,11 @@ const ModernCostOverview = ({
       if (formData.multiCityRoutesBudget && Array.isArray(formData.multiCityRoutesBudget)) {
         formData.multiCityRoutesBudget.forEach((budget) => {
           if (budget && typeof budget === 'object') {
-            const multiCityFlight = parseFloat(budget.flight?.subtotal || 0);
-            const multiCityAccommodation = parseFloat(budget.accommodation?.subtotal || 0);
-            const multiCityLocalTransport = parseFloat(budget.localTransport?.subtotal || 0);
-            const multiCityAirportTransfer = parseFloat(budget.airportTransfer?.subtotal || 0);
-            const multiCityAllowance = parseFloat(budget.allowance?.subtotal || 0);
+            const multiCityFlight = convertAmount(parseFloat(budget.flight?.subtotal || 0));
+            const multiCityAccommodation = convertAmount(parseFloat(budget.accommodation?.subtotal || 0));
+            const multiCityLocalTransport = convertAmount(parseFloat(budget.localTransport?.subtotal || 0));
+            const multiCityAirportTransfer = convertAmount(parseFloat(budget.airportTransfer?.subtotal || 0));
+            const multiCityAllowance = convertAmount(parseFloat(budget.allowance?.subtotal || 0));
             
             const routeTotal = multiCityFlight + multiCityAccommodation + multiCityLocalTransport + multiCityAirportTransfer + multiCityAllowance;
             
@@ -138,7 +185,7 @@ const ModernCostOverview = ({
         const outboundMatchedItems = routeMatchedExpenseItems?.outbound || matchedExpenseItems;
         Object.entries(formData.outboundBudget).forEach(([itemId, budgetItem]) => {
           const expense = outboundMatchedItems?.[itemId] || matchedExpenseItems?.[itemId];
-          const subtotal = parseFloat(budgetItem.subtotal || 0);
+          const subtotal = convertAmount(parseFloat(budgetItem.subtotal || 0));
           const category = categorizeExpense(expense);
           costs[category] += subtotal;
           costs.outboundTotal += subtotal;
@@ -152,7 +199,7 @@ const ModernCostOverview = ({
         const inboundMatchedItems = routeMatchedExpenseItems?.inbound || matchedExpenseItems;
         Object.entries(formData.inboundBudget).forEach(([itemId, budgetItem]) => {
           const expense = inboundMatchedItems?.[itemId] || matchedExpenseItems?.[itemId];
-          const subtotal = parseFloat(budgetItem.subtotal || 0);
+          const subtotal = convertAmount(parseFloat(budgetItem.subtotal || 0));
           const category = categorizeExpense(expense);
           costs[category] += subtotal;
           costs.inboundTotal += subtotal;
@@ -169,7 +216,7 @@ const ModernCostOverview = ({
             
             Object.entries(budget).forEach(([itemId, budgetItem]) => {
               const expense = multiCityMatchedItems?.[itemId] || matchedExpenseItems?.[itemId];
-              const subtotal = parseFloat(budgetItem.subtotal || 0);
+              const subtotal = convertAmount(parseFloat(budgetItem.subtotal || 0));
               const category = categorizeExpense(expense);
               costs[category] += subtotal;
               routeTotal += subtotal;
@@ -203,7 +250,7 @@ const ModernCostOverview = ({
       Object.entries(budget).forEach(([itemId, budgetItem]) => {
         if (!budgetItem || typeof budgetItem !== 'object') return;
         
-        const subtotal = parseFloat(budgetItem.subtotal || 0);
+        const subtotal = convertAmount(parseFloat(budgetItem.subtotal || 0));
         if (subtotal <= 0) return; // 只收集有金额的项
         
         const expense = matchedItems?.[itemId];
@@ -328,10 +375,10 @@ const ModernCostOverview = ({
   // 只显示有金额的费用项
   const costItems = costItemsConfig.filter(item => item.amount > 0);
 
-  // 格式化金额
+  // 货币格式化函数（使用国际化）
   const formatAmount = (amount) => {
-    if (amount === 0) return '0.00';
-    return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const locale = i18n.language || 'en';
+    return formatCurrencyUtil(parseFloat(amount || 0), normalizedCurrency, locale);
   };
 
   // 计算完成度（需要在dynamicCostItems和costItemsConfig定义之后）
@@ -541,7 +588,7 @@ const ModernCostOverview = ({
                   {t('travel.form.outboundTitle')}
                 </Typography>
                 <Typography variant="h6" fontWeight={600} color="primary">
-                  {currency} {formatAmount(costs.outboundTotal)}
+                  {formatAmount(costs.outboundTotal)}
                 </Typography>
               </Box>
             </Grid>
@@ -563,7 +610,7 @@ const ModernCostOverview = ({
                     {t('travel.form.inboundTitle')}
                   </Typography>
                   <Typography variant="h6" fontWeight={600} color="secondary">
-                    {currency} {formatAmount(costs.inboundTotal)}
+                    {formatAmount(costs.inboundTotal)}
                   </Typography>
                 </Box>
               </Grid>
@@ -584,7 +631,7 @@ const ModernCostOverview = ({
                     {t('travel.costOverview.multiCityRoutes', { count: formData.multiCityRoutesBudget?.length || 0 })}
                   </Typography>
                   <Typography variant="h6" fontWeight={600} color="info.main">
-                    {currency} {formatAmount(costs.multiCityTotal)}
+                    {formatAmount(costs.multiCityTotal)}
                   </Typography>
                 </Box>
               </Grid>
@@ -637,7 +684,7 @@ const ModernCostOverview = ({
                     color: item.amount > 0 ? item.color : theme.palette.text.secondary,
                   }}
                 >
-                  {currency} {formatAmount(item.amount)}
+                  {formatAmount(item.amount)}
                 </Typography>
               </Box>
             ))}
@@ -670,7 +717,7 @@ const ModernCostOverview = ({
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              {currency} {formatAmount(costs.grandTotal)}
+              {formatAmount(costs.grandTotal)}
             </Typography>
           </Box>
           

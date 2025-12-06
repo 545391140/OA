@@ -58,9 +58,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { useDateFormat } from '../../utils/dateFormatter';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
-const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatusColor, getStatusLabel, getCategoryLabel, t, showNotification }) => {
+const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatusColor, getStatusLabel, getCategoryLabel, t, showNotification, i18n }) => {
   const formatDate = useDateFormat(false);
   
   const handleCopyNumber = useCallback((e, number) => {
@@ -130,7 +131,7 @@ const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatu
       <TableCell sx={{ whiteSpace: 'nowrap' }}>
         {(invoice.totalAmount || invoice.amount) ? (
           <Typography variant="body2" fontWeight={600}>
-            {invoice.currency || 'CNY'} {(invoice.totalAmount || invoice.amount).toFixed(2)}
+            {formatCurrencyUtil(invoice.totalAmount || invoice.amount || 0, invoice.currency || 'CNY', i18n?.language || 'en')}
           </Typography>
         ) : (
           '-'
@@ -203,7 +204,7 @@ const InvoiceTableRow = React.memo(({ invoice, onMenuOpen, getFileIcon, getStatu
 InvoiceTableRow.displayName = 'InvoiceTableRow';
 
 const InvoiceList = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showNotification } = useNotification();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -532,6 +533,7 @@ const InvoiceList = () => {
                     getCategoryLabel={getCategoryLabel}
                     t={t}
                     showNotification={showNotification}
+                    i18n={i18n}
                   />
                 ))
               )}

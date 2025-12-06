@@ -15,6 +15,8 @@ import {
 } from '@mui/icons-material';
 import ModernExpenseItem from '../Common/ModernExpenseItem';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
 
 const BudgetCard = ({
   title,
@@ -30,6 +32,12 @@ const BudgetCard = ({
   defaultExpanded = true
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const { i18n } = useTranslation();
+  
+  // 确保currency是大写的有效货币代码
+  const normalizedCurrency = (currency && typeof currency === 'string') 
+    ? currency.toUpperCase() 
+    : 'USD';
 
   // 计算总费用
   const calculateTotal = () => {
@@ -159,7 +167,7 @@ const BudgetCard = ({
                   {formatDate(routeData?.date)}
                 </Typography>
                 <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
-                  总费用: {currency} {total.toFixed(2)}
+                  总费用: {formatCurrencyUtil(total, normalizedCurrency, i18n.language || 'en')}
                 </Typography>
               </>
             )}
@@ -242,7 +250,7 @@ const BudgetCard = ({
                       unitPrice={budgetItem.unitPrice}
                       quantity={budgetItem.quantity}
                       subtotal={budgetItem.subtotal}
-                      currency={currency}
+                      currency={normalizedCurrency}
                       onUnitPriceChange={(e) => onBudgetChange(tripType, itemId, 'unitPrice', e.target.value, routeIndex)}
                       onQuantityChange={(e) => onBudgetChange(tripType, itemId, 'quantity', e.target.value, routeIndex)}
                       showInfo={true}

@@ -919,7 +919,9 @@ const RegionSelector = ({
   helperText = '',
   required = false,
   disabled = false,
-  transportationType = null // 新增：交通工具类型，用于过滤数据
+  transportationType = null, // 新增：交通工具类型，用于过滤数据
+  showHotCitiesOnFocus = true, // 新增：是否在获取焦点时显示热门城市，默认为true
+  allowedTypes = null // 新增：允许的位置类型数组，如 ['city'] 表示只显示城市，null 表示不限制
 }) => {
   const theme = useTheme();
   const { i18n, t } = useTranslation();
@@ -1274,8 +1276,14 @@ const RegionSelector = ({
         params.searchPriority = 'enName_pinyin'; // 告诉后端优先查询 enName 和 pinyin
       }
 
-      // 根据交通工具类型添加过滤
-      if (transportationType) {
+      // 根据 allowedTypes 或交通工具类型添加过滤
+      if (allowedTypes && Array.isArray(allowedTypes) && allowedTypes.length > 0) {
+        // 如果只允许一种类型，直接在 API 请求中过滤
+        if (allowedTypes.length === 1) {
+          params.type = allowedTypes[0];
+        }
+        // 如果允许多种类型，不在 API 层面过滤，在结果中过滤
+      } else if (transportationType) {
         switch (transportationType) {
           case 'flight':
             // 不限制type，返回机场和城市
@@ -1301,10 +1309,16 @@ const RegionSelector = ({
 
       if (response.data && response.data.success) {
         const locations = response.data.data || [];
-        const suggestions = locations
+        let suggestions = locations
           .map(transformLocationData)
-          .filter(location => location !== null)
-          .slice(0, 8); // 限制最多8条
+          .filter(location => location !== null);
+        
+        // 如果指定了 allowedTypes，过滤自动补全建议
+        if (allowedTypes && Array.isArray(allowedTypes) && allowedTypes.length > 0) {
+          suggestions = suggestions.filter(location => allowedTypes.includes(location.type));
+        }
+        
+        suggestions = suggestions.slice(0, 8); // 限制最多8条
 
         // 只有在请求未被取消时才更新状态
         if (!abortController.signal.aborted) {
@@ -1411,8 +1425,24 @@ const RegionSelector = ({
         params.searchPriority = 'enName_pinyin'; // 告诉后端优先查询 enName 和 pinyin
       }
 
-      // 根据交通工具类型添加过滤和优化 includeChildren
-      if (transportationType) {
+      // 根据 allowedTypes 或交通工具类型添加过滤和优化 includeChildren
+      if (allowedTypes && Array.isArray(allowedTypes) && allowedTypes.length > 0) {
+        // 如果只允许一种类型，直接在 API 请求中过滤
+        if (allowedTypes.length === 1) {
+          params.type = allowedTypes[0];
+          // 如果只允许城市，不需要子项
+          if (allowedTypes[0] === 'city') {
+            // 不使用 includeChildren，减少数据传输
+          }
+        } else {
+          // 如果允许多种类型，不在 API 层面过滤，在结果中过滤
+          // 如果包含 city，可以使用 includeChildren
+          if (allowedTypes.includes('city')) {
+            params.includeChildren = 'true';
+            params.maxChildrenPerCity = 5;
+          }
+        }
+      } else if (transportationType) {
         switch (transportationType) {
           case 'flight':
             // 对于飞机，搜索机场和城市
@@ -1568,9 +1598,27 @@ const RegionSelector = ({
       console.log('[RegionSelector] 第一次去重后数量:', uniqueLocations.length);
 
       // 优化：由于使用了 includeChildren，子项已经包含在 uniqueLocations 中
-      // 根据交通工具类型过滤
+      // 根据交通工具类型或允许的类型过滤
       let filteredResults = uniqueLocations;
-      if (transportationType) {
+      
+      // 优先使用 allowedTypes，如果没有则使用 transportationType
+      if (allowedTypes && Array.isArray(allowedTypes) && allowedTypes.length > 0) {
+        console.log('[RegionSelector] 应用 allowedTypes 过滤:', allowedTypes);
+        const beforeFilter = uniqueLocations.length;
+        filteredResults = uniqueLocations.filter(location => {
+          return allowedTypes.includes(location.type);
+        });
+        console.log('[RegionSelector] 过滤前数量:', beforeFilter);
+        console.log('[RegionSelector] 过滤后数量:', filteredResults.length);
+        
+        if (filteredResults.length === 0 && beforeFilter > 0) {
+          console.warn('[RegionSelector] ⚠ allowedTypes 过滤掉了所有结果！');
+          console.log('[RegionSelector] 被过滤的数据:', uniqueLocations.map(loc => ({
+            name: loc.name,
+            type: loc.type
+          })));
+        }
+      } else if (transportationType) {
         console.log('[RegionSelector] 应用 transportationType 过滤:', transportationType);
         const beforeFilter = uniqueLocations.length;
         filteredResults = uniqueLocations.filter(location => {
@@ -1597,7 +1645,7 @@ const RegionSelector = ({
           })));
         }
       } else {
-        console.log('[RegionSelector] 无 transportationType，不过滤');
+        console.log('[RegionSelector] 无过滤条件，不过滤');
       }
 
       // 最终去重（虽然已经去重过，但为了确保）
@@ -1700,9 +1748,13 @@ const RegionSelector = ({
       setFilteredLocations([]);
       setAutocompleteSuggestions([]);
       setShowAutocomplete(false);
-      // 如果输入框有焦点，显示热门城市
+      // 如果输入框有焦点，根据showHotCitiesOnFocus决定是否显示热门城市
       if (document.activeElement === inputRef.current) {
-        setShowHotCities(true);
+        if (showHotCitiesOnFocus) {
+          setShowHotCities(true);
+        } else {
+          setShowHotCities(false);
+        }
         setShowDropdown(true);
       } else {
         setShowHotCities(false);
@@ -1776,9 +1828,11 @@ const RegionSelector = ({
   const handleInputFocus = () => {
     if (disabled) return;
     setShowDropdown(true);
-    // 如果没有搜索内容，显示热门城市
-    if (!searchValue.trim()) {
+    // 如果没有搜索内容且允许显示热门城市，显示热门城市
+    if (!searchValue.trim() && showHotCitiesOnFocus) {
       setShowHotCities(true);
+    } else {
+      setShowHotCities(false);
     }
   };
 
@@ -1875,9 +1929,13 @@ const RegionSelector = ({
       setShowDropdown(false);
       setAutocompleteSuggestions([]);
       setShowAutocomplete(false);
-      // 如果输入框有焦点，显示热门城市
+      // 如果输入框有焦点，根据showHotCitiesOnFocus决定是否显示热门城市
       if (document.activeElement === inputRef.current) {
-        setShowHotCities(true);
+        if (showHotCitiesOnFocus) {
+          setShowHotCities(true);
+        } else {
+          setShowHotCities(false);
+        }
         setShowDropdown(true);
       }
     }

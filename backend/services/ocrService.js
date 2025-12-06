@@ -1,4 +1,5 @@
 const fs = require('fs');
+const logger = require('../utils/logger');
 const path = require('path');
 // 确保在加载配置前加载环境变量
 // 注意：必须从 backend 目录加载 .env
@@ -458,33 +459,33 @@ class OCRService {
 
       const aiResponse = result.choices[0]?.message?.content || '';
 
-      console.log('========================================');
-      console.log('AI 解析响应');
-      console.log('AI 返回的原始内容长度:', aiResponse.length);
-      console.log('AI 返回的原始内容（前500字符）:', aiResponse.substring(0, 500));
-      console.log('AI 返回的完整内容:', aiResponse);
-      console.log('========================================');
+      logger.debug('========================================');
+      logger.debug('AI 解析响应');
+      logger.debug('AI 返回的原始内容长度:', aiResponse.length);
+      logger.debug('AI 返回的原始内容（前500字符）:', aiResponse.substring(0, 500));
+      logger.debug('AI 返回的完整内容:', aiResponse);
+      logger.debug('========================================');
 
       // 解析 AI 返回的 JSON
       let invoiceData = {};
       try {
         const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          console.log('找到 JSON 匹配，开始解析...');
+          logger.debug('找到 JSON 匹配，开始解析...');
           invoiceData = JSON.parse(jsonMatch[0]);
-          console.log('✓ JSON 解析成功，字段数量:', Object.keys(invoiceData).length);
-          console.log('解析后的数据:', JSON.stringify(invoiceData, null, 2));
+          logger.debug('✓ JSON 解析成功，字段数量:', Object.keys(invoiceData).length);
+          logger.debug('解析后的数据:', JSON.stringify(invoiceData, null, 2));
         } else {
-          console.log('未找到 JSON 匹配，尝试直接解析...');
+          logger.debug('未找到 JSON 匹配，尝试直接解析...');
           invoiceData = JSON.parse(aiResponse);
-          console.log('✓ JSON 解析成功，字段数量:', Object.keys(invoiceData).length);
-          console.log('解析后的数据:', JSON.stringify(invoiceData, null, 2));
+          logger.debug('✓ JSON 解析成功，字段数量:', Object.keys(invoiceData).length);
+          logger.debug('解析后的数据:', JSON.stringify(invoiceData, null, 2));
         }
       } catch (parseError) {
         // AI解析失败，返回空数据
-        console.error('✗ JSON 解析失败:', parseError.message);
-        console.error('解析错误堆栈:', parseError.stack);
-        console.error('尝试解析的内容:', aiResponse);
+        logger.error('✗ JSON 解析失败:', parseError.message);
+        logger.error('解析错误堆栈:', parseError.stack);
+        logger.error('尝试解析的内容:', aiResponse);
         return {};
       }
 
@@ -1127,13 +1128,13 @@ class OCRService {
       if (fileType === 'pdf') {
         // 如果提供了提前转换的图片路径，直接使用
         if (preConvertedImagePath && fs.existsSync(preConvertedImagePath)) {
-          console.log('使用提前转换的图片:', preConvertedImagePath);
+          logger.debug('使用提前转换的图片:', preConvertedImagePath);
           imagePath = preConvertedImagePath;
           // 注意：提前转换的图片由调用者管理，这里不标记为临时文件
         } else {
           // 如果没有提前转换，则在这里转换
           try {
-            console.log('PDF 转图片（fallback 时转换）...');
+            logger.debug('PDF 转图片（fallback 时转换）...');
             imagePath = await this.convertPDFToImage(absolutePath, 1);
             tempImagePath = imagePath; // 标记为临时文件，后续需要删除
           } catch (convertError) {
@@ -1197,12 +1198,12 @@ class OCRService {
       // 解析响应 - OCR 返回 markdown 格式文本
       const ocrText = response.choices[0]?.message?.content || '';
       
-      console.log('========================================');
-      console.log('阿里云 OCR API 响应');
-      console.log('OCR 原始文本长度:', ocrText.length);
-      console.log('OCR 原始文本内容:', ocrText);
-      console.log('OCR 完整响应:', JSON.stringify(response, null, 2));
-      console.log('========================================');
+      logger.debug('========================================');
+      logger.debug('阿里云 OCR API 响应');
+      logger.debug('OCR 原始文本长度:', ocrText.length);
+      logger.debug('OCR 原始文本内容:', ocrText);
+      logger.debug('OCR 完整响应:', JSON.stringify(response, null, 2));
+      logger.debug('========================================');
       
       if (ocrText.length > 0) {
       }
@@ -1223,35 +1224,35 @@ class OCRService {
       // 步骤2: AI解析（将 markdown 文本解析为结构化 JSON）
       let invoiceData = {};
       try {
-        console.log('========================================');
-        console.log('开始 AI 解析 OCR 文本');
-        console.log('OCR 文本长度:', ocrText.length);
-        console.log('OCR 文本内容（前500字符）:', ocrText.substring(0, 500));
-        console.log('========================================');
+        logger.debug('========================================');
+        logger.debug('开始 AI 解析 OCR 文本');
+        logger.debug('OCR 文本长度:', ocrText.length);
+        logger.debug('OCR 文本内容（前500字符）:', ocrText.substring(0, 500));
+        logger.debug('========================================');
         invoiceData = await this.parseInvoiceDataWithAI(ocrText);
-        console.log('AI 解析完成，返回的字段数量:', Object.keys(invoiceData).length);
-        console.log('AI 解析返回的数据:', JSON.stringify(invoiceData, null, 2));
+        logger.debug('AI 解析完成，返回的字段数量:', Object.keys(invoiceData).length);
+        logger.debug('AI 解析返回的数据:', JSON.stringify(invoiceData, null, 2));
       } catch (parseError) {
         // AI解析失败，返回空数据
-        console.error('✗ AI 解析异常:', parseError.message);
-        console.error('解析错误堆栈:', parseError.stack);
+        logger.error('✗ AI 解析异常:', parseError.message);
+        logger.error('解析错误堆栈:', parseError.stack);
         invoiceData = {};
       }
 
       // 步骤3: 字段映射（将不同格式的字段名映射到标准字段名）
       const beforeMapping = Object.keys(invoiceData).length;
-      console.log('字段映射前，字段数量:', beforeMapping);
-      console.log('字段映射前的数据:', JSON.stringify(invoiceData, null, 2));
+      logger.debug('字段映射前，字段数量:', beforeMapping);
+      logger.debug('字段映射前的数据:', JSON.stringify(invoiceData, null, 2));
       invoiceData = this.mapFieldNames(invoiceData);
       const afterMapping = Object.keys(invoiceData).length;
-      console.log('字段映射后，字段数量:', afterMapping);
-      console.log('字段映射后的数据:', JSON.stringify(invoiceData, null, 2));
+      logger.debug('字段映射后，字段数量:', afterMapping);
+      logger.debug('字段映射后的数据:', JSON.stringify(invoiceData, null, 2));
       
       // 步骤4: 数据标准化（日期格式、金额类型、字符串清理等）
-      console.log('开始数据标准化...');
+      logger.debug('开始数据标准化...');
       invoiceData = this.normalizeInvoiceData(invoiceData);
-      console.log('数据标准化完成，最终字段数量:', Object.keys(invoiceData).length);
-      console.log('数据标准化后的数据:', JSON.stringify(invoiceData, null, 2));
+      logger.debug('数据标准化完成，最终字段数量:', Object.keys(invoiceData).length);
+      logger.debug('数据标准化后的数据:', JSON.stringify(invoiceData, null, 2));
       
       // 验证销售方和购买方信息
       if (!invoiceData.vendorName && !invoiceData.vendorTaxId) {

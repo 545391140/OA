@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 const Invoice = require('../models/Invoice');
 const Expense = require('../models/Expense');
 const ExpenseItem = require('../models/ExpenseItem');
@@ -426,7 +427,7 @@ async function notifyExpenseGenerated(employeeId, travel, generatedExpenses) {
   try {
     const employee = await User.findById(employeeId);
     if (!employee) {
-      console.warn(`Employee not found: ${employeeId}`);
+      logger.warn(`Employee not found: ${employeeId}`);
       return;
     }
     
@@ -437,9 +438,9 @@ async function notifyExpenseGenerated(employeeId, travel, generatedExpenses) {
     //   expenses: generatedExpenses
     // });
     
-    console.log(`Expense generation notification sent to ${employee.email}`);
+    logger.debug(`Expense generation notification sent to ${employee.email}`);
   } catch (error) {
-    console.error('Failed to send expense generation notification:', error);
+    logger.error('Failed to send expense generation notification:', error);
   }
 }
 
@@ -451,7 +452,7 @@ async function autoGenerateExpenses(travel) {
   const Travel = mongoose.model('Travel');
   const travelId = travel._id || travel;
   
-  console.log(`[EXPENSE_GENERATION] Starting expense generation for travel ${travelId}`);
+  logger.debug(`[EXPENSE_GENERATION] Starting expense generation for travel ${travelId}`);
   
   try {
     // 1. 更新状态为生成中（使用 updateOne 避免版本冲突）
@@ -468,14 +469,14 @@ async function autoGenerateExpenses(travel) {
       throw new Error('Travel not found');
     }
     
-    console.log(`[EXPENSE_GENERATION] Travel found: ${travel.travelNumber || travelId}, employee: ${travel.employee?._id || travel.employee}`);
+    logger.debug(`[EXPENSE_GENERATION] Travel found: ${travel.travelNumber || travelId}, employee: ${travel.employee?._id || travel.employee}`);
     
     // 2. 获取差旅单的费用预算
     const expenseBudgets = extractExpenseBudgets(travel);
-    console.log(`[EXPENSE_GENERATION] Found ${expenseBudgets.length} expense budgets`);
+    logger.debug(`[EXPENSE_GENERATION] Found ${expenseBudgets.length} expense budgets`);
     
     if (expenseBudgets.length === 0) {
-      console.log(`[EXPENSE_GENERATION] No expense budgets found, marking as completed`);
+      logger.debug(`[EXPENSE_GENERATION] No expense budgets found, marking as completed`);
       await Travel.updateOne(
         { _id: travelId },
         { $set: { expenseGenerationStatus: 'completed' } }
@@ -491,7 +492,7 @@ async function autoGenerateExpenses(travel) {
     // 3. 查询发票夹中未匹配的发票
     // 确保日期范围有效
     if (!travel.startDate || !travel.endDate) {
-      console.error(`[EXPENSE_GENERATION] Missing dates: startDate=${travel.startDate}, endDate=${travel.endDate}`);
+      logger.error(`[EXPENSE_GENERATION] Missing dates: startDate=${travel.startDate}, endDate=${travel.endDate}`);
       await Travel.updateOne(
         { _id: travelId },
         {
@@ -533,7 +534,7 @@ async function autoGenerateExpenses(travel) {
       throw new Error('Invalid travel dates');
     }
     
-    console.log(`[EXPENSE_GENERATION] Querying invoices for employee ${employeeId}, date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    logger.debug(`[EXPENSE_GENERATION] Querying invoices for employee ${employeeId}, date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
     // 优化查询条件：查找未关联的发票
     // 条件：1. 属于该员工 2. 状态为pending或verified 3. 未关联费用 4. 未关联差旅 5. 日期在差旅日期范围内
@@ -560,14 +561,14 @@ async function autoGenerateExpenses(travel) {
       ]
     };
     
-    console.log(`[EXPENSE_GENERATION] Query conditions:`, JSON.stringify(queryConditions, null, 2));
+    logger.debug(`[EXPENSE_GENERATION] Query conditions:`, JSON.stringify(queryConditions, null, 2));
     
     const availableInvoices = await Invoice.find(queryConditions);
     
-    console.log(`[EXPENSE_GENERATION] Found ${availableInvoices.length} available invoices`);
+    logger.debug(`[EXPENSE_GENERATION] Found ${availableInvoices.length} available invoices`);
     
     if (availableInvoices.length === 0) {
-      console.log(`[EXPENSE_GENERATION] No available invoices found, marking as completed`);
+      logger.debug(`[EXPENSE_GENERATION] No available invoices found, marking as completed`);
       await Travel.updateOne(
         { _id: travelId },
         { $set: { expenseGenerationStatus: 'completed' } }
@@ -584,16 +585,16 @@ async function autoGenerateExpenses(travel) {
     const matchedResults = [];
     const usedInvoiceIds = new Set(); // 用于跟踪已使用的发票ID
     
-    console.log(`[EXPENSE_GENERATION] Starting invoice matching for ${expenseBudgets.length} expense budgets`);
+    logger.debug(`[EXPENSE_GENERATION] Starting invoice matching for ${expenseBudgets.length} expense budgets`);
     
     for (const budget of expenseBudgets) {
       const expenseItem = await ExpenseItem.findById(budget.expenseItemId);
       if (!expenseItem) {
-        console.warn(`[EXPENSE_GENERATION] ExpenseItem not found: ${budget.expenseItemId}`);
+        logger.warn(`[EXPENSE_GENERATION] ExpenseItem not found: ${budget.expenseItemId}`);
         continue;
       }
       
-      console.log(`[EXPENSE_GENERATION] Matching invoices for expense item: ${expenseItem.itemName} (${budget.expenseItemId})`);
+      logger.debug(`[EXPENSE_GENERATION] Matching invoices for expense item: ${expenseItem.itemName} (${budget.expenseItemId})`);
       
       // 匹配发票（传入已使用的发票ID集合）
       const matchedInvoices = matchInvoicesForExpenseItem(
@@ -604,7 +605,7 @@ async function autoGenerateExpenses(travel) {
         usedInvoiceIds
       );
       
-      console.log(`[EXPENSE_GENERATION] Matched ${matchedInvoices.length} invoices for expense item ${expenseItem.itemName}`);
+      logger.debug(`[EXPENSE_GENERATION] Matched ${matchedInvoices.length} invoices for expense item ${expenseItem.itemName}`);
       
       if (matchedInvoices.length > 0) {
         // 标记这些发票为已使用
@@ -623,10 +624,10 @@ async function autoGenerateExpenses(travel) {
       }
     }
     
-    console.log(`[EXPENSE_GENERATION] Total matched results: ${matchedResults.length}`);
+    logger.debug(`[EXPENSE_GENERATION] Total matched results: ${matchedResults.length}`);
     
     if (matchedResults.length === 0) {
-      console.log(`[EXPENSE_GENERATION] No invoices matched for any expense items, marking as completed`);
+      logger.debug(`[EXPENSE_GENERATION] No invoices matched for any expense items, marking as completed`);
       await Travel.updateOne(
         { _id: travelId },
         { $set: { expenseGenerationStatus: 'completed' } }
@@ -642,34 +643,50 @@ async function autoGenerateExpenses(travel) {
     // 5. 生成费用申请
     const generatedExpenses = [];
     
-    console.log(`[EXPENSE_GENERATION] Starting expense creation for ${matchedResults.length} matched results`);
+    logger.debug(`[EXPENSE_GENERATION] Starting expense creation for ${matchedResults.length} matched results`);
     
     for (const result of matchedResults) {
       try {
-        console.log(`[EXPENSE_GENERATION] Creating expense for expense item: ${result.expenseItemId}`);
+        logger.debug(`[EXPENSE_GENERATION] Creating expense for expense item: ${result.expenseItemId}`);
         
         // 验证必要数据
         if (!result.expenseItem || !result.expenseItem.itemName) {
-          console.error(`[EXPENSE_GENERATION] Missing expense item data: ${result.expenseItemId}`);
+          logger.error(`[EXPENSE_GENERATION] Missing expense item data: ${result.expenseItemId}`);
           continue;
         }
         
         if (!result.matchedInvoices || result.matchedInvoices.length === 0) {
-          console.error(`[EXPENSE_GENERATION] No matched invoices for expense item: ${result.expenseItemId}`);
+          logger.error(`[EXPENSE_GENERATION] No matched invoices for expense item: ${result.expenseItemId}`);
           continue;
         }
         
       // 计算总金额
+      // 发票金额提取优先级：totalAmount > amount > items[].amount 之和 > 0
       const totalAmount = result.matchedInvoices.reduce(
           (sum, inv) => {
-            const amount = parseFloat(inv.totalAmount || inv.amount || 0);
-            return sum + (isNaN(amount) ? 0 : amount);
+            // 优先使用 totalAmount（价税合计）
+            let amount = parseFloat(inv.totalAmount);
+            if (isNaN(amount) || amount <= 0) {
+              // 其次使用 amount（金额）
+              amount = parseFloat(inv.amount);
+            }
+            if (isNaN(amount) || amount <= 0) {
+              // 如果都没有，尝试从 items 中计算总金额
+              if (inv.items && Array.isArray(inv.items) && inv.items.length > 0) {
+                amount = inv.items.reduce((itemSum, item) => {
+                  const itemAmount = parseFloat(item.amount) || 
+                                   (parseFloat(item.unitPrice) || 0) * (parseFloat(item.quantity) || 1);
+                  return itemSum + (isNaN(itemAmount) ? 0 : itemAmount);
+                }, 0);
+              }
+            }
+            return sum + (isNaN(amount) || amount <= 0 ? 0 : amount);
           }, 0
       );
         
         // 验证金额有效性
         if (isNaN(totalAmount) || totalAmount <= 0) {
-          console.error('Invalid total amount for expense item:', result.expenseItemId, totalAmount);
+          logger.error('Invalid total amount for expense item:', result.expenseItemId, totalAmount);
           continue;
         }
         
@@ -690,7 +707,7 @@ async function autoGenerateExpenses(travel) {
             // 如果已存在，等待一小段时间后重试
             await new Promise(resolve => setTimeout(resolve, 100));
           } catch (genError) {
-            console.error('Error generating reimbursement number:', genError);
+            logger.error('Error generating reimbursement number:', genError);
             retryCount++;
             if (retryCount >= maxRetries) {
               throw new Error('Failed to generate unique reimbursement number after retries');
@@ -773,10 +790,10 @@ async function autoGenerateExpenses(travel) {
         }
       
       generatedExpenses.push(expense);
-        console.log(`[EXPENSE_GENERATION] Successfully created expense ${expense._id} for expense item ${result.expenseItemId}`);
+        logger.debug(`[EXPENSE_GENERATION] Successfully created expense ${expense._id} for expense item ${result.expenseItemId}`);
       } catch (expenseError) {
-        console.error(`[EXPENSE_GENERATION] Error creating expense for expense item: ${result.expenseItemId}`, expenseError);
-        console.error(`[EXPENSE_GENERATION] Error details:`, {
+        logger.error(`[EXPENSE_GENERATION] Error creating expense for expense item: ${result.expenseItemId}`, expenseError);
+        logger.error(`[EXPENSE_GENERATION] Error details:`, {
           message: expenseError.message,
           name: expenseError.name,
           code: expenseError.code,
@@ -789,7 +806,7 @@ async function autoGenerateExpenses(travel) {
       }
     }
     
-    console.log(`[EXPENSE_GENERATION] Successfully created ${generatedExpenses.length} expenses`);
+    logger.debug(`[EXPENSE_GENERATION] Successfully created ${generatedExpenses.length} expenses`);
     
     // 6. 更新差旅单（使用 updateOne 避免版本冲突）
     // 只有当成功生成了至少一个费用申请时才更新
@@ -819,10 +836,10 @@ async function autoGenerateExpenses(travel) {
       generatedExpenses
     );
         } else {
-          console.warn(`[EXPENSE_GENERATION] Cannot send notification: employee ID not found`);
+          logger.warn(`[EXPENSE_GENERATION] Cannot send notification: employee ID not found`);
         }
       } catch (notifyError) {
-        console.error(`[EXPENSE_GENERATION] Failed to send notification:`, notifyError);
+        logger.error(`[EXPENSE_GENERATION] Failed to send notification:`, notifyError);
         // 通知失败不影响主流程
       }
     } else {
@@ -846,8 +863,8 @@ async function autoGenerateExpenses(travel) {
     
   } catch (error) {
     // 错误处理（使用 updateOne 避免版本冲突）
-    console.error(`[EXPENSE_GENERATION] Fatal error during expense generation for travel ${travelId}:`, error);
-    console.error(`[EXPENSE_GENERATION] Error stack:`, error.stack);
+    logger.error(`[EXPENSE_GENERATION] Fatal error during expense generation for travel ${travelId}:`, error);
+    logger.error(`[EXPENSE_GENERATION] Error stack:`, error.stack);
     
     try {
       await Travel.updateOne(
@@ -860,7 +877,7 @@ async function autoGenerateExpenses(travel) {
         }
       );
     } catch (updateError) {
-      console.error(`[EXPENSE_GENERATION] Failed to update travel error status:`, updateError);
+      logger.error(`[EXPENSE_GENERATION] Failed to update travel error status:`, updateError);
     }
     
     throw error;

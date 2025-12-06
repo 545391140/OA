@@ -50,6 +50,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import { PERMISSIONS } from '../../config/permissions';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 import { useDateFormat } from '../../utils/dateFormatter';
@@ -217,8 +218,10 @@ TravelTableRow.displayName = 'TravelTableRow';
 
 const TravelList = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { showNotification } = useNotification();
+  const canEdit = hasPermission(PERMISSIONS.TRAVEL_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.TRAVEL_DELETE);
   const navigate = useNavigate();
 
   const [travels, setTravels] = useState([]);
@@ -562,36 +565,23 @@ const TravelList = () => {
         </Paper>
 
         {/* Travel Requests Table */}
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ minWidth: 120 }}>{t('travel.travelNumber')}</TableCell>
-                <TableCell sx={{ minWidth: 167 }}>{t('travel.list.titleColumn')}</TableCell>
-                <TableCell sx={{ minWidth: 150 }}>{t('travel.list.destinationColumn')}</TableCell>
-                <TableCell sx={{ minWidth: 180 }}>{t('travel.list.datesColumn')}</TableCell>
-                <TableCell sx={{ minWidth: 120 }}>{t('travel.list.estimatedCostColumn')}</TableCell>
-                <TableCell sx={{ minWidth: 100 }}>{t('travel.list.statusColumn')}</TableCell>
-                <TableCell sx={{ minWidth: 150 }}>{t('travel.list.createdColumn')}</TableCell>
-                <TableCell sx={{ minWidth: 100 }}>{t('common.actions')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {travels.length === 0 ? (
+        {travels.length > 0 ? (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    <Box sx={{ py: 4 }}>
-                      <Typography variant="h6" color="text.secondary">
-                        {t('travel.list.noTravelRequests')}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        {t('travel.list.noResultsFound')}
-                      </Typography>
-                    </Box>
-                  </TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{t('travel.travelNumber')}</TableCell>
+                  <TableCell sx={{ minWidth: 167 }}>{t('travel.list.titleColumn')}</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>{t('travel.list.destinationColumn')}</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>{t('travel.list.datesColumn')}</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>{t('travel.list.estimatedCostColumn')}</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>{t('travel.list.statusColumn')}</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>{t('travel.list.createdColumn')}</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>{t('common.actions')}</TableCell>
                 </TableRow>
-              ) : (
-                travels.map((travel) => (
+              </TableHead>
+              <TableBody>
+                {travels.map((travel) => (
                   <TravelTableRow
                     key={travel.id || travel._id}
                     travel={travel}
@@ -600,27 +590,25 @@ const TravelList = () => {
                     t={t}
                     showNotification={showNotification}
                   />
-                ))
-              )}
-            </TableBody>
-          </Table>
-          <TablePagination
-            component="div"
-            count={total}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[10, 20, 50, 100]}
-            labelRowsPerPage={t('common.rowsPerPage')}
-            labelDisplayedRows={({ from, to, count }) => 
-              `${from}-${to} ${t('common.of')} ${count !== -1 ? count : `${t('common.moreThan')} ${to}`}`
-            }
-          />
-        </TableContainer>
-
-        {/* 空状态显示（当没有数据且不在加载中时） */}
-        {!loading && travels.length === 0 && (
+                ))}
+              </TableBody>
+            </Table>
+            <TablePagination
+              component="div"
+              count={total}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[10, 20, 50, 100]}
+              labelRowsPerPage={t('common.rowsPerPage')}
+              labelDisplayedRows={({ from, to, count }) => 
+                `${from}-${to} ${t('common.of')} ${count !== -1 ? count : `${t('common.moreThan')} ${to}`}`
+              }
+            />
+          </TableContainer>
+        ) : (
+          /* 空状态显示（当没有数据且不在加载中时） */
           <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
             <Typography variant="h6" color="text.secondary">
               {t('travel.list.noResultsFound')}
@@ -654,14 +642,18 @@ const TravelList = () => {
             <ViewIcon sx={{ mr: 1.5, fontSize: 20 }} />
             {t('common.view')}
           </MenuItem>
-          <MenuItem onClick={handleEdit}>
-            <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
-            {t('common.edit')}
-          </MenuItem>
-          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-            <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
-            {t('common.delete')}
-          </MenuItem>
+          {(canEdit || selectedTravel?.employee?._id === user?.id) && (
+            <MenuItem onClick={handleEdit}>
+              <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('common.edit')}
+            </MenuItem>
+          )}
+          {(canDelete || selectedTravel?.employee?._id === user?.id) && (
+            <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+              <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('common.delete')}
+            </MenuItem>
+          )}
         </Menu>
 
         {/* Delete Confirmation Dialog */}

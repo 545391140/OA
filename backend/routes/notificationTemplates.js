@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { protect, authorize } = require('../middleware/auth');
 const NotificationTemplate = require('../models/NotificationTemplate');
 
@@ -27,7 +28,7 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
       data: templates
     });
   } catch (error) {
-    console.error('Get notification templates error:', error);
+    logger.error('Get notification templates error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -54,7 +55,7 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
       data: template
     });
   } catch (error) {
-    console.error('Get notification template error:', error);
+    logger.error('Get notification template error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -74,7 +75,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
       data: template
     });
   } catch (error) {
-    console.error('Create notification template error:', error);
+    logger.error('Create notification template error:', error);
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -111,7 +112,7 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
       data: template
     });
   } catch (error) {
-    console.error('Update notification template error:', error);
+    logger.error('Update notification template error:', error);
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -144,7 +145,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
       message: 'Template deleted successfully'
     });
   } catch (error) {
-    console.error('Delete notification template error:', error);
+    logger.error('Delete notification template error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -173,7 +174,7 @@ router.post('/:id/render', protect, authorize('admin'), async (req, res) => {
       data: rendered
     });
   } catch (error) {
-    console.error('Render template error:', error);
+    logger.error('Render template error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

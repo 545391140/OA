@@ -49,12 +49,17 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import { PERMISSIONS } from '../../config/permissions';
 
 const PositionManagement = () => {
   const { t, i18n } = useTranslation();
   const { showNotification } = useNotification();
-  const { user } = useAuth();
-  const canEdit = user?.role === 'admin';
+  const { user, hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.POSITION_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.POSITION_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.POSITION_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.POSITION_DELETE);
+  const canToggleActive = hasPermission(PERMISSIONS.POSITION_TOGGLE_ACTIVE);
 
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -266,7 +271,7 @@ const PositionManagement = () => {
               {t('position.management.title')}
             </Typography>
           </Box>
-          {canEdit && (
+          {canCreate && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -417,38 +422,40 @@ const PositionManagement = () => {
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        {canToggleActive && (
+                          <Tooltip title={position.isActive ? t('position.management.disable') : t('position.management.enable')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleToggleActive(position)}
+                              disabled={position.isSystem && !position.isActive}
+                              color={position.isActive ? 'warning' : 'success'}
+                            >
+                              {position.isActive ? <BlockIcon /> : <CheckCircleIcon />}
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         {canEdit && (
-                          <>
-                            <Tooltip title={position.isActive ? t('position.management.disable') : t('position.management.enable')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleToggleActive(position)}
-                                disabled={position.isSystem && !position.isActive}
-                                color={position.isActive ? 'warning' : 'success'}
-                              >
-                                {position.isActive ? <BlockIcon /> : <CheckCircleIcon />}
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={t('common.edit')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleEdit(position)}
-                                color="primary"
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={t('common.delete')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDelete(position)}
-                                disabled={position.isSystem}
-                                color="error"
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </>
+                          <Tooltip title={t('common.edit')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEdit(position)}
+                              color="primary"
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canDelete && (
+                          <Tooltip title={t('common.delete')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDelete(position)}
+                              disabled={position.isSystem}
+                              color="error"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
                         )}
                       </Box>
                     </TableCell>

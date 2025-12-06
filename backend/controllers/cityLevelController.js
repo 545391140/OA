@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 const CityLevel = require('../models/CityLevel');
 
 // @desc    Get all city levels
@@ -24,7 +25,7 @@ exports.getCityLevels = async (req, res) => {
       data: cityLevels
     });
   } catch (error) {
-    console.error('Get city levels error:', error);
+    logger.error('Get city levels error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -53,7 +54,7 @@ exports.getCityLevelByCode = async (req, res) => {
       data: cityLevel
     });
   } catch (error) {
-    console.error('Get city level error:', error);
+    logger.error('Get city level error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -80,7 +81,7 @@ exports.getCityLevelById = async (req, res) => {
       data: cityLevel
     });
   } catch (error) {
-    console.error('Get city level error:', error);
+    logger.error('Get city level error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -113,7 +114,7 @@ exports.createCityLevel = async (req, res) => {
       data: cityLevel
     });
   } catch (error) {
-    console.error('Create city level error:', error);
+    logger.error('Create city level error:', error);
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -168,7 +169,7 @@ exports.updateCityLevel = async (req, res) => {
       data: cityLevel
     });
   } catch (error) {
-    console.error('Update city level error:', error);
+    logger.error('Update city level error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -197,7 +198,7 @@ exports.deleteCityLevel = async (req, res) => {
       message: 'City level deleted successfully'
     });
   } catch (error) {
-    console.error('Delete city level error:', error);
+    logger.error('Delete city level error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

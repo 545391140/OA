@@ -98,7 +98,7 @@ router.put('/:id/read', protect, async (req, res) => {
       data: notification
     });
   } catch (error) {
-    console.error('Mark as read error:', error);
+    logger.error('Mark as read error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -118,7 +118,7 @@ router.put('/read-all', protect, async (req, res) => {
       modifiedCount: result.modifiedCount
     });
   } catch (error) {
-    console.error('Mark all as read error:', error);
+    logger.error('Mark all as read error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -148,7 +148,7 @@ router.delete('/:id', protect, async (req, res) => {
       message: 'Notification deleted successfully'
     });
   } catch (error) {
-    console.error('Delete notification error:', error);
+    logger.error('Delete notification error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

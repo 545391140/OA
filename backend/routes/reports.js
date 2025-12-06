@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const { protect } = require('../middleware/auth');
 const Travel = require('../models/Travel');
 const Expense = require('../models/Expense');
@@ -18,7 +19,7 @@ router.get('/departments', protect, async (req, res) => {
       data: departments.filter(d => d && d.trim())
     });
   } catch (error) {
-    console.error('Get departments error:', error);
+    logger.error('Get departments error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -70,7 +71,7 @@ router.get('/dashboard', protect, async (req, res) => {
       data: dashboardData
     });
   } catch (error) {
-    console.error('Get dashboard reports error:', error);
+    logger.error('Get dashboard reports error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -133,7 +134,7 @@ router.get('/comprehensive', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get comprehensive reports error:', error);
+    logger.error('Get comprehensive reports error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -236,7 +237,7 @@ router.get('/expenses', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get expense reports error:', error);
+    logger.error('Get expense reports error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',

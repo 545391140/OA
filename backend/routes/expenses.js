@@ -312,9 +312,9 @@ router.get('/:id', protect, loadUserRole, asyncHandler(async (req, res) => {
 // @route   POST /api/expenses
 // @access  Private
 router.post('/', protect, asyncHandler(async (req, res) => {
-    console.log('[EXPENSE_CREATE] Request received');
-    console.log('[EXPENSE_CREATE] User:', req.user.id);
-    console.log('[EXPENSE_CREATE] Request body:', JSON.stringify(req.body, null, 2));
+    logger.debug('[EXPENSE_CREATE] Request received');
+    logger.debug('[EXPENSE_CREATE] User:', req.user.id);
+    logger.debug('[EXPENSE_CREATE] Request body:', JSON.stringify(req.body, null, 2));
     
     // 处理日期字段
     const expenseData = {
@@ -322,7 +322,7 @@ router.post('/', protect, asyncHandler(async (req, res) => {
       employee: req.user.id
     };
     
-    console.log('[EXPENSE_CREATE] Expense data after processing:', JSON.stringify(expenseData, null, 2));
+    logger.debug('[EXPENSE_CREATE] Expense data after processing:', JSON.stringify(expenseData, null, 2));
 
     // 确保date是Date对象
     if (expenseData.date && typeof expenseData.date === 'string') {
@@ -437,11 +437,11 @@ router.post('/', protect, asyncHandler(async (req, res) => {
       expenseData.approvals = approvals;
     }
 
-    console.log('[EXPENSE_CREATE] Creating expense in database...');
+    logger.debug('[EXPENSE_CREATE] Creating expense in database...');
     const expense = await Expense.create(expenseData);
-    console.log('[EXPENSE_CREATE] Expense created successfully:', expense._id);
-    console.log('[EXPENSE_CREATE] Expense status:', expense.status);
-    console.log('[EXPENSE_CREATE] Expense approvals count:', expense.approvals?.length || 0);
+    logger.debug('[EXPENSE_CREATE] Expense created successfully:', expense._id);
+    logger.debug('[EXPENSE_CREATE] Expense status:', expense.status);
+    logger.debug('[EXPENSE_CREATE] Expense approvals count:', expense.approvals?.length || 0);
 
     // 如果创建时状态就是 submitted，发送审批通知
     if (isSubmittingOnCreate && expense.approvals && expense.approvals.length > 0) {
@@ -465,12 +465,12 @@ router.post('/', protect, asyncHandler(async (req, res) => {
       }
     }
 
-    console.log('[EXPENSE_CREATE] Sending response');
+    logger.debug('[EXPENSE_CREATE] Sending response');
     res.status(201).json({
       success: true,
       data: expense
     });
-    console.log('[EXPENSE_CREATE] Response sent successfully');
+    logger.debug('[EXPENSE_CREATE] Response sent successfully');
 }));
 
 // @desc    Update expense

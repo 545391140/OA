@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 const JobLevel = require('../models/JobLevel');
 
 // @desc    Get all job levels
@@ -21,7 +22,7 @@ exports.getJobLevels = async (req, res) => {
       data: jobLevels
     });
   } catch (error) {
-    console.error('Get job levels error:', error);
+    logger.error('Get job levels error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -48,7 +49,7 @@ exports.getJobLevelById = async (req, res) => {
       data: jobLevel
     });
   } catch (error) {
-    console.error('Get job level error:', error);
+    logger.error('Get job level error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -81,7 +82,7 @@ exports.createJobLevel = async (req, res) => {
       data: jobLevel
     });
   } catch (error) {
-    console.error('Create job level error:', error);
+    logger.error('Create job level error:', error);
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -136,7 +137,7 @@ exports.updateJobLevel = async (req, res) => {
       data: jobLevel
     });
   } catch (error) {
-    console.error('Update job level error:', error);
+    logger.error('Update job level error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -165,7 +166,7 @@ exports.deleteJobLevel = async (req, res) => {
       message: 'Job level deleted successfully'
     });
   } catch (error) {
-    console.error('Delete job level error:', error);
+    logger.error('Delete job level error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

@@ -230,6 +230,20 @@ router.post('/', protect, async (req, res) => {
       employee: req.user.id
     };
 
+    // 确保 requestName 有值：如果为空，使用当前登录用户的姓名
+    if (!travelData.requestName || !travelData.requestName.trim()) {
+      const currentUser = await User.findById(req.user.id).select('firstName lastName email employeeId');
+      if (currentUser) {
+        if (currentUser.firstName && currentUser.lastName) {
+          travelData.requestName = `${currentUser.firstName} ${currentUser.lastName}`.trim();
+        } else if (currentUser.email) {
+          travelData.requestName = currentUser.email;
+        } else {
+          travelData.requestName = currentUser.employeeId || '';
+        }
+      }
+    }
+
     // 处理日期字段转换
     if (travelData.startDate && typeof travelData.startDate === 'string') {
       travelData.startDate = new Date(travelData.startDate);
@@ -317,6 +331,23 @@ router.post('/', protect, async (req, res) => {
       };
     }
 
+    // 验证并规范化币种字段
+    const validCurrencies = ['USD', 'CNY', 'JPY', 'KRW', 'EUR', 'GBP'];
+    if (travelData.currency && typeof travelData.currency === 'string') {
+      const currencyUpper = travelData.currency.toUpperCase();
+      if (validCurrencies.includes(currencyUpper)) {
+        travelData.currency = currencyUpper;
+        logger.info(`设置币种: ${travelData.currency}`);
+      } else {
+        logger.warn(`Invalid currency value: ${travelData.currency}, using default: USD`);
+        travelData.currency = 'USD';
+      }
+    } else {
+      // 如果没有提供币种，使用默认值
+      travelData.currency = travelData.currency || 'USD';
+      logger.info(`使用默认币种: ${travelData.currency}`);
+    }
+
     // 自动生成差旅单号（如果没有提供）
     if (!travelData.travelNumber) {
       travelData.travelNumber = await generateTravelNumber();
@@ -379,6 +410,20 @@ router.put('/:id', protect, async (req, res) => {
 
     // 处理日期字段转换
     const updateData = { ...req.body };
+    
+    // 确保 requestName 有值：如果为空，使用当前登录用户的姓名
+    if (updateData.hasOwnProperty('requestName') && (!updateData.requestName || !updateData.requestName.trim())) {
+      const currentUser = await User.findById(req.user.id).select('firstName lastName email employeeId');
+      if (currentUser) {
+        if (currentUser.firstName && currentUser.lastName) {
+          updateData.requestName = `${currentUser.firstName} ${currentUser.lastName}`.trim();
+        } else if (currentUser.email) {
+          updateData.requestName = currentUser.email;
+        } else {
+          updateData.requestName = currentUser.employeeId || '';
+        }
+      }
+    }
     
     // 记录接收到的原始数据
     logger.info('=== 后端接收到的原始数据 ===');
@@ -563,13 +608,29 @@ router.put('/:id', protect, async (req, res) => {
     logger.info('=== 设置文档字段 ===');
     Object.keys(updateData).forEach(key => {
       if (key !== 'employee' && key !== 'travelNumber') {
-        travel[key] = updateData[key];
-        if (key === 'multiCityRoutesBudget') {
-          logger.info(`设置 travel.${key}:`, {
-            isArray: Array.isArray(updateData[key]),
-            length: updateData[key]?.length || 0,
-            data: JSON.stringify(updateData[key], null, 2)
-          });
+        // 验证币种字段
+        if (key === 'currency') {
+          const validCurrencies = ['USD', 'CNY', 'JPY', 'KRW', 'EUR', 'GBP'];
+          const currencyValue = updateData[key];
+          if (currencyValue && typeof currencyValue === 'string' && validCurrencies.includes(currencyValue.toUpperCase())) {
+            travel[key] = currencyValue.toUpperCase();
+            logger.info(`设置 travel.${key}: ${travel[key]}`);
+          } else {
+            logger.warn(`Invalid currency value: ${currencyValue}, keeping existing value: ${travel[key] || 'USD'}`);
+            // 如果币种无效，保持现有值或使用默认值
+            if (!travel[key]) {
+              travel[key] = 'USD';
+            }
+          }
+        } else {
+          travel[key] = updateData[key];
+          if (key === 'multiCityRoutesBudget') {
+            logger.info(`设置 travel.${key}:`, {
+              isArray: Array.isArray(updateData[key]),
+              length: updateData[key]?.length || 0,
+              data: JSON.stringify(updateData[key], null, 2)
+            });
+          }
         }
       }
     });

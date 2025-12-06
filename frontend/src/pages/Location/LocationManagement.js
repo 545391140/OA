@@ -54,12 +54,16 @@ import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { PERMISSIONS } from '../../config/permissions';
 
 const LocationManagement = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
-  const { user } = useAuth();
-  const canEdit = user?.role === 'admin' || user?.role === 'finance';
+  const { user, hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.LOCATION_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.LOCATION_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.LOCATION_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.LOCATION_DELETE);
 
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -424,7 +428,7 @@ const LocationManagement = () => {
               {t('location.management.title')}
             </Typography>
           </Box>
-          {canEdit && (
+          {canCreate && (
             <Button
               variant="contained"
               color="primary"
@@ -581,19 +585,19 @@ const LocationManagement = () => {
                   <TableCell>{t('location.management.tableHeaders.cityLevel')}</TableCell>
                   <TableCell>{t('location.management.tableHeaders.coordinates')}</TableCell>
                   <TableCell>{t('location.management.tableHeaders.status')}</TableCell>
-                  {canEdit && <TableCell align="right">{t('location.management.tableHeaders.actions')}</TableCell>}
+                  {(canEdit || canDelete) && <TableCell align="right">{t('location.management.tableHeaders.actions')}</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 15 : 14} align="center">
+                    <TableCell colSpan={(canEdit || canDelete) ? 15 : 14} align="center">
                       <CircularProgress />
                     </TableCell>
                   </TableRow>
                 ) : locations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 15 : 14} align="center">
+                    <TableCell colSpan={(canEdit || canDelete) ? 15 : 14} align="center">
                       <Typography variant="body2" color="text.secondary">
                         {t('location.management.noData')}
                       </Typography>
@@ -689,7 +693,7 @@ const LocationManagement = () => {
                             size="small"
                           />
                         </TableCell>
-                        {canEdit && (
+                        {(canEdit || canDelete) && (
                           <TableCell align="right">
                             <IconButton
                               onClick={(e) => handleMenuOpen(e, location)}

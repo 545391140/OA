@@ -44,12 +44,17 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import { PERMISSIONS } from '../../config/permissions';
 
 const CurrencyManagement = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
-  const { user } = useAuth();
-  const canEdit = user?.role === 'admin' || user?.role === 'finance';
+  const { user, hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.CURRENCY_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.CURRENCY_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.CURRENCY_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.CURRENCY_DELETE);
+  const canToggleActive = hasPermission(PERMISSIONS.CURRENCY_TOGGLE_ACTIVE);
 
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -287,7 +292,7 @@ const CurrencyManagement = () => {
             >
               {t('common.refresh')}
             </Button>
-            {canEdit && (
+            {canCreate && (
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -410,8 +415,8 @@ const CurrencyManagement = () => {
                         </TableCell>
                         <TableCell>{currency.displayOrder || 0}</TableCell>
                         <TableCell align="right">
-                          {canEdit && (
-                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                            {canEdit && (
                               <Tooltip title={t('common.edit')}>
                                 <IconButton
                                   size="small"
@@ -421,6 +426,8 @@ const CurrencyManagement = () => {
                                   <EditIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
+                            )}
+                            {canDelete && (
                               <Tooltip title={t('common.delete')}>
                                 <IconButton
                                   size="small"
@@ -430,8 +437,8 @@ const CurrencyManagement = () => {
                                   <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                            </Box>
-                          )}
+                            )}
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))

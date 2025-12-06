@@ -50,6 +50,7 @@ import {
 import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { PERMISSIONS } from '../../config/permissions';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import PermissionSelector from '../../components/Common/PermissionSelector';
@@ -57,8 +58,12 @@ import PermissionSelector from '../../components/Common/PermissionSelector';
 const RoleManagement = () => {
   const { t, i18n } = useTranslation();
   const { showNotification } = useNotification();
-  const { user } = useAuth();
-  const canEdit = user?.role && user.role.toUpperCase() === 'ADMIN';
+  const { user, hasPermission } = useAuth();
+  const canView = hasPermission(PERMISSIONS.ROLE_VIEW);
+  const canCreate = hasPermission(PERMISSIONS.ROLE_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.ROLE_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.ROLE_DELETE);
+  const canToggleActive = hasPermission(PERMISSIONS.ROLE_TOGGLE_ACTIVE);
 
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);

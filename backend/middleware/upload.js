@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 // 解码文件名（处理URL编码的中文文件名和编码错误）
 const decodeFileName = (filename) => {
@@ -24,7 +25,7 @@ const decodeFileName = (filename) => {
         // 方法1: 尝试将 Latin1 字节重新解释为 UTF-8
         const fixed1 = Buffer.from(filename, 'latin1').toString('utf-8');
         if (/[\u4e00-\u9fa5]/.test(fixed1)) {
-          console.log('文件名编码修复 (方法1):', filename, '->', fixed1);
+          logger.debug('文件名编码修复 (方法1)', { original: filename, fixed: fixed1 });
           return fixed1;
         }
         
@@ -36,13 +37,13 @@ const decodeFileName = (filename) => {
           const bytes = Buffer.from(filename, 'latin1');
           const fixed2 = bytes.toString('utf-8');
           if (/[\u4e00-\u9fa5]/.test(fixed2) && fixed2.length > 0) {
-            console.log('文件名编码修复 (方法2):', filename, '->', fixed2);
+            logger.debug('文件名编码修复 (方法2)', { original: filename, fixed: fixed2 });
             return fixed2;
           }
         }
       } catch (e) {
         // 修复失败，继续其他方法
-        console.log('编码修复失败:', e.message);
+        logger.debug('编码修复失败', { message: e.message });
       }
     }
     
@@ -60,8 +61,7 @@ const decodeFileName = (filename) => {
       return Buffer.from(filename, 'latin1').toString('utf-8');
     }
   } catch (error) {
-    console.error('文件名解码失败:', error);
-    console.error('原始文件名:', filename);
+    logger.error('文件名解码失败', { error, filename });
     return filename; // 如果解码失败，返回原文件名
   }
 };

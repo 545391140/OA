@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const router = express.Router();
 const Travel = require('../models/Travel');
 const Expense = require('../models/Expense');
@@ -111,7 +112,7 @@ router.get('/global', protect, async (req, res) => {
       try {
         await saveSearchHistory(req.user.id, q.trim(), 'all', total);
       } catch (historyError) {
-        console.error('Save search history error:', historyError);
+        logger.error('Save search history error:', historyError);
       }
     }
 
@@ -127,7 +128,7 @@ router.get('/global', protect, async (req, res) => {
       total
     });
   } catch (error) {
-    console.error('Global search error:', error);
+    logger.error('Global search error:', error);
     res.status(500).json({
       success: false,
       message: '搜索失败',
@@ -146,7 +147,7 @@ const saveSearchHistory = async (userId, query, type, resultCount) => {
       resultCount
     });
   } catch (error) {
-    console.error('Save search history error:', error);
+    logger.error('Save search history error:', error);
   }
 };
 
@@ -294,7 +295,7 @@ router.post('/advanced', protect, async (req, res) => {
           criteria: req.body
         });
       } catch (historyError) {
-        console.error('Save search history error:', historyError);
+        logger.error('Save search history error:', historyError);
       }
     }
 
@@ -305,7 +306,7 @@ router.post('/advanced', protect, async (req, res) => {
       limit
     });
   } catch (error) {
-    console.error('Advanced search error:', error);
+    logger.error('Advanced search error:', error);
     res.status(500).json({
       success: false,
       message: '高级搜索失败',
@@ -333,7 +334,7 @@ router.get('/history', protect, async (req, res) => {
       data: history
     });
   } catch (error) {
-    console.error('Get search history error:', error);
+    logger.error('Get search history error:', error);
     res.status(500).json({
       success: false,
       message: '获取搜索历史失败',
@@ -366,7 +367,7 @@ router.delete('/history/:id', protect, async (req, res) => {
       message: '删除成功'
     });
   } catch (error) {
-    console.error('Delete search history error:', error);
+    logger.error('Delete search history error:', error);
     res.status(500).json({
       success: false,
       message: '删除搜索历史失败',
@@ -389,7 +390,7 @@ router.delete('/history', protect, async (req, res) => {
       message: '清空成功'
     });
   } catch (error) {
-    console.error('Clear search history error:', error);
+    logger.error('Clear search history error:', error);
     res.status(500).json({
       success: false,
       message: '清空搜索历史失败',
@@ -428,7 +429,7 @@ router.post('/history/save', protect, async (req, res) => {
       data: savedSearch
     });
   } catch (error) {
-    console.error('Save search error:', error);
+    logger.error('Save search error:', error);
     res.status(500).json({
       success: false,
       message: '保存搜索失败',
@@ -544,7 +545,7 @@ router.get('/suggestions', protect, async (req, res) => {
       data: uniqueSuggestions
     });
   } catch (error) {
-    console.error('Get search suggestions error:', error);
+    logger.error('Get search suggestions error:', error);
     res.status(500).json({
       success: false,
       message: '获取搜索建议失败',
@@ -653,7 +654,7 @@ router.get('/fulltext', protect, async (req, res) => {
       }
     } catch (textSearchError) {
       // 如果文本搜索失败，使用正则表达式搜索
-      console.warn('Text search not available, using regex search:', textSearchError.message);
+      logger.warn('Text search not available, using regex search:', textSearchError.message);
       
       if (type === 'all' || type === 'travel') {
         results.travels = await Travel.find({
@@ -704,7 +705,7 @@ router.get('/fulltext', protect, async (req, res) => {
       data: results
     });
   } catch (error) {
-    console.error('Fulltext search error:', error);
+    logger.error('Fulltext search error:', error);
     res.status(500).json({
       success: false,
       message: '全文搜索失败',
