@@ -55,6 +55,13 @@
       "Oct": "10월",
       "Nov": "11월",
       "Dec": "12월"
+    },
+    "currencies": {
+      "USD": "미국 달러",
+      "CNY": "중국 위안",
+      "JPY": "일본 엔",
+      "KRW": "한국 원",
+      "EUR": "유로"
     }
   },
   "navigation": {
@@ -74,6 +81,7 @@
     "roleManagement": "역할 관리",
     "positionManagement": "직책 관리",
     "userManagement": "사용자 관리",
+    "currencyManagement": "통화 관리",
     "appTitle": "출장 및 비용 관리 시스템",
     "languages": {
       "en": "English",
@@ -151,6 +159,10 @@
     "phone": "전화번호",
     "manager": "직속상사",
     "role": "역할",
+    "residenceCountry": "상주 국가",
+    "residenceCity": "상주 도시",
+    "residenceCountryPlaceholder": "국가 검색",
+    "residenceCityPlaceholder": "도시 검색",
     "preferences": "환경설정",
     "language": "언어",
     "currency": "통화",
@@ -188,6 +200,18 @@
       "toggleSuccess": "사용자가 활성화되었습니다",
       "toggleDisabledSuccess": "사용자가 비활성화되었습니다",
       "toggleError": "작업에 실패했습니다",
+      "errors": {
+        "employeeIdRequired": "사원번호는 필수입니다",
+        "firstNameRequired": "이름은 필수입니다",
+        "lastNameRequired": "성은 필수입니다",
+        "emailRequired": "이메일은 필수입니다",
+        "emailInvalid": "유효한 이메일 주소를 입력하세요",
+        "passwordRequired": "비밀번호는 필수입니다",
+        "passwordMinLength": "비밀번호는 최소 6자 이상이어야 합니다",
+        "roleRequired": "역할을 선택하세요",
+        "positionRequired": "직책을 선택하세요",
+        "departmentRequired": "부서는 필수입니다"
+      },
       "tableHeaders": {
         "employeeId": "사원번호",
         "name": "이름",
@@ -403,8 +427,8 @@
       "domestic": "국내 출장"
     },
     "tripTypes": {
-      "international": "국제",
-      "mainland_china": "중국 대륙"
+      "domestic": "국내",
+      "cross_border": "국경 횡단"
     },
     "costOwingDepartment": "비용 부담 부서",
     "requestName": "신청자 이름",
@@ -498,9 +522,11 @@
       "pleaseComplete": "출장 준비를 완료하세요: {fields}",
       "pleaseCompleteBudget": "비용 예산을 완료하세요: {fields}",
       "pleaseSelectTripType": "여행 유형을 선택하세요",
+      "tripTypeAutoDetected": "상주 국가 및 여행 목적지에 따라 자동 판단",
       "pleaseSelectDepartment": "비용 부담 부서를 선택하세요",
       "pleaseSelectDestination": "목적지를 선택하세요 (기본 정보, 출발, 귀국 또는 다도시 경로 중 최소 하나)",
       "pleaseSelectRequestName": "신청자 이름을 선택하세요",
+      "pleaseEnterRequestName": "신청자 이름을 입력하세요",
       "pleaseSelectStartDate": "시작일을 선택하세요",
       "pleaseSelectEndDate": "종료일을 선택하세요",
       "pleaseInputDescription": "출장 설명을 입력하세요",
@@ -533,6 +559,7 @@
       "inboundBudgetTitle": "귀국 비용 예산",
       "secondRouteBudgetTitle": "두 번째 경로 비용 예산",
       "routeBudgetTitle": "경로 {index} 비용 예산",
+      "routeBudgetTitleWithCount": "경로 {index} 비용 예산 ({count}개 경로)",
       "currencyLabel": "통화: {currency}",
       "unitPrice": "단가",
       "quantity": "수량",
@@ -2001,6 +2028,42 @@
       "updateInvoice": "인보이스 업데이트",
       "loadingInvoice": "인보이스 데이터 로딩 중...",
       "loadInvoiceFailed": "인보이스 데이터 로드 실패"
+    }
+  },
+  "currency": {
+    "management": {
+      "title": "통화 관리",
+      "add": "통화 추가",
+      "edit": "통화 편집",
+      "code": "통화 코드",
+      "name": "통화명",
+      "nameEn": "영문명",
+      "symbol": "통화 기호",
+      "exchangeRate": "환율",
+      "exchangeRateHint": "CNY(중국 위안화) 대비 환율",
+      "decimalPlaces": "소수점 자릿수",
+      "displayOrder": "표시 순서",
+      "status": "상태",
+      "isActive": "활성",
+      "isDefault": "기본 통화",
+      "remark": "비고",
+      "searchPlaceholder": "통화 코드 또는 이름 검색",
+      "statusFilter": "상태 필터",
+      "noData": "통화 데이터가 없습니다",
+      "fetchError": "통화 목록을 가져오지 못했습니다",
+      "createSuccess": "통화가 생성되었습니다",
+      "updateSuccess": "통화가 업데이트되었습니다",
+      "deleteSuccess": "통화가 삭제되었습니다",
+      "deleteError": "통화 삭제에 실패했습니다",
+      "saveError": "통화 저장에 실패했습니다",
+      "deleteConfirm": "삭제 확인",
+      "deleteMessage": "통화 {{code}}을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+      "errors": {
+        "codeRequired": "통화 코드는 필수입니다",
+        "codeLength": "통화 코드는 3자여야 합니다",
+        "nameRequired": "통화명은 필수입니다",
+        "exchangeRateRequired": "환율은 0보다 커야 합니다"
+      }
     }
   }
 }

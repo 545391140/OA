@@ -57,6 +57,14 @@
       "Oct": "十月",
       "Nov": "十一月",
       "Dec": "十二月"
+    },
+    "currencies": {
+      "USD": "美元",
+      "CNY": "人民币",
+      "JPY": "日元",
+      "KRW": "韩元",
+      "EUR": "欧元",
+      "GBP": "英镑"
     }
   },
   "notifications": {
@@ -84,6 +92,7 @@
     "roleManagement": "角色管理",
     "positionManagement": "岗位管理",
     "userManagement": "用户管理",
+    "currencyManagement": "币种管理",
     "approvalWorkflows": "审批流程管理",
     "approvalStatistics": "审批统计分析",
     "appTitle": "差旅费用管理系统",
@@ -164,6 +173,10 @@
     "phone": "电话",
     "manager": "直属经理",
     "role": "角色",
+    "residenceCountry": "常驻国家",
+    "residenceCity": "常驻城市",
+    "residenceCountryPlaceholder": "搜索国家",
+    "residenceCityPlaceholder": "搜索城市",
     "preferences": "偏好设置",
     "language": "语言",
     "currency": "货币",
@@ -202,6 +215,20 @@
       "toggleSuccess": "已启用",
       "toggleDisabledSuccess": "已禁用",
       "toggleError": "操作失败",
+      "invalidCountryType": "请选择国家类型",
+      "invalidCityType": "请选择城市类型",
+      "errors": {
+        "employeeIdRequired": "员工编号不能为空",
+        "firstNameRequired": "名字不能为空",
+        "lastNameRequired": "姓氏不能为空",
+        "emailRequired": "邮箱不能为空",
+        "emailInvalid": "请输入有效的邮箱地址",
+        "passwordRequired": "密码不能为空",
+        "passwordMinLength": "密码至少需要6个字符",
+        "roleRequired": "请选择角色",
+        "positionRequired": "请选择岗位",
+        "departmentRequired": "部门不能为空"
+      },
       "tableHeaders": {
         "employeeId": "员工ID",
         "name": "姓名",
@@ -417,8 +444,8 @@
       "domestic": "国内差旅"
     },
     "tripTypes": {
-      "international": "国际",
-      "mainland_china": "中国大陆"
+      "domestic": "境内",
+      "cross_border": "跨境"
     },
     "costOwingDepartment": "费用承担部门",
     "requestName": "申请人姓名",
@@ -512,9 +539,11 @@
       "pleaseComplete": "请完善出行安排：{fields}",
       "pleaseCompleteBudget": "请完善费用预算：{fields}",
       "pleaseSelectTripType": "请选择行程类型",
+      "tripTypeAutoDetected": "根据您的常驻国和行程目的地自动判断",
       "pleaseSelectDepartment": "请选择费用承担部门",
       "pleaseSelectDestination": "请选择目的地（基本信息、去程、返程或多程行程中至少填写一个）",
       "pleaseSelectRequestName": "请选择申请人姓名",
+      "pleaseEnterRequestName": "请输入申请人姓名",
       "pleaseSelectStartDate": "请选择开始日期",
       "pleaseSelectEndDate": "请选择结束日期",
       "pleaseInputDescription": "请输入差旅描述",
@@ -547,6 +576,7 @@
       "inboundBudgetTitle": "返程费用预算",
       "secondRouteBudgetTitle": "第二程费用预算",
       "routeBudgetTitle": "第{index}程费用预算",
+      "routeBudgetTitleWithCount": "第{index}程费用预算（{count}个行程）",
       "currencyLabel": "货币: {currency}",
       "unitPrice": "单价",
       "quantity": "数量",
@@ -1161,7 +1191,6 @@
     "isBillable": "可计费",
     "client": "客户",
     "tagsLabel": "标签",
-    "tags": "标签",
     "vendorAddress": "供应商地址",
     "taxId": "税号",
     "selectProject": "选择或输入项目名称",
@@ -1223,9 +1252,6 @@
     },
     "selectInvoices": "选择发票",
     "noAvailableInvoices": "没有可用的发票",
-    "selectTravel": "选择差旅单",
-    "travelNumber": "差旅单号",
-    "searchTravelNumber": "搜索差旅单号...",
     "travelInfo": "差旅基本信息",
     "travelRoutes": "行程信息",
     "expenseItemsInvoices": "费用项发票管理",
@@ -1291,7 +1317,6 @@
     "created": "创建",
     "updated": "更新",
     "lastUpdated": "最后更新",
-    "submitted": "已提交",
     "approved": "已批准",
     "paid": "已支付",
     "receipt": {
@@ -1306,7 +1331,8 @@
       "CNY": "人民币",
       "JPY": "日元",
       "KRW": "韩元",
-      "EUR": "欧元"
+      "EUR": "欧元",
+      "GBP": "英镑"
     },
     "subcategories": {
       "transportation": {
@@ -1555,8 +1581,6 @@
       "enabled": "启用",
       "disabled": "禁用",
       "actions": "操作",
-      "view": "查看",
-      "edit": "编辑",
       "delete": "删除",
       "noWorkflows": "暂无审批流程",
       "createSuccess": "创建成功",
@@ -1677,7 +1701,6 @@
     "summary": "汇总",
     "month": "月份",
     "categoryData": "类别数据",
-    "category": "类别",
     "amount": "金额",
     "count": "数量",
     "to": "至"
@@ -1963,7 +1986,6 @@
   },
   "invoice": {
     "title": "发票夹",
-    "upload": "上传发票",
     "noNumber": "无发票号",
     "list": {
       "title": "发票夹",
@@ -2062,9 +2084,7 @@
       "itemName": "项目名称",
       "unitPrice": "单价",
       "quantity": "数量",
-      "amount": "金额",
       "taxRate": "税率",
-      "taxAmount": "税额",
       "issuerInfo": "开票信息",
       "issuer": "开票人",
       "travelerInfo": "出行人信息",
@@ -2162,6 +2182,42 @@
       "ocrApplied": "OCR识别结果已应用到表单",
       "manualFillHint": "您可以手动填写",
       "confidence": "置信度"
+    }
+  },
+  "currency": {
+    "management": {
+      "title": "币种管理",
+      "add": "新增币种",
+      "edit": "编辑币种",
+      "code": "币种代码",
+      "name": "币种名称",
+      "nameEn": "英文名称",
+      "symbol": "币种符号",
+      "exchangeRate": "汇率",
+      "exchangeRateHint": "相对于CNY（人民币）的汇率",
+      "decimalPlaces": "小数位数",
+      "displayOrder": "显示顺序",
+      "status": "状态",
+      "isActive": "启用",
+      "isDefault": "默认币种",
+      "remark": "备注",
+      "searchPlaceholder": "搜索币种代码或名称",
+      "statusFilter": "状态筛选",
+      "noData": "暂无币种数据",
+      "fetchError": "获取币种列表失败",
+      "createSuccess": "币种创建成功",
+      "updateSuccess": "币种更新成功",
+      "deleteSuccess": "币种删除成功",
+      "deleteError": "删除币种失败",
+      "saveError": "保存币种失败",
+      "deleteConfirm": "确认删除",
+      "deleteMessage": "确定要删除币种 {{code}} 吗？此操作不可恢复。",
+      "errors": {
+        "codeRequired": "币种代码不能为空",
+        "codeLength": "币种代码必须为3个字符",
+        "nameRequired": "币种名称不能为空",
+        "exchangeRateRequired": "汇率必须大于0"
+      }
     }
   }
 }

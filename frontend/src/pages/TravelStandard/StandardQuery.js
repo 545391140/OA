@@ -29,11 +29,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../utils/axiosConfig';
 import RegionSelector from '../../components/Common/RegionSelector';
-import { CURRENCIES } from '../../utils/constants';
+import { useCurrencies } from '../../hooks/useCurrencies';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
 
 const StandardQuery = () => {
   const { t, i18n } = useTranslation();
+  const { currencyCodes, currencyOptions } = useCurrencies();
   const [loading, setLoading] = useState(false);
   const [standardData, setStandardData] = useState(null);
   const [error, setError] = useState(null);
@@ -140,9 +141,9 @@ const StandardQuery = () => {
                   onChange={(e) => setCurrency(e.target.value)}
                   label={t('common.currency') || 'Currency'}
                 >
-                  {CURRENCIES.map(code => (
-                    <MenuItem key={code} value={code}>
-                      {code} - {t(`common.currencies.${code}`) || code}
+                  {currencyOptions.map(option => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
                     </MenuItem>
                   ))}
                 </Select>

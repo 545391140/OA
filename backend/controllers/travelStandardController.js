@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const TravelStandard = require('../models/TravelStandard');
-const { convertFromCNY } = require('../utils/currencyConverter');
+const { convertFromCNYSyncSync } = require('../utils/currencyConverter');
 
 // @desc    Get all travel standards
 // @route   GET /api/travel-standards
@@ -663,7 +663,7 @@ function buildExpensesFromStandard(standard, targetCurrency = 'CNY') {
       // 差旅标准按CNY维护，需要根据目标币种进行换算
       if (es.limitType === 'FIXED') {
         const limitCNY = es.limitAmount || 0;
-        const limitConverted = convertFromCNY(limitCNY, targetCurrency);
+        const limitConverted = convertFromCNYSync(limitCNY, targetCurrency);
         expenses[itemId] = {
           itemName,
           category,
@@ -679,8 +679,8 @@ function buildExpensesFromStandard(standard, targetCurrency = 'CNY') {
       } else if (es.limitType === 'RANGE') {
         const limitMinCNY = es.limitMin || 0;
         const limitMaxCNY = es.limitMax || 0;
-        const limitMinConverted = convertFromCNY(limitMinCNY, targetCurrency);
-        const limitMaxConverted = convertFromCNY(limitMaxCNY, targetCurrency);
+        const limitMinConverted = convertFromCNYSync(limitMinCNY, targetCurrency);
+        const limitMaxConverted = convertFromCNYSync(limitMaxCNY, targetCurrency);
         expenses[itemId] = {
           itemName,
           category,
@@ -706,7 +706,7 @@ function buildExpensesFromStandard(standard, targetCurrency = 'CNY') {
         };
       } else if (es.limitType === 'PERCENTAGE') {
         const baseAmountCNY = es.baseAmount || 0;
-        const baseAmountConverted = convertFromCNY(baseAmountCNY, targetCurrency);
+        const baseAmountConverted = convertFromCNYSync(baseAmountCNY, targetCurrency);
         expenses[itemId] = {
           itemName,
           category,
@@ -741,7 +741,7 @@ function mergeExpensesBest(standards, targetCurrency = 'CNY') {
           // 首次遇到该费用项，直接添加
         if (es.limitType === 'FIXED') {
           const limitCNY = es.limitAmount || 0;
-          const limitConverted = convertFromCNY(limitCNY, targetCurrency);
+          const limitConverted = convertFromCNYSync(limitCNY, targetCurrency);
           mergedExpenses[itemId] = {
             itemName,
             category,
@@ -757,8 +757,8 @@ function mergeExpensesBest(standards, targetCurrency = 'CNY') {
         } else if (es.limitType === 'RANGE') {
           const limitMinCNY = es.limitMin || 0;
           const limitMaxCNY = es.limitMax || 0;
-          const limitMinConverted = convertFromCNY(limitMinCNY, targetCurrency);
-          const limitMaxConverted = convertFromCNY(limitMaxCNY, targetCurrency);
+          const limitMinConverted = convertFromCNYSync(limitMinCNY, targetCurrency);
+          const limitMaxConverted = convertFromCNYSync(limitMaxCNY, targetCurrency);
           mergedExpenses[itemId] = {
             itemName,
             category,
@@ -784,7 +784,7 @@ function mergeExpensesBest(standards, targetCurrency = 'CNY') {
           };
         } else if (es.limitType === 'PERCENTAGE') {
           const baseAmountCNY = es.baseAmount || 0;
-          const baseAmountConverted = convertFromCNY(baseAmountCNY, targetCurrency);
+          const baseAmountConverted = convertFromCNYSync(baseAmountCNY, targetCurrency);
           mergedExpenses[itemId] = {
             itemName,
             category,
@@ -816,7 +816,7 @@ function mergeExpensesBest(standards, targetCurrency = 'CNY') {
             const newLimitCNY = es.limitAmount || 0;
             const existingLimitCNY = existing.limitCNY || 0;
             if (newLimitCNY > existingLimitCNY) {
-              const limitConverted = convertFromCNY(newLimitCNY, targetCurrency);
+              const limitConverted = convertFromCNYSync(newLimitCNY, targetCurrency);
               mergedExpenses[itemId] = {
                 ...existing,
                 limit: limitConverted,
@@ -840,8 +840,8 @@ function mergeExpensesBest(standards, targetCurrency = 'CNY') {
             const existingMaxCNY = existing.limitMaxCNY || 0;
             const newMin = Math.min(existingMinCNY, newMinCNY);
             const newMax = Math.max(existingMaxCNY, newMaxCNY);
-            const limitMinConverted = convertFromCNY(newMin, targetCurrency);
-            const limitMaxConverted = convertFromCNY(newMax, targetCurrency);
+            const limitMinConverted = convertFromCNYSync(newMin, targetCurrency);
+            const limitMaxConverted = convertFromCNYSync(newMax, targetCurrency);
             mergedExpenses[itemId] = {
               ...existing,
               type: `范围: ${limitMinConverted}~${limitMaxConverted}${targetCurrency}`,
@@ -881,7 +881,7 @@ function mergeExpensesAll(standards, targetCurrency = 'CNY') {
         
         if (es.limitType === 'FIXED') {
           const limitCNY = es.limitAmount || 0;
-          const limitConverted = convertFromCNY(limitCNY, targetCurrency);
+          const limitConverted = convertFromCNYSync(limitCNY, targetCurrency);
           mergedExpenses[uniqueKey] = {
             itemName: `${itemName} (${standard.standardCode})`,
             limit: limitConverted,
@@ -895,8 +895,8 @@ function mergeExpensesAll(standards, targetCurrency = 'CNY') {
         } else if (es.limitType === 'RANGE') {
           const limitMinCNY = es.limitMin || 0;
           const limitMaxCNY = es.limitMax || 0;
-          const limitMinConverted = convertFromCNY(limitMinCNY, targetCurrency);
-          const limitMaxConverted = convertFromCNY(limitMaxCNY, targetCurrency);
+          const limitMinConverted = convertFromCNYSync(limitMinCNY, targetCurrency);
+          const limitMaxConverted = convertFromCNYSync(limitMaxCNY, targetCurrency);
           mergedExpenses[uniqueKey] = {
             itemName: `${itemName} (${standard.standardCode})`,
             type: `范围: ${limitMinConverted}~${limitMaxConverted}${targetCurrency}`,
@@ -918,7 +918,7 @@ function mergeExpensesAll(standards, targetCurrency = 'CNY') {
           };
         } else if (es.limitType === 'PERCENTAGE') {
           const baseAmountCNY = es.baseAmount || 0;
-          const baseAmountConverted = convertFromCNY(baseAmountCNY, targetCurrency);
+          const baseAmountConverted = convertFromCNYSync(baseAmountCNY, targetCurrency);
           mergedExpenses[uniqueKey] = {
             itemName: `${itemName} (${standard.standardCode})`,
             type: `按比例: ${es.percentage || 0}% (基准: ${baseAmountConverted}${targetCurrency})`,

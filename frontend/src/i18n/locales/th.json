@@ -56,6 +56,13 @@
       "Oct": "ตุลาคม",
       "Nov": "พฤศจิกายน",
       "Dec": "ธันวาคม"
+    },
+    "currencies": {
+      "USD": "ดอลลาร์สหรัฐ",
+      "CNY": "หยวนจีน",
+      "JPY": "เยนญี่ปุ่น",
+      "KRW": "วอนเกาหลี",
+      "EUR": "ยูโร"
     }
   },
   "notifications": {
@@ -83,6 +90,7 @@
     "roleManagement": "จัดการบทบาท",
     "positionManagement": "จัดการตำแหน่ง",
     "userManagement": "จัดการผู้ใช้",
+    "currencyManagement": "จัดการสกุลเงิน",
     "approvalWorkflows": "เวิร์กโฟลว์การอนุมัติ",
     "approvalStatistics": "สถิติการอนุมัติ",
     "appTitle": "การเดินทางและค่าใช้จ่าย",
@@ -163,6 +171,10 @@
     "phone": "โทรศัพท์",
     "manager": "ผู้จัดการโดยตรง",
     "role": "บทบาท",
+    "residenceCountry": "ประเทศที่พำนัก",
+    "residenceCity": "เมืองที่พำนัก",
+    "residenceCountryPlaceholder": "ค้นหาประเทศ",
+    "residenceCityPlaceholder": "ค้นหาเมือง",
     "preferences": "การตั้งค่า",
     "language": "ภาษา",
     "currency": "สกุลเงิน",
@@ -201,6 +213,18 @@
       "toggleSuccess": "เปิดใช้งานแล้ว",
       "toggleDisabledSuccess": "ปิดใช้งานแล้ว",
       "toggleError": "การดำเนินการล้มเหลว",
+      "errors": {
+        "employeeIdRequired": "รหัสพนักงานจำเป็นต้องกรอก",
+        "firstNameRequired": "ชื่อจำเป็นต้องกรอก",
+        "lastNameRequired": "นามสกุลจำเป็นต้องกรอก",
+        "emailRequired": "อีเมลจำเป็นต้องกรอก",
+        "emailInvalid": "กรุณากรอกอีเมลที่ถูกต้อง",
+        "passwordRequired": "รหัสผ่านจำเป็นต้องกรอก",
+        "passwordMinLength": "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร",
+        "roleRequired": "กรุณาเลือกบทบาท",
+        "positionRequired": "กรุณาเลือกตำแหน่ง",
+        "departmentRequired": "แผนกจำเป็นต้องกรอก"
+      },
       "tableHeaders": {
         "employeeId": "รหัสพนักงาน",
         "name": "ชื่อ",
@@ -418,8 +442,8 @@
       "domestic": "ในประเทศ"
     },
     "tripTypes": {
-      "international": "ระหว่างประเทศ",
-      "mainland_china": "จีนแผ่นดินใหญ่"
+      "domestic": "ในประเทศ",
+      "cross_border": "ข้ามพรมแดน"
     },
     "costOwingDepartment": "แผนกที่รับผิดชอบค่าใช้จ่าย",
     "requestName": "ชื่อคำขอ",
@@ -512,9 +536,11 @@
       "pleaseComplete": "กรุณาเสร็จสิ้นการจัดเตรียมการเดินทาง: {fields}",
       "pleaseCompleteBudget": "กรุณาเสร็จสิ้นงบประมาณค่าใช้จ่าย: {fields}",
       "pleaseSelectTripType": "กรุณาเลือกประเภทการเดินทาง",
+      "tripTypeAutoDetected": "กำหนดอัตโนมัติตามประเทศที่พำนักและจุดหมายปลายทาง",
       "pleaseSelectDepartment": "กรุณาเลือกแผนกที่รับผิดชอบค่าใช้จ่าย",
       "pleaseSelectDestination": "กรุณาเลือกจุดหมายปลายทาง (อย่างน้อยหนึ่งจากข้อมูลพื้นฐาน ขาออก ขาเข้า หรือเส้นทางหลายเมือง)",
       "pleaseSelectRequestName": "กรุณาเลือกชื่อคำขอ",
+      "pleaseEnterRequestName": "กรุณากรอกชื่อผู้สมัคร",
       "pleaseSelectStartDate": "กรุณาเลือกวันที่เริ่มต้น",
       "pleaseSelectEndDate": "กรุณาเลือกวันที่สิ้นสุด",
       "pleaseInputDescription": "กรุณาป้อนรายละเอียดการเดินทาง",
@@ -547,6 +573,7 @@
       "inboundBudgetTitle": "งบประมาณค่าใช้จ่ายขาเข้า",
       "secondRouteBudgetTitle": "งบประมาณค่าใช้จ่ายเส้นทางที่สอง",
       "routeBudgetTitle": "งบประมาณค่าใช้จ่ายเส้นทาง {index}",
+      "routeBudgetTitleWithCount": "งบประมาณค่าใช้จ่ายเส้นทาง {index} ({count} เส้นทาง)",
       "currencyLabel": "สกุลเงิน: {currency}",
       "unitPrice": "ราคาต่อหน่วย",
       "quantity": "จำนวน",
@@ -2147,6 +2174,42 @@
       "updateInvoice": "อัปเดตใบแจ้งหนี้",
       "loadingInvoice": "กำลังโหลดข้อมูลใบแจ้งหนี้...",
       "loadInvoiceFailed": "ไม่สามารถโหลดข้อมูลใบแจ้งหนี้"
+    }
+  },
+  "currency": {
+    "management": {
+      "title": "จัดการสกุลเงิน",
+      "add": "เพิ่มสกุลเงิน",
+      "edit": "แก้ไขสกุลเงิน",
+      "code": "รหัสสกุลเงิน",
+      "name": "ชื่อสกุลเงิน",
+      "nameEn": "ชื่อภาษาอังกฤษ",
+      "symbol": "สัญลักษณ์สกุลเงิน",
+      "exchangeRate": "อัตราแลกเปลี่ยน",
+      "exchangeRateHint": "อัตราแลกเปลี่ยนเทียบกับ CNY (หยวนจีน)",
+      "decimalPlaces": "ทศนิยม",
+      "displayOrder": "ลำดับการแสดง",
+      "status": "สถานะ",
+      "isActive": "ใช้งาน",
+      "isDefault": "สกุลเงินเริ่มต้น",
+      "remark": "หมายเหตุ",
+      "searchPlaceholder": "ค้นหารหัสหรือชื่อสกุลเงิน",
+      "statusFilter": "ตัวกรองสถานะ",
+      "noData": "ไม่มีข้อมูลสกุลเงิน",
+      "fetchError": "ไม่สามารถโหลดรายการสกุลเงิน",
+      "createSuccess": "สร้างสกุลเงินสำเร็จ",
+      "updateSuccess": "อัปเดตสกุลเงินสำเร็จ",
+      "deleteSuccess": "ลบสกุลเงินสำเร็จ",
+      "deleteError": "ลบสกุลเงินล้มเหลว",
+      "saveError": "บันทึกสกุลเงินล้มเหลว",
+      "deleteConfirm": "ยืนยันการลบ",
+      "deleteMessage": "คุณแน่ใจหรือไม่ว่าต้องการลบสกุลเงิน {{code}}? การดำเนินการนี้ไม่สามารถยกเลิกได้",
+      "errors": {
+        "codeRequired": "รหัสสกุลเงินจำเป็นต้องมี",
+        "codeLength": "รหัสสกุลเงินต้องมี 3 ตัวอักษร",
+        "nameRequired": "ชื่อสกุลเงินจำเป็นต้องมี",
+        "exchangeRateRequired": "อัตราแลกเปลี่ยนต้องมากกว่า 0"
+      }
     }
   }
 }

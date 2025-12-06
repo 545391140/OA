@@ -29,6 +29,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import pushNotificationService from '../../services/pushNotificationService';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const Settings = () => {
   const { t } = useTranslation();
@@ -154,12 +155,8 @@ const Settings = () => {
     }
   };
 
-  const currencies = useMemo(() => [
-    { value: 'USD', label: 'USD - US Dollar' },
-    { value: 'CNY', label: 'CNY - Chinese Yuan' },
-    { value: 'JPY', label: 'JPY - Japanese Yen' },
-    { value: 'EUR', label: 'EUR - Euro' }
-  ], []);
+  const { currencyOptions } = useCurrencies();
+  const currencies = currencyOptions;
 
   const timezones = useMemo(() => {
     const timezoneLabels = {

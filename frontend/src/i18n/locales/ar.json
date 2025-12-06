@@ -56,6 +56,13 @@
       "Oct": "أكتوبر",
       "Nov": "نوفمبر",
       "Dec": "ديسمبر"
+    },
+    "currencies": {
+      "USD": "US Dollar",
+      "CNY": "Chinese Yuan",
+      "JPY": "Japanese Yen",
+      "KRW": "Korean Won",
+      "EUR": "Euro"
     }
   },
   "notifications": {
@@ -83,6 +90,7 @@
     "roleManagement": "إدارة الأدوار",
     "positionManagement": "إدارة المناصب",
     "userManagement": "إدارة المستخدمين",
+    "currencyManagement": "إدارة العملات",
     "approvalWorkflows": "سير عمل الموافقة",
     "approvalStatistics": "إحصائيات الموافقة",
     "appTitle": "السفر والمصروفات",
@@ -162,6 +170,10 @@
     "phone": "Phone",
     "manager": "Manager",
     "role": "Role",
+    "residenceCountry": "Residence Country",
+    "residenceCity": "Residence City",
+    "residenceCountryPlaceholder": "Search country",
+    "residenceCityPlaceholder": "Search city",
     "preferences": "Preferences",
     "language": "Language",
     "currency": "Currency",
@@ -199,6 +211,18 @@
       "toggleSuccess": "User enabled",
       "toggleDisabledSuccess": "User disabled",
       "toggleError": "Operation failed",
+      "errors": {
+        "employeeIdRequired": "Employee ID is required",
+        "firstNameRequired": "First name is required",
+        "lastNameRequired": "Last name is required",
+        "emailRequired": "Email is required",
+        "emailInvalid": "Please enter a valid email address",
+        "passwordRequired": "Password is required",
+        "passwordMinLength": "Password must be at least 6 characters",
+        "roleRequired": "Please select a role",
+        "positionRequired": "Please select a position",
+        "departmentRequired": "Department is required"
+      },
       "tableHeaders": {
         "employeeId": "Employee ID",
         "name": "Name",
@@ -415,8 +439,8 @@
       "domestic": "محلي"
     },
     "tripTypes": {
-      "international": "دولي",
-      "mainland_china": "الصين القارية"
+      "domestic": "محلي",
+      "cross_border": "عبر الحدود"
     },
     "costOwingDepartment": "القسم المسؤول عن التكلفة",
     "requestName": "اسم الطلب",
@@ -509,9 +533,11 @@
       "pleaseComplete": "Please complete travel arrangement: {fields}",
       "pleaseCompleteBudget": "Please complete expense budget: {fields}",
       "pleaseSelectTripType": "Please select trip type",
+      "tripTypeAutoDetected": "يتم تحديده تلقائياً بناءً على بلد الإقامة ووجهات السفر",
       "pleaseSelectDepartment": "Please select cost-owing department",
       "pleaseSelectDestination": "Please select destination (at least one from basic info, outbound, inbound, or multi-city routes)",
       "pleaseSelectRequestName": "Please select request name",
+      "pleaseEnterRequestName": "Please enter applicant name",
       "pleaseSelectStartDate": "Please select start date",
       "pleaseSelectEndDate": "Please select end date",
       "pleaseInputDescription": "Please enter trip description",
@@ -544,6 +570,7 @@
       "inboundBudgetTitle": "Return Expense Budget",
       "secondRouteBudgetTitle": "Second Route Expense Budget",
       "routeBudgetTitle": "Route {index} Expense Budget",
+      "routeBudgetTitleWithCount": "Route {index} Expense Budget ({count} مسارات)",
       "currencyLabel": "Currency: {currency}",
       "unitPrice": "Unit Price",
       "quantity": "Quantity",
@@ -2143,6 +2170,42 @@
       "updateInvoice": "Update Invoice",
       "loadingInvoice": "Loading invoice data...",
       "loadInvoiceFailed": "Failed to load invoice data"
+    }
+  },
+  "currency": {
+    "management": {
+      "title": "إدارة العملات",
+      "add": "إضافة عملة",
+      "edit": "تعديل العملة",
+      "code": "رمز العملة",
+      "name": "اسم العملة",
+      "nameEn": "الاسم بالإنجليزية",
+      "symbol": "رمز العملة",
+      "exchangeRate": "سعر الصرف",
+      "exchangeRateHint": "سعر الصرف بالنسبة لـ CNY (اليوان الصيني)",
+      "decimalPlaces": "المنازل العشرية",
+      "displayOrder": "ترتيب العرض",
+      "status": "الحالة",
+      "isActive": "نشط",
+      "isDefault": "العملة الافتراضية",
+      "remark": "ملاحظة",
+      "searchPlaceholder": "البحث عن رمز العملة أو الاسم",
+      "statusFilter": "تصفية الحالة",
+      "noData": "لا توجد بيانات عملة",
+      "fetchError": "فشل في جلب العملات",
+      "createSuccess": "تم إنشاء العملة بنجاح",
+      "updateSuccess": "تم تحديث العملة بنجاح",
+      "deleteSuccess": "تم حذف العملة بنجاح",
+      "deleteError": "فشل في حذف العملة",
+      "saveError": "فشل في حفظ العملة",
+      "deleteConfirm": "تأكيد الحذف",
+      "deleteMessage": "هل أنت متأكد من حذف العملة {{code}}؟ لا يمكن التراجع عن هذا الإجراء.",
+      "errors": {
+        "codeRequired": "رمز العملة مطلوب",
+        "codeLength": "يجب أن يكون رمز العملة 3 أحرف",
+        "nameRequired": "اسم العملة مطلوب",
+        "exchangeRateRequired": "يجب أن يكون سعر الصرف أكبر من 0"
+      }
     }
   }
 }

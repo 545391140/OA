@@ -37,7 +37,8 @@ import {
   Work as WorkIcon,
   People as PeopleIcon,
   Search as SearchIcon,
-  PictureAsPdf as InvoiceIcon
+  PictureAsPdf as InvoiceIcon,
+  AttachMoney as CurrencyIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -137,6 +138,7 @@ const Layout = () => {
     { text: t('navigation.roleManagement'), icon: <SecurityIcon />, path: '/roles', key: 'roleManagement' },
     { text: t('navigation.positionManagement'), icon: <WorkIcon />, path: '/positions', key: 'positionManagement' },
     { text: t('navigation.userManagement'), icon: <PeopleIcon />, path: '/users', key: 'userManagement' },
+    { text: t('navigation.currencyManagement'), icon: <CurrencyIcon />, path: '/currencies', key: 'currencyManagement' },
     { text: t('navigation.approvalWorkflows'), icon: <ApprovalIcon />, path: '/approval-workflows', key: 'approvalWorkflows' },
     { text: t('navigation.approvalStatistics'), icon: <ReportIcon />, path: '/approval-statistics', key: 'approvalStatistics' },
   ], [t, i18n.language]);

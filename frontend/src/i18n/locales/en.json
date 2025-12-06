@@ -56,6 +56,14 @@
       "Oct": "October",
       "Nov": "November",
       "Dec": "December"
+    },
+    "currencies": {
+      "USD": "US Dollar",
+      "CNY": "Chinese Yuan",
+      "JPY": "Japanese Yen",
+      "KRW": "Korean Won",
+      "EUR": "Euro",
+      "GBP": "British Pound"
     }
   },
   "notifications": {
@@ -83,6 +91,7 @@
     "roleManagement": "Role Management",
     "positionManagement": "Position Management",
     "userManagement": "User Management",
+    "currencyManagement": "Currency Management",
     "approvalWorkflows": "Approval Workflows",
     "approvalStatistics": "Approval Statistics",
     "appTitle": "Travel & Expense",
@@ -162,6 +171,10 @@
     "phone": "Phone",
     "manager": "Manager",
     "role": "Role",
+    "residenceCountry": "Residence Country",
+    "residenceCity": "Residence City",
+    "residenceCountryPlaceholder": "Search country",
+    "residenceCityPlaceholder": "Search city",
     "preferences": "Preferences",
     "language": "Language",
     "currency": "Currency",
@@ -199,6 +212,20 @@
       "toggleSuccess": "User enabled",
       "toggleDisabledSuccess": "User disabled",
       "toggleError": "Operation failed",
+      "invalidCountryType": "Please select a country",
+      "invalidCityType": "Please select a city",
+      "errors": {
+        "employeeIdRequired": "Employee ID is required",
+        "firstNameRequired": "First name is required",
+        "lastNameRequired": "Last name is required",
+        "emailRequired": "Email is required",
+        "emailInvalid": "Please enter a valid email address",
+        "passwordRequired": "Password is required",
+        "passwordMinLength": "Password must be at least 6 characters",
+        "roleRequired": "Please select a role",
+        "positionRequired": "Please select a position",
+        "departmentRequired": "Department is required"
+      },
       "tableHeaders": {
         "employeeId": "Employee ID",
         "name": "Name",
@@ -415,8 +442,8 @@
       "domestic": "Domestic"
     },
     "tripTypes": {
-      "international": "International",
-      "mainland_china": "Mainland China"
+      "domestic": "Domestic",
+      "cross_border": "Cross-Border"
     },
     "costOwingDepartment": "Cost-Owing Department",
     "requestName": "Request Name",
@@ -509,9 +536,11 @@
       "pleaseComplete": "Please complete travel arrangement: {fields}",
       "pleaseCompleteBudget": "Please complete expense budget: {fields}",
       "pleaseSelectTripType": "Please select trip type",
+      "tripTypeAutoDetected": "Automatically determined based on your residence country and travel destinations",
       "pleaseSelectDepartment": "Please select cost-owing department",
       "pleaseSelectDestination": "Please select destination (at least one from basic info, outbound, inbound, or multi-city routes)",
       "pleaseSelectRequestName": "Please select request name",
+      "pleaseEnterRequestName": "Please enter applicant name",
       "pleaseSelectStartDate": "Please select start date",
       "pleaseSelectEndDate": "Please select end date",
       "pleaseInputDescription": "Please enter trip description",
@@ -544,6 +573,7 @@
       "inboundBudgetTitle": "Return Expense Budget",
       "secondRouteBudgetTitle": "Second Route Expense Budget",
       "routeBudgetTitle": "Route {index} Expense Budget",
+      "routeBudgetTitleWithCount": "Route {index} Expense Budget ({count} routes)",
       "currencyLabel": "Currency: {currency}",
       "unitPrice": "Unit Price",
       "quantity": "Quantity",
@@ -1224,11 +1254,6 @@
     },
     "selectInvoices": "Select Invoices",
     "noAvailableInvoices": "No available invoices",
-    "selectTravel": "Select Travel Request",
-    "relatedTravel": "Related Travel Request",
-    "relatedTravelInfo": "This expense is related to a travel request",
-    "travelNumber": "Travel Request Number",
-    "searchTravelNumber": "Search travel request number...",
     "deleteSuccess": "Expense deleted successfully",
     "deleteError": "Failed to delete expense",
     "list": {
@@ -1300,7 +1325,8 @@
       "CNY": "Chinese Yuan",
       "JPY": "Japanese Yen",
       "KRW": "Korean Won",
-      "EUR": "Euro"
+      "EUR": "Euro",
+      "GBP": "British Pound"
     },
     "subcategories": {
       "transportation": {
@@ -2145,6 +2171,42 @@
       "updateInvoice": "Update Invoice",
       "loadingInvoice": "Loading invoice data...",
       "loadInvoiceFailed": "Failed to load invoice data"
+    }
+  },
+  "currency": {
+    "management": {
+      "title": "Currency Management",
+      "add": "Add Currency",
+      "edit": "Edit Currency",
+      "code": "Currency Code",
+      "name": "Currency Name",
+      "nameEn": "English Name",
+      "symbol": "Currency Symbol",
+      "exchangeRate": "Exchange Rate",
+      "exchangeRateHint": "Exchange rate relative to CNY (Chinese Yuan)",
+      "decimalPlaces": "Decimal Places",
+      "displayOrder": "Display Order",
+      "status": "Status",
+      "isActive": "Active",
+      "isDefault": "Default Currency",
+      "remark": "Remark",
+      "searchPlaceholder": "Search currency code or name",
+      "statusFilter": "Status Filter",
+      "noData": "No currency data",
+      "fetchError": "Failed to fetch currencies",
+      "createSuccess": "Currency created successfully",
+      "updateSuccess": "Currency updated successfully",
+      "deleteSuccess": "Currency deleted successfully",
+      "deleteError": "Failed to delete currency",
+      "saveError": "Failed to save currency",
+      "deleteConfirm": "Confirm Delete",
+      "deleteMessage": "Are you sure you want to delete currency {{code}}? This action cannot be undone.",
+      "errors": {
+        "codeRequired": "Currency code is required",
+        "codeLength": "Currency code must be 3 characters",
+        "nameRequired": "Currency name is required",
+        "exchangeRateRequired": "Exchange rate must be greater than 0"
+      }
     }
   }
 }

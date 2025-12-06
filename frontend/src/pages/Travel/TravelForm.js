@@ -46,7 +46,7 @@ import { calculateDistance, formatDistance, isCitySupported } from '../../utils/
 import dayjs from 'dayjs';
 import apiClient from '../../utils/axiosConfig';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
-import { CURRENCIES } from '../../utils/constants';
+import { useCurrencies } from '../../hooks/useCurrencies';
 import { convertFromCNY, convertToCNY } from '../../utils/currencyConverter';
 // 已改为使用API，不再使用locationService的getAllCities
 
@@ -57,6 +57,9 @@ const TravelForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  
+  // 获取币种数据
+  const { currencyCodes, currencyOptions } = useCurrencies();
 
   // 交通工具选项
   const transportationOptions = [
@@ -73,7 +76,7 @@ const TravelForm = () => {
     if (currentUser && currentUser.preferences && currentUser.preferences.currency) {
       const userCurrency = currentUser.preferences.currency;
       // 验证货币值是否有效
-      if (CURRENCIES.includes(userCurrency)) {
+      if (currencyCodes.includes(userCurrency)) {
         return userCurrency;
       }
     }
@@ -205,40 +208,8 @@ const TravelForm = () => {
     }
   ];
 
-  // 货币选项（使用国际化，使用 useMemo 确保语言变化时更新）
-  // 注意：只依赖 t，因为 t 函数本身会在语言变化时自动更新
-  const currencies = React.useMemo(() => {
-    const getCurrencyLabel = (code) => {
-      try {
-        const translationKey = `common.currencies.${code}`;
-        const translation = t(translationKey);
-        
-        // 检查翻译是否成功（i18next 在找不到翻译时会返回键本身）
-        // 如果返回的不是键本身且不为空，说明翻译成功
-        if (translation && translation !== translationKey && translation.trim() !== '') {
-          return `${code} - ${translation}`;
-        }
-      } catch (error) {
-        console.warn(`Translation error for currency ${code}:`, error);
-      }
-      
-      // 回退到英文名称（当翻译不存在时）
-      const fallbackNames = {
-        'USD': 'US Dollar',
-        'CNY': 'Chinese Yuan',
-        'JPY': 'Japanese Yen',
-        'KRW': 'Korean Won',
-        'EUR': 'Euro',
-        'GBP': 'British Pound'
-      };
-      return `${code} - ${fallbackNames[code] || code}`;
-    };
-    
-    return CURRENCIES.map(code => ({
-      value: code,
-      label: getCurrencyLabel(code)
-    }));
-  }, [t, i18n.language]);
+  // 货币选项（从API获取，已包含国际化处理）
+  const currencies = currencyOptions;
 
   // 新增：差旅类型选项（使用 useMemo 响应语言变化）
   // 注意：只依赖 t，因为 t 函数本身会在语言变化时自动更新
@@ -319,7 +290,7 @@ const TravelForm = () => {
     if (!isEdit && user && user.preferences && user.preferences.currency && !currencyInitializedRef.current) {
       const userCurrency = user.preferences.currency;
       // 验证货币值是否有效
-      if (CURRENCIES.includes(userCurrency)) {
+      if (currencyCodes.includes(userCurrency)) {
         setFormData(prev => {
           // 如果当前货币与用户默认货币不同，则更新
           if (prev.currency !== userCurrency) {
@@ -2431,7 +2402,7 @@ const TravelForm = () => {
           return budgets;
         })(),
         // 确保币种字段存在且有效
-        currency: (formData.currency && CURRENCIES.includes(formData.currency)) 
+        currency: (formData.currency && currencyCodes.includes(formData.currency)) 
           ? formData.currency.toUpperCase() 
           : (getDefaultCurrency(user) || 'USD'),
         estimatedCost: parseFloat(calculatedCost) || 0

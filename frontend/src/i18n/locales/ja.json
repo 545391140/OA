@@ -55,6 +55,13 @@
       "Oct": "10月",
       "Nov": "11月",
       "Dec": "12月"
+    },
+    "currencies": {
+      "USD": "米ドル",
+      "CNY": "人民元",
+      "JPY": "日本円",
+      "KRW": "韓国ウォン",
+      "EUR": "ユーロ"
     }
   },
   "navigation": {
@@ -74,6 +81,7 @@
     "roleManagement": "役割管理",
     "positionManagement": "役職管理",
     "userManagement": "ユーザー管理",
+    "currencyManagement": "通貨管理",
     "appTitle": "出張・経費管理システム",
     "languages": {
       "en": "English",
@@ -151,6 +159,10 @@
     "phone": "電話番号",
     "manager": "直属上司",
     "role": "役割",
+    "residenceCountry": "常駐国",
+    "residenceCity": "常駐都市",
+    "residenceCountryPlaceholder": "国を検索",
+    "residenceCityPlaceholder": "都市を検索",
     "preferences": "設定",
     "language": "言語",
     "currency": "通貨",
@@ -188,6 +200,18 @@
       "toggleSuccess": "ユーザーを有効にしました",
       "toggleDisabledSuccess": "ユーザーを無効にしました",
       "toggleError": "操作に失敗しました",
+      "errors": {
+        "employeeIdRequired": "社員番号は必須です",
+        "firstNameRequired": "名前は必須です",
+        "lastNameRequired": "姓は必須です",
+        "emailRequired": "メールアドレスは必須です",
+        "emailInvalid": "有効なメールアドレスを入力してください",
+        "passwordRequired": "パスワードは必須です",
+        "passwordMinLength": "パスワードは少なくとも6文字である必要があります",
+        "roleRequired": "役割を選択してください",
+        "positionRequired": "役職を選択してください",
+        "departmentRequired": "部署は必須です"
+      },
       "tableHeaders": {
         "employeeId": "社員番号",
         "name": "名前",
@@ -404,8 +428,8 @@
       "domestic": "国内出張"
     },
     "tripTypes": {
-      "international": "国際",
-      "mainland_china": "中国本土"
+      "domestic": "国内",
+      "cross_border": "越境"
     },
     "costOwingDepartment": "費用負担部門",
     "requestName": "申請者名",
@@ -498,9 +522,11 @@
       "pleaseComplete": "出張手配を完成してください: {fields}",
       "pleaseCompleteBudget": "経費予算を完成してください: {fields}",
       "pleaseSelectTripType": "旅程タイプを選択してください",
+      "tripTypeAutoDetected": "常駐国と旅行先に基づいて自動判定",
       "pleaseSelectDepartment": "費用負担部門を選択してください",
       "pleaseSelectDestination": "目的地を選択してください（基本情報、往路、復路、または複数都市ルートのいずれかから少なくとも1つ）",
       "pleaseSelectRequestName": "申請者名を選択してください",
+      "pleaseEnterRequestName": "申請者名を入力してください",
       "pleaseSelectStartDate": "開始日を選択してください",
       "pleaseSelectEndDate": "終了日を選択してください",
       "pleaseInputDescription": "出張説明を入力してください",
@@ -533,6 +559,7 @@
       "inboundBudgetTitle": "復路経費予算",
       "secondRouteBudgetTitle": "第2ルート経費予算",
       "routeBudgetTitle": "第{index}ルート経費予算",
+      "routeBudgetTitleWithCount": "第{index}ルート経費予算（{count}ルート）",
       "currencyLabel": "通貨: {currency}",
       "unitPrice": "単価",
       "quantity": "数量",
@@ -2001,6 +2028,42 @@
       "updateInvoice": "インボイス更新",
       "loadingInvoice": "インボイスデータを読み込み中...",
       "loadInvoiceFailed": "インボイスデータの読み込みに失敗しました"
+    }
+  },
+  "currency": {
+    "management": {
+      "title": "通貨管理",
+      "add": "通貨を追加",
+      "edit": "通貨を編集",
+      "code": "通貨コード",
+      "name": "通貨名",
+      "nameEn": "英語名",
+      "symbol": "通貨記号",
+      "exchangeRate": "為替レート",
+      "exchangeRateHint": "CNY（人民元）に対する為替レート",
+      "decimalPlaces": "小数点以下の桁数",
+      "displayOrder": "表示順序",
+      "status": "ステータス",
+      "isActive": "有効",
+      "isDefault": "デフォルト通貨",
+      "remark": "備考",
+      "searchPlaceholder": "通貨コードまたは名前で検索",
+      "statusFilter": "ステータスフィルター",
+      "noData": "通貨データがありません",
+      "fetchError": "通貨リストの取得に失敗しました",
+      "createSuccess": "通貨が作成されました",
+      "updateSuccess": "通貨が更新されました",
+      "deleteSuccess": "通貨が削除されました",
+      "deleteError": "通貨の削除に失敗しました",
+      "saveError": "通貨の保存に失敗しました",
+      "deleteConfirm": "削除の確認",
+      "deleteMessage": "通貨 {{code}} を削除してもよろしいですか？この操作は元に戻せません。",
+      "errors": {
+        "codeRequired": "通貨コードは必須です",
+        "codeLength": "通貨コードは3文字である必要があります",
+        "nameRequired": "通貨名は必須です",
+        "exchangeRateRequired": "為替レートは0より大きい必要があります"
+      }
     }
   }
 }

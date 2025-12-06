@@ -132,9 +132,11 @@ if (typeof window !== 'undefined') {
     if (
       errorMessage.includes('runtime.lastError') ||
       errorMessage.includes('message channel closed') ||
-      errorMessage.includes('Extension context invalidated')
+      errorMessage.includes('Extension context invalidated') ||
+      errorMessage.includes('Fetch currencies error') ||
+      (errorMessage.includes('currencies') && errorMessage.includes('AxiosError'))
     ) {
-      // 静默忽略这些来自浏览器扩展的错误
+      // 静默忽略这些来自浏览器扩展的错误或币种获取错误（有默认值后备）
       return;
     }
     // 其他错误正常输出

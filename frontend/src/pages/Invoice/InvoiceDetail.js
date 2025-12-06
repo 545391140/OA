@@ -51,12 +51,24 @@ import apiClient from '../../utils/axiosConfig';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const InvoiceDetail = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showNotification } = useNotification();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currencyOptions } = useCurrencies();
+
+  // 货币选项（从API获取，已包含国际化处理）
+  const currencies = currencyOptions;
+
+  // 货币格式化函数（使用国际化）
+  const formatCurrency = (amount, currency = 'CNY') => {
+    const locale = i18n.language || 'en';
+    return formatCurrencyUtil(parseFloat(amount || 0), currency, locale);
+  };
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -771,7 +783,7 @@ const InvoiceDetail = () => {
                   </Box>
                   <Typography variant="body1" fontWeight={600}>
                     {invoice.amount
-                      ? `${invoice.currency || 'CNY'} ${invoice.amount.toFixed(2)}`
+                      ? formatCurrency(invoice.amount, invoice.currency || 'CNY')
                       : '-'}
                   </Typography>
                 </Grid>
@@ -782,7 +794,7 @@ const InvoiceDetail = () => {
                   </Box>
                   <Typography variant="body1">
                     {invoice.taxAmount !== undefined && invoice.taxAmount !== null
-                      ? `${invoice.currency || 'CNY'} ${invoice.taxAmount.toFixed(2)}`
+                      ? formatCurrency(invoice.taxAmount, invoice.currency || 'CNY')
                       : '-'}
                   </Typography>
                 </Grid>
@@ -793,7 +805,7 @@ const InvoiceDetail = () => {
                   </Box>
                   <Typography variant="body1" fontWeight={600} color="primary">
                     {invoice.totalAmount
-                      ? `${invoice.currency || 'CNY'} ${invoice.totalAmount.toFixed(2)}`
+                      ? formatCurrency(invoice.totalAmount, invoice.currency || 'CNY')
                       : '-'}
                   </Typography>
                 </Grid>
@@ -956,19 +968,19 @@ const InvoiceDetail = () => {
                           <TableCell>{item.name || '-'}</TableCell>
                           <TableCell align="right">
                             {item.unitPrice !== undefined && item.unitPrice !== null
-                              ? `${invoice.currency || 'CNY'} ${item.unitPrice.toFixed(2)}`
+                              ? formatCurrency(item.unitPrice, invoice.currency || 'CNY')
                               : '-'}
                           </TableCell>
                           <TableCell align="right">{item.quantity || '-'}</TableCell>
                           <TableCell align="right">
                             {item.amount !== undefined && item.amount !== null
-                              ? `${invoice.currency || 'CNY'} ${item.amount.toFixed(2)}`
+                              ? formatCurrency(item.amount, invoice.currency || 'CNY')
                               : '-'}
                           </TableCell>
                           <TableCell align="center">{item.taxRate || '-'}</TableCell>
                           <TableCell align="right">
                             {item.taxAmount !== undefined && item.taxAmount !== null
-                              ? `${invoice.currency || 'CNY'} ${item.taxAmount.toFixed(2)}`
+                              ? formatCurrency(item.taxAmount, invoice.currency || 'CNY')
                               : '-'}
                           </TableCell>
                         </TableRow>
@@ -1353,11 +1365,11 @@ const InvoiceDetail = () => {
                     label={t('invoice.detail.currency')}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                   >
-                    <MenuItem value="CNY">CNY</MenuItem>
-                    <MenuItem value="USD">USD</MenuItem>
-                    <MenuItem value="JPY">JPY</MenuItem>
-                    <MenuItem value="KRW">KRW</MenuItem>
-                    <MenuItem value="EUR">EUR</MenuItem>
+                    {currencies.map((currency) => (
+                      <MenuItem key={currency.value} value={currency.value}>
+                        {currency.label}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -1501,11 +1513,11 @@ const InvoiceDetail = () => {
                           {formData.items.map((item, index) => (
                             <TableRow key={index}>
                               <TableCell>{item.name || '-'}</TableCell>
-                              <TableCell align="right">{item.unitPrice ? `¥${item.unitPrice.toFixed(2)}` : '-'}</TableCell>
+                              <TableCell align="right">{item.unitPrice ? formatCurrency(item.unitPrice, invoice.currency || 'CNY') : '-'}</TableCell>
                               <TableCell align="right">{item.quantity || '-'}</TableCell>
-                              <TableCell align="right">{item.amount ? `¥${item.amount.toFixed(2)}` : '-'}</TableCell>
+                              <TableCell align="right">{item.amount ? formatCurrency(item.amount, invoice.currency || 'CNY') : '-'}</TableCell>
                               <TableCell align="center">{item.taxRate || '-'}</TableCell>
-                              <TableCell align="right">{item.taxAmount ? `¥${item.taxAmount.toFixed(2)}` : '-'}</TableCell>
+                              <TableCell align="right">{item.taxAmount ? formatCurrency(item.taxAmount, invoice.currency || 'CNY') : '-'}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

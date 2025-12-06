@@ -39,6 +39,7 @@ const approvalWorkflowRoutes = require('./routes/approvalWorkflows');
 const settingsRoutes = require('./routes/settings');
 const invoiceRoutes = require('./routes/invoices');
 const ctripApiRoutes = require('./routes/ctripApi');
+const currencyRoutes = require('./routes/currencies');
 
 // Connect to database
 connectDB();
@@ -209,6 +210,7 @@ app.use('/api/approval-workflows', approvalWorkflowRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/ctrip', ctripApiRoutes);
+app.use('/api/currencies', currencyRoutes);
 
 // Serve frontend static files (if deployed together)
 if (frontendExists) {

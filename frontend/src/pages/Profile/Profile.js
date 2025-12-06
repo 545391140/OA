@@ -41,11 +41,13 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
 const Profile = () => {
   const { t } = useTranslation();
   const { user: authUser, updatePreferences, changePassword } = useAuth();
   const { showNotification } = useNotification();
+  const { currencyOptions } = useCurrencies();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -140,13 +142,8 @@ const Profile = () => {
     { value: 'th', label: 'ไทย' }
   ];
 
-  const currencies = [
-    { value: 'USD', label: 'USD - US Dollar' },
-    { value: 'CNY', label: 'CNY - Chinese Yuan' },
-    { value: 'JPY', label: 'JPY - Japanese Yen' },
-    { value: 'KRW', label: 'KRW - Korean Won' },
-    { value: 'EUR', label: 'EUR - Euro' }
-  ];
+  // 货币选项（使用国际化）
+  const currencies = currencyOptions;
 
   const timezones = [
     { value: 'UTC', label: 'UTC' },

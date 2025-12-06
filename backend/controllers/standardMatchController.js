@@ -3,7 +3,7 @@ const CityLevel = require('../models/CityLevel');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const mongoose = require('mongoose');
-const { convertFromCNY } = require('../utils/currencyConverter');
+const { convertFromCNYSync } = require('../utils/currencyConverter');
 
 // @desc    Match travel standard for a trip
 // @route   POST /api/standard-match/match
@@ -253,7 +253,7 @@ exports.matchStandard = async (req, res) => {
     const transportAmountCNY = transportMaxItem && transportMaxItem.limitType !== 'ACTUAL'
       ? (transportMaxItem.limitAmount || 0)
       : 0;
-    const transportAmount = convertFromCNY(transportAmountCNY, targetCurrency);
+    const transportAmount = convertFromCNYSync(transportAmountCNY, targetCurrency);
     const transportLimitType = transportMaxItem?.limitType || 'FIXED';
     
     // 辅助函数：根据 calcUnit 计算费用金额

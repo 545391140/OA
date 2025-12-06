@@ -41,6 +41,7 @@ import ExpenseItemsMaintenance from './pages/TravelStandard/ExpenseItemsMaintena
 import RoleManagement from './pages/Role/RoleManagement';
 import PositionManagement from './pages/Position/PositionManagement';
 import UserManagement from './pages/User/UserManagement';
+import CurrencyManagement from './pages/Currency/CurrencyManagement';
 import InvoiceList from './pages/Invoice/InvoiceList';
 import InvoiceUpload from './pages/Invoice/InvoiceUpload';
 import InvoiceDetail from './pages/Invoice/InvoiceDetail';
@@ -118,6 +119,9 @@ function App() {
               
               {/* User Management */}
               <Route path="users" element={<UserManagement />} />
+              
+              {/* Currency Management */}
+              <Route path="currencies" element={<CurrencyManagement />} />
               
               {/* Invoice Routes */}
               <Route path="invoices" element={<InvoiceList />} />

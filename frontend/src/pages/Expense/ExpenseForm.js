@@ -61,6 +61,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import InvoiceSelectDialog from '../../components/Invoice/InvoiceSelectDialog';
 import ExpenseSelectDialog from '../../components/Expense/ExpenseSelectDialog';
 import apiClient from '../../utils/axiosConfig';
+import { useCurrencies } from '../../hooks/useCurrencies';
 import dayjs from 'dayjs';
 
 // 开发环境日志辅助函数
@@ -84,6 +85,7 @@ const devWarn = (...args) => {
 
 const ExpenseForm = () => {
   const { t } = useTranslation();
+  const { currencyOptions } = useCurrencies();
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const navigate = useNavigate();
@@ -184,13 +186,8 @@ const ExpenseForm = () => {
     return NaN;
   }, [formData.amount, expenseItemReimbursementAmounts]);
 
-  const currencies = [
-    { value: 'USD', label: `USD - ${t('expense.currencies.USD')}` },
-    { value: 'CNY', label: `CNY - ${t('expense.currencies.CNY')}` },
-    { value: 'JPY', label: `JPY - ${t('expense.currencies.JPY')}` },
-    { value: 'KRW', label: `KRW - ${t('expense.currencies.KRW')}` },
-    { value: 'EUR', label: `EUR - ${t('expense.currencies.EUR')}` }
-  ];
+  // 货币选项（从API获取，已包含国际化处理）
+  const currencies = currencyOptions;
 
   const categories = [
     { value: 'transportation', label: t('expense.categories.transportation') },

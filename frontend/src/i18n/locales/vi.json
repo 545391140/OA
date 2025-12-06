@@ -56,6 +56,13 @@
       "Oct": "Tháng Mười",
       "Nov": "Tháng Mười Một",
       "Dec": "Tháng Mười Hai"
+    },
+    "currencies": {
+      "USD": "Đô la Mỹ",
+      "CNY": "Nhân dân tệ",
+      "JPY": "Yên Nhật",
+      "KRW": "Won Hàn Quốc",
+      "EUR": "Euro"
     }
   },
   "notifications": {
@@ -83,6 +90,7 @@
     "roleManagement": "Quản lý Vai trò",
     "positionManagement": "Quản lý Chức vụ",
     "userManagement": "Quản lý Người dùng",
+    "currencyManagement": "Quản lý Tiền tệ",
     "approvalWorkflows": "Quy trình Phê duyệt",
     "approvalStatistics": "Thống kê Phê duyệt",
     "appTitle": "Công tác & Chi phí",
@@ -163,6 +171,10 @@
     "phone": "Điện thoại",
     "manager": "Quản lý Trực tiếp",
     "role": "Vai trò",
+    "residenceCountry": "Quốc gia Cư trú",
+    "residenceCity": "Thành phố Cư trú",
+    "residenceCountryPlaceholder": "Tìm kiếm quốc gia",
+    "residenceCityPlaceholder": "Tìm kiếm thành phố",
     "preferences": "Tùy chọn",
     "language": "Ngôn ngữ",
     "currency": "Tiền tệ",
@@ -201,6 +213,18 @@
       "toggleSuccess": "Đã kích hoạt",
       "toggleDisabledSuccess": "Đã vô hiệu hóa",
       "toggleError": "Thao tác thất bại",
+      "errors": {
+        "employeeIdRequired": "Mã nhân viên là bắt buộc",
+        "firstNameRequired": "Tên là bắt buộc",
+        "lastNameRequired": "Họ là bắt buộc",
+        "emailRequired": "Email là bắt buộc",
+        "emailInvalid": "Vui lòng nhập địa chỉ email hợp lệ",
+        "passwordRequired": "Mật khẩu là bắt buộc",
+        "passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự",
+        "roleRequired": "Vui lòng chọn vai trò",
+        "positionRequired": "Vui lòng chọn chức vụ",
+        "departmentRequired": "Phòng ban là bắt buộc"
+      },
       "tableHeaders": {
         "employeeId": "Mã Nhân viên",
         "name": "Tên",
@@ -418,8 +442,8 @@
       "domestic": "Nội địa"
     },
     "tripTypes": {
-      "international": "Quốc tế",
-      "mainland_china": "Trung Quốc Đại lục"
+      "domestic": "Trong nước",
+      "cross_border": "Xuyên biên giới"
     },
     "costOwingDepartment": "Phòng ban Chịu Chi phí",
     "requestName": "Tên Yêu cầu",
@@ -512,9 +536,11 @@
       "pleaseComplete": "Vui lòng hoàn thành sắp xếp công tác: {fields}",
       "pleaseCompleteBudget": "Vui lòng hoàn thành ngân sách chi phí: {fields}",
       "pleaseSelectTripType": "Vui lòng chọn loại chuyến đi",
+      "tripTypeAutoDetected": "Tự động xác định dựa trên quốc gia cư trú và điểm đến",
       "pleaseSelectDepartment": "Vui lòng chọn phòng ban chịu chi phí",
       "pleaseSelectDestination": "Vui lòng chọn điểm đến (ít nhất một từ thông tin cơ bản, đi, về, hoặc tuyến nhiều thành phố)",
       "pleaseSelectRequestName": "Vui lòng chọn tên yêu cầu",
+      "pleaseEnterRequestName": "Vui lòng nhập tên người nộp đơn",
       "pleaseSelectStartDate": "Vui lòng chọn ngày bắt đầu",
       "pleaseSelectEndDate": "Vui lòng chọn ngày kết thúc",
       "pleaseInputDescription": "Vui lòng nhập mô tả chuyến đi",
@@ -547,6 +573,7 @@
       "inboundBudgetTitle": "Ngân sách Chi phí Về",
       "secondRouteBudgetTitle": "Ngân sách Chi phí Tuyến Thứ hai",
       "routeBudgetTitle": "Ngân sách Chi phí Tuyến {index}",
+      "routeBudgetTitleWithCount": "Ngân sách Chi phí Tuyến {index} ({count} tuyến đường)",
       "currencyLabel": "Tiền tệ: {currency}",
       "unitPrice": "Đơn giá",
       "quantity": "Số lượng",
@@ -2147,6 +2174,42 @@
       "updateInvoice": "Cập nhật Hóa đơn",
       "loadingInvoice": "Đang tải dữ liệu hóa đơn...",
       "loadInvoiceFailed": "Không thể tải dữ liệu hóa đơn"
+    }
+  },
+  "currency": {
+    "management": {
+      "title": "Quản lý Tiền tệ",
+      "add": "Thêm Tiền tệ",
+      "edit": "Chỉnh sửa Tiền tệ",
+      "code": "Mã Tiền tệ",
+      "name": "Tên Tiền tệ",
+      "nameEn": "Tên Tiếng Anh",
+      "symbol": "Ký hiệu Tiền tệ",
+      "exchangeRate": "Tỷ giá",
+      "exchangeRateHint": "Tỷ giá so với CNY (Nhân dân tệ)",
+      "decimalPlaces": "Số chữ số thập phân",
+      "displayOrder": "Thứ tự Hiển thị",
+      "status": "Trạng thái",
+      "isActive": "Hoạt động",
+      "isDefault": "Tiền tệ Mặc định",
+      "remark": "Ghi chú",
+      "searchPlaceholder": "Tìm kiếm mã hoặc tên tiền tệ",
+      "statusFilter": "Bộ lọc Trạng thái",
+      "noData": "Không có dữ liệu tiền tệ",
+      "fetchError": "Không thể tải danh sách tiền tệ",
+      "createSuccess": "Tạo tiền tệ thành công",
+      "updateSuccess": "Cập nhật tiền tệ thành công",
+      "deleteSuccess": "Xóa tiền tệ thành công",
+      "deleteError": "Xóa tiền tệ thất bại",
+      "saveError": "Lưu tiền tệ thất bại",
+      "deleteConfirm": "Xác nhận Xóa",
+      "deleteMessage": "Bạn có chắc chắn muốn xóa tiền tệ {{code}}? Hành động này không thể hoàn tác.",
+      "errors": {
+        "codeRequired": "Mã tiền tệ là bắt buộc",
+        "codeLength": "Mã tiền tệ phải có 3 ký tự",
+        "nameRequired": "Tên tiền tệ là bắt buộc",
+        "exchangeRateRequired": "Tỷ giá phải lớn hơn 0"
+      }
     }
   }
 }
