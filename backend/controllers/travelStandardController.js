@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const TravelStandard = require('../models/TravelStandard');
+const { convertFromCNY } = require('../utils/currencyConverter');
 
 // @desc    Get all travel standards
 // @route   GET /api/travel-standards
@@ -455,7 +456,9 @@ exports.deactivateStandard = async (req, res) => {
 // @access  Private
 exports.matchStandard = async (req, res) => {
   try {
-    const { country, city, cityLevel, positionLevel, department, projectCode, role, position } = req.body;
+    const { country, city, cityLevel, positionLevel, department, projectCode, role, position, currency } = req.body;
+    // 获取目标币种，默认为CNY（差旅标准的基础币种）
+    const targetCurrency = currency || 'CNY';
     const now = new Date();
     
     // 核心逻辑：从用户信息中获取所有可能用于匹配的条件
@@ -593,13 +596,13 @@ exports.matchStandard = async (req, res) => {
     if (matchStrategy === 'PRIORITY') {
       // 策略1：只使用优先级最高的标准（原始逻辑）
       primaryStandard = matchedStandards[0];
-      expenses = buildExpensesFromStandard(primaryStandard);
+      expenses = buildExpensesFromStandard(primaryStandard, targetCurrency);
     } else if (matchStrategy === 'MERGE_BEST') {
       // 策略2：合并最优 - 合并所有匹配标准，每个费用项取最高限额
-      expenses = mergeExpensesBest(matchedStandards);
+      expenses = mergeExpensesBest(matchedStandards, targetCurrency);
     } else if (matchStrategy === 'MERGE_ALL') {
       // 策略3：合并所有 - 合并所有匹配标准的所有费用项
-      expenses = mergeExpensesAll(matchedStandards);
+      expenses = mergeExpensesAll(matchedStandards, targetCurrency);
     }
 
     // 构建响应，包含所有匹配的标准信息
@@ -648,7 +651,7 @@ exports.matchStandard = async (req, res) => {
 };
 
 // Helper function to build expenses object from a single standard
-function buildExpensesFromStandard(standard) {
+function buildExpensesFromStandard(standard, targetCurrency = 'CNY') {
   const expenses = {};
   if (standard.expenseStandards && standard.expenseStandards.length > 0) {
     standard.expenseStandards.forEach(es => {
@@ -657,26 +660,39 @@ function buildExpensesFromStandard(standard) {
       const category = es.expenseItemId?.category || 'general';
       const parentItem = es.expenseItemId?.parentItem || null;
       
+      // 差旅标准按CNY维护，需要根据目标币种进行换算
       if (es.limitType === 'FIXED') {
+        const limitCNY = es.limitAmount || 0;
+        const limitConverted = convertFromCNY(limitCNY, targetCurrency);
         expenses[itemId] = {
           itemName,
           category,
           parentItem,
-          limit: es.limitAmount || 0,
+          limit: limitConverted,
+          limitCNY: limitCNY, // 保留原始CNY金额，便于前端显示
           unit: es.calcUnit === 'PER_DAY' ? '元/天' : es.calcUnit === 'PER_TRIP' ? '元/次' : '元/公里',
+          calcUnit: es.calcUnit || 'PER_DAY',
           limitType: 'FIXED',
-          sourceStandard: standard.standardCode
+          sourceStandard: standard.standardCode,
+          currency: targetCurrency
         };
       } else if (es.limitType === 'RANGE') {
+        const limitMinCNY = es.limitMin || 0;
+        const limitMaxCNY = es.limitMax || 0;
+        const limitMinConverted = convertFromCNY(limitMinCNY, targetCurrency);
+        const limitMaxConverted = convertFromCNY(limitMaxCNY, targetCurrency);
         expenses[itemId] = {
           itemName,
           category,
           parentItem,
-          type: `范围: ${es.limitMin || 0}~${es.limitMax || 0}元`,
-          limitMin: es.limitMin || 0,
-          limitMax: es.limitMax || 0,
+          type: `范围: ${limitMinConverted}~${limitMaxConverted}${targetCurrency}`,
+          limitMin: limitMinConverted,
+          limitMax: limitMaxConverted,
+          limitMinCNY: limitMinCNY,
+          limitMaxCNY: limitMaxCNY,
           limitType: 'RANGE',
-          sourceStandard: standard.standardCode
+          sourceStandard: standard.standardCode,
+          currency: targetCurrency
         };
       } else if (es.limitType === 'ACTUAL') {
         expenses[itemId] = {
@@ -685,18 +701,23 @@ function buildExpensesFromStandard(standard) {
           parentItem,
           type: '实报实销',
           limitType: 'ACTUAL',
-          sourceStandard: standard.standardCode
+          sourceStandard: standard.standardCode,
+          currency: targetCurrency
         };
       } else if (es.limitType === 'PERCENTAGE') {
+        const baseAmountCNY = es.baseAmount || 0;
+        const baseAmountConverted = convertFromCNY(baseAmountCNY, targetCurrency);
         expenses[itemId] = {
           itemName,
           category,
           parentItem,
-          type: `按比例: ${es.percentage || 0}% (基准: ${es.baseAmount || 0}元)`,
+          type: `按比例: ${es.percentage || 0}% (基准: ${baseAmountConverted}${targetCurrency})`,
           percentage: es.percentage || 0,
-          baseAmount: es.baseAmount || 0,
+          baseAmount: baseAmountConverted,
+          baseAmountCNY: baseAmountCNY,
           limitType: 'PERCENTAGE',
-          sourceStandard: standard.standardCode
+          sourceStandard: standard.standardCode,
+          currency: targetCurrency
         };
       }
     });
@@ -705,7 +726,7 @@ function buildExpensesFromStandard(standard) {
 }
 
 // Helper function to merge expenses from multiple standards, taking the best (highest) limit for each expense item
-function mergeExpensesBest(standards) {
+function mergeExpensesBest(standards, targetCurrency = 'CNY') {
   const mergedExpenses = {};
   
   standards.forEach(standard => {
@@ -719,25 +740,37 @@ function mergeExpensesBest(standards) {
         if (!mergedExpenses[itemId]) {
           // 首次遇到该费用项，直接添加
         if (es.limitType === 'FIXED') {
+          const limitCNY = es.limitAmount || 0;
+          const limitConverted = convertFromCNY(limitCNY, targetCurrency);
           mergedExpenses[itemId] = {
             itemName,
             category,
             parentItem,
-            limit: es.limitAmount || 0,
+            limit: limitConverted,
+            limitCNY: limitCNY,
             unit: es.calcUnit === 'PER_DAY' ? '元/天' : es.calcUnit === 'PER_TRIP' ? '元/次' : '元/公里',
+            calcUnit: es.calcUnit || 'PER_DAY',
             limitType: 'FIXED',
-            sourceStandards: [standard.standardCode]
+            sourceStandards: [standard.standardCode],
+            currency: targetCurrency
           };
         } else if (es.limitType === 'RANGE') {
+          const limitMinCNY = es.limitMin || 0;
+          const limitMaxCNY = es.limitMax || 0;
+          const limitMinConverted = convertFromCNY(limitMinCNY, targetCurrency);
+          const limitMaxConverted = convertFromCNY(limitMaxCNY, targetCurrency);
           mergedExpenses[itemId] = {
             itemName,
             category,
             parentItem,
-            type: `范围: ${es.limitMin || 0}~${es.limitMax || 0}元`,
-            limitMin: es.limitMin || 0,
-            limitMax: es.limitMax || 0,
+            type: `范围: ${limitMinConverted}~${limitMaxConverted}${targetCurrency}`,
+            limitMin: limitMinConverted,
+            limitMax: limitMaxConverted,
+            limitMinCNY: limitMinCNY,
+            limitMaxCNY: limitMaxCNY,
             limitType: 'RANGE',
-            sourceStandards: [standard.standardCode]
+            sourceStandards: [standard.standardCode],
+            currency: targetCurrency
           };
         } else if (es.limitType === 'ACTUAL') {
           mergedExpenses[itemId] = {
@@ -746,18 +779,23 @@ function mergeExpensesBest(standards) {
             parentItem,
             type: '实报实销',
             limitType: 'ACTUAL',
-            sourceStandards: [standard.standardCode]
+            sourceStandards: [standard.standardCode],
+            currency: targetCurrency
           };
         } else if (es.limitType === 'PERCENTAGE') {
+          const baseAmountCNY = es.baseAmount || 0;
+          const baseAmountConverted = convertFromCNY(baseAmountCNY, targetCurrency);
           mergedExpenses[itemId] = {
             itemName,
             category,
             parentItem,
-            type: `按比例: ${es.percentage || 0}% (基准: ${es.baseAmount || 0}元)`,
+            type: `按比例: ${es.percentage || 0}% (基准: ${baseAmountConverted}${targetCurrency})`,
             percentage: es.percentage || 0,
-            baseAmount: es.baseAmount || 0,
+            baseAmount: baseAmountConverted,
+            baseAmountCNY: baseAmountCNY,
             limitType: 'PERCENTAGE',
-            sourceStandards: [standard.standardCode]
+            sourceStandards: [standard.standardCode],
+            currency: targetCurrency
           };
         }
         } else {
@@ -773,13 +811,18 @@ function mergeExpensesBest(standards) {
               sourceStandards: [...(existing.sourceStandards || []), standard.standardCode]
             };
           }
-          // 如果新的是固定限额，且金额更高，则更新
+          // 如果新的是固定限额，且金额更高，则更新（比较CNY金额）
           else if (es.limitType === 'FIXED' && existing.limitType === 'FIXED') {
-            if (es.limitAmount > (existing.limit || 0)) {
+            const newLimitCNY = es.limitAmount || 0;
+            const existingLimitCNY = existing.limitCNY || 0;
+            if (newLimitCNY > existingLimitCNY) {
+              const limitConverted = convertFromCNY(newLimitCNY, targetCurrency);
               mergedExpenses[itemId] = {
                 ...existing,
-                limit: es.limitAmount,
+                limit: limitConverted,
+                limitCNY: newLimitCNY,
                 unit: es.calcUnit === 'PER_DAY' ? '元/天' : es.calcUnit === 'PER_TRIP' ? '元/次' : '元/公里',
+                calcUnit: es.calcUnit || 'PER_DAY',
                 sourceStandards: [...(existing.sourceStandards || []), standard.standardCode]
               };
             } else {
@@ -789,15 +832,23 @@ function mergeExpensesBest(standards) {
               }
             }
           }
-          // 如果新的是范围限额，取最大范围
+          // 如果新的是范围限额，取最大范围（比较CNY金额）
           else if (es.limitType === 'RANGE' && existing.limitType === 'RANGE') {
-            const newMin = Math.min(existing.limitMin || 0, es.limitMin || 0);
-            const newMax = Math.max(existing.limitMax || 0, es.limitMax || 0);
+            const newMinCNY = es.limitMin || 0;
+            const newMaxCNY = es.limitMax || 0;
+            const existingMinCNY = existing.limitMinCNY || 0;
+            const existingMaxCNY = existing.limitMaxCNY || 0;
+            const newMin = Math.min(existingMinCNY, newMinCNY);
+            const newMax = Math.max(existingMaxCNY, newMaxCNY);
+            const limitMinConverted = convertFromCNY(newMin, targetCurrency);
+            const limitMaxConverted = convertFromCNY(newMax, targetCurrency);
             mergedExpenses[itemId] = {
               ...existing,
-              type: `范围: ${newMin}~${newMax}元`,
-              limitMin: newMin,
-              limitMax: newMax,
+              type: `范围: ${limitMinConverted}~${limitMaxConverted}${targetCurrency}`,
+              limitMin: limitMinConverted,
+              limitMax: limitMaxConverted,
+              limitMinCNY: newMin,
+              limitMaxCNY: newMax,
               sourceStandards: [...(existing.sourceStandards || []), standard.standardCode]
             };
           }
@@ -816,7 +867,7 @@ function mergeExpensesBest(standards) {
 }
 
 // Helper function to merge all expenses from multiple standards (including duplicates)
-function mergeExpensesAll(standards) {
+function mergeExpensesAll(standards, targetCurrency = 'CNY') {
   const mergedExpenses = {};
   
   standards.forEach(standard => {
@@ -829,37 +880,54 @@ function mergeExpensesAll(standards) {
         const uniqueKey = `${itemId}_${standard.standardCode}`;
         
         if (es.limitType === 'FIXED') {
+          const limitCNY = es.limitAmount || 0;
+          const limitConverted = convertFromCNY(limitCNY, targetCurrency);
           mergedExpenses[uniqueKey] = {
             itemName: `${itemName} (${standard.standardCode})`,
-            limit: es.limitAmount || 0,
+            limit: limitConverted,
+            limitCNY: limitCNY,
             unit: es.calcUnit === 'PER_DAY' ? '元/天' : es.calcUnit === 'PER_TRIP' ? '元/次' : '元/公里',
+            calcUnit: es.calcUnit || 'PER_DAY',
             limitType: 'FIXED',
-            sourceStandard: standard.standardCode
+            sourceStandard: standard.standardCode,
+            currency: targetCurrency
           };
         } else if (es.limitType === 'RANGE') {
+          const limitMinCNY = es.limitMin || 0;
+          const limitMaxCNY = es.limitMax || 0;
+          const limitMinConverted = convertFromCNY(limitMinCNY, targetCurrency);
+          const limitMaxConverted = convertFromCNY(limitMaxCNY, targetCurrency);
           mergedExpenses[uniqueKey] = {
             itemName: `${itemName} (${standard.standardCode})`,
-            type: `范围: ${es.limitMin || 0}~${es.limitMax || 0}元`,
-            limitMin: es.limitMin || 0,
-            limitMax: es.limitMax || 0,
+            type: `范围: ${limitMinConverted}~${limitMaxConverted}${targetCurrency}`,
+            limitMin: limitMinConverted,
+            limitMax: limitMaxConverted,
+            limitMinCNY: limitMinCNY,
+            limitMaxCNY: limitMaxCNY,
             limitType: 'RANGE',
-            sourceStandard: standard.standardCode
+            sourceStandard: standard.standardCode,
+            currency: targetCurrency
           };
         } else if (es.limitType === 'ACTUAL') {
           mergedExpenses[uniqueKey] = {
             itemName: `${itemName} (${standard.standardCode})`,
             type: '实报实销',
             limitType: 'ACTUAL',
-            sourceStandard: standard.standardCode
+            sourceStandard: standard.standardCode,
+            currency: targetCurrency
           };
         } else if (es.limitType === 'PERCENTAGE') {
+          const baseAmountCNY = es.baseAmount || 0;
+          const baseAmountConverted = convertFromCNY(baseAmountCNY, targetCurrency);
           mergedExpenses[uniqueKey] = {
             itemName: `${itemName} (${standard.standardCode})`,
-            type: `按比例: ${es.percentage || 0}% (基准: ${es.baseAmount || 0}元)`,
+            type: `按比例: ${es.percentage || 0}% (基准: ${baseAmountConverted}${targetCurrency})`,
             percentage: es.percentage || 0,
-            baseAmount: es.baseAmount || 0,
+            baseAmount: baseAmountConverted,
+            baseAmountCNY: baseAmountCNY,
             limitType: 'PERCENTAGE',
-            sourceStandard: standard.standardCode
+            sourceStandard: standard.standardCode,
+            currency: targetCurrency
           };
         }
       });

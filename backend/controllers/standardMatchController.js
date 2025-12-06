@@ -3,13 +3,16 @@ const CityLevel = require('../models/CityLevel');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const mongoose = require('mongoose');
+const { convertFromCNY } = require('../utils/currencyConverter');
 
 // @desc    Match travel standard for a trip
 // @route   POST /api/standard-match/match
 // @access  Private
 exports.matchStandard = async (req, res) => {
   try {
-    const { destination, startDate, transportType, days } = req.body;
+    const { destination, startDate, transportType, days, currency } = req.body;
+    // 获取目标币种，默认为CNY（差旅标准的基础币种）
+    const targetCurrency = currency || 'CNY';
     
     // 验证用户ID
     if (!req.user || !req.user.id) {
@@ -246,13 +249,15 @@ exports.matchStandard = async (req, res) => {
           return (item.limitAmount || 0) > (max.limitAmount || 0) ? item : max;
         }, transportItems[0])
       : null;
-    const transportAmount = transportMaxItem && transportMaxItem.limitType !== 'ACTUAL'
+    // 差旅标准按CNY维护，需要根据目标币种进行换算
+    const transportAmountCNY = transportMaxItem && transportMaxItem.limitType !== 'ACTUAL'
       ? (transportMaxItem.limitAmount || 0)
       : 0;
+    const transportAmount = convertFromCNY(transportAmountCNY, targetCurrency);
     const transportLimitType = transportMaxItem?.limitType || 'FIXED';
     
     // 辅助函数：根据 calcUnit 计算费用金额
-    const calculateAmountByCalcUnit = (item, days) => {
+    const calculateAmountByCalcUnit = (item, days, distance = null, personCount = 1) => {
       if (!item || item.limitType === 'ACTUAL') {
         return 0;
       }
@@ -266,8 +271,14 @@ exports.matchStandard = async (req, res) => {
         case 'PER_TRIP':
           return limitAmount; // 按次计算，不乘以天数
         case 'PER_KM':
-          // 按公里计算，需要距离信息，暂时返回固定金额
-          return limitAmount;
+          // 按公里计算：如果有距离信息，使用距离；否则返回固定金额
+          if (distance !== null && distance > 0) {
+            return limitAmount * Math.max(1, Math.round(distance));
+          }
+          return limitAmount; // 没有距离信息时返回固定金额
+        case 'PER_PERSON':
+          // 按人计算：使用人数信息
+          return limitAmount * (personCount > 0 ? personCount : 1);
         default:
           // 默认按天计算
           return limitAmount * (days || 1);
@@ -282,13 +293,15 @@ exports.matchStandard = async (req, res) => {
           return (item.limitAmount || 0) > (max.limitAmount || 0) ? item : max;
         }, accommodationItems[0])
       : null;
-    const accommodationAmount = accommodationMaxItem && accommodationMaxItem.limitType !== 'ACTUAL'
+    const accommodationAmountCNY = accommodationMaxItem && accommodationMaxItem.limitType !== 'ACTUAL'
       ? calculateAmountByCalcUnit(accommodationMaxItem, days)
       : 0;
+    const accommodationAmount = convertFromCNY(accommodationAmountCNY, targetCurrency);
     const accommodationLimitType = accommodationMaxItem?.limitType || 'FIXED';
-    const accommodationMaxPerNight = accommodationMaxItem && accommodationMaxItem.limitType !== 'ACTUAL'
+    const accommodationMaxPerNightCNY = accommodationMaxItem && accommodationMaxItem.limitType !== 'ACTUAL'
       ? (accommodationMaxItem.limitAmount || 0)
       : 0;
+    const accommodationMaxPerNight = convertFromCNY(accommodationMaxPerNightCNY, targetCurrency);
     
     // 对于餐饮：按 calcUnit 计算，同时检查是否有实报实销
     const mealMaxItem = mealItems.length > 0
@@ -298,16 +311,18 @@ exports.matchStandard = async (req, res) => {
           return (item.limitAmount || 0) > (max.limitAmount || 0) ? item : max;
         }, mealItems[0])
       : null;
-    const mealAmount = mealMaxItem && mealMaxItem.limitType !== 'ACTUAL'
+    const mealAmountCNY = mealMaxItem && mealMaxItem.limitType !== 'ACTUAL'
       ? calculateAmountByCalcUnit(mealMaxItem, days)
       : 0;
+    const mealAmount = convertFromCNY(mealAmountCNY, targetCurrency);
     const mealLimitType = mealMaxItem?.limitType || 'FIXED';
-    const mealDailyTotal = mealMaxItem && mealMaxItem.limitType !== 'ACTUAL'
+    const mealDailyTotalCNY = mealMaxItem && mealMaxItem.limitType !== 'ACTUAL'
       ? (mealMaxItem.limitAmount || 0)
       : 0;
+    const mealDailyTotal = convertFromCNY(mealDailyTotalCNY, targetCurrency);
     
-    // 对于差旅补助：按天或按次计算，同时检查是否有实报实销
-    const travelAllowanceAmount = travelAllowanceItems.reduce((sum, a) => {
+    // 对于差旅补助：按天或按次计算，同时检查是否有实报实销（先按CNY计算，再换算）
+    const travelAllowanceAmountCNY = travelAllowanceItems.reduce((sum, a) => {
       if (a.limitType === 'ACTUAL') return sum; // 实报实销不计算到总额中
       const amount = a.limitAmount || 0;
       if (a.calcUnit === 'PER_DAY') {
@@ -318,9 +333,10 @@ exports.matchStandard = async (req, res) => {
         return sum + amount;
       }
     }, 0);
+    const travelAllowanceAmount = convertFromCNY(travelAllowanceAmountCNY, targetCurrency);
     
-    // 对于其他补贴：按天或按次计算，同时检查是否有实报实销
-    const allowanceAmount = allowanceItems.reduce((sum, a) => {
+    // 对于其他补贴：按天或按次计算，同时检查是否有实报实销（先按CNY计算，再换算）
+    const allowanceAmountCNY = allowanceItems.reduce((sum, a) => {
       if (a.limitType === 'ACTUAL') return sum; // 实报实销不计算到总额中
       const amount = a.limitAmount || 0;
       if (a.calcUnit === 'PER_DAY') {
@@ -331,6 +347,7 @@ exports.matchStandard = async (req, res) => {
         return sum + amount;
       }
     }, 0);
+    const allowanceAmount = convertFromCNY(allowanceAmountCNY, targetCurrency);
 
     const estimatedCost = {
       transport: transportAmount,
@@ -383,22 +400,40 @@ exports.matchStandard = async (req, res) => {
           days: days || 1,
           totalAmount: mealAmount
         } : null,
-        travelAllowance: travelAllowanceItems.length > 0 ? travelAllowanceItems.map(allowance => ({
-          type: allowance.itemName,
-          amountType: allowance.calcUnit === 'PER_DAY' ? 'daily' : 'per_trip',
-          amount: allowance.limitAmount || 0,
-          limitType: allowance.limitType || 'FIXED', // 添加 limitType
-          total: allowance.limitType === 'ACTUAL' ? 0 : (allowance.calcUnit === 'PER_DAY' ? 
-            (allowance.limitAmount || 0) * (days || 1) : (allowance.limitAmount || 0))
-        })) : [],
-        allowances: allowanceItems.length > 0 ? allowanceItems.map(allowance => ({
-          type: allowance.itemName,
-          amountType: allowance.calcUnit === 'PER_DAY' ? 'daily' : 'per_trip',
-          amount: allowance.limitAmount || 0,
-          limitType: allowance.limitType || 'FIXED', // 添加 limitType
-          total: allowance.limitType === 'ACTUAL' ? 0 : (allowance.calcUnit === 'PER_DAY' ? 
-            (allowance.limitAmount || 0) * (days || 1) : (allowance.limitAmount || 0))
-        })) : [],
+        travelAllowance: travelAllowanceItems.length > 0 ? travelAllowanceItems.map(allowance => {
+          const amountCNY = allowance.limitAmount || 0;
+          const amountConverted = convertFromCNY(amountCNY, targetCurrency);
+          const totalCNY = allowance.limitType === 'ACTUAL' ? 0 : (allowance.calcUnit === 'PER_DAY' ? 
+            amountCNY * (days || 1) : amountCNY);
+          const totalConverted = convertFromCNY(totalCNY, targetCurrency);
+          return {
+            type: allowance.itemName,
+            amountType: allowance.calcUnit === 'PER_DAY' ? 'daily' : 'per_trip',
+            amount: amountConverted,
+            amountCNY: amountCNY,
+            limitType: allowance.limitType || 'FIXED',
+            total: totalConverted,
+            totalCNY: totalCNY,
+            currency: targetCurrency
+          };
+        }) : [],
+        allowances: allowanceItems.length > 0 ? allowanceItems.map(allowance => {
+          const amountCNY = allowance.limitAmount || 0;
+          const amountConverted = convertFromCNY(amountCNY, targetCurrency);
+          const totalCNY = allowance.limitType === 'ACTUAL' ? 0 : (allowance.calcUnit === 'PER_DAY' ? 
+            amountCNY * (days || 1) : amountCNY);
+          const totalConverted = convertFromCNY(totalCNY, targetCurrency);
+          return {
+            type: allowance.itemName,
+            amountType: allowance.calcUnit === 'PER_DAY' ? 'daily' : 'per_trip',
+            amount: amountConverted,
+            amountCNY: amountCNY,
+            limitType: allowance.limitType || 'FIXED',
+            total: totalConverted,
+            totalCNY: totalCNY,
+            currency: targetCurrency
+          };
+        }) : [],
         estimatedCost
       }
     });

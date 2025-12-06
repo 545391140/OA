@@ -12,7 +12,11 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  Divider
+  Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Flight as FlightIcon,
@@ -25,12 +29,15 @@ import {
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../utils/axiosConfig';
 import RegionSelector from '../../components/Common/RegionSelector';
+import { CURRENCIES } from '../../utils/constants';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
 
 const StandardQuery = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [standardData, setStandardData] = useState(null);
   const [error, setError] = useState(null);
+  const [currency, setCurrency] = useState('CNY'); // 默认币种为CNY
   const [queryParams, setQueryParams] = useState({
     destination: '',
     startDate: new Date().toISOString().split('T')[0],
@@ -53,7 +60,8 @@ const StandardQuery = () => {
         destination: queryParams.destination.split(',')[0], // 提取城市名
         startDate: queryParams.startDate,
         transportType: queryParams.transportType,
-        days: parseInt(queryParams.days) || 1
+        days: parseInt(queryParams.days) || 1,
+        currency: currency // 传递币种参数，后端会根据币种进行汇率换算
       });
 
       if (response.data.success) {
@@ -70,7 +78,9 @@ const StandardQuery = () => {
   };
 
   const formatCurrency = (amount) => {
-    return `¥${amount.toFixed(2)}`;
+    if (!amount && amount !== 0) return '-';
+    const locale = i18n.language || 'en';
+    return formatCurrencyUtil(parseFloat(amount || 0), currency, locale);
   };
 
   return (
@@ -121,6 +131,22 @@ const StandardQuery = () => {
                 onChange={(e) => setQueryParams({ ...queryParams, days: e.target.value })}
                 inputProps={{ min: 1 }}
               />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>{t('common.currency') || 'Currency'}</InputLabel>
+                <Select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  label={t('common.currency') || 'Currency'}
+                >
+                  {CURRENCIES.map(code => (
+                    <MenuItem key={code} value={code}>
+                      {code} - {t(`common.currencies.${code}`) || code}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
