@@ -670,6 +670,21 @@ async function getTravelData(dateMatch, departmentMatch) {
         employee: 1
       }
     },
+    // 关联 Location 表以获取目的地名称
+    {
+      $lookup: {
+        from: 'locations',
+        localField: 'destination',
+        foreignField: '_id',
+        as: 'destinationObj'
+      }
+    },
+    {
+      $unwind: {
+        path: '$destinationObj',
+        preserveNullAndEmptyArrays: true
+      }
+    },
     {
       $lookup: {
         from: 'users',
@@ -684,8 +699,9 @@ async function getTravelData(dateMatch, departmentMatch) {
       $group: {
         _id: {
           $ifNull: [
-            { $ifNull: ['$destination.city', '$destination.name'] },
-            { $ifNull: ['$destination', 'Unknown'] }
+            { $ifNull: ['$destinationObj.city', '$destinationObj.name'] }, // 优先使用 Location 对象中的名称
+            { $ifNull: ['$destination.city', '$destination.name'] }, // 兼容旧的内嵌对象格式
+            { $ifNull: ['$destination', 'Unknown'] } // 兼容旧的字符串格式
           ]
         },
         trips: { $sum: 1 },

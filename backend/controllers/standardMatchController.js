@@ -92,11 +92,35 @@ exports.matchStandard = async (req, res) => {
       standardName: effectiveStandard.standardName
     });
 
+    const Location = require('../models/Location');
+
+    // 处理 destination 可能是 ObjectId 的情况
+    let citySearchTerm = destination;
+    
+    // 检查是否是 ObjectId
+    if (mongoose.Types.ObjectId.isValid(destination) && typeof destination !== 'string') {
+        const location = await Location.findById(destination);
+        if (location) {
+            citySearchTerm = location.city || location.name;
+        }
+    } else if (typeof destination === 'string' && mongoose.Types.ObjectId.isValid(destination)) {
+         // 可能是 ObjectId 字符串
+         const location = await Location.findById(destination);
+         if (location) {
+             citySearchTerm = location.city || location.name;
+         }
+    }
+    
+    // 如果是普通字符串，可能包含 ", Country" 后缀，需要去除
+    if (typeof citySearchTerm === 'string' && citySearchTerm.includes(',')) {
+        citySearchTerm = citySearchTerm.split(',')[0].trim();
+    }
+
     // Get city level
     const cityInfo = await CityLevel.findOne({
       $or: [
-        { cityCode: destination.toUpperCase() },
-        { cityName: { $regex: destination, $options: 'i' } }
+        { cityCode: citySearchTerm.toUpperCase() },
+        { cityName: { $regex: citySearchTerm, $options: 'i' } }
       ]
     });
 

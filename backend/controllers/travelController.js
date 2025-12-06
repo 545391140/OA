@@ -1,6 +1,36 @@
 const mongoose = require('mongoose');
 const Travel = require('../models/Travel');
 const User = require('../models/User');
+const Location = require('../models/Location');
+
+// 辅助函数：尝试将字符串目的地转换为 Location ObjectId
+const ensureLocationObjectId = async (destination) => {
+  if (!destination) return destination;
+  
+  // 如果已经是 ObjectId，直接返回
+  if (mongoose.Types.ObjectId.isValid(destination) && typeof destination !== 'string') {
+    return destination;
+  }
+  
+  // 如果是字符串（可能是 ObjectId 字符串，也可能是城市名）
+  if (typeof destination === 'string') {
+    // 先尝试看是不是有效的 ObjectId 字符串，但这比较模糊，因为城市名不太可能是 ObjectId
+    // 我们主要处理城市名的情况
+    
+    // 尝试在 Location 表中查找
+    const cityName = destination.split(',')[0].trim();
+    const location = await Location.findOne({
+      name: { $regex: new RegExp(`^${cityName}$`, 'i') },
+      type: { $in: ['city', 'country'] }
+    }).sort({ type: 1 });
+    
+    if (location) {
+      return location._id;
+    }
+  }
+  
+  return destination;
+};
 
 // 生成差旅单号
 const generateTravelNumber = async () => {
@@ -47,19 +77,94 @@ exports.getTravels = async (req, res) => {
       .populate('approvals.approver', 'firstName lastName email')
       .sort({ createdAt: -1 });
 
-    // 过滤掉 approver 为 null 的审批记录（审批人可能已被删除）
+    // 填充目的地信息（因为 destination 是 Mixed 类型，不能直接 populate，需要手动处理）
+    // 收集所有 Location ID
+    const locationIds = new Set();
     travels.forEach(travel => {
-      if (travel.approvals && Array.isArray(travel.approvals)) {
-        travel.approvals = travel.approvals.filter(
-          approval => approval.approver !== null && approval.approver !== undefined
-        );
+      if (travel.destination && mongoose.Types.ObjectId.isValid(travel.destination) && typeof travel.destination !== 'string') {
+        locationIds.add(travel.destination.toString());
       }
     });
+    
+    // 如果有 Location ID，批量查询并替换
+    if (locationIds.size > 0) {
+      const locations = await Location.find({ _id: { $in: [...locationIds] } }).select('name city country');
+      const locationMap = {};
+      locations.forEach(loc => {
+        locationMap[loc._id.toString()] = loc.name || loc.city; // 优先使用 name
+      });
+      
+      // 替换 travels 中的 destination 为名称字符串（保持 API 兼容性）
+      // 或者替换为对象？为了兼容前端可能期待字符串，我们这里可以替换为 Location 对象或保留为对象
+      // 为了最佳兼容性，如果前端期待字符串，我们最好转换回字符串，或者前端能处理对象
+      // 观察前端代码通常习惯，最好返回对象包含 name
+      
+      // 这里我们返回 Location 对象，因为前端通常会显示 name
+      // 但要注意如果前端代码写死显示 travel.destination，那就会变成 [object Object]
+      // 安全起见，我们给 destination 赋值为对象，前端应该能处理
+      // 如果前端只把它当字符串渲染，我们需要确认前端逻辑。
+      // 假设前端是 {travel.destination}，如果是对象会出问题。
+      
+      // 策略：如果原先是字符串，现在是对象，为了兼容，我们返回一个包含 toString 的对象？不现实。
+      // 我们返回对象，并确保对象有 name 字段。
+      // 绝大多数前端组件处理 Mixed 字段时会检查类型。
+      
+      travels.forEach(travel => {
+        if (travel.destination && mongoose.Types.ObjectId.isValid(travel.destination) && typeof travel.destination !== 'string') {
+           const locName = locationMap[travel.destination.toString()];
+           if (locName) {
+             // 暂时将 destination 替换为 Location 对象，包含 name
+             // 为了兼容性，我们不仅替换为对象，还把 name 属性放进去
+             // 但是 Mongoose document 是不可变的，除非转为 object
+             // 这里 travels 是 Mongoose Documents 数组
+             
+             // 修改：我们不直接修改 destination 字段类型（这会违反 schema 验证如果再次保存）
+             // 但这里是 response，我们可以调用 .toObject()
+           }
+        }
+      });
+    }
+    
+    // 将 mongoose 文档转换为普通对象以便修改
+    const travelObjects = travels.map(t => t.toObject());
+    
+    if (locationIds.size > 0) {
+       const locations = await Location.find({ _id: { $in: [...locationIds] } }).select('name city country');
+       const locationMap = {};
+       locations.forEach(loc => {
+         locationMap[loc._id.toString()] = loc;
+       });
+       
+       travelObjects.forEach(travel => {
+         if (travel.destination && mongoose.Types.ObjectId.isValid(travel.destination) && typeof travel.destination !== 'string') {
+            const loc = locationMap[travel.destination.toString()];
+            if (loc) {
+               // 这里有一个关键决策：是返回字符串还是对象？
+               // 为了最小化前端破坏，如果前端只是展示 {travel.destination}，返回字符串最好。
+               // 但如果前端想展示更多信息，对象好。
+               // 鉴于我们做了 "Standard Match"，前端可能需要城市名。
+               // 让我们把 destination 替换为 location.name (字符串)，这样最安全！
+               // 但等等，如果我们在编辑页面，我们需要 ID 来绑定 Select 组件。
+               // 所以列表页返回 name，详情页返回对象？
+               
+               // 妥协方案：destination 字段保留为 ID 或 对象，添加一个新的字段 destinationName
+               // 或者，直接把 destination 变成对象 { _id, name }
+               travel.destination = {
+                 _id: loc._id,
+                 name: loc.name || loc.city,
+                 country: loc.country,
+                 toString: () => loc.name || loc.city // 尝试 trick 也不行 JSON 序列化不认
+               };
+               // 还是替换为对象吧，前端 TravelList 通常会处理对象
+             }
+         }
+       });
+    }
 
     res.json({
       success: true,
-      count: travels.length,
-      data: travels
+      count: travelObjects.length,
+      data: travelObjects
     });
   } catch (error) {
     console.error('Get travels error:', error);
@@ -84,9 +189,22 @@ exports.getTravelById = async (req, res) => {
     }
 
     // 先查询travel，不populate，避免populate失败
-    let travel = await Travel.findById(req.params.id);
+    let travel = await Travel.findById(req.params.id).lean(); // 使用 lean() 转换为普通对象
     
     if (travel) {
+      // 手动处理 destination
+      if (travel.destination && mongoose.Types.ObjectId.isValid(travel.destination) && typeof travel.destination !== 'string') {
+         const location = await Location.findById(travel.destination).select('name city country');
+         if (location) {
+            travel.destination = {
+              _id: location._id,
+              name: location.name || location.city,
+              country: location.country,
+              type: location.type
+            };
+         }
+      }
+
       // 手动populate employee（如果存在）
       if (travel.employee) {
         try {
@@ -250,6 +368,24 @@ exports.createTravel = async (req, res) => {
       }));
     }
 
+    // 自动转换目的地为 ObjectId
+    if (travelData.destination) {
+      travelData.destination = await ensureLocationObjectId(travelData.destination);
+    }
+    if (travelData.outbound?.destination) {
+      travelData.outbound.destination = await ensureLocationObjectId(travelData.outbound.destination);
+    }
+    if (travelData.inbound?.destination) {
+      travelData.inbound.destination = await ensureLocationObjectId(travelData.inbound.destination);
+    }
+    if (travelData.multiCityRoutes && travelData.multiCityRoutes.length > 0) {
+      for (let i = 0; i < travelData.multiCityRoutes.length; i++) {
+        if (travelData.multiCityRoutes[i].destination) {
+          travelData.multiCityRoutes[i].destination = await ensureLocationObjectId(travelData.multiCityRoutes[i].destination);
+        }
+      }
+    }
+
     // 计算总费用（包含多程预算）
       const outboundTotal = Object.values(travelData.outboundBudget || {}).reduce((sum, item) => {
         return sum + (parseFloat(item.subtotal) || 0);
@@ -371,6 +507,24 @@ exports.updateTravel = async (req, res) => {
         ...route,
         date: route.date ? (typeof route.date === 'string' ? new Date(route.date) : route.date) : null
       }));
+    }
+
+    // 自动转换目的地为 ObjectId
+    if (updateData.destination) {
+      updateData.destination = await ensureLocationObjectId(updateData.destination);
+    }
+    if (updateData.outbound?.destination) {
+      updateData.outbound.destination = await ensureLocationObjectId(updateData.outbound.destination);
+    }
+    if (updateData.inbound?.destination) {
+      updateData.inbound.destination = await ensureLocationObjectId(updateData.inbound.destination);
+    }
+    if (updateData.multiCityRoutes && updateData.multiCityRoutes.length > 0) {
+      for (let i = 0; i < updateData.multiCityRoutes.length; i++) {
+        if (updateData.multiCityRoutes[i].destination) {
+          updateData.multiCityRoutes[i].destination = await ensureLocationObjectId(updateData.multiCityRoutes[i].destination);
+        }
+      }
     }
 
     // 计算总费用（包含多程预算）
