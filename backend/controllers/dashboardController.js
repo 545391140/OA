@@ -244,6 +244,8 @@ exports.getRecentTravels = async (req, res) => {
       .populate('employee', 'firstName lastName email')
       .lean();
 
+    await populateDestinations(recentTravels);
+
     res.json({
       success: true,
       data: recentTravels
@@ -827,13 +829,54 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
   };
 }
 
+// 辅助函数：填充目的地名称
+async function populateDestinations(travels) {
+  if (!travels || travels.length === 0) return travels;
+
+  const locationIds = new Set();
+  travels.forEach(travel => {
+    // 检查 destination 是否为有效的 ObjectId 且不是字符串（虽然 ObjectId.isValid 对字符串也返回 true，但我们需要区分纯 ID 字符串和普通文本）
+    // 这里假设如果是 ObjectId 类型的字符串，就是需要转换的 ID
+    if (travel.destination && mongoose.Types.ObjectId.isValid(travel.destination)) {
+      // 排除显然不是 ID 的短字符串（虽然 ObjectId 是 24 位 hex）
+      if (String(travel.destination).length === 24) {
+        locationIds.add(travel.destination);
+      }
+    }
+  });
+
+  if (locationIds.size > 0) {
+    try {
+      const locations = await Location.find({ _id: { $in: Array.from(locationIds) } })
+        .select('name city')
+        .lean();
+      
+      const locationMap = new Map(locations.map(l => [l._id.toString(), l.city || l.name]));
+
+      travels.forEach(travel => {
+        if (travel.destination) {
+          const destStr = travel.destination.toString();
+          if (locationMap.has(destStr)) {
+            travel.destination = locationMap.get(destStr); // 替换为名称字符串
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Populate destinations error:', error);
+    }
+  }
+  return travels;
+}
+
 async function getRecentTravelsData(travelQuery, limit) {
-  return await Travel.find(travelQuery)
+  const travels = await Travel.find(travelQuery)
     .sort({ createdAt: -1 })
     .limit(limit)
     .select('travelNumber title destination startDate endDate status')
     .populate('employee', 'firstName lastName email')
     .lean();
+    
+  return await populateDestinations(travels);
 }
 
 async function getRecentExpensesData(expenseQuery, limit) {
