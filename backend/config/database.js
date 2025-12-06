@@ -1,16 +1,17 @@
 const mongoose = require('mongoose');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 const connectDB = async () => {
   try {
     // 检查是否设置了跳过数据库连接的标志
     if (process.env.SKIP_DB === 'true') {
-      console.log('⚠️  Skipping database connection (SKIP_DB=true)');
+      logger.warn('Skipping database connection (SKIP_DB=true)');
       return;
     }
 
     const mongoUri = process.env.MONGODB_URI || config.MONGODB_URI || 'mongodb://localhost:27017/travel-expense-system';
-    console.log(`🔌 Attempting to connect to MongoDB...`);
+    logger.info('Attempting to connect to MongoDB...');
     
     // 优化连接配置，解决副本集选举导致的拓扑信息过时问题
     const conn = await mongoose.connect(mongoUri, {
@@ -34,40 +35,39 @@ const connectDB = async () => {
       readPreference: 'primaryPreferred',
     });
 
-    console.log(`📦 MongoDB Connected: ${conn.connection.host}`);
+    logger.info('MongoDB Connected', { host: conn.connection.host });
     
     // 监听连接事件，处理拓扑变化
     mongoose.connection.on('error', (err) => {
-      console.error('❌ MongoDB connection error:', err.message);
+      logger.error('MongoDB connection error', { message: err.message });
       // 如果是拓扑选择错误，记录详细信息
       if (err.name === 'MongoServerSelectionError') {
-        console.error('⚠️  MongoDB topology selection error - this may be due to replica set election');
-        console.error('   建议：等待几秒后重试，或重启服务以刷新拓扑信息');
+        logger.error('MongoDB topology selection error - this may be due to replica set election');
+        logger.error('建议：等待几秒后重试，或重启服务以刷新拓扑信息');
       }
     });
 
     // 监听断开连接事件
     mongoose.connection.on('disconnected', () => {
-      console.warn('⚠️  MongoDB disconnected. Attempting to reconnect...');
+      logger.warn('MongoDB disconnected. Attempting to reconnect...');
     });
 
     // 监听重新连接事件
     mongoose.connection.on('reconnected', () => {
-      console.log('✓ MongoDB reconnected');
+      logger.info('MongoDB reconnected');
     });
 
     // 监听拓扑变化事件（副本集选举等）
     mongoose.connection.on('topologyDescriptionChanged', (event) => {
-      console.log('📡 MongoDB topology changed:', {
+      logger.debug('MongoDB topology changed', {
         type: event.newDescription?.type,
         servers: event.newDescription?.servers?.length || 0,
       });
     });
 
   } catch (error) {
-    console.error('❌ Database connection error:', error.message);
-    console.error('❌ Full error:', error);
-    console.log('⚠️  Continuing without database connection...');
+    logger.error('Database connection error', { message: error.message, error });
+    logger.warn('Continuing without database connection...');
     // 不退出进程，继续运行
   }
 };

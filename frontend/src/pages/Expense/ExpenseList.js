@@ -47,6 +47,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import { PERMISSIONS } from '../../config/permissions';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 import { useDateFormat } from '../../utils/dateFormatter';
@@ -231,8 +232,11 @@ ExpenseTableRow.displayName = 'ExpenseTableRow';
 const ExpenseList = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const canEdit = hasPermission(PERMISSIONS.EXPENSE_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.EXPENSE_DELETE);
 
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -653,16 +657,18 @@ const ExpenseList = () => {
             <ViewIcon sx={{ mr: 1.5, fontSize: 20 }} />
             {t('common.view')}
           </MenuItem>
-          {(selectedExpense?.status === 'draft' || selectedExpense?.status === 'submitted') && (
+          {((canEdit || selectedExpense?.employee?._id === user?.id) && (selectedExpense?.status === 'draft' || selectedExpense?.status === 'submitted')) && (
             <MenuItem onClick={handleEdit}>
               <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
               {t('common.edit')}
             </MenuItem>
           )}
-          <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-            <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
-            {t('common.delete')}
-          </MenuItem>
+          {(canDelete || selectedExpense?.employee?._id === user?.id) && (
+            <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+              <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
+              {t('common.delete')}
+            </MenuItem>
+          )}
         </Menu>
 
         {/* Delete Confirmation Dialog */}

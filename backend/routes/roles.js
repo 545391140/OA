@@ -1,7 +1,8 @@
 const express = require('express');
 const logger = require('../utils/logger');
 const { body, validationResult } = require('express-validator');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, checkPermission } = require('../middleware/auth');
+const { PERMISSIONS } = require('../config/permissions');
 const Role = require('../models/Role');
 const User = require('../models/User');
 const { PERMISSION_GROUPS } = require('../config/permissions');
@@ -10,8 +11,8 @@ const router = express.Router();
 
 // @desc    Get all available permissions
 // @route   GET /api/roles/permissions
-// @access  Private (Admin only)
-router.get('/permissions', protect, authorize('admin'), async (req, res) => {
+// @access  Private
+router.get('/permissions', protect, checkPermission(PERMISSIONS.ROLE_VIEW), async (req, res) => {
   try {
     res.json({
       success: true,
@@ -28,8 +29,8 @@ router.get('/permissions', protect, authorize('admin'), async (req, res) => {
 
 // @desc    Get all roles
 // @route   GET /api/roles
-// @access  Private (Admin only)
-router.get('/', protect, authorize('admin'), async (req, res) => {
+// @access  Private
+router.get('/', protect, checkPermission(PERMISSIONS.ROLE_VIEW), async (req, res) => {
   try {
     const { isActive, search } = req.query;
     
@@ -115,8 +116,8 @@ router.get('/', protect, authorize('admin'), async (req, res) => {
 
 // @desc    Get single role
 // @route   GET /api/roles/:id
-// @access  Private (Admin only)
-router.get('/:id', protect, authorize('admin'), async (req, res) => {
+// @access  Private
+router.get('/:id', protect, checkPermission(PERMISSIONS.ROLE_VIEW), async (req, res) => {
   try {
     const role = await Role.findById(req.params.id)
       .populate('createdBy', 'firstName lastName')
@@ -147,7 +148,7 @@ router.get('/:id', protect, authorize('admin'), async (req, res) => {
 // @access  Private (Admin only)
 router.post('/', [
   protect,
-  authorize('admin'),
+  checkPermission(PERMISSIONS.ROLE_CREATE),
   body('code').notEmpty().withMessage('Role code is required')
     .matches(/^[A-Z0-9_]+$/).withMessage('Role code must contain only uppercase letters, numbers, and underscores'),
   body('name').notEmpty().withMessage('Role name is required')
@@ -201,7 +202,7 @@ router.post('/', [
 // @access  Private (Admin only)
 router.put('/:id', [
   protect,
-  authorize('admin'),
+  checkPermission(PERMISSIONS.ROLE_EDIT),
   body('name').optional().notEmpty().withMessage('Role name cannot be empty'),
   body('code').optional().matches(/^[A-Z0-9_]+$/).withMessage('Role code must contain only uppercase letters, numbers, and underscores')
 ], async (req, res) => {
@@ -277,7 +278,7 @@ router.put('/:id', [
 // @desc    Delete role
 // @route   DELETE /api/roles/:id
 // @access  Private (Admin only)
-router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+router.delete('/:id', protect, checkPermission(PERMISSIONS.ROLE_DELETE), async (req, res) => {
   try {
     const role = await Role.findById(req.params.id);
     if (!role) {
@@ -323,7 +324,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
 // @desc    Toggle role active status
 // @route   PATCH /api/roles/:id/toggle-active
 // @access  Private (Admin only)
-router.patch('/:id/toggle-active', protect, authorize('admin'), async (req, res) => {
+router.patch('/:id/toggle-active', protect, checkPermission(PERMISSIONS.ROLE_TOGGLE_ACTIVE), async (req, res) => {
   try {
     const role = await Role.findById(req.params.id);
     if (!role) {

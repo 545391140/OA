@@ -50,14 +50,17 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
+import { PERMISSIONS } from '../../config/permissions';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
 import { useDateFormat } from '../../utils/dateFormatter';
 
 const ApprovalList = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { showNotification } = useNotification();
+  const canApprove = hasPermission(PERMISSIONS.APPROVAL_APPROVE);
+  const canReject = hasPermission(PERMISSIONS.APPROVAL_REJECT);
   const navigate = useNavigate();
 
   const [pendingApprovals, setPendingApprovals] = useState([]);
@@ -501,7 +504,7 @@ const ApprovalList = () => {
   const filteredApprovalHistory = useMemo(() => filterItems(approvalHistory), [approvalHistory, filterItems]);
 
   // 使用 React.memo 优化 ApprovalCard 组件
-  const ApprovalCard = React.memo(({ item, showActions = true, getStatusColor, getTypeIcon, travelStats, t, onApproval, navigate }) => {
+  const ApprovalCard = React.memo(({ item, showActions = true, getStatusColor, getTypeIcon, travelStats, t, onApproval, navigate, canApprove, canReject }) => {
     const formatDate = useDateFormat(false);
     const formatDateRange = useDateFormat(true);
     
@@ -719,37 +722,41 @@ const ApprovalList = () => {
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 0.5, alignItems: 'center' }}>
           {showActions && item.status === 'submitted' && (
             <>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={() => onApproval(item, 'reject')}
-                size="small"
-                sx={{ 
-                  minWidth: 'auto',
-                  px: 1.5,
-                  py: 0.5,
-                  textTransform: 'none',
-                  lineHeight: 1.3
-                }}
-              >
-                {t('approval.reject')}
-              </Button>
-              <Button
-                variant="outlined"
-                color="success"
-                onClick={() => onApproval(item, 'approve')}
-                size="small"
-                sx={{ 
-                  minWidth: 'auto',
-                  px: 1.5,
-                  py: 0.5,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  lineHeight: 1.3
-                }}
-              >
-                {t('approval.approve')}
-              </Button>
+              {canReject && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => onApproval(item, 'reject')}
+                  size="small"
+                  sx={{ 
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    textTransform: 'none',
+                    lineHeight: 1.3
+                  }}
+                >
+                  {t('approval.reject')}
+                </Button>
+              )}
+              {canApprove && (
+                <Button
+                  variant="outlined"
+                  color="success"
+                  onClick={() => onApproval(item, 'approve')}
+                  size="small"
+                  sx={{ 
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    lineHeight: 1.3
+                  }}
+                >
+                  {t('approval.approve')}
+                </Button>
+              )}
             </>
           )}
           <Button
@@ -920,6 +927,8 @@ const ApprovalList = () => {
                       t={t}
                       onApproval={handleApproval}
                       navigate={navigate}
+                      canApprove={canApprove}
+                      canReject={canReject}
                     />
                   ))
                 )}
@@ -956,6 +965,8 @@ const ApprovalList = () => {
                       t={t}
                       onApproval={handleApproval}
                       navigate={navigate}
+                      canApprove={canApprove}
+                      canReject={canReject}
                     />
                   ))
                 )}

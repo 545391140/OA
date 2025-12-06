@@ -250,7 +250,7 @@ const RoleManagement = () => {
               {t('role.management.title')}
             </Typography>
           </Box>
-          {canEdit && (
+          {canCreate && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -409,38 +409,40 @@ const RoleManagement = () => {
                     </TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        {canToggleActive && (
+                          <Tooltip title={role.isActive ? t('role.management.disable') : t('role.management.enable')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleToggleActive(role)}
+                              disabled={role.isSystem && !role.isActive}
+                              color={role.isActive ? 'warning' : 'success'}
+                            >
+                              {role.isActive ? <BlockIcon /> : <CheckCircleIcon />}
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         {canEdit && (
-                          <>
-                            <Tooltip title={role.isActive ? t('role.management.disable') : t('role.management.enable')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleToggleActive(role)}
-                                disabled={role.isSystem && !role.isActive}
-                                color={role.isActive ? 'warning' : 'success'}
-                              >
-                                {role.isActive ? <BlockIcon /> : <CheckCircleIcon />}
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={t('common.edit')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleEdit(role)}
-                                color="primary"
-                              >
-                                <EditIcon />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={t('common.delete')}>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDelete(role)}
-                                disabled={role.isSystem}
-                                color="error"
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </>
+                          <Tooltip title={t('common.edit')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEdit(role)}
+                              color="primary"
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canDelete && (
+                          <Tooltip title={t('common.delete')}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDelete(role)}
+                              disabled={role.isSystem}
+                              color="error"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
                         )}
                       </Box>
                     </TableCell>
