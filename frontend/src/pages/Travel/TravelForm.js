@@ -47,7 +47,7 @@ import dayjs from 'dayjs';
 import apiClient from '../../utils/axiosConfig';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
 import { useCurrencies } from '../../hooks/useCurrencies';
-import { convertFromCNY, convertToCNY } from '../../utils/currencyConverter';
+import { convertFromCNY, convertToCNY, fetchExchangeRates } from '../../utils/currencyConverter';
 // 已改为使用API，不再使用locationService的getAllCities
 
 const TravelForm = () => {
@@ -60,6 +60,13 @@ const TravelForm = () => {
   
   // 获取币种数据
   const { currencyCodes, currencyOptions } = useCurrencies();
+  
+  // 预加载汇率数据
+  useEffect(() => {
+    fetchExchangeRates().catch(() => {
+      // 静默失败，使用默认汇率
+    });
+  }, []);
 
   // 交通工具选项
   const transportationOptions = [
@@ -805,7 +812,7 @@ const TravelForm = () => {
     formData.inbound.destination,
     formData.inbound.date,
     formData.multiCityRoutes,
-    formData.currency, // 添加币种依赖，币种变化时重新匹配差旅标准
+    // formData.currency, // 已移除：币种切换只应换算金额，不应重新匹配差旅标准
     user?.jobLevel,
     user?.department,
     user?.role, // 添加用户角色依赖，角色变化时重新匹配
@@ -1150,9 +1157,12 @@ const TravelForm = () => {
     }
   };
 
-  const handleChange = (field, value) => {
+  const handleChange = async (field, value) => {
     // 特殊处理：币种切换时需要换算所有预算金额
     if (field === 'currency') {
+      // 确保汇率数据是最新的
+      await fetchExchangeRates();
+      
       setFormData(prev => {
         const oldCurrency = prev.currency || 'CNY';
         const newCurrency = value;
@@ -1172,13 +1182,17 @@ const TravelForm = () => {
           const unitPrice = parseFloat(item.unitPrice) || 0;
           const subtotal = parseFloat(item.subtotal) || 0;
           
-          // 先转换为CNY
-          const unitPriceCNY = convertToCNY(unitPrice, oldCurrency);
-          const subtotalCNY = convertToCNY(subtotal, oldCurrency);
+          // 先转换为CNY（中间计算保持高精度，不四舍五入）
+          const unitPriceCNY = convertToCNY(unitPrice, oldCurrency, null, false);
+          const subtotalCNY = convertToCNY(subtotal, oldCurrency, null, false);
           
-          // 再转换为新币种
-          const newUnitPrice = convertFromCNY(unitPriceCNY, newCurrency);
-          const newSubtotal = convertFromCNY(subtotalCNY, newCurrency);
+          // 再转换为新币种（中间计算保持高精度，不四舍五入）
+          const newUnitPriceRaw = convertFromCNY(unitPriceCNY, newCurrency, null, false);
+          const newSubtotalRaw = convertFromCNY(subtotalCNY, newCurrency, null, false);
+          
+          // 只在最后显示时才四舍五入
+          const newUnitPrice = Math.round(newUnitPriceRaw * 100) / 100;
+          const newSubtotal = Math.round(newSubtotalRaw * 100) / 100;
           
           newOutboundBudget[itemId] = {
             ...item,
@@ -1192,13 +1206,17 @@ const TravelForm = () => {
           const unitPrice = parseFloat(item.unitPrice) || 0;
           const subtotal = parseFloat(item.subtotal) || 0;
           
-          // 先转换为CNY
-          const unitPriceCNY = convertToCNY(unitPrice, oldCurrency);
-          const subtotalCNY = convertToCNY(subtotal, oldCurrency);
+          // 先转换为CNY（中间计算保持高精度，不四舍五入）
+          const unitPriceCNY = convertToCNY(unitPrice, oldCurrency, null, false);
+          const subtotalCNY = convertToCNY(subtotal, oldCurrency, null, false);
           
-          // 再转换为新币种
-          const newUnitPrice = convertFromCNY(unitPriceCNY, newCurrency);
-          const newSubtotal = convertFromCNY(subtotalCNY, newCurrency);
+          // 再转换为新币种（中间计算保持高精度，不四舍五入）
+          const newUnitPriceRaw = convertFromCNY(unitPriceCNY, newCurrency, null, false);
+          const newSubtotalRaw = convertFromCNY(subtotalCNY, newCurrency, null, false);
+          
+          // 只在最后显示时才四舍五入
+          const newUnitPrice = Math.round(newUnitPriceRaw * 100) / 100;
+          const newSubtotal = Math.round(newSubtotalRaw * 100) / 100;
           
           newInboundBudget[itemId] = {
             ...item,
@@ -1214,13 +1232,17 @@ const TravelForm = () => {
             const unitPrice = parseFloat(item.unitPrice) || 0;
             const subtotal = parseFloat(item.subtotal) || 0;
             
-            // 先转换为CNY
-            const unitPriceCNY = convertToCNY(unitPrice, oldCurrency);
-            const subtotalCNY = convertToCNY(subtotal, oldCurrency);
+            // 先转换为CNY（中间计算保持高精度，不四舍五入）
+            const unitPriceCNY = convertToCNY(unitPrice, oldCurrency, null, false);
+            const subtotalCNY = convertToCNY(subtotal, oldCurrency, null, false);
             
-            // 再转换为新币种
-            const newUnitPrice = convertFromCNY(unitPriceCNY, newCurrency);
-            const newSubtotal = convertFromCNY(subtotalCNY, newCurrency);
+            // 再转换为新币种（中间计算保持高精度，不四舍五入）
+            const newUnitPriceRaw = convertFromCNY(unitPriceCNY, newCurrency, null, false);
+            const newSubtotalRaw = convertFromCNY(subtotalCNY, newCurrency, null, false);
+            
+            // 只在最后显示时才四舍五入
+            const newUnitPrice = Math.round(newUnitPriceRaw * 100) / 100;
+            const newSubtotal = Math.round(newSubtotalRaw * 100) / 100;
             
             newBudget[itemId] = {
               ...item,
@@ -1612,13 +1634,38 @@ const TravelForm = () => {
                 limitType: expense.limitType || 'FIXED' // 保存 limitType
               };
             } else {
-              // 预算项已存在：更新 unitPrice（使用新标准）和数量
+              // 预算项已存在：只在标准真正变化时更新 unitPrice，否则保留现有金额
+              // 这样可以避免币种切换后重新匹配时覆盖用户已转换的金额
               const currentUnitPrice = parseFloat(newOutboundBudget[itemId].unitPrice) || 0;
+              const currentSubtotal = parseFloat(newOutboundBudget[itemId].subtotal) || 0;
               
-              // 如果新标准的价格与当前不同，更新 unitPrice
-              if (Math.abs(newUnitPrice - currentUnitPrice) > 0.01) {
+              // 计算当前金额对应的标准金额（通过反向转换）
+              // 如果新标准的价格与当前价格差异很大（超过10%），说明标准可能真的变化了
+              const priceDiffRatio = currentUnitPrice > 0 ? Math.abs(newUnitPrice - currentUnitPrice) / currentUnitPrice : 1;
+              
+              // 只有当价格差异超过10%时，才认为是标准变化，需要更新
+              // 否则，保留现有金额（可能是用户刚刚转换的）
+              if (priceDiffRatio > 0.1 && Math.abs(newUnitPrice - currentUnitPrice) > 0.01) {
+                // 标准真的变化了，更新 unitPrice
                 newOutboundBudget[itemId].unitPrice = newUnitPrice > 0 ? String(newUnitPrice) : '';
                 newOutboundBudget[itemId].itemName = expense.itemName || newOutboundBudget[itemId].itemName;
+                
+                // 更新数量和总价
+                newOutboundBudget[itemId].quantity = quantity;
+                if (expense.limitType !== 'ACTUAL') {
+                  newOutboundBudget[itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
+                  newOutboundBudget[itemId].subtotal = newOutboundBudget[itemId].subtotal.toFixed(2);
+                }
+              } else {
+                // 标准没有变化，或者只是币种转换，保留现有金额
+                // 只更新数量（如果变化了）
+                if (newOutboundBudget[itemId].quantity !== quantity) {
+                  newOutboundBudget[itemId].quantity = quantity;
+                  // 如果数量变化了，重新计算 subtotal（基于现有的 unitPrice）
+                  if (expense.limitType !== 'ACTUAL' && currentUnitPrice > 0) {
+                    newOutboundBudget[itemId].subtotal = (currentUnitPrice * quantity).toFixed(2);
+                  }
+                }
               }
               
               // 更新 calcUnit 和 limitType（如果变化）
@@ -1627,14 +1674,6 @@ const TravelForm = () => {
               }
               if (expense.limitType) {
                 newOutboundBudget[itemId].limitType = expense.limitType;
-              }
-              
-              // 更新数量和总价
-              newOutboundBudget[itemId].quantity = quantity;
-              // 对于实报实销类型，不自动计算 subtotal（允许用户手动输入）
-              if (expense.limitType !== 'ACTUAL') {
-                newOutboundBudget[itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
-                newOutboundBudget[itemId].subtotal = newOutboundBudget[itemId].subtotal.toFixed(2);
               }
             }
           });
@@ -1689,13 +1728,37 @@ const TravelForm = () => {
                 limitType: expense.limitType || 'FIXED' // 保存 limitType
               };
             } else {
-              // 预算项已存在：更新 unitPrice（使用新标准）和数量
+              // 预算项已存在：只在标准真正变化时更新 unitPrice，否则保留现有金额
               const currentUnitPrice = parseFloat(newInboundBudget[itemId].unitPrice) || 0;
+              const currentSubtotal = parseFloat(newInboundBudget[itemId].subtotal) || 0;
               
-              // 如果新标准的价格与当前不同，更新 unitPrice
-              if (Math.abs(newUnitPrice - currentUnitPrice) > 0.01) {
+              // 计算当前金额对应的标准金额（通过反向转换）
+              // 如果新标准的价格与当前价格差异很大（超过10%），说明标准可能真的变化了
+              const priceDiffRatio = currentUnitPrice > 0 ? Math.abs(newUnitPrice - currentUnitPrice) / currentUnitPrice : 1;
+              
+              // 只有当价格差异超过10%时，才认为是标准变化，需要更新
+              // 否则，保留现有金额（可能是用户刚刚转换的）
+              if (priceDiffRatio > 0.1 && Math.abs(newUnitPrice - currentUnitPrice) > 0.01) {
+                // 标准真的变化了，更新 unitPrice
                 newInboundBudget[itemId].unitPrice = newUnitPrice > 0 ? String(newUnitPrice) : '';
                 newInboundBudget[itemId].itemName = expense.itemName || newInboundBudget[itemId].itemName;
+                
+                // 更新数量和总价
+                newInboundBudget[itemId].quantity = quantity;
+                if (expense.limitType !== 'ACTUAL') {
+                  newInboundBudget[itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
+                  newInboundBudget[itemId].subtotal = newInboundBudget[itemId].subtotal.toFixed(2);
+                }
+              } else {
+                // 标准没有变化，或者只是币种转换，保留现有金额
+                // 只更新数量（如果变化了）
+                if (newInboundBudget[itemId].quantity !== quantity) {
+                  newInboundBudget[itemId].quantity = quantity;
+                  // 如果数量变化了，重新计算 subtotal（基于现有的 unitPrice）
+                  if (expense.limitType !== 'ACTUAL' && currentUnitPrice > 0) {
+                    newInboundBudget[itemId].subtotal = (currentUnitPrice * quantity).toFixed(2);
+                  }
+                }
               }
               
               // 更新 calcUnit 和 limitType（如果变化）
@@ -1704,14 +1767,6 @@ const TravelForm = () => {
               }
               if (expense.limitType) {
                 newInboundBudget[itemId].limitType = expense.limitType;
-              }
-              
-              // 更新数量和总价
-              newInboundBudget[itemId].quantity = quantity;
-              // 对于实报实销类型，不自动计算 subtotal（允许用户手动输入）
-              if (expense.limitType !== 'ACTUAL') {
-                newInboundBudget[itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
-                newInboundBudget[itemId].subtotal = newInboundBudget[itemId].subtotal.toFixed(2);
               }
             }
           });
@@ -1784,13 +1839,37 @@ const TravelForm = () => {
                     limitType: expense.limitType || 'FIXED' // 保存 limitType
                   };
                 } else {
-                  // 预算项已存在：更新 unitPrice（使用新标准）和数量
+                  // 预算项已存在：只在标准真正变化时更新 unitPrice，否则保留现有金额
                   const currentUnitPrice = parseFloat(newMultiCityRoutesBudget[index][itemId].unitPrice) || 0;
+                  const currentSubtotal = parseFloat(newMultiCityRoutesBudget[index][itemId].subtotal) || 0;
                   
-                  // 如果新标准的价格与当前不同，更新 unitPrice
-                  if (Math.abs(newUnitPrice - currentUnitPrice) > 0.01) {
+                  // 计算当前金额对应的标准金额（通过反向转换）
+                  // 如果新标准的价格与当前价格差异很大（超过10%），说明标准可能真的变化了
+                  const priceDiffRatio = currentUnitPrice > 0 ? Math.abs(newUnitPrice - currentUnitPrice) / currentUnitPrice : 1;
+                  
+                  // 只有当价格差异超过10%时，才认为是标准变化，需要更新
+                  // 否则，保留现有金额（可能是用户刚刚转换的）
+                  if (priceDiffRatio > 0.1 && Math.abs(newUnitPrice - currentUnitPrice) > 0.01) {
+                    // 标准真的变化了，更新 unitPrice
                     newMultiCityRoutesBudget[index][itemId].unitPrice = newUnitPrice > 0 ? String(newUnitPrice) : '';
                     newMultiCityRoutesBudget[index][itemId].itemName = expense.itemName || newMultiCityRoutesBudget[index][itemId].itemName;
+                    
+                    // 更新数量和总价
+                    newMultiCityRoutesBudget[index][itemId].quantity = quantity;
+                    if (expense.limitType !== 'ACTUAL') {
+                      newMultiCityRoutesBudget[index][itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
+                      newMultiCityRoutesBudget[index][itemId].subtotal = newMultiCityRoutesBudget[index][itemId].subtotal.toFixed(2);
+                    }
+                  } else {
+                    // 标准没有变化，或者只是币种转换，保留现有金额
+                    // 只更新数量（如果变化了）
+                    if (newMultiCityRoutesBudget[index][itemId].quantity !== quantity) {
+                      newMultiCityRoutesBudget[index][itemId].quantity = quantity;
+                      // 如果数量变化了，重新计算 subtotal（基于现有的 unitPrice）
+                      if (expense.limitType !== 'ACTUAL' && currentUnitPrice > 0) {
+                        newMultiCityRoutesBudget[index][itemId].subtotal = (currentUnitPrice * quantity).toFixed(2);
+                      }
+                    }
                   }
                   
                   // 更新 calcUnit 和 limitType（如果变化）
@@ -1799,14 +1878,6 @@ const TravelForm = () => {
                   }
                   if (expense.limitType) {
                     newMultiCityRoutesBudget[index][itemId].limitType = expense.limitType;
-                  }
-                  
-                  // 更新数量和总价
-                  newMultiCityRoutesBudget[index][itemId].quantity = quantity;
-                  // 对于实报实销类型，不自动计算 subtotal（允许用户手动输入）
-                  if (expense.limitType !== 'ACTUAL') {
-                    newMultiCityRoutesBudget[index][itemId].subtotal = (newUnitPrice > 0 ? newUnitPrice : currentUnitPrice) * quantity;
-                    newMultiCityRoutesBudget[index][itemId].subtotal = newMultiCityRoutesBudget[index][itemId].subtotal.toFixed(2);
                   }
                 }
               });
