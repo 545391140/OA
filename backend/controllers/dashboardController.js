@@ -633,6 +633,8 @@ exports.getDashboardData = async (req, res) => {
 
     // 转换 expenseQuery 中的 employee 字段为 ObjectId（用于聚合查询）
     const expenseQueryForAggregate = convertEmployeeToObjectId({ ...expenseQuery });
+    // 同样转换 travelQuery 中的 employee 字段为 ObjectId（用于聚合查询）
+    const travelQueryForAggregate = convertEmployeeToObjectId({ ...travelQuery });
 
     console.log('[DASHBOARD_DATA] 开始并行查询所有数据...');
     const startTime = Date.now();
@@ -645,7 +647,7 @@ exports.getDashboardData = async (req, res) => {
       getRecentExpensesData(expenseQuery, 5),
       getMonthlySpendingAndCategoryData(expenseQueryForAggregate, 6, 'month'),
       getPendingTasksData(userId, userRole, travelQuery),
-      getCountryTravelData(travelQuery)
+      getCountryTravelData(travelQueryForAggregate)
     ]);
     
     const queryTime = Date.now() - startTime;
