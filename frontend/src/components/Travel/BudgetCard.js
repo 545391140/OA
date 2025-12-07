@@ -17,6 +17,7 @@ import ModernExpenseItem from '../Common/ModernExpenseItem';
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
+import { isActualLimitType } from '../../utils/limitTypeUtils';
 
 const BudgetCard = ({
   title,
@@ -225,8 +226,18 @@ const BudgetCard = ({
                   itemName: expense.itemName || '未知费用项',
                   unitPrice: '',
                   quantity: 1,
-                  subtotal: ''
+                  subtotal: '',
+                  limitType: expense?.limitType, // 确保包含 limitType
+                  calcUnit: expense?.calcUnit    // 确保包含 calcUnit
                 };
+                
+                // 根据 limitType 和 calcUnit 决定数量字段是否禁用
+                // ACTUAL 和 PER_TRIP 类型：数量固定为1，应该禁用
+                // 注意：只有明确是 ACTUAL 或 PER_TRIP 时才禁用，undefined 不应该禁用
+                const limitType = budgetItem?.limitType || expense?.limitType;
+                const calcUnit = budgetItem?.calcUnit || expense?.calcUnit;
+                // 只有当 limitType 明确为实报实销或 calcUnit 明确为 'PER_TRIP' 时才禁用
+                const quantityDisabled = isActualLimitType(limitType) || (calcUnit === 'PER_TRIP');
 
                 // 生成计算提示
                 const unitPriceValue = parseFloat(budgetItem.unitPrice) || 0;
@@ -255,7 +266,7 @@ const BudgetCard = ({
                       onQuantityChange={(e) => onBudgetChange(tripType, itemId, 'quantity', e.target.value, routeIndex)}
                       showInfo={true}
                       infoText={calculationText}
-                      quantityDisabled={true}
+                      quantityDisabled={quantityDisabled}
                     />
                   </Grid>
                 );
@@ -272,6 +283,18 @@ const BudgetCard = ({
                 
                 if (hasDestination && hasDate) {
                   // 已填写目的地和日期，但未匹配到费用项
+                  // 调试信息：打印匹配参数，便于诊断问题
+                  console.warn('[BudgetCard] 未找到匹配的差旅标准:', {
+                    tripType,
+                    routeIndex,
+                    destination: routeData?.destination,
+                    date: routeData?.date,
+                    destinationType: typeof routeData?.destination,
+                    dateType: typeof routeData?.date,
+                    matchedExpenseItemsCount: Object.keys(matchedExpenseItems || {}).length,
+                    matchedExpenseItems: matchedExpenseItems,
+                    budgetDataCount: Object.keys(budgetData || {}).length
+                  });
                   return '已填写目的地和出发日期，但未找到匹配的差旅标准。请检查差旅标准配置或联系管理员。';
                 } else {
                   // 未填写目的地或日期

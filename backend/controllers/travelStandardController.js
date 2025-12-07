@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const logger = require('../utils/logger');
 const TravelStandard = require('../models/TravelStandard');
-const { convertFromCNYSyncSync } = require('../utils/currencyConverter');
+const { convertFromCNYSync } = require('../utils/currencyConverter');
 
 // @desc    Get all travel standards
 // @route   GET /api/travel-standards
