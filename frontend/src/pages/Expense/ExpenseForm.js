@@ -3501,6 +3501,35 @@ const ExpenseForm = () => {
 
             {/* Action Buttons */}
             <Grid item xs={12}>
+              {/* 当关联差旅单且有费用项发票时，提示将创建的费用申请数量 */}
+              {selectedTravel && !isEdit && (() => {
+                const budgets = extractExpenseBudgets(selectedTravel);
+                const processedExpenseItems = new Set();
+                let expenseCount = 0;
+                
+                budgets.forEach(budget => {
+                  const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
+                  const itemInvoices = expenseItemInvoices[expenseItemIdStr] || expenseItemInvoices[budget.expenseItemId] || [];
+                  
+                  if (itemInvoices.length > 0 && !processedExpenseItems.has(expenseItemIdStr)) {
+                    processedExpenseItems.add(expenseItemIdStr);
+                    expenseCount++;
+                  }
+                });
+                
+                if (expenseCount > 0) {
+                  return (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      {expenseCount === 1 
+                        ? t('expense.form.willCreateOneExpense', '提交后将创建 1 个费用申请')
+                        : t('expense.form.willCreateMultipleExpenses', { count: expenseCount }) || `提交后将为 ${expenseCount} 个费用项分别创建费用申请`
+                      }
+                    </Alert>
+                  );
+                }
+                return null;
+              })()}
+              
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 3 }}>
                 <Button
                   variant="outlined"
