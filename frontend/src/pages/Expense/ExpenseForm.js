@@ -157,6 +157,7 @@ const ExpenseForm = () => {
   const [expenseItemInvoices, setExpenseItemInvoices] = useState({}); // { expenseItemId: [invoices] }
   const [expenseItemInvoiceDialogs, setExpenseItemInvoiceDialogs] = useState({}); // { expenseItemId: open }
   const [expenseItemReimbursementAmounts, setExpenseItemReimbursementAmounts] = useState({}); // { expenseItemId: amount }
+  const [expenseItemReimbursementEditing, setExpenseItemReimbursementEditing] = useState({}); // { expenseItemId: isEditing }
   // 标记用户是否手动修改过日期，一旦手动修改，就不再被差旅/发票自动覆盖
   const [isDateManuallyEdited, setIsDateManuallyEdited] = useState(false);
 
@@ -2967,20 +2968,31 @@ const ExpenseForm = () => {
                                     size="small"
                                     type="text"
                                     value={(() => {
-                                      // 优先使用已设置的报销金额，支持字符串和对象ID格式
+                                      // 如果正在编辑，显示原始值
+                                      const isEditing = expenseItemReimbursementEditing[expenseItemId] ?? 
+                                                       expenseItemReimbursementEditing[mergedBudget.expenseItemId];
+                                      
+                                      // 获取报销金额
                                       const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemId] ?? 
                                                                   expenseItemReimbursementAmounts[mergedBudget.expenseItemId];
                                       
-                                      // 如果报销金额已设置，使用已设置的值
+                                      // 如果正在编辑，返回原始数字（不格式化）
+                                      if (isEditing) {
+                                        if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
+                                          return String(reimbursementAmount);
+                                        }
+                                        return '0';
+                                      }
+                                      
+                                      // 如果不在编辑状态，返回格式化的值
                                       if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
-                                        // 格式化显示：添加千位分隔符，保留2位小数
                                         return reimbursementAmount.toLocaleString('en-US', { 
                                           minimumFractionDigits: 2, 
                                           maximumFractionDigits: 2 
                                         });
                                       }
                                       
-                                      // 如果报销金额未设置，计算并返回发票总金额（useEffect会自动设置状态）
+                                      // 如果报销金额未设置，计算并返回发票总金额
                                       const totalAmount = itemInvoices.reduce((sum, inv) => {
                                         const amount = inv.totalAmount || inv.amount || 0;
                                         return sum + amount;
@@ -3030,16 +3042,26 @@ const ExpenseForm = () => {
                                       });
                                     }}
                                     onFocus={(e) => {
-                                      // 聚焦时，移除格式化，显示原始数字以便编辑
-                                      const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemId] ?? 
-                                                                  expenseItemReimbursementAmounts[mergedBudget.expenseItemId];
-                                      if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
-                                        e.target.value = String(reimbursementAmount);
-                                      }
-                                      e.target.select(); // 选中所有文本以便快速编辑
+                                      // 进入编辑状态
+                                      setExpenseItemReimbursementEditing(prev => ({
+                                        ...prev,
+                                        [expenseItemId]: true,
+                                        [mergedBudget.expenseItemId]: true
+                                      }));
+                                      // 延迟选中，确保值已更新
+                                      setTimeout(() => {
+                                        e.target.select();
+                                      }, 0);
                                     }}
                                     onBlur={(e) => {
-                                      // 失焦时，触发格式化更新
+                                      // 退出编辑状态
+                                      setExpenseItemReimbursementEditing(prev => ({
+                                        ...prev,
+                                        [expenseItemId]: false,
+                                        [mergedBudget.expenseItemId]: false
+                                      }));
+                                      
+                                      // 失焦时，确保清除前导零并保存最终值
                                       let inputValue = e.target.value.replace(/,/g, '').replace(/\s/g, '');
                                       
                                       // 清除前导零
