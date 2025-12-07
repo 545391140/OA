@@ -2854,8 +2854,8 @@ const TravelForm = () => {
               />
             </Grid>
 
-            {/* Destination with Query Standard Button */}
-              <Grid item xs={12} md={8}>
+            {/* Destination */}
+              <Grid item xs={12} md={6}>
                 <RegionSelector
                   label={t('travel.destination')}
                   value={formData.destination}
@@ -2865,46 +2865,6 @@ const TravelForm = () => {
                   helperText={errors.destination}
                   required={true}
                 />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'flex-end', 
-                height: '100%',
-                pt: { xs: 0, md: 0 }
-              }}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  startIcon={<FlightIcon />}
-                  onClick={async () => {
-                    if (!formData.destination || !formData.startDate) {
-                      showNotification(t('travel.form.pleaseFillDestinationAndDate') || '请先填写目的地和出发日期', 'warning');
-                      return;
-                    }
-                    try {
-                      const matchedExpenses = await matchRouteStandard(
-                        formData.destination,
-                        formData.startDate,
-                        'outbound'
-                      );
-                      if (matchedExpenses) {
-                        showNotification(t('travel.form.standardMatched') || '查询标准成功', 'success');
-                      } else {
-                        showNotification(t('travel.form.noStandardFound') || '未找到匹配的差旅标准', 'info');
-                      }
-                    } catch (error) {
-                      showNotification(t('travel.form.queryStandardError') || '查询标准失败', 'error');
-                    }
-                  }}
-                  sx={{ 
-                    height: '56px',
-                    mt: 0
-                  }}
-                >
-                  {t('travel.form.queryStandard') || '查询标准'}
-                </Button>
-              </Box>
             </Grid>
 
               {/* Request Name */}

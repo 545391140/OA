@@ -585,7 +585,12 @@
       "nextPage": "Next Page",
       "pageInfo": "Page {current} of {total}",
       "destinationAtLeastOne": "Destination (at least one from basic info, outbound, inbound, or multi-city routes)",
-      "pendingFill": "Pending Fill"
+      "pendingFill": "Pending Fill",
+      "queryStandard": "Query Standard",
+      "standardMatched": "Standard matched successfully",
+      "noStandardFound": "No matching travel standard found",
+      "queryStandardError": "Failed to query standard",
+      "pleaseFillDestinationAndDate": "Please fill in destination and departure date first"
     },
     "costOverview": {
       "title": "Cost Overview",

@@ -588,7 +588,12 @@
       "nextPage": "下一页",
       "pageInfo": "第 {current} 页，共 {total} 页",
       "destinationAtLeastOne": "目的地（基本信息、去程、返程或多程行程中至少填写一个）",
-      "pendingFill": "待填写"
+      "pendingFill": "待填写",
+      "queryStandard": "查询标准",
+      "standardMatched": "查询标准成功",
+      "noStandardFound": "未找到匹配的差旅标准",
+      "queryStandardError": "查询标准失败",
+      "pleaseFillDestinationAndDate": "请先填写目的地和出发日期"
     },
     "costOverview": {
       "title": "费用总览",

@@ -579,7 +579,12 @@
       "nextPage": "Next Page",
       "pageInfo": "Page {current} of {total}",
       "destinationAtLeastOne": "Destination (at least one from basic info, outbound, inbound, or multi-city routes)",
-      "pendingFill": "Pending Fill"
+      "pendingFill": "Pending Fill",
+      "queryStandard": "استعلام المعيار",
+      "standardMatched": "تمت مطابقة المعيار بنجاح",
+      "noStandardFound": "لم يتم العثور على معيار سفر مطابق",
+      "queryStandardError": "فشل استعلام المعيار",
+      "pleaseFillDestinationAndDate": "يرجى ملء الوجهة وتاريخ المغادرة أولاً"
     },
     "costOverview": {
       "title": "نظرة عامة على التكلفة",

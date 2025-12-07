@@ -582,7 +582,12 @@
       "nextPage": "หน้าถัดไป",
       "pageInfo": "หน้า {current} จาก {total}",
       "destinationAtLeastOne": "จุดหมายปลายทาง (อย่างน้อยหนึ่งจากข้อมูลพื้นฐาน ขาออก ขาเข้า หรือเส้นทางหลายเมือง)",
-      "pendingFill": "รอการกรอก"
+      "pendingFill": "รอการกรอก",
+      "queryStandard": "สอบถามมาตรฐาน",
+      "standardMatched": "มาตรฐานตรงกันสำเร็จ",
+      "noStandardFound": "ไม่พบมาตรฐานการเดินทางที่ตรงกัน",
+      "queryStandardError": "สอบถามมาตรฐานล้มเหลว",
+      "pleaseFillDestinationAndDate": "กรุณากรอกจุดหมายปลายทางและวันที่ออกเดินทางก่อน"
     },
     "costOverview": {
       "title": "ภาพรวมค่าใช้จ่าย",

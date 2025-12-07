@@ -582,7 +582,12 @@
       "nextPage": "Trang Tiếp theo",
       "pageInfo": "Trang {current} / {total}",
       "destinationAtLeastOne": "Điểm đến (ít nhất một từ thông tin cơ bản, đi, về, hoặc tuyến nhiều thành phố)",
-      "pendingFill": "Đang chờ điền"
+      "pendingFill": "Đang chờ điền",
+      "queryStandard": "Truy vấn Tiêu chuẩn",
+      "standardMatched": "Tiêu chuẩn khớp thành công",
+      "noStandardFound": "Không tìm thấy tiêu chuẩn du lịch phù hợp",
+      "queryStandardError": "Truy vấn tiêu chuẩn thất bại",
+      "pleaseFillDestinationAndDate": "Vui lòng điền điểm đến và ngày khởi hành trước"
     },
     "costOverview": {
       "title": "Tổng quan Chi phí",

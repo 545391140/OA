@@ -568,7 +568,12 @@
       "nextPage": "次のページ",
       "pageInfo": "ページ {current} / {total}",
       "destinationAtLeastOne": "目的地（基本情報、往路、復路、または複数都市ルートのいずれかから少なくとも1つ）",
-      "pendingFill": "記入待ち"
+      "pendingFill": "記入待ち",
+      "queryStandard": "基準照会",
+      "standardMatched": "基準が正常に一致しました",
+      "noStandardFound": "一致する旅行基準が見つかりません",
+      "queryStandardError": "基準照会に失敗しました",
+      "pleaseFillDestinationAndDate": "まず目的地と出発日を入力してください"
     },
     "costOverview": {
       "title": "経費総覧",
