@@ -379,20 +379,21 @@ const ExpenseForm = () => {
         
         if (totalAmount > 0) {
           setExpenseItemReimbursementAmounts(prevAmounts => {
-            // 支持多种ID格式的查找：字符串、对象ID等
+            // 获取当前报销金额，支持多种ID格式
+            const expenseItemIdStr = expenseItemIdKey?.toString?.() || expenseItemIdKey;
             const currentReimbursement = prevAmounts[expenseItemIdKey] ?? 
-                                         prevAmounts[expenseItemIdKey?.toString()] ??
-                                         prevAmounts[expenseItemIdKey?.valueOf?.()];
+                                         prevAmounts[expenseItemIdStr];
             
-            // 如果报销金额未设置，自动设置为发票总金额
-            if (currentReimbursement === undefined || currentReimbursement === null) {
+            // 如果报销金额未设置或为0，自动设置为发票总金额
+            if (currentReimbursement === undefined || currentReimbursement === null || currentReimbursement === 0) {
+              devLog('[AUTO_REIMBURSEMENT] Setting reimbursement amount for expense item:', expenseItemIdKey, 'to:', totalAmount);
               const updated = {
                 ...prevAmounts,
                 [expenseItemIdKey]: totalAmount
               };
-              // 同时设置字符串格式的键（如果不同）
-              if (expenseItemIdKey?.toString && expenseItemIdKey.toString() !== expenseItemIdKey) {
-                updated[expenseItemIdKey.toString()] = totalAmount;
+              // 同时设置字符串格式的键，确保兼容性
+              if (expenseItemIdStr !== expenseItemIdKey) {
+                updated[expenseItemIdStr] = totalAmount;
               }
               return updated;
             }
@@ -403,19 +404,20 @@ const ExpenseForm = () => {
       } else if (Array.isArray(invoices) && invoices.length === 0) {
         // 如果发票被清空（总金额为0），自动更新报销金额为0
         setExpenseItemReimbursementAmounts(prevAmounts => {
+          const expenseItemIdStr = expenseItemIdKey?.toString?.() || expenseItemIdKey;
           const currentReimbursement = prevAmounts[expenseItemIdKey] ?? 
-                                       prevAmounts[expenseItemIdKey?.toString()] ??
-                                       prevAmounts[expenseItemIdKey?.valueOf?.()];
+                                       prevAmounts[expenseItemIdStr];
           
           // 只有当报销金额不为0时才更新（避免不必要的更新）
           if (currentReimbursement !== undefined && currentReimbursement !== null && currentReimbursement !== 0) {
+            devLog('[AUTO_REIMBURSEMENT] Clearing reimbursement amount for expense item:', expenseItemIdKey);
             const updated = {
               ...prevAmounts,
               [expenseItemIdKey]: 0
             };
-            // 同时设置字符串格式的键（如果不同）
-            if (expenseItemIdKey?.toString && expenseItemIdKey.toString() !== expenseItemIdKey) {
-              updated[expenseItemIdKey.toString()] = 0;
+            // 同时设置字符串格式的键
+            if (expenseItemIdStr !== expenseItemIdKey) {
+              updated[expenseItemIdStr] = 0;
             }
             return updated;
           }
@@ -651,7 +653,7 @@ const ExpenseForm = () => {
   };
 
   // 加载差旅信息
-  const loadTravelInfo = async (travel) => {
+  const loadTravelInfo = async (travel, clearInvoices = false) => {
     const travelId = travel._id || travel;
     
     // 防止重复请求
@@ -689,18 +691,29 @@ const ExpenseForm = () => {
 
         // 初始化费用项发票管理
         const budgets = extractExpenseBudgets(travelData);
-        // 保留已有的发票数据，只初始化新的费用项（不覆盖已有数据）
+        // 如果 clearInvoices 为 true，清空所有发票数据；否则保留已有的发票数据，只初始化新的费用项
         setExpenseItemInvoices(prev => {
-          const updated = { ...prev };
-          budgets.forEach(budget => {
-            // 确保使用字符串键
-            const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
-            // 只有当该费用项不存在时才初始化为空数组
-            if (!updated[expenseItemIdStr]) {
+          if (clearInvoices) {
+            // 切换差旅单号时，清空所有发票数据，重新初始化
+            const updated = {};
+            budgets.forEach(budget => {
+              const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
               updated[expenseItemIdStr] = [];
-            }
-          });
-          return updated;
+            });
+            return updated;
+          } else {
+            // 保留已有的发票数据，只初始化新的费用项（不覆盖已有数据）
+            const updated = { ...prev };
+            budgets.forEach(budget => {
+              // 确保使用字符串键
+              const expenseItemIdStr = budget.expenseItemId?.toString() || budget.expenseItemId;
+              // 只有当该费用项不存在时才初始化为空数组
+              if (!updated[expenseItemIdStr]) {
+                updated[expenseItemIdStr] = [];
+              }
+            });
+            return updated;
+          }
         });
 
         // 自动匹配发票到费用项（仅在新建模式下）
@@ -1305,21 +1318,34 @@ const ExpenseForm = () => {
         
         // 如果报销金额还没有设置，自动设置为新的发票总金额
         if (currentReimbursement === undefined || currentReimbursement === null) {
-          return {
+          devLog('[ADD_INVOICE] Setting reimbursement amount for new invoices, expense item:', expenseItemIdStr, 'amount:', totalAmount);
+          const updated = {
             ...prevAmounts,
             [expenseItemIdStr]: totalAmount
           };
+          // 同时设置原始ID格式（如果不同）
+          if (expenseItemId !== expenseItemIdStr) {
+            updated[expenseItemId] = totalAmount;
+          }
+          return updated;
         }
         
         // 如果当前报销金额等于之前的发票总金额（说明是自动设置的），则自动更新为新总金额
         if (currentReimbursement === previousTotal) {
-          return {
+          devLog('[ADD_INVOICE] Updating reimbursement amount (was auto-set), expense item:', expenseItemIdStr, 'from:', previousTotal, 'to:', totalAmount);
+          const updated = {
             ...prevAmounts,
             [expenseItemIdStr]: totalAmount
           };
+          // 同时更新原始ID格式（如果不同）
+          if (expenseItemId !== expenseItemIdStr) {
+            updated[expenseItemId] = totalAmount;
+          }
+          return updated;
         }
         
         // 如果用户已经手动修改过报销金额（不等于之前的发票总金额），保持用户的修改
+        devLog('[ADD_INVOICE] Keeping user-modified reimbursement amount, expense item:', expenseItemIdStr, 'user amount:', currentReimbursement, 'invoice total:', totalAmount);
         return prevAmounts;
       });
       
@@ -1367,11 +1393,18 @@ const ExpenseForm = () => {
       setExpenseItemReimbursementAmounts(prevAmounts => {
         const currentReimbursement = prevAmounts[expenseItemIdStr] ?? prevAmounts[expenseItemId];
         if (currentReimbursement === previousTotal) {
-          return {
+          devLog('[REMOVE_INVOICE] Updating reimbursement amount after invoice removal, expense item:', expenseItemIdStr, 'from:', previousTotal, 'to:', totalAmount);
+          const updated = {
             ...prevAmounts,
             [expenseItemIdStr]: totalAmount
           };
+          // 同时更新原始ID格式（如果不同）
+          if (expenseItemId !== expenseItemIdStr) {
+            updated[expenseItemId] = totalAmount;
+          }
+          return updated;
         }
+        devLog('[REMOVE_INVOICE] Keeping user-modified reimbursement amount after invoice removal, expense item:', expenseItemIdStr);
         return prevAmounts;
       });
       
@@ -2534,7 +2567,12 @@ const ExpenseForm = () => {
                   loading={travelLoading}
                   value={selectedTravel}
                   onChange={(event, newValue) => {
-                    setSelectedTravel(newValue);
+                    if (newValue) {
+                      // 切换差旅单号时，清空之前的发票匹配数据，然后重新加载差旅信息并匹配发票
+                      loadTravelInfo(newValue, true);
+                    } else {
+                      setSelectedTravel(null);
+                    }
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -2927,66 +2965,55 @@ const ExpenseForm = () => {
                                   </Typography>
                                   <TextField
                                     size="small"
-                                    type="number"
+                                    type="text"
                                     value={(() => {
-                                      // 计算发票总金额
+                                      // 优先使用已设置的报销金额，支持字符串和对象ID格式
+                                      const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemId] ?? 
+                                                                  expenseItemReimbursementAmounts[mergedBudget.expenseItemId];
+                                      
+                                      // 如果报销金额已设置，使用已设置的值
+                                      if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
+                                        // 格式化显示：添加千位分隔符，保留2位小数
+                                        return reimbursementAmount.toLocaleString('en-US', { 
+                                          minimumFractionDigits: 2, 
+                                          maximumFractionDigits: 2 
+                                        });
+                                      }
+                                      
+                                      // 如果报销金额未设置，计算并返回发票总金额（useEffect会自动设置状态）
                                       const totalAmount = itemInvoices.reduce((sum, inv) => {
                                         const amount = inv.totalAmount || inv.amount || 0;
                                         return sum + amount;
                                       }, 0);
                                       
-                                      // 优先使用已设置的报销金额，支持字符串和对象ID格式
-                                      const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemId] ?? 
-                                                                  expenseItemReimbursementAmounts[mergedBudget.expenseItemId?.toString()] ??
-                                                                  expenseItemReimbursementAmounts[mergedBudget.expenseItemId];
-                                      
-                                      // 如果报销金额已设置，使用已设置的值
-                                      if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
-                                        return reimbursementAmount;
-                                      }
-                                      
-                                      // 如果报销金额未设置，但有发票，立即设置报销金额为发票总金额
-                                      if (totalAmount > 0) {
-                                        // 使用 useEffect 的依赖来触发更新，避免在渲染时直接修改状态
-                                        // 这里先返回发票总金额，useEffect 会在下次渲染时设置
-                                        // 但为了确保立即生效，我们使用 useRef 来跟踪是否已经设置
-                                        const shouldSet = !expenseItemReimbursementAmounts[expenseItemId] && 
-                                                         !expenseItemReimbursementAmounts[mergedBudget.expenseItemId?.toString()] &&
-                                                         !expenseItemReimbursementAmounts[mergedBudget.expenseItemId];
-                                        
-                                        if (shouldSet) {
-                                          // 使用 setTimeout 异步设置，避免在渲染时修改状态
-                                          setTimeout(() => {
-                                            setExpenseItemReimbursementAmounts(prev => {
-                                              // 再次检查是否已经设置（避免重复设置）
-                                              const current = prev[expenseItemId] ?? 
-                                                             prev[mergedBudget.expenseItemId?.toString()] ??
-                                                             prev[mergedBudget.expenseItemId];
-                                              if (current === undefined || current === null) {
-                                                const updated = {
-                                                  ...prev,
-                                                  [expenseItemId]: totalAmount
-                                                };
-                                                // 同时设置其他格式的键
-                                                if (mergedBudget.expenseItemId?.toString() && mergedBudget.expenseItemId.toString() !== expenseItemId) {
-                                                  updated[mergedBudget.expenseItemId.toString()] = totalAmount;
-                                                }
-                                                if (mergedBudget.expenseItemId && mergedBudget.expenseItemId !== expenseItemId && mergedBudget.expenseItemId.toString() !== expenseItemId) {
-                                                  updated[mergedBudget.expenseItemId] = totalAmount;
-                                                }
-                                                return updated;
-                                              }
-                                              return prev;
-                                            });
-                                          }, 0);
-                                        }
-                                      }
-                                      
-                                      // 返回发票总金额作为默认值
-                                      return totalAmount;
+                                      return totalAmount.toLocaleString('en-US', { 
+                                        minimumFractionDigits: 2, 
+                                        maximumFractionDigits: 2 
+                                      });
                                     })()}
                                     onChange={(e) => {
-                                      const value = parseFloat(e.target.value) || 0;
+                                      let inputValue = e.target.value;
+                                      
+                                      // 移除千位分隔符和空格
+                                      inputValue = inputValue.replace(/,/g, '').replace(/\s/g, '');
+                                      
+                                      // 只允许数字和一个小数点
+                                      if (inputValue && !/^\d*\.?\d*$/.test(inputValue)) {
+                                        return; // 忽略非法输入
+                                      }
+                                      
+                                      // 清除前导零（但保留 "0" 和 "0." 的情况）
+                                      if (inputValue.length > 1 && inputValue.startsWith('0') && !inputValue.startsWith('0.')) {
+                                        inputValue = inputValue.replace(/^0+/, '');
+                                      }
+                                      
+                                      // 如果清除后为空，设置为 "0"
+                                      if (inputValue === '') {
+                                        inputValue = '0';
+                                      }
+                                      
+                                      const value = parseFloat(inputValue) || 0;
+                                      
                                       // 同时更新字符串和对象ID格式的键，确保一致性
                                       setExpenseItemReimbursementAmounts(prev => {
                                         const updated = {
@@ -2994,6 +3021,39 @@ const ExpenseForm = () => {
                                           [expenseItemId]: value
                                         };
                                         // 如果 expenseItemId 和 mergedBudget.expenseItemId 不同，也更新原键
+                                        if (expenseItemId !== mergedBudget.expenseItemId?.toString() && 
+                                            expenseItemId !== mergedBudget.expenseItemId) {
+                                          updated[mergedBudget.expenseItemId?.toString()] = value;
+                                          updated[mergedBudget.expenseItemId] = value;
+                                        }
+                                        return updated;
+                                      });
+                                    }}
+                                    onFocus={(e) => {
+                                      // 聚焦时，移除格式化，显示原始数字以便编辑
+                                      const reimbursementAmount = expenseItemReimbursementAmounts[expenseItemId] ?? 
+                                                                  expenseItemReimbursementAmounts[mergedBudget.expenseItemId];
+                                      if (reimbursementAmount !== undefined && reimbursementAmount !== null) {
+                                        e.target.value = String(reimbursementAmount);
+                                      }
+                                      e.target.select(); // 选中所有文本以便快速编辑
+                                    }}
+                                    onBlur={(e) => {
+                                      // 失焦时，触发格式化更新
+                                      let inputValue = e.target.value.replace(/,/g, '').replace(/\s/g, '');
+                                      
+                                      // 清除前导零
+                                      if (inputValue.length > 1 && inputValue.startsWith('0') && !inputValue.startsWith('0.')) {
+                                        inputValue = inputValue.replace(/^0+/, '');
+                                      }
+                                      
+                                      const value = parseFloat(inputValue) || 0;
+                                      
+                                      setExpenseItemReimbursementAmounts(prev => {
+                                        const updated = {
+                                          ...prev,
+                                          [expenseItemId]: value
+                                        };
                                         if (expenseItemId !== mergedBudget.expenseItemId?.toString() && 
                                             expenseItemId !== mergedBudget.expenseItemId) {
                                           updated[mergedBudget.expenseItemId?.toString()] = value;
