@@ -49,7 +49,7 @@ const PermissionSelector = ({ selectedPermissions = [], onChange, disabled = fal
         setExpandedGroups(expanded);
       }
     } catch (error) {
-      console.error('Fetch permissions error:', error);
+
     } finally {
       setLoading(false);
     }

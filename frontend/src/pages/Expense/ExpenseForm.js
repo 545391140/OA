@@ -66,21 +66,15 @@ import dayjs from 'dayjs';
 
 // 开发环境日志辅助函数
 const devLog = (...args) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(...args);
-  }
+  // Console logging disabled
 };
 
 const devError = (...args) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.error(...args);
-  }
+  // Console logging disabled
 };
 
 const devWarn = (...args) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(...args);
-  }
+  // Console logging disabled
 };
 
 const ExpenseForm = () => {
@@ -1793,23 +1787,16 @@ const ExpenseForm = () => {
   const handleSave = async (status = 'draft') => {
     // 防止重复提交
     if (saving) {
-      console.log('[EXPENSE_FORM] Already saving, ignoring request');
       return;
     }
 
-    console.log('[EXPENSE_FORM] Starting save with status:', status);
-    console.log('[EXPENSE_FORM] Form data:', formData);
-    console.log('[EXPENSE_FORM] Calculated amounts:', calculatedAmounts);
-
     if (!validateForm()) {
-      console.log('[EXPENSE_FORM] Validation failed, errors:', errors);
       showNotification(t('expense.form.validationError') || '请检查表单错误', 'error');
       return;
     }
 
     // 使用统一的有效金额（用户填写优先，其次是自动计算的核销金额）
     const effectiveAmount = getEffectiveAmount();
-    console.log('[EXPENSE_FORM] Validation passed, proceeding with save. Effective amount:', effectiveAmount);
 
     try {
       setSaving(true);
@@ -2472,17 +2459,9 @@ const ExpenseForm = () => {
         }, 100);
       }
     } catch (error) {
-      console.error('[EXPENSE_FORM] Failed to save expense:', error);
-      console.error('[EXPENSE_FORM] Error details:', error.response?.data);
-      console.error('[EXPENSE_FORM] Error stack:', error.stack);
-      devError('Failed to save expense:', error);
-      devError('Error details:', error.response?.data);
-      
       const errorMessage = error.response?.data?.message || error.message || (t('expense.saveError') || '保存费用申请失败');
-      console.error('[EXPENSE_FORM] Showing error notification:', errorMessage);
       showNotification(errorMessage, 'error');
     } finally {
-      console.log('[EXPENSE_FORM] Save completed, resetting saving state');
       setSaving(false);
     }
   };

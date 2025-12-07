@@ -20,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
+import { isActualLimitType } from '../../utils/limitTypeUtils';
 import { convertFromCNY, convertToCNY } from '../../utils/currencyConverter';
 
 const ModernCostOverview = ({
@@ -399,7 +400,7 @@ const ModernCostOverview = ({
         // 检查去程
         const outboundUnitPrice = parseFloat(outboundItem?.unitPrice || 0);
         const outboundSubtotal = parseFloat(outboundItem?.subtotal || 0);
-        const outboundCompleted = outboundUnitPrice > 0 || (expense.limitType === 'ACTUAL' && outboundSubtotal > 0);
+        const outboundCompleted = outboundUnitPrice > 0 || (isActualLimitType(expense.limitType) && outboundSubtotal > 0);
         
         totalRequiredFields += 1;
         if (outboundCompleted) completedFields += 1;
@@ -414,7 +415,7 @@ const ModernCostOverview = ({
             
             const inboundUnitPrice = parseFloat(inboundItem?.unitPrice || 0);
             const inboundSubtotal = parseFloat(inboundItem?.subtotal || 0);
-            const inboundCompleted = inboundUnitPrice > 0 || (expense.limitType === 'ACTUAL' && inboundSubtotal > 0);
+            const inboundCompleted = inboundUnitPrice > 0 || (isActualLimitType(expense.limitType) && inboundSubtotal > 0);
             
             totalRequiredFields += 1;
             if (inboundCompleted) completedFields += 1;
@@ -432,7 +433,7 @@ const ModernCostOverview = ({
               
               const multiCityUnitPrice = parseFloat(multiCityItem?.unitPrice || 0);
               const multiCitySubtotal = parseFloat(multiCityItem?.subtotal || 0);
-              const multiCityCompleted = multiCityUnitPrice > 0 || (expense.limitType === 'ACTUAL' && multiCitySubtotal > 0);
+              const multiCityCompleted = multiCityUnitPrice > 0 || (isActualLimitType(expense.limitType) && multiCitySubtotal > 0);
               
               totalRequiredFields += 1;
               if (multiCityCompleted) completedFields += 1;

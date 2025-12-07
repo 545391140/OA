@@ -99,13 +99,13 @@ const ExpenseItemsMaintenance = () => {
 
       // 检查费用项响应
       if (!expenseItemsRes.data) {
-        console.error('费用项响应为空:', expenseItemsRes);
+
         showNotification(t('expenseItem.maintenance.responseEmpty'), 'error');
         return;
       }
 
       if (expenseItemsRes.data.success === false) {
-        console.error('费用项加载失败:', expenseItemsRes.data.message || expenseItemsRes.data.error);
+
         showNotification(expenseItemsRes.data.message || t('expenseItem.maintenance.loadError'), 'error');
         return;
       }
@@ -201,17 +201,12 @@ const ExpenseItemsMaintenance = () => {
         setExpenseItems(organizedItems);
       }
     } catch (err) {
-      console.error('Fetch data error:', err);
+
       const errorMessage = err.response?.data?.message 
         || err.message 
         || t('expenseItem.maintenance.fetchError');
       showNotification(`${t('expenseItem.maintenance.fetchError')}: ${errorMessage}`, 'error');
-      console.error('错误详情:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        url: err.config?.url
-      });
+
     } finally {
       setLoading(false);
     }
@@ -329,7 +324,7 @@ const ExpenseItemsMaintenance = () => {
       setFormDialog({ open: false, item: null, mode: 'create' });
       fetchAllData();
     } catch (err) {
-      console.error('Save expense item error:', err);
+
       showNotification(t('expenseItem.maintenance.saveError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
     }
   };
@@ -405,7 +400,7 @@ const ExpenseItemsMaintenance = () => {
       setDeleteDialog({ open: false, item: null });
       fetchAllData();
     } catch (err) {
-      console.error('Delete error:', err);
+
       showNotification(t('expenseItem.maintenance.deleteError') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
     }
   };

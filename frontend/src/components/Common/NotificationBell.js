@@ -56,7 +56,7 @@ const NotificationBell = () => {
         setUnreadCount(response.data.count);
       }
     } catch (error) {
-      console.error('Failed to fetch unread count:', error);
+
     }
   };
 
@@ -82,7 +82,7 @@ const NotificationBell = () => {
         setHasMore(response.data.page < response.data.pages);
       }
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+
     } finally {
       if (!silent) {
         setLoading(false);
@@ -144,7 +144,7 @@ const NotificationBell = () => {
       );
       fetchUnreadCount();
     } catch (error) {
-      console.error('Failed to mark as read:', error);
+
     }
   };
 
@@ -155,7 +155,7 @@ const NotificationBell = () => {
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+
     }
   };
 
@@ -167,7 +167,7 @@ const NotificationBell = () => {
       setNotifications(prev => prev.filter(n => n._id !== notificationId));
       fetchUnreadCount();
     } catch (error) {
-      console.error('Failed to delete notification:', error);
+
     }
   };
 

@@ -71,7 +71,7 @@ const StandardQuery = () => {
         setError(response.data.message || t('travelStandard.query.queryFailed'));
       }
     } catch (err) {
-      console.error('Query standard error:', err);
+
       setError(err.response?.data?.message || t('travelStandard.query.queryError'));
     } finally {
       setLoading(false);
@@ -99,8 +99,8 @@ const StandardQuery = () => {
           <Typography variant="h6" gutterBottom>
             {t('travelStandard.query.tripInfo')}
           </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={4} md={4}>
               <RegionSelector
                 label={t('travelStandard.query.destination')}
                 value={queryParams.destination}
@@ -113,7 +113,7 @@ const StandardQuery = () => {
                 transportationType="flight"
               />
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} sm={3} md={2}>
               <TextField
                 fullWidth
                 label={t('travelStandard.query.departureDate')}
@@ -123,7 +123,7 @@ const StandardQuery = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} sm={2} md={2}>
               <TextField
                 fullWidth
                 label={t('travelStandard.query.tripDays')}
@@ -133,7 +133,7 @@ const StandardQuery = () => {
                 inputProps={{ min: 1 }}
               />
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} sm={2} md={2}>
               <FormControl fullWidth>
                 <InputLabel>{t('common.currency') || 'Currency'}</InputLabel>
                 <Select
@@ -149,17 +149,22 @@ const StandardQuery = () => {
                 </Select>
               </FormControl>
             </Grid>
+            <Grid item xs={12} sm={1} md={2}>
+              <Button
+                variant="outlined"
+                onClick={handleQuery}
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={20} /> : <QueryIcon />}
+                fullWidth
+                sx={{
+                  height: '46.5px',
+                  minHeight: '46.5px'
+                }}
+              >
+                {t('travelStandard.query.queryStandard')}
+              </Button>
+            </Grid>
           </Grid>
-          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              onClick={handleQuery}
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : <QueryIcon />}
-            >
-              {t('travelStandard.query.queryStandard')}
-            </Button>
-          </Box>
         </Paper>
 
         {/* 错误提示 */}

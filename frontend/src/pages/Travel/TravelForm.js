@@ -120,7 +120,6 @@ const TravelForm = () => {
       };
       return `${currencyCode} - ${fallbackNames[currencyCode] || currencyCode}`;
     } catch (error) {
-      console.warn(`Error getting currency display name for ${currencyCode}:`, error);
       return currencyCode;
     }
   }, [t, i18n.language]);
@@ -340,10 +339,6 @@ const TravelForm = () => {
         });
       } else if (currencyCodes.length > 0) {
         // currencyCodes 已加载但用户币种不在列表中，记录警告但不阻止设置
-        console.warn('[TravelForm] 用户默认币种不在有效币种列表中:', {
-          userCurrency,
-          availableCurrencies: currencyCodes
-        });
         // 仍然设置用户币种，让用户知道有问题
         setFormData(prev => {
           if (prev.currency !== userCurrency) {
@@ -702,39 +697,9 @@ const TravelForm = () => {
 
         if (matchResponse.data && matchResponse.data.success && matchResponse.data.data.matched) {
           return normalizeMatchedExpenses(matchResponse.data.data.expenses);
-        } else {
-          // 调试信息：打印未匹配的原因
-          console.warn('[TravelForm] 差旅标准匹配失败:', {
-            destination,
-            routeDate,
-            routeType,
-            routeIndex,
-            matchParams: {
-              country,
-              city: cityName,
-              cityLevel,
-              positionLevel,
-              department,
-              role,
-              position,
-              projectCode
-            },
-            response: matchResponse.data,
-            message: matchResponse.data?.data?.message
-          });
         }
       return null;
     } catch (error) {
-      // 调试信息：打印匹配错误
-      console.error('[TravelForm] 差旅标准匹配错误:', {
-        destination,
-        routeDate,
-        routeType,
-        routeIndex,
-        error: error.message,
-        response: error.response?.data,
-        stack: error.stack
-      });
       return null;
     }
   };
@@ -2739,7 +2704,7 @@ const TravelForm = () => {
           
           // 验证数组长度
           if (budgets.length !== routesLength) {
-            console.warn(`[TravelForm] multiCityRoutesBudget length mismatch: ${budgets.length} vs ${routesLength}`);
+            // Array length mismatch handled silently
           }
           
           return budgets;
@@ -2889,8 +2854,8 @@ const TravelForm = () => {
               />
             </Grid>
 
-            {/* Destination */}
-              <Grid item xs={12} md={6}>
+            {/* Destination with Query Standard Button */}
+              <Grid item xs={12} md={8}>
                 <RegionSelector
                   label={t('travel.destination')}
                   value={formData.destination}
@@ -2899,7 +2864,47 @@ const TravelForm = () => {
                   error={!!errors.destination}
                   helperText={errors.destination}
                   required={true}
-              />
+                />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'flex-end', 
+                height: '100%',
+                pt: { xs: 0, md: 0 }
+              }}>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  startIcon={<FlightIcon />}
+                  onClick={async () => {
+                    if (!formData.destination || !formData.startDate) {
+                      showNotification(t('travel.form.pleaseFillDestinationAndDate') || '请先填写目的地和出发日期', 'warning');
+                      return;
+                    }
+                    try {
+                      const matchedExpenses = await matchRouteStandard(
+                        formData.destination,
+                        formData.startDate,
+                        'outbound'
+                      );
+                      if (matchedExpenses) {
+                        showNotification(t('travel.form.standardMatched') || '查询标准成功', 'success');
+                      } else {
+                        showNotification(t('travel.form.noStandardFound') || '未找到匹配的差旅标准', 'info');
+                      }
+                    } catch (error) {
+                      showNotification(t('travel.form.queryStandardError') || '查询标准失败', 'error');
+                    }
+                  }}
+                  sx={{ 
+                    height: '56px',
+                    mt: 0
+                  }}
+                >
+                  {t('travel.form.queryStandard') || '查询标准'}
+                </Button>
+              </Box>
             </Grid>
 
               {/* Request Name */}
@@ -3215,7 +3220,6 @@ const TravelForm = () => {
         }
         routesByDate[dateKey].push(route);
       } catch (error) {
-        console.warn('Error formatting route date:', error, route);
         return; // 跳过日期格式错误的路由
       }
     });

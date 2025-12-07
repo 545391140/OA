@@ -84,7 +84,7 @@ const StandardList = () => {
         setExpenseItemsMap(map);
       }
     } catch (err) {
-      console.error('Fetch expense items error:', err);
+
       // 不影响标准列表的显示，只记录错误
     }
   };
@@ -119,7 +119,7 @@ const StandardList = () => {
         setError(t('travelStandard.management.emptyResponse'));
       }
     } catch (err) {
-      console.error('Fetch standards error:', err);
+
       let errorMessage = t('travelStandard.management.fetchError');
       
       if (err.response) {
@@ -188,7 +188,7 @@ const StandardList = () => {
       showNotification(t('travelStandard.management.deleteSuccess'), 'success');
       fetchStandards();
     } catch (err) {
-      console.error('Delete standard error:', err);
+
       showNotification(t('travelStandard.management.deleteFailed') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
     }
   };
@@ -204,7 +204,7 @@ const StandardList = () => {
       showNotification(t('travelStandard.management.activateSuccess'), 'success');
       fetchStandards();
     } catch (err) {
-      console.error('Activate standard error:', err);
+
       showNotification(t('travelStandard.management.activateFailed') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
     } finally {
       handleMenuClose();
@@ -222,7 +222,7 @@ const StandardList = () => {
       showNotification(t('travelStandard.management.deactivateSuccess'), 'success');
       fetchStandards();
     } catch (err) {
-      console.error('Deactivate standard error:', err);
+
       showNotification(t('travelStandard.management.deactivateFailed') + ': ' + (err.response?.data?.message || t('common.error')), 'error');
     } finally {
       handleMenuClose();

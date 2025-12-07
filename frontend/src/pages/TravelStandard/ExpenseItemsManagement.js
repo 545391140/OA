@@ -142,7 +142,7 @@ const ExpenseItemsManagement = () => {
         setStandardInfo(response.data.data);
       }
     } catch (err) {
-      console.error('Fetch standard info error:', err);
+
       showNotification(t('travelStandard.expenseItemsManagement.messages.loadStandardFailed'), 'error');
     }
   };
@@ -154,7 +154,7 @@ const ExpenseItemsManagement = () => {
         setJobLevels(response.data.data || []);
       }
     } catch (err) {
-      console.error('Fetch job levels error:', err);
+
     }
   };
 
@@ -194,7 +194,7 @@ const ExpenseItemsManagement = () => {
           break;
       }
     } catch (err) {
-      console.error('Fetch data error:', err);
+
       showNotification(t('travelStandard.expenseItemsManagement.messages.loadDataFailed'), 'error');
     } finally {
       setLoadingData(false);
@@ -253,7 +253,7 @@ const ExpenseItemsManagement = () => {
       fetchDataForTab(0);
       fetchStandardInfo(); // 刷新标准信息以更新配置状态
     } catch (err) {
-      console.error('Save transport error:', err);
+
       showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
@@ -301,7 +301,7 @@ const ExpenseItemsManagement = () => {
       fetchDataForTab(1);
       fetchStandardInfo();
     } catch (err) {
-      console.error('Save accommodation error:', err);
+
       showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
@@ -356,7 +356,7 @@ const ExpenseItemsManagement = () => {
       fetchDataForTab(2);
       fetchStandardInfo();
     } catch (err) {
-      console.error('Save meal error:', err);
+
       showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
@@ -403,7 +403,7 @@ const ExpenseItemsManagement = () => {
       fetchDataForTab(3);
       fetchStandardInfo();
     } catch (err) {
-      console.error('Save allowance error:', err);
+
       showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
@@ -472,7 +472,7 @@ const ExpenseItemsManagement = () => {
       fetchDataForTab(4);
       fetchStandardInfo();
     } catch (err) {
-      console.error('Save other expense error:', err);
+
       showNotification(t('travelStandard.expenseItemsManagement.messages.saveFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };
@@ -507,7 +507,7 @@ const ExpenseItemsManagement = () => {
       fetchDataForTab(currentTab);
       fetchStandardInfo();
     } catch (err) {
-      console.error('Delete error:', err);
+
       showNotification(t('travelStandard.expenseItemsManagement.messages.deleteFailed') + ': ' + (err.response?.data?.message || t('travelStandard.expenseItemsManagement.messages.unknownError')), 'error');
     }
   };

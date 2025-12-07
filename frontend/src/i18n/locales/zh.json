@@ -58,6 +58,7 @@
       "Nov": "十一月",
       "Dec": "十二月"
     },
+    "currency": "货币",
     "currencies": {
       "USD": "美元",
       "CNY": "人民币",
@@ -601,7 +602,7 @@
       "airportTransfer": "机场接送",
       "allowance": "津贴补助",
       "other": "其他费用",
-      "multiCityRoutes": "多程行程 ({{count}} 程)",
+      "multiCityRoutes": "多程行程 ({count} 程)",
       "budgetComplete": "预算完整",
       "budgetInProgress": "预算进行中",
       "budgetPending": "预算待完善",

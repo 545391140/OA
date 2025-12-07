@@ -62,15 +62,11 @@ import { formatCurrency as formatCurrencyUtil } from '../../utils/icuFormatter';
 
 // 开发环境日志辅助函数
 const devLog = (...args) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(...args);
-  }
+  // Console logging disabled
 };
 
 const devError = (...args) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.error(...args);
-  }
+  // Console logging disabled
 };
 
 const ExpenseDetail = () => {

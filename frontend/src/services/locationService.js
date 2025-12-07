@@ -59,13 +59,12 @@ const generateSignature = (appKey, appSecurity, timestamp) => {
 const getTicket = async () => {
   // 先检查缓存
   if (isCacheValid(CACHE_CONFIG.TICKET_KEY, CACHE_CONFIG.TICKET_EXPIRE_TIME)) {
-    console.log('从缓存获取Ticket');
+
     return getCachedData(CACHE_CONFIG.TICKET_KEY);
   }
 
   try {
-    console.log('从API获取Ticket...');
-    
+
     const requestBody = {
       appkey: CTRIP_API_CONFIG.appKey,  // 注意：API要求字段名为 appkey（全小写）
       appSecurity: CTRIP_API_CONFIG.appSecurity
@@ -76,8 +75,7 @@ const getTicket = async () => {
     
     // 注意：直接调用外部API会有CORS问题，应该通过后端代理
     // 这里暂时禁用外部API调用，返回一个模拟的Ticket（用于开发测试）
-    console.warn('外部API调用已禁用，使用模拟Ticket');
-    
+
     // 返回一个模拟的Ticket（仅用于开发测试）
     const mockTicket = 'mock_ticket_' + Date.now();
     setCachedData(CACHE_CONFIG.TICKET_KEY, mockTicket);
@@ -101,19 +99,18 @@ const getTicket = async () => {
     }
 
     const result = await response.json();
-    console.log('Ticket API响应:', result);
-    
+
     if (result.Status && result.Status.Success && result.Ticket) {
       // 缓存Ticket
       setCachedData(CACHE_CONFIG.TICKET_KEY, result.Ticket);
-      console.log('Ticket获取成功:', result.Ticket.substring(0, 20) + '...');
+       + '...');
       return result.Ticket;
     } else {
       throw new Error(`Ticket获取失败: ${result.Status?.Message || '未知错误'}`);
     }
     */
   } catch (error) {
-    console.error('获取Ticket失败:', error);
+
     // 如果出错，返回一个模拟Ticket（用于开发测试）
     const mockTicket = 'mock_ticket_error_' + Date.now();
     setCachedData(CACHE_CONFIG.TICKET_KEY, mockTicket);
@@ -150,7 +147,7 @@ const isCacheValid = (cacheKey, expireTime = CACHE_CONFIG.CACHE_EXPIRE_TIME) => 
     
     return (now - timestamp) < expireTime;
   } catch (error) {
-    console.error('缓存检查失败:', error);
+
     return false;
   }
 };
@@ -168,7 +165,7 @@ const getCachedData = (cacheKey) => {
       return data;
     }
   } catch (error) {
-    console.error('获取缓存失败:', error);
+
   }
   return null;
 };
@@ -185,9 +182,9 @@ const setCachedData = (cacheKey, data) => {
       data: data
     };
     localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-    console.log(`缓存已更新: ${cacheKey}`);
+
   } catch (error) {
-    console.error('设置缓存失败:', error);
+
   }
 };
 
@@ -198,25 +195,23 @@ const setCachedData = (cacheKey, data) => {
 export const getAllAirports = async () => {
   // 先检查缓存
   if (isCacheValid(CACHE_CONFIG.AIRPORTS_KEY)) {
-    console.log('从缓存获取机场数据');
+
     return getCachedData(CACHE_CONFIG.AIRPORTS_KEY);
   }
 
   try {
-    console.log('从API获取机场数据...');
-    
+
     // 模拟携程API调用（实际项目中替换为真实API）
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), CTRIP_API_CONFIG.timeout);
     
     // 注意：直接调用外部API会有CORS问题，应该使用后端API
     // 暂时禁用外部API调用，直接返回默认数据或缓存数据
-    console.warn('外部API调用已禁用，使用默认或缓存数据');
-    
+
     // 尝试返回缓存数据（即使过期）
     const fallbackData = getCachedData(CACHE_CONFIG.AIRPORTS_KEY);
     if (fallbackData) {
-      console.log('使用缓存数据');
+
       return fallbackData;
     }
     
@@ -264,12 +259,11 @@ export const getAllAirports = async () => {
     return standardizedAirports;
     */
   } catch (error) {
-    console.error('获取机场数据失败:', error);
-    
+
     // 如果API失败，尝试返回缓存数据（即使过期）
     const fallbackData = getCachedData(CACHE_CONFIG.AIRPORTS_KEY);
     if (fallbackData) {
-      console.log('使用过期缓存数据');
+
       return fallbackData;
     }
     
@@ -285,25 +279,23 @@ export const getAllAirports = async () => {
 export const getAllStations = async () => {
   // 先检查缓存
   if (isCacheValid(CACHE_CONFIG.STATIONS_KEY)) {
-    console.log('从缓存获取火车站数据');
+
     return getCachedData(CACHE_CONFIG.STATIONS_KEY);
   }
 
   try {
-    console.log('从API获取火车站数据...');
-    
+
     // 模拟携程API调用
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), CTRIP_API_CONFIG.timeout);
     
     // 注意：直接调用外部API会有CORS问题，应该使用后端API
     // 暂时禁用外部API调用，直接返回默认数据或缓存数据
-    console.warn('外部API调用已禁用，使用默认或缓存数据');
-    
+
     // 尝试返回缓存数据（即使过期）
     const fallbackData = getCachedData(CACHE_CONFIG.STATIONS_KEY);
     if (fallbackData) {
-      console.log('使用缓存数据');
+
       return fallbackData;
     }
     
@@ -351,12 +343,11 @@ export const getAllStations = async () => {
     return standardizedStations;
     */
   } catch (error) {
-    console.error('获取火车站数据失败:', error);
-    
+
     // 如果API失败，尝试返回缓存数据
     const fallbackData = getCachedData(CACHE_CONFIG.STATIONS_KEY);
     if (fallbackData) {
-      console.log('使用过期缓存数据');
+
       return fallbackData;
     }
     
@@ -376,13 +367,12 @@ export const getAllStations = async () => {
 export const getAllCountries = async () => {
   // 先检查缓存
   if (isCacheValid(CACHE_CONFIG.COUNTRIES_KEY)) {
-    console.log('从缓存获取国家数据');
+
     return getCachedData(CACHE_CONFIG.COUNTRIES_KEY);
   }
 
   try {
-    console.log('从后端API获取国家数据...');
-    
+
     // 使用后端API代理
     const response = await apiClient.get('/ctrip/countries', {
       params: { locale: 'zh-CN' }
@@ -408,19 +398,17 @@ export const getAllCountries = async () => {
 
     // 缓存数据
     setCachedData(CACHE_CONFIG.COUNTRIES_KEY, standardizedCountries);
-    console.log(`国家数据获取成功: ${standardizedCountries.length}条`);
-    
+
     return standardizedCountries;
     } else {
       throw new Error(response.data?.message || '获取国家数据失败');
     }
   } catch (error) {
-    console.error('获取国家数据失败:', error);
-    
+
     // 如果API失败，尝试返回缓存数据
     const fallbackData = getCachedData(CACHE_CONFIG.COUNTRIES_KEY);
     if (fallbackData) {
-      console.log('使用过期缓存数据');
+
       return fallbackData;
     }
     
@@ -438,12 +426,12 @@ export const getAllPOIInfo = async (countryId = 1) => {
   // 先检查缓存
   const cacheKey = `${CACHE_CONFIG.CITIES_KEY}_${countryId || 'all'}`;
   if (isCacheValid(cacheKey)) {
-    console.log('从缓存获取POI数据');
+
     return getCachedData(cacheKey);
   }
 
   try {
-    console.log(`从后端API获取POI数据... (国家ID: ${countryId || '全部'})`);
+    `);
     
     // 使用后端API代理获取POI数据并转换为Location格式
     const response = await apiClient.post('/ctrip/poi/locations', {
@@ -460,19 +448,17 @@ export const getAllPOIInfo = async (countryId = 1) => {
       
       // 缓存数据
       setCachedData(cacheKey, locations);
-      console.log(`POI数据获取成功: ${locations.length}条`);
-      
+
       return locations;
     } else {
       throw new Error(response.data?.message || '获取POI数据失败');
     }
   } catch (error) {
-    console.error('获取POI数据失败:', error);
-    
+
     // 如果API失败，尝试返回缓存数据
     const fallbackData = getCachedData(cacheKey);
     if (fallbackData) {
-      console.log('使用过期缓存数据');
+
       return fallbackData;
     }
     
@@ -504,25 +490,23 @@ export const getGlobalPOIInfo = async (options = {}) => {
   // 检查缓存
   const globalCacheKey = `${CACHE_CONFIG.CITIES_KEY}_global`;
   if (isCacheValid(globalCacheKey)) {
-    console.log('从缓存获取全球POI数据');
+
     return getCachedData(globalCacheKey);
   }
 
   try {
-    console.log('开始获取全球POI数据...');
-    
+
     // 先获取所有国家列表
     const countries = await getAllCountries();
-    console.log(`获取到 ${countries.length} 个国家，开始获取POI数据...`);
 
     let allLocations = [];
     
     if (parallel) {
       // 并行获取（可能触发API限流）
-      console.log('并行获取模式（可能触发API限流）');
+
       const promises = countries.map(country => 
         getAllPOIInfo(country.id ? parseInt(country.id) : null).catch(err => {
-          console.warn(`获取 ${country.name} 数据失败:`, err.message);
+
           return [];
         })
       );
@@ -531,13 +515,13 @@ export const getGlobalPOIInfo = async (options = {}) => {
       allLocations = results.flat();
     } else {
       // 串行获取（推荐，避免API限流）
-      console.log('串行获取模式（避免API限流）');
+
       for (let i = 0; i < countries.length; i++) {
         const country = countries[i];
         const countryId = country.id ? parseInt(country.id) : null;
         
         try {
-          console.log(`[${i + 1}/${countries.length}] 获取 ${country.name} 的数据...`);
+
           const locations = await getAllPOIInfo(countryId);
           allLocations = allLocations.concat(locations);
           
@@ -551,25 +535,22 @@ export const getGlobalPOIInfo = async (options = {}) => {
             await new Promise(resolve => setTimeout(resolve, delay));
           }
         } catch (error) {
-          console.warn(`获取 ${country.name} 数据失败:`, error.message);
+
           // 继续处理下一个国家
         }
       }
     }
-
-    console.log(`全球POI数据获取完成: 共 ${allLocations.length} 条数据`);
 
     // 缓存全球数据
     setCachedData(globalCacheKey, allLocations);
     
     return allLocations;
   } catch (error) {
-    console.error('获取全球POI数据失败:', error);
-    
+
     // 如果失败，尝试返回缓存数据
     const fallbackData = getCachedData(globalCacheKey);
     if (fallbackData) {
-      console.log('使用过期缓存数据');
+
       return fallbackData;
     }
     
@@ -584,8 +565,7 @@ export const getGlobalPOIInfo = async (options = {}) => {
  */
 export const getAllLocations = async () => {
   try {
-    console.log('开始获取所有地理位置数据...');
-    
+
     // 并行获取所有数据
     const [airports, stations, cities] = await Promise.all([
       getAllAirports(),
@@ -595,12 +575,10 @@ export const getAllLocations = async () => {
     
     // 合并所有数据
     const allLocations = [...airports, ...stations, ...cities];
-    
-    console.log(`获取完成: ${airports.length}个机场, ${stations.length}个火车站, ${cities.length}个城市`);
-    
+
     return allLocations;
   } catch (error) {
-    console.error('获取地理位置数据失败:', error);
+
     return [];
   }
 };
@@ -634,9 +612,9 @@ export const clearAllCache = () => {
     localStorage.removeItem(CACHE_CONFIG.AIRPORTS_KEY);
     localStorage.removeItem(CACHE_CONFIG.STATIONS_KEY);
     localStorage.removeItem(CACHE_CONFIG.CITIES_KEY);
-    console.log('所有地理位置缓存已清除');
+
   } catch (error) {
-    console.error('清除缓存失败:', error);
+
   }
 };
 

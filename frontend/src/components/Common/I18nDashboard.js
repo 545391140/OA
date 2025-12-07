@@ -46,7 +46,7 @@ const I18nDashboard = () => {
       setReport(newReport);
       setLastUpdated(new Date());
     } catch (error) {
-      console.error('Failed to fetch i18n report:', error);
+
     } finally {
       setLoading(false);
     }

@@ -59,10 +59,6 @@ export const fetchActiveCurrencies = async (forceRefresh = false) => {
   } catch (error) {
     // 静默处理错误
     // 401错误（未授权）是正常的，因为用户可能未登录，使用默认币种即可
-    // 其他错误只在开发环境显示警告
-    if (process.env.NODE_ENV === 'development' && error.response?.status !== 401) {
-      console.warn('Failed to fetch currencies from API, using default currencies:', error.message || error);
-    }
     // API失败时返回默认币种
     return DEFAULT_CURRENCIES;
   }

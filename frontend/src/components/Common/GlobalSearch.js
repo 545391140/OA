@@ -70,7 +70,7 @@ const GlobalSearch = ({ open, onClose }) => {
         setSearchHistory(response.data.data.slice(0, 5));
       }
     } catch (error) {
-      console.error('Load search history error:', error);
+
       // 回退到localStorage
       const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
       setSearchHistory(history.slice(0, 5));
@@ -131,7 +131,7 @@ const GlobalSearch = ({ open, onClose }) => {
         setShowSuggestions(true);
       }
     } catch (error) {
-      console.error('Load suggestions error:', error);
+
       setSuggestions([]);
     }
   };
@@ -160,7 +160,7 @@ const GlobalSearch = ({ open, onClose }) => {
       // 搜索历史由后端自动保存
       setShowSuggestions(false);
     } catch (error) {
-      console.error('Search error:', error);
+
       // 如果API失败，尝试使用原来的方式
       try {
         const [travelsRes, expensesRes, usersRes, standardsRes, locationsRes] = await Promise.allSettled([
@@ -179,7 +179,7 @@ const GlobalSearch = ({ open, onClose }) => {
           locations: locationsRes.status === 'fulfilled' ? (locationsRes.value.data?.data || []) : []
         });
       } catch (fallbackError) {
-        console.error('Fallback search error:', fallbackError);
+
       }
     } finally {
       setLoading(false);
@@ -197,7 +197,7 @@ const GlobalSearch = ({ open, onClose }) => {
       await apiClient.delete('/search/history');
       setSearchHistory([]);
     } catch (error) {
-      console.error('Clear history error:', error);
+
       localStorage.removeItem('searchHistory');
       setSearchHistory([]);
     }
@@ -208,7 +208,7 @@ const GlobalSearch = ({ open, onClose }) => {
       await apiClient.delete(`/search/history/${id}`);
       loadSearchHistory();
     } catch (error) {
-      console.error('Delete history item error:', error);
+
     }
   };
 

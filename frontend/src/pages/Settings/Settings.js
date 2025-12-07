@@ -81,7 +81,7 @@ const Settings = () => {
       const isSubscribed = await pushNotificationService.isSubscribed();
       setPushSubscribed(isSubscribed);
     } catch (error) {
-      console.error('Failed to check push subscription:', error);
+
     }
   };
 
@@ -92,7 +92,7 @@ const Settings = () => {
       setPushSubscribed(true);
       showNotification(t('settings.pushNotificationSubscribed') || 'Push notifications enabled', 'success');
     } catch (error) {
-      console.error('Failed to subscribe to push notifications:', error);
+
       showNotification(t('settings.pushNotificationSubscribeFailed') || 'Failed to enable push notifications', 'error');
     } finally {
       setPushLoading(false);
@@ -106,7 +106,7 @@ const Settings = () => {
       setPushSubscribed(false);
       showNotification(t('settings.pushNotificationUnsubscribed') || 'Push notifications disabled', 'success');
     } catch (error) {
-      console.error('Failed to unsubscribe from push notifications:', error);
+
       showNotification(t('settings.pushNotificationUnsubscribeFailed') || 'Failed to disable push notifications', 'error');
     } finally {
       setPushLoading(false);
@@ -122,7 +122,7 @@ const Settings = () => {
         setSettings(response.data.data);
       }
     } catch (error) {
-      console.error('Load settings error:', error);
+
       setError(error.response?.data?.message || t('settings.loadFailed') || 'Failed to load settings');
       // Set default values if loading fails
       setSettings({
@@ -202,7 +202,7 @@ const Settings = () => {
         showNotification(t('settings.savedSuccessfully') || 'Settings saved successfully', 'success');
       }
     } catch (error) {
-      console.error('Save settings error:', error);
+
       const errorMessage = error.response?.data?.message || t('settings.saveFailed') || 'Failed to save settings';
       setError(errorMessage);
       showNotification(errorMessage, 'error');

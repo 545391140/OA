@@ -176,5 +176,85 @@ TravelStandardSchema.index({ 'targetAudience.departments': 1 });
 TravelStandardSchema.index({ applicableCityLevels: 1 });
 TravelStandardSchema.index({ 'conditionGroups.groupId': 1 }); // For condition matching
 
+// Pre-save hook: 清理实报实销类型的不需要字段
+TravelStandardSchema.pre('save', function(next) {
+  if (this.expenseStandards && Array.isArray(this.expenseStandards)) {
+    this.expenseStandards = this.expenseStandards.map(es => {
+      if (es.limitType === 'ACTUAL') {
+        // 实报实销类型：只保留 expenseItemId 和 limitType
+        const cleaned = {
+          expenseItemId: es.expenseItemId,
+          limitType: es.limitType
+        };
+        // 使用 toObject() 确保是纯对象，然后删除不需要的字段
+        if (es.toObject) {
+          const obj = es.toObject();
+          delete obj.calcUnit;
+          delete obj.limitAmount;
+          delete obj.limitMin;
+          delete obj.limitMax;
+          delete obj.percentage;
+          delete obj.baseAmount;
+          return cleaned;
+        }
+        return cleaned;
+      } else if (es.limitType === 'FIXED') {
+        // 固定限额：保留 limitAmount 和 calcUnit
+        return {
+          expenseItemId: es.expenseItemId,
+          limitType: es.limitType,
+          limitAmount: es.limitAmount,
+          calcUnit: es.calcUnit
+        };
+      } else if (es.limitType === 'RANGE') {
+        // 范围限额：保留 limitMin 和 limitMax
+        return {
+          expenseItemId: es.expenseItemId,
+          limitType: es.limitType,
+          limitMin: es.limitMin,
+          limitMax: es.limitMax
+        };
+      } else if (es.limitType === 'PERCENTAGE') {
+        // 按比例：保留 percentage 和 baseAmount
+        return {
+          expenseItemId: es.expenseItemId,
+          limitType: es.limitType,
+          percentage: es.percentage,
+          baseAmount: es.baseAmount
+        };
+      }
+      return es;
+    });
+  }
+  next();
+});
+
+// toJSON transform: 在序列化时清理实报实销类型的不需要字段
+TravelStandardSchema.set('toJSON', {
+  transform: function(doc, ret) {
+    if (ret.expenseStandards && Array.isArray(ret.expenseStandards)) {
+      ret.expenseStandards = ret.expenseStandards.map(es => {
+        if (es.limitType === 'ACTUAL') {
+          // 实报实销类型：删除所有金额和计算单位相关字段
+          const cleaned = {
+            expenseItemId: es.expenseItemId,
+            limitType: es.limitType
+          };
+          // 确保删除不需要的字段
+          delete es.calcUnit;
+          delete es.limitAmount;
+          delete es.limitMin;
+          delete es.limitMax;
+          delete es.percentage;
+          delete es.baseAmount;
+          return cleaned;
+        }
+        return es;
+      });
+    }
+    return ret;
+  }
+});
+
 module.exports = mongoose.model('TravelStandard', TravelStandardSchema);
 

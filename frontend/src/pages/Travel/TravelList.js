@@ -366,7 +366,7 @@ const TravelList = () => {
         throw new Error(response.data?.message || t('travel.list.fetchError'));
       }
     } catch (error) {
-      console.error('Fetch travels error:', error);
+
       showNotification(error.response?.data?.message || t('travel.list.fetchError'), 'error');
     } finally {
       setLoading(false);
@@ -429,9 +429,8 @@ const TravelList = () => {
         showNotification(response.data?.message || t('travel.list.deleteError'), 'error');
       }
     } catch (error) {
-      console.error('Delete travel error:', error);
-      console.error('Error response:', error.response);
-      
+
+
       // 处理不同类型的错误
       let errorMessage = t('travel.list.deleteFailed');
       

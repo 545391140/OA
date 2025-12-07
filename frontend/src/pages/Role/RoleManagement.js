@@ -130,7 +130,7 @@ const RoleManagement = () => {
         throw new Error(response.data?.message || t('role.management.fetchError'));
       }
     } catch (err) {
-      console.error('Fetch roles error:', err);
+
       setError(err.response?.data?.message || err.message || t('role.management.fetchError'));
       showNotification(t('role.management.fetchError'), 'error');
     } finally {
@@ -158,7 +158,7 @@ const RoleManagement = () => {
       showNotification(t('role.management.deleteSuccess'), 'success');
       fetchRoles();
     } catch (err) {
-      console.error('Delete role error:', err);
+
       const errorMsg = err.response?.data?.message || t('role.management.deleteError');
       showNotification(errorMsg, 'error');
     } finally {
@@ -206,7 +206,7 @@ const RoleManagement = () => {
       fetchRoles();
       setFormDialog({ open: false, role: null, mode: 'create' });
     } catch (err) {
-      console.error('Save role error:', err);
+
       const errorMsg = err.response?.data?.message || t('role.management.saveError');
       showNotification(errorMsg, 'error');
     } finally {
@@ -220,7 +220,7 @@ const RoleManagement = () => {
       showNotification(role.isActive ? t('role.management.toggleDisabledSuccess') : t('role.management.toggleSuccess'), 'success');
       fetchRoles();
     } catch (err) {
-      console.error('Toggle active error:', err);
+
       const errorMsg = err.response?.data?.message || t('role.management.toggleError');
       showNotification(errorMsg, 'error');
     }

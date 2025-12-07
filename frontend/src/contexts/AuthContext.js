@@ -92,7 +92,6 @@ export const AuthProvider = ({ children }) => {
             dispatch({ type: 'LOGOUT' });
           }
         } catch (error) {
-          console.error('Auth check failed:', error);
           localStorage.removeItem('token');
           dispatch({ type: 'LOGOUT' });
         }
@@ -133,7 +132,6 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, message: t('auth.loginSuccess') };
     } catch (error) {
-      console.error('Login error:', error);
       const message = error.response?.data?.message || error.message || t('auth.loginError');
       dispatch({
         type: 'LOGIN_FAILURE',
@@ -169,7 +167,6 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, message: t('auth.registerSuccess') };
     } catch (error) {
-      console.error('Register error:', error);
       const message = error.response?.data?.message || error.message || t('auth.registerError');
       dispatch({
         type: 'LOGIN_FAILURE',
@@ -203,7 +200,6 @@ export const AuthProvider = ({ children }) => {
           });
         }
       } catch (userError) {
-        console.warn('Failed to refresh user data after preferences update:', userError);
         // 如果刷新失败，仍然更新本地状态
         dispatch({
           type: 'UPDATE_USER',
@@ -213,7 +209,6 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, message: t('messages.success.saved') };
     } catch (error) {
-      console.error('Update preferences error:', error);
       const message = error.response?.data?.message || error.message || t('messages.error.general');
       return { success: false, message };
     }
@@ -228,7 +223,6 @@ export const AuthProvider = ({ children }) => {
       });
       return { success: true, message: t('messages.success.saved') };
     } catch (error) {
-      console.error('Change password error:', error);
       const message = error.response?.data?.message || error.message || t('messages.error.general');
       return { success: false, message };
     }

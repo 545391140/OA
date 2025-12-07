@@ -96,13 +96,8 @@ const Dashboard = () => {
         });
       }
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url
-      });
+
+
       setError(error.response?.data?.message || error.message || t('dashboard.loadError'));
       showNotification(t('dashboard.loadError'), 'error');
     } finally {

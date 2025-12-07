@@ -81,7 +81,7 @@ const Profile = () => {
           });
         }
       } catch (error) {
-        console.error('Fetch user data error:', error);
+
         // 如果API失败，使用auth context中的用户数据
         if (authUser) {
           setUser(authUser);

@@ -73,13 +73,13 @@ const LocationDataManager = () => {
         const allLocations = response.data.data || [];
         setLocations(allLocations);
         fetchCacheStatus();
-        console.log('地理位置数据获取成功:', allLocations.length);
+
       } else {
         throw new Error(response.data?.message || '获取地理位置数据失败');
       }
     } catch (err) {
       setError(err.response?.data?.message || err.message || '获取地理位置数据失败');
-      console.error('获取地理位置数据失败:', err);
+
     } finally {
       setLoading(false);
     }

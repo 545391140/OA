@@ -60,7 +60,7 @@ const StandardDetail = () => {
         setError(response.data?.message || t('travelStandard.management.fetchError'));
       }
     } catch (err) {
-      console.error('Fetch standard error:', err);
+
       setError(err.response?.data?.message || t('travelStandard.management.fetchError'));
     } finally {
       setLoading(false);

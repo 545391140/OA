@@ -134,7 +134,7 @@ const UserManagement = () => {
         throw new Error(response.data?.message || t('user.management.fetchError'));
       }
     } catch (err) {
-      console.error('Fetch users error:', err);
+
       setError(err.response?.data?.message || err.message || t('user.management.fetchError'));
       showNotification(t('user.management.fetchError'), 'error');
     } finally {
@@ -149,7 +149,7 @@ const UserManagement = () => {
         setRoles(response.data.data || []);
       }
     } catch (err) {
-      console.error('Fetch roles error:', err);
+
     }
   };
 
@@ -160,7 +160,7 @@ const UserManagement = () => {
         setPositions(response.data.data || []);
       }
     } catch (err) {
-      console.error('Fetch positions error:', err);
+
     }
   };
 
@@ -171,7 +171,7 @@ const UserManagement = () => {
         setManagers(response.data.data || []);
       }
     } catch (err) {
-      console.error('Fetch managers error:', err);
+
     }
   };
 
@@ -198,7 +198,7 @@ const UserManagement = () => {
       showNotification(t('user.management.deleteSuccess'), 'success');
       fetchUsers();
     } catch (err) {
-      console.error('Delete user error:', err);
+
       const errorMsg = err.response?.data?.message || t('user.management.deleteError');
       showNotification(errorMsg, 'error');
     } finally {
@@ -241,7 +241,7 @@ const UserManagement = () => {
                 initialData.residenceCountry = countryResponse.data.data;
               }
             } catch (err) {
-              console.warn('Failed to load residence country:', err);
+
             }
           }
         }
@@ -261,7 +261,7 @@ const UserManagement = () => {
                 initialData.residenceCity = cityResponse.data.data;
               }
             } catch (err) {
-              console.warn('Failed to load residence city:', err);
+
             }
           }
         }
@@ -382,25 +382,22 @@ const UserManagement = () => {
       } else {
         delete saveData.residenceCity;
       }
-      
-      console.log('Saving user data:', { mode: formDialog.mode, data: saveData });
-      
+
       if (formDialog.mode === 'create') {
         const response = await apiClient.post('/users', saveData);
-        console.log('Create user response:', response.data);
+
         showNotification(t('user.management.createSuccess'), 'success');
       } else {
         const response = await apiClient.put(`/users/${formDialog.user._id}`, saveData);
-        console.log('Update user response:', response.data);
+
         showNotification(t('user.management.updateSuccess'), 'success');
       }
       
       fetchUsers();
       setFormDialog({ open: false, user: null, mode: 'create' });
     } catch (err) {
-      console.error('Save user error:', err);
-      console.error('Error response:', err.response?.data);
-      
+
+
       // 处理验证错误
       if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
         const errorMessages = err.response.data.errors.map(e => e.msg || e.message).join(', ');
@@ -420,7 +417,7 @@ const UserManagement = () => {
       showNotification(userItem.isActive ? t('user.management.toggleDisabledSuccess') : t('user.management.toggleSuccess'), 'success');
       fetchUsers();
     } catch (err) {
-      console.error('Toggle active error:', err);
+
       const errorMsg = err.response?.data?.message || t('user.management.toggleError');
       showNotification(errorMsg, 'error');
     }

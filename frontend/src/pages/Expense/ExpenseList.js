@@ -54,9 +54,7 @@ import { useDateFormat } from '../../utils/dateFormatter';
 
 // 开发环境日志辅助函数
 const devError = (...args) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.error(...args);
-  }
+  // Console logging disabled
 };
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染

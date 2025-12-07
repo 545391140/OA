@@ -107,7 +107,7 @@ const CurrencyManagement = () => {
     } catch (err) {
       // 只在开发环境或非401错误时记录错误
       if (err.response?.status !== 401) {
-        console.error('Fetch currencies error:', err);
+
       }
       const errorMsg = err.response?.data?.message || err.message || t('currency.management.fetchError');
       setError(errorMsg);
@@ -140,7 +140,7 @@ const CurrencyManagement = () => {
       showNotification(t('currency.management.deleteSuccess'), 'success');
       fetchCurrencies();
     } catch (err) {
-      console.error('Delete currency error:', err);
+
       const errorMsg = err.response?.data?.message || t('currency.management.deleteError');
       showNotification(errorMsg, 'error');
     } finally {
@@ -242,7 +242,7 @@ const CurrencyManagement = () => {
       fetchCurrencies();
       setFormDialog({ open: false, currency: null, mode: 'create' });
     } catch (err) {
-      console.error('Save currency error:', err);
+
       const errorMsg = err.response?.data?.message || t('currency.management.saveError');
       showNotification(errorMsg, 'error');
       

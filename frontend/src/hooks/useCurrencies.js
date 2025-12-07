@@ -36,7 +36,6 @@ export const useCurrencies = (options = {}) => {
         throw new Error(response.data?.message || 'Failed to fetch currencies');
       }
     } catch (err) {
-      console.error('Fetch currencies error:', err);
       setError(err.message);
       // 如果API失败，使用默认币种
       if (err.response?.status !== 401) {

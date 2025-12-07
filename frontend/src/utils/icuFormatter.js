@@ -13,7 +13,7 @@ export const formatCurrency = (amount, currency = 'USD', locale = 'en') => {
       maximumFractionDigits: 2
     }).format(amount);
   } catch (error) {
-    console.warn('Currency formatting failed:', error);
+
     return `${currency} ${amount.toFixed(2)}`;
   }
 };
@@ -29,7 +29,7 @@ export const formatNumber = (number, locale = 'en', options = {}) => {
       ...options
     }).format(number);
   } catch (error) {
-    console.warn('Number formatting failed:', error);
+
     return number.toString();
   }
 };
@@ -46,7 +46,7 @@ export const formatPercent = (number, locale = 'en', options = {}) => {
       ...options
     }).format(number / 100);
   } catch (error) {
-    console.warn('Percent formatting failed:', error);
+
     return `${number.toFixed(1)}%`;
   }
 };
@@ -64,7 +64,7 @@ export const formatDate = (date, locale = 'en', options = {}) => {
       ...options
     }).format(dateObj);
   } catch (error) {
-    console.warn('Date formatting failed:', error);
+
     return date.toString();
   }
 };
@@ -81,7 +81,7 @@ export const formatTime = (date, locale = 'en', options = {}) => {
       ...options
     }).format(dateObj);
   } catch (error) {
-    console.warn('Time formatting failed:', error);
+
     return date.toString();
   }
 };
@@ -101,7 +101,7 @@ export const formatDateTime = (date, locale = 'en', options = {}) => {
       ...options
     }).format(dateObj);
   } catch (error) {
-    console.warn('DateTime formatting failed:', error);
+
     return date.toString();
   }
 };
@@ -131,7 +131,7 @@ export const formatRelativeTime = (date, locale = 'en') => {
       return rtf.format(Math.floor(diffInSeconds / 31536000), 'year');
     }
   } catch (error) {
-    console.warn('Relative time formatting failed:', error);
+
     return formatDate(date, locale);
   }
 };
@@ -147,7 +147,7 @@ export const formatUnit = (value, unit, locale = 'en', options = {}) => {
       ...options
     }).format(value);
   } catch (error) {
-    console.warn('Unit formatting failed:', error);
+
     return `${value} ${unit}`;
   }
 };
@@ -163,7 +163,7 @@ export const formatList = (items, locale = 'en', options = {}) => {
       ...options
     }).format(items);
   } catch (error) {
-    console.warn('List formatting failed:', error);
+
     return items.join(', ');
   }
 };
@@ -176,7 +176,7 @@ export const formatPlural = (count, locale = 'en', options = {}) => {
     const rules = new Intl.PluralRules(locale);
     return rules.select(count);
   } catch (error) {
-    console.warn('Plural formatting failed:', error);
+
     return count === 1 ? 'one' : 'other';
   }
 };
@@ -193,7 +193,7 @@ export const getCollator = (locale = 'en', options = {}) => {
       ...options
     });
   } catch (error) {
-    console.warn('Collator creation failed:', error);
+
     return new Intl.Collator('en');
   }
 };
@@ -206,7 +206,7 @@ export const sortArray = (array, locale = 'en', options = {}) => {
     const collator = getCollator(locale, options);
     return [...array].sort(collator.compare);
   } catch (error) {
-    console.warn('Array sorting failed:', error);
+
     return [...array].sort();
   }
 };
@@ -232,7 +232,7 @@ export const getWeekStartDay = (locale = 'en') => {
     
     return weekStartDays[locale] || 0;
   } catch (error) {
-    console.warn('Week start day detection failed:', error);
+
     return 0;
   }
 };
@@ -244,7 +244,7 @@ export const getTimezone = (locale = 'en') => {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch (error) {
-    console.warn('Timezone detection failed:', error);
+
     return 'UTC';
   }
 };

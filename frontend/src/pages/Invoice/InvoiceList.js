@@ -254,7 +254,7 @@ const InvoiceList = () => {
         throw new Error(response.data?.message || t('invoice.list.fetchError'));
       }
     } catch (err) {
-      console.error('Fetch invoices error:', err);
+
       setError(err.response?.data?.message || err.message || t('invoice.list.fetchError'));
       showNotification(t('invoice.list.fetchError'), 'error');
     } finally {
@@ -302,7 +302,7 @@ const InvoiceList = () => {
       showNotification(t('invoice.list.deleteSuccess'), 'success');
       fetchInvoices();
     } catch (err) {
-      console.error('Delete invoice error:', err);
+
       const errorMsg = err.response?.data?.message || t('invoice.list.deleteError');
       showNotification(errorMsg, 'error');
     } finally {
@@ -338,7 +338,7 @@ const InvoiceList = () => {
       
       showNotification(t('invoice.list.downloadSuccess'), 'success');
     } catch (err) {
-      console.error('Download error:', err);
+
       showNotification(t('invoice.list.downloadError'), 'error');
     } finally {
       handleMenuClose();

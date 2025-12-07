@@ -279,18 +279,6 @@ const BudgetCard = ({
                 
                 if (hasDestination && hasDate) {
                   // 已填写目的地和日期，但未匹配到费用项
-                  // 调试信息：打印匹配参数，便于诊断问题
-                  console.warn('[BudgetCard] 未找到匹配的差旅标准:', {
-                    tripType,
-                    routeIndex,
-                    destination: routeData?.destination,
-                    date: routeData?.date,
-                    destinationType: typeof routeData?.destination,
-                    dateType: typeof routeData?.date,
-                    matchedExpenseItemsCount: Object.keys(matchedExpenseItems || {}).length,
-                    matchedExpenseItems: matchedExpenseItems,
-                    budgetDataCount: Object.keys(budgetData || {}).length
-                  });
                   return '已填写目的地和出发日期，但未找到匹配的差旅标准。请检查差旅标准配置或联系管理员。';
                 } else {
                   // 未填写目的地或日期

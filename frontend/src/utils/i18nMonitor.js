@@ -35,7 +35,7 @@ class I18nMonitor {
     
     // 仅在调试模式下输出启动日志
     if (process.env.REACT_APP_DEBUG_I18N === 'true') {
-      console.log('I18n monitoring started');
+
     }
   }
 
@@ -44,7 +44,7 @@ class I18nMonitor {
    */
   stopMonitoring() {
     this.isMonitoring = false;
-    console.log('I18n monitoring stopped');
+
   }
 
   /**
@@ -66,7 +66,7 @@ class I18nMonitor {
     
     // 仅在调试模式下输出警告
     if (process.env.REACT_APP_DEBUG_I18N === 'true') {
-      console.warn(`Missing translation key: ${missingKey}`);
+
     }
   }
 
@@ -113,8 +113,7 @@ class I18nMonitor {
       toLocale,
       timestamp: Date.now()
     });
-    
-    console.log(`Language switch: ${fromLocale} -> ${toLocale}, time: ${switchTime}ms`);
+
   }
 
   /**
@@ -132,8 +131,7 @@ class I18nMonitor {
       line,
       timestamp: Date.now()
     });
-    
-    console.warn(`Hardcoded string detected: ${string} in ${file}:${line}`);
+
   }
 
   /**
@@ -169,7 +167,7 @@ class I18nMonitor {
     if (typeof window !== 'undefined' && window.i18next) {
       window.i18next.on('languageChanged', (lng) => {
         // 这里可以记录语言切换
-        console.log(`Language changed to: ${lng}`);
+
       });
     }
   }
@@ -200,7 +198,7 @@ class I18nMonitor {
   sendMetric(type, data) {
     // 仅在调试模式下输出日志（通过环境变量控制）
     if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_DEBUG_I18N === 'true') {
-      console.log(`Metric [${type}]:`, data);
+
     }
     
     // 实际项目中可以发送到监控API
@@ -208,7 +206,7 @@ class I18nMonitor {
     //   method: 'POST',
     //   headers: { 'Content-Type': 'application/json' },
     //   body: JSON.stringify({ type, data })
-    // }).catch(console.error);
+    // }).catch(() => {});
   }
 
   /**
@@ -361,7 +359,7 @@ class I18nMonitor {
       translationCoverage: new Map()
     };
     this.startTime = Date.now();
-    console.log('I18n metrics reset');
+
   }
 
   /**

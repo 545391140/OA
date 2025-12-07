@@ -109,7 +109,7 @@ const StandardForm = () => {
         positions: positionsRes.data.success ? (positionsRes.data.data || []) : []
       });
     } catch (err) {
-      console.error('Fetch options error:', err);
+
     } finally {
       setLoadingOptions(false);
     }
@@ -184,7 +184,7 @@ const StandardForm = () => {
         });
       }
     } catch (err) {
-      console.error('Fetch standard error:', err);
+
       showNotification(t('travelStandard.form.errors.loadFailed'), 'error');
       navigate('/travel-standards');
     } finally {
@@ -303,7 +303,7 @@ const StandardForm = () => {
         navigate('/travel-standards');
       }
     } catch (err) {
-      console.error('Save standard error:', err);
+
       let errorMessage = err.response?.data?.message || err.message || (isEdit ? t('travelStandard.form.errors.updateFailed') : t('travelStandard.form.errors.createFailed'));
       
       if (err.response?.data?.message) {

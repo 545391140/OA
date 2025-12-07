@@ -115,7 +115,7 @@ const TravelDetail = () => {
         setExpenseItems(itemsMap);
       }
     } catch (error) {
-      console.error('Failed to load expense items:', error);
+      // Error loading expense items
     }
   };
 
@@ -127,41 +127,29 @@ const TravelDetail = () => {
     
     try {
       setExpensesLoading(true);
-      console.log(`[TravelDetail] Fetching expenses for travel ${id}`);
       const response = await apiClient.get(`/travel/${id}/expenses`);
-      console.log(`[TravelDetail] Expenses response:`, response.data);
       
       if (response.data && response.data.success) {
         const expenses = response.data.data || [];
-        console.log(`[TravelDetail] Loaded ${expenses.length} expenses`);
         
         // 过滤掉 null、undefined 或没有 _id 的费用项
         const validExpenses = expenses.filter(expense => {
           if (!expense) {
-            console.warn(`[TravelDetail] Found null/undefined expense, skipping`);
             return false;
           }
           if (!expense._id) {
-            console.warn(`[TravelDetail] Found expense without _id:`, expense);
             return false;
           }
           return true;
         });
         
-        console.log(`[TravelDetail] Valid expenses: ${validExpenses.length} out of ${expenses.length}`);
         setExpenses(validExpenses);
       } else {
-        console.warn(`[TravelDetail] Unexpected response format:`, response.data);
         setExpenses([]);
       }
     } catch (error) {
-      console.error(`[TravelDetail] Failed to load travel expenses:`, error);
-      console.error(`[TravelDetail] Error response:`, error.response);
-      console.error(`[TravelDetail] Error details:`, error.response?.data);
-      
       // 429 错误是请求频率过高，不显示错误提示，避免干扰用户
       if (error.response?.status === 429) {
-        console.log(`[TravelDetail] Rate limit hit, suppressing error notification`);
         return;
       }
       
@@ -170,11 +158,9 @@ const TravelDetail = () => {
         const errorMessage = error.response?.data?.message || 
                             error.response?.data?.error?.message ||
                             '加载费用申请失败，服务器错误';
-        console.error(`[TravelDetail] Server error:`, errorMessage);
         showNotification(errorMessage, 'error');
       } else if (error.response?.status === 404) {
         // 404 错误可能是差旅单不存在，不显示错误
-        console.log(`[TravelDetail] Travel not found`);
         setExpenses([]);
       } else if (error.response?.status === 403) {
         // 403 错误是权限问题
@@ -208,7 +194,6 @@ const TravelDetail = () => {
         await fetchTravelDetail();
       }
     } catch (error) {
-      console.error('Failed to generate expenses:', error);
       showNotification(
         error.response?.data?.message || t('travel.detail.expenses.generateError') || '生成费用申请失败',
         'error'
@@ -236,7 +221,6 @@ const TravelDetail = () => {
         throw new Error('Failed to load travel details');
       }
     } catch (error) {
-      console.error('Failed to load travel detail:', error);
       showNotification(t('travel.detail.loadError') || '加载失败', 'error');
       setTravel(null);
     } finally {
@@ -488,10 +472,6 @@ const TravelDetail = () => {
             await fetchTravelDetail();
           }
         } catch (generateError) {
-          console.error('Failed to generate expenses:', generateError);
-          console.error('Error response data:', generateError.response?.data);
-          console.error('Error status:', generateError.response?.status);
-          
           const errorMessage = generateError.response?.data?.message || '';
           const errorStatus = generateError.response?.status;
           const errorData = generateError.response?.data?.data || {};
@@ -508,15 +488,8 @@ const TravelDetail = () => {
               const expensesCount = expenses.length;
               const relatedExpenses = errorData.expenses || [];
               
-              console.log('Expenses check:', {
-                expensesCount,
-                relatedExpensesCount: relatedExpenses.length,
-                expenseGenerationStatus: errorData.expenseGenerationStatus
-              });
-              
               // 如果费用列表为空，说明状态不一致，需要重置状态
               if (expensesCount === 0 && relatedExpenses.length === 0) {
-                console.warn('Expense generation status is completed but no expenses found, resetting status');
                 try {
                   // 重置费用生成状态为 pending，允许重新生成
                   await apiClient.put(`/travel/${id}`, {
@@ -525,7 +498,6 @@ const TravelDetail = () => {
                   showNotification('费用生成状态已重置，请重新点击"生成费用申请"按钮', 'info');
                   await fetchTravelDetail();
                 } catch (resetError) {
-                  console.error('Failed to reset expense generation status:', resetError);
                   showNotification('费用生成状态异常，请联系管理员', 'error');
                 }
               } else {
@@ -544,11 +516,6 @@ const TravelDetail = () => {
             } else {
               // 显示完整的错误消息以便调试
               userMessage = errorMessage || '自动生成费用申请失败，您可以稍后手动生成';
-              console.warn('Unknown 400 error:', {
-                message: errorMessage,
-                data: errorData,
-                fullResponse: generateError.response?.data
-              });
               showNotification(userMessage, 'warning');
             }
           } else {
@@ -560,7 +527,6 @@ const TravelDetail = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to mark travel as completed:', error);
       showNotification(
         error.response?.data?.message || t('travel.detail.markAsCompletedError') || '标记失败',
         'error'
@@ -617,7 +583,6 @@ const TravelDetail = () => {
       handleCloseApprovalDialog();
       fetchTravelDetail(); // 刷新数据
     } catch (error) {
-      console.error('Approval error:', error);
       showNotification(
         error.response?.data?.message || t('travel.detail.approvalError') || '审批失败',
         'error'
@@ -1587,7 +1552,6 @@ const TravelDetail = () => {
                                             throw new Error(response.data?.message || '删除失败');
                                           }
                                       } catch (error) {
-                                          console.error('Failed to delete expense:', error);
                                           showNotification(
                                             error.response?.data?.message || 
                                             t('travel.detail.expenses.deleteError') || 

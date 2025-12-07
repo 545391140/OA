@@ -117,7 +117,7 @@ const PositionManagement = () => {
         throw new Error(response.data?.message || t('position.management.fetchError'));
       }
     } catch (err) {
-      console.error('Fetch positions error:', err);
+
       setError(err.response?.data?.message || err.message || t('position.management.fetchError'));
       showNotification(t('position.management.fetchError'), 'error');
     } finally {
@@ -146,7 +146,7 @@ const PositionManagement = () => {
       showNotification(t('position.management.deleteSuccess'), 'success');
       fetchPositions();
     } catch (err) {
-      console.error('Delete position error:', err);
+
       const errorMsg = err.response?.data?.message || t('position.management.deleteError');
       showNotification(errorMsg, 'error');
     } finally {
@@ -224,7 +224,7 @@ const PositionManagement = () => {
       fetchPositions();
       setFormDialog({ open: false, position: null, mode: 'create' });
     } catch (err) {
-      console.error('Save position error:', err);
+
       const errorMsg = err.response?.data?.message || t('position.management.saveError');
       showNotification(errorMsg, 'error');
     } finally {
@@ -238,7 +238,7 @@ const PositionManagement = () => {
       showNotification(position.isActive ? t('position.management.toggleDisabledSuccess') : t('position.management.toggleSuccess'), 'success');
       fetchPositions();
     } catch (err) {
-      console.error('Toggle active error:', err);
+
       const errorMsg = err.response?.data?.message || t('position.management.toggleError');
       showNotification(errorMsg, 'error');
     }

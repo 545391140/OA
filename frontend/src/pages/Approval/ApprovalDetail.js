@@ -89,7 +89,7 @@ const ApprovalDetail = () => {
         showNotification(t('approval.detail.loadError') || 'Failed to load detail', 'error');
       }
     } catch (error) {
-      console.error('Fetch detail error:', error);
+
       showNotification(
         error.response?.data?.message || t('approval.detail.loadError') || 'Failed to load detail',
         'error'
@@ -178,7 +178,7 @@ const ApprovalDetail = () => {
       handleCloseApprovalDialog();
       fetchDetail(); // 刷新数据
     } catch (error) {
-      console.error('Approval error:', error);
+
       showNotification(
         error.response?.data?.message || t('approval.detail.approvalError') || 'Approval failed',
         'error'

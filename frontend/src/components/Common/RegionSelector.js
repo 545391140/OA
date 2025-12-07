@@ -1349,25 +1349,19 @@ const RegionSelector = ({
     // 防重复搜索：如果关键词与上次相同，跳过
     const trimmedKeyword = keyword?.trim() || '';
     if (trimmedKeyword === lastSearchKeywordRef.current) {
-      console.log('[RegionSelector] 搜索跳过：关键词与上次相同', trimmedKeyword);
       return;
     }
     
     // 更新上次搜索关键词
     lastSearchKeywordRef.current = trimmedKeyword;
     
-    console.log('[RegionSelector] ========== 开始搜索 ==========');
-    console.log('[RegionSelector] 搜索关键词:', trimmedKeyword);
-    
     if (!keyword || keyword.trim().length < 1) {
-      console.log('[RegionSelector] 关键词为空，清空结果');
       setFilteredLocations([]);
       return;
     }
 
     // 检查最小搜索长度
     if (!isValidSearchLength(keyword)) {
-      console.log('[RegionSelector] 关键词长度不足，清空结果');
       setFilteredLocations([]);
       setLoading(false);
       return;
@@ -1377,19 +1371,10 @@ const RegionSelector = ({
     const isPinyinOrEnglishVal = isPinyinOrEnglish(trimmedKeyword);
     const searchPriority = isPinyinOrEnglishVal ? 'enName_pinyin' : null;
     
-    console.log('[RegionSelector] 输入类型检测:');
-    console.log('  isPinyinOrEnglish:', isPinyinOrEnglishVal);
-    console.log('  searchPriority:', searchPriority);
-    console.log('  transportationType:', transportationType);
-    
     // 检查缓存（包含 searchPriority）
     const cachedResult = getCachedResult(keyword, transportationType, searchPriority);
-    console.log('[RegionSelector] 缓存检查:');
-    console.log('  缓存键:', `${keyword.trim().toLowerCase()}_${transportationType || 'all'}_${searchPriority || 'default'}`);
-    console.log('  缓存结果:', cachedResult ? `找到 ${cachedResult.length} 条` : '未找到');
     
     if (cachedResult) {
-      console.log('[RegionSelector] 使用缓存结果，数量:', cachedResult.length);
       setFilteredLocations(cachedResult);
       setLoading(false);
       return;
@@ -1473,8 +1458,6 @@ const RegionSelector = ({
         params.maxChildrenPerCity = 5; // 每个城市最多5个机场
       }
       
-      console.log('[RegionSelector] API 请求参数:', params);
-      
       const response = await apiClient.get('/locations', { 
         params,
         signal: abortController.signal
@@ -1482,57 +1465,21 @@ const RegionSelector = ({
       
       // 检查请求是否被取消
       if (abortController.signal.aborted) {
-        console.log('[RegionSelector] 请求被取消');
         return;
       }
       
-      console.log('[RegionSelector] API 响应:');
-      console.log('  success:', response.data?.success);
-      console.log('  data.length:', response.data?.data?.length || 0);
-      console.log('  pagination:', response.data?.pagination);
-      
       if (!response.data || !response.data.success) {
-        console.error('[RegionSelector] API 响应失败:', response.data?.message);
         throw new Error(response.data?.message || '搜索地理位置数据失败');
       }
       
       const locations = response.data.data || [];
-      console.log('[RegionSelector] 原始数据数量:', locations.length);
-      
-      if (locations.length > 0) {
-        console.log('[RegionSelector] 第一条原始数据:', {
-          _id: locations[0]._id,
-          name: locations[0].name,
-          enName: locations[0].enName,
-          pinyin: locations[0].pinyin,
-          type: locations[0].type,
-          status: locations[0].status
-        });
-      }
       
       // 验证并转换数据结构（使用提取的函数）
       const validLocations = locations
-        .map((loc, idx) => {
-          const transformed = transformLocationData(loc);
-          if (!transformed && loc) {
-            console.warn(`[RegionSelector] 数据转换失败 [${idx}]:`, loc);
-          }
-          return transformed;
+        .map((loc) => {
+          return transformLocationData(loc);
         })
         .filter(location => location !== null);
-      
-      console.log('[RegionSelector] 转换后数据数量:', validLocations.length);
-      
-      if (validLocations.length > 0) {
-        console.log('[RegionSelector] 第一条转换后数据:', {
-          id: validLocations[0].id,
-          _id: validLocations[0]._id,
-          name: validLocations[0].name,
-          enName: validLocations[0].enName,
-          pinyin: validLocations[0].pinyin,
-          type: validLocations[0].type
-        });
-      }
 
       // 优化：由于使用了 includeChildren 参数，子项已经包含在结果中
       // 后端已经通过 parentId 字段包含了城市信息，不需要额外的API调用
@@ -1595,32 +1542,16 @@ const RegionSelector = ({
         new Map(validLocations.map(loc => [loc._id || loc.id, loc])).values()
       );
       
-      console.log('[RegionSelector] 第一次去重后数量:', uniqueLocations.length);
-
       // 优化：由于使用了 includeChildren，子项已经包含在 uniqueLocations 中
       // 根据交通工具类型或允许的类型过滤
       let filteredResults = uniqueLocations;
       
       // 优先使用 allowedTypes，如果没有则使用 transportationType
       if (allowedTypes && Array.isArray(allowedTypes) && allowedTypes.length > 0) {
-        console.log('[RegionSelector] 应用 allowedTypes 过滤:', allowedTypes);
-        const beforeFilter = uniqueLocations.length;
         filteredResults = uniqueLocations.filter(location => {
           return allowedTypes.includes(location.type);
         });
-        console.log('[RegionSelector] 过滤前数量:', beforeFilter);
-        console.log('[RegionSelector] 过滤后数量:', filteredResults.length);
-        
-        if (filteredResults.length === 0 && beforeFilter > 0) {
-          console.warn('[RegionSelector] ⚠ allowedTypes 过滤掉了所有结果！');
-          console.log('[RegionSelector] 被过滤的数据:', uniqueLocations.map(loc => ({
-            name: loc.name,
-            type: loc.type
-          })));
-        }
       } else if (transportationType) {
-        console.log('[RegionSelector] 应用 transportationType 过滤:', transportationType);
-        const beforeFilter = uniqueLocations.length;
         filteredResults = uniqueLocations.filter(location => {
           switch (transportationType) {
             case 'flight':
@@ -1634,18 +1565,6 @@ const RegionSelector = ({
               return true;
           }
         });
-        console.log('[RegionSelector] 过滤前数量:', beforeFilter);
-        console.log('[RegionSelector] 过滤后数量:', filteredResults.length);
-        
-        if (filteredResults.length === 0 && beforeFilter > 0) {
-          console.warn('[RegionSelector] ⚠ transportationType 过滤掉了所有结果！');
-          console.log('[RegionSelector] 被过滤的数据:', uniqueLocations.map(loc => ({
-            name: loc.name,
-            type: loc.type
-          })));
-        }
-      } else {
-        console.log('[RegionSelector] 无过滤条件，不过滤');
       }
 
       // 最终去重（虽然已经去重过，但为了确保）
@@ -1653,44 +1572,23 @@ const RegionSelector = ({
         new Map(filteredResults.map(item => [item._id || item.id, item])).values()
       );
       
-      console.log('[RegionSelector] 最终去重后数量:', uniqueResults.length);
-      
-      if (uniqueResults.length > 0) {
-        console.log('[RegionSelector] 最终结果列表:');
-        uniqueResults.forEach((loc, idx) => {
-          console.log(`  [${idx + 1}] ${loc.name} (${loc.enName}, ${loc.pinyin}) - type: ${loc.type}`);
-        });
-      }
-      
       // 检查请求是否被取消
       if (abortController.signal.aborted) {
-        console.log('[RegionSelector] 请求被取消，不更新状态');
         return;
       }
       
       // 保存到缓存（包含 searchPriority）
-      console.log('[RegionSelector] 保存到缓存，数量:', uniqueResults.length);
       setCachedResult(keyword, transportationType, uniqueResults, searchPriority);
-      
-      console.log('[RegionSelector] 设置 filteredLocations，数量:', uniqueResults.length);
       setFilteredLocations(uniqueResults);
-      console.log('[RegionSelector] ========== 搜索完成 ==========');
     } catch (error) {
       // 如果是取消请求，不显示错误
       if (isCancelError(error) || abortController.signal.aborted) {
-        console.log('[RegionSelector] 请求被取消，不显示错误');
         return;
       }
-      
-      console.error('[RegionSelector] 搜索出错:');
-      console.error('  错误信息:', error.message);
-      console.error('  响应数据:', error.response?.data);
-      console.error('  错误堆栈:', error.stack);
       
       const errorMessage = error.response?.data?.message || error.message || '搜索地理位置数据失败';
       setErrorMessage(errorMessage);
       setFilteredLocations([]);
-      console.log('[RegionSelector] 清空 filteredLocations（错误）');
     } finally {
       // 只有在请求未被取消时才更新loading状态
       if (!abortController.signal.aborted) {
@@ -2058,31 +1956,11 @@ const RegionSelector = ({
   // 使用 useMemo 缓存组织后的位置数据（优化性能）
   // 只在 filteredLocations 或 searchValue 变化时重新计算
   const organizedLocations = useMemo(() => {
-    console.log('[RegionSelector] organizeLocationsByHierarchy 计算:');
-    console.log('  filteredLocations.length:', filteredLocations?.length || 0);
-    console.log('  searchValue:', searchValue);
-    
     if (!filteredLocations || filteredLocations.length === 0) {
-      console.log('[RegionSelector] filteredLocations 为空，返回空数组');
       return [];
     }
     
     const organized = organizeLocationsByHierarchy(filteredLocations, searchValue.trim());
-    console.log('[RegionSelector] organizedLocations 结果数量:', organized.length);
-    
-    if (organized.length > 0) {
-      console.log('[RegionSelector] organizedLocations 前3条:');
-      organized.slice(0, 3).forEach((loc, idx) => {
-        console.log(`    [${idx + 1}] ${loc.name} (${loc.enName}) - type: ${loc.type}`);
-      });
-    } else if (filteredLocations.length > 0) {
-      console.warn('[RegionSelector] ⚠ filteredLocations 有数据但 organizedLocations 为空！');
-      console.log('[RegionSelector] filteredLocations 数据:', filteredLocations.map(loc => ({
-        name: loc.name,
-        type: loc.type,
-        id: loc.id || loc._id
-      })));
-    }
     
     return organized;
   }, [filteredLocations, searchValue]);
@@ -2218,12 +2096,6 @@ const RegionSelector = ({
     }
 
     if (filteredLocations.length === 0 && searchValue.trim() && isValidSearchLength(searchValue)) {
-      console.log('[RegionSelector] 显示"未找到匹配的地区":');
-      console.log('  filteredLocations.length:', filteredLocations.length);
-      console.log('  searchValue:', searchValue);
-      console.log('  searchValue.trim():', searchValue.trim());
-      console.log('  isValidSearchLength(searchValue):', isValidSearchLength(searchValue));
-      
       return (
         <Box sx={{ p: 2, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">

@@ -158,7 +158,7 @@ const ApprovalStatistics = () => {
       }
 
     } catch (error) {
-      console.error('Failed to fetch statistics:', error);
+
       showNotification(t('approval.statistics.loadError') || '加载统计数据失败', 'error');
       
       // 设置空数据以避免UI错误

@@ -57,6 +57,7 @@
       "Nov": "November",
       "Dec": "December"
     },
+    "currency": "Currency",
     "currencies": {
       "USD": "US Dollar",
       "CNY": "Chinese Yuan",

@@ -130,7 +130,7 @@ const InvoiceUpload = () => {
         }
       }
     } catch (err) {
-      console.error('Load invoice error:', err);
+
       showNotification(t('invoice.upload.loadInvoiceFailed'), 'error');
     } finally {
       setLoadingInvoice(false);
@@ -146,7 +146,7 @@ const InvoiceUpload = () => {
       const url = URL.createObjectURL(blob);
       setFilePreview(url);
     } catch (err) {
-      console.error('Load file preview error:', err);
+
     }
   };
 
@@ -241,21 +241,12 @@ const InvoiceUpload = () => {
         const recognizedData = ocrResponse.data.data.recognizedData;
         
         // 详细日志：打印 OCR 返回的完整数据结构
-        console.log('========================================');
-        console.log('✓ OCR 识别成功，开始前端自动赋值');
-        console.log('OCR 返回的完整数据:', JSON.stringify(ocrResponse.data, null, 2));
-        console.log('recognizedData 对象:', recognizedData);
-        console.log('recognizedData 类型:', typeof recognizedData);
-        console.log('recognizedData 是否为对象:', recognizedData && typeof recognizedData === 'object');
-        console.log('recognizedData 的字段:', recognizedData ? Object.keys(recognizedData) : 'null/undefined');
-        console.log('当前表单数据:', formData);
-        console.log('========================================');
-        
+
         setOcrResult(ocrResponse.data.data);
         
         // 检查 recognizedData 是否存在且为对象
         if (!recognizedData || typeof recognizedData !== 'object') {
-          console.error('✗ recognizedData 无效:', recognizedData);
+
           showNotification('OCR识别成功，但数据格式异常', 'warning');
           return;
         }
@@ -267,22 +258,18 @@ const InvoiceUpload = () => {
           return value !== undefined && value !== null && value !== '' && 
                  !(Array.isArray(value) && value.length === 0);
         });
-        
-        console.log('recognizedData 字段数量:', recognizedDataKeys.length);
-        console.log('recognizedData 字段列表:', recognizedDataKeys);
-        console.log('recognizedData 是否有有效值:', recognizedDataHasValues);
-        
+
+
+
         if (recognizedDataKeys.length === 0) {
-          console.warn('⚠️ recognizedData 为空对象，AI 解析可能失败');
-          console.log('原始文本内容:', ocrResponse.data.data.text);
-          console.log('建议：检查后端日志，查看 AI 解析过程');
+
+
+
           showNotification('OCR识别成功，但结构化数据为空，请检查后端日志', 'warning');
           return;
         }
         
         if (!recognizedDataHasValues) {
-          console.warn('⚠️ recognizedData 存在但所有字段值都为空');
-          console.log('recognizedData 详细内容:', JSON.stringify(recognizedData, null, 2));
           showNotification('OCR识别成功，但所有字段值都为空', 'warning');
           return;
         }
@@ -291,74 +278,59 @@ const InvoiceUpload = () => {
         const hasValidStringValue = (value) => {
           const result = value !== undefined && value !== null && 
                  typeof value === 'string' && value.trim() !== '';
-          if (value !== undefined && value !== null) {
-            console.log(`  [hasValidStringValue] "${value}" (类型: ${typeof value}) => ${result}`);
-          }
           return result;
         };
         
         // 优化的辅助函数：检查数字字段是否有有效值（非零数字）
         const hasValidNumberValue = (value) => {
           if (value === undefined || value === null) {
-            console.log(`  [hasValidNumberValue] ${value} => false (undefined/null)`);
             return false;
           }
           if (typeof value === 'number') {
             const result = !isNaN(value) && value !== 0;
-            console.log(`  [hasValidNumberValue] ${value} (number) => ${result}`);
             return result;
           }
           if (typeof value === 'string') {
             const trimmed = value.trim();
             if (trimmed === '') {
-              console.log(`  [hasValidNumberValue] "${value}" (string, empty) => false`);
+              return false;
               return false;
             }
             const parsed = parseFloat(trimmed);
             const result = !isNaN(parsed) && parsed !== 0;
-            console.log(`  [hasValidNumberValue] "${value}" (string) => parsed: ${parsed}, result: ${result}`);
             return result;
           }
-          console.log(`  [hasValidNumberValue] ${value} (${typeof value}) => false (unknown type)`);
           return false;
         };
         
         // 优化的辅助函数：检查日期字段是否有有效值
         const hasValidDateValue = (value) => {
           if (!value || value === '') {
-            console.log(`  [hasValidDateValue] ${value} => false (empty)`);
             return false;
           }
           if (typeof value === 'string') {
             const trimmed = value.trim();
             if (trimmed === '') {
-              console.log(`  [hasValidDateValue] "${value}" => false (empty after trim)`);
               return false;
             }
             const date = new Date(trimmed);
             const result = !isNaN(date.getTime());
-            console.log(`  [hasValidDateValue] "${value}" => date: ${date}, valid: ${result}`);
             return result;
           }
-          console.log(`  [hasValidDateValue] ${value} (${typeof value}) => false (not string)`);
           return false;
         };
         
         // 优化的辅助函数：检查表单字段是否为空（用于判断是否需要赋值）
         const isFormFieldEmpty = (value) => {
           if (value === undefined || value === null || value === '') {
-            console.log(`  [isFormFieldEmpty] ${value} => true (undefined/null/empty)`);
             return true;
           }
           if (typeof value === 'string' && value.trim() === '') {
-            console.log(`  [isFormFieldEmpty] "${value}" => true (empty string)`);
             return true;
           }
           if (typeof value === 'number' && value === 0) {
-            console.log(`  [isFormFieldEmpty] ${value} => true (zero)`);
             return true;
           }
-          console.log(`  [isFormFieldEmpty] ${value} (${typeof value}) => false (has value)`);
           return false;
         };
         
@@ -367,44 +339,42 @@ const InvoiceUpload = () => {
         let hasUpdates = false;
         
         // 基本信息
-        console.log('[invoiceNumber] OCR值:', recognizedData.invoiceNumber, '类型:', typeof recognizedData.invoiceNumber, '当前表单值:', formData.invoiceNumber);
+
         if (hasValidStringValue(recognizedData?.invoiceNumber) && isFormFieldEmpty(formData.invoiceNumber)) {
           updates.invoiceNumber = recognizedData.invoiceNumber.trim();
           hasUpdates = true;
-          console.log('  ✓ 准备赋值 invoiceNumber:', updates.invoiceNumber);
+
         } else {
-          console.log('  ✗ 跳过 invoiceNumber - OCR值无效或表单已有值');
+
         }
         
         // 发票日期特殊处理：如果OCR识别到了日期，优先使用识别到的日期（覆盖默认日期）
-        console.log('[invoiceDate] OCR值:', recognizedData.invoiceDate, '类型:', typeof recognizedData.invoiceDate, '当前表单值:', formData.invoiceDate);
+
         if (hasValidDateValue(recognizedData?.invoiceDate)) {
           updates.invoiceDate = recognizedData.invoiceDate.trim();
           hasUpdates = true;
-          console.log('  ✓ 准备赋值 invoiceDate:', updates.invoiceDate);
+
         } else {
-          console.log('  ✗ 跳过 invoiceDate - OCR值无效');
+
         }
-        
-        console.log('[invoiceType] OCR值:', recognizedData.invoiceType, '类型:', typeof recognizedData.invoiceType, '当前表单值:', formData.invoiceType);
+
         if (hasValidStringValue(recognizedData?.invoiceType) && isFormFieldEmpty(formData.invoiceType)) {
           updates.invoiceType = recognizedData.invoiceType.trim();
           hasUpdates = true;
-          console.log('  ✓ 准备赋值 invoiceType:', updates.invoiceType);
+
         } else {
-          console.log('  ✗ 跳过 invoiceType - OCR值无效或表单已有值');
+
         }
-        
-        console.log('[amount] OCR值:', recognizedData.amount, '类型:', typeof recognizedData.amount, '当前表单值:', formData.amount);
+
         if (hasValidNumberValue(recognizedData?.amount) && isFormFieldEmpty(formData.amount)) {
           const parsedAmount = typeof recognizedData.amount === 'string' 
             ? parseFloat(recognizedData.amount.trim()) 
             : recognizedData.amount;
           updates.amount = parsedAmount.toString();
           hasUpdates = true;
-          console.log('  ✓ 准备赋值 amount:', updates.amount);
+
         } else {
-          console.log('  ✗ 跳过 amount - OCR值无效或表单已有值');
+
         }
         
         // taxAmount 可以为 0（免税情况），需要特殊处理
@@ -523,27 +493,17 @@ const InvoiceUpload = () => {
         }
         
         // 批量更新表单
-        console.log('========================================');
-        console.log('赋值检查完成，准备更新表单');
-        console.log('updates 对象:', updates);
-        console.log('updates 字段数量:', Object.keys(updates).length);
-        console.log('hasUpdates:', hasUpdates);
-        console.log('recognizedData 完整内容:', JSON.stringify(recognizedData, null, 2));
-        console.log('========================================');
-        
         if (hasUpdates) {
           setFormData(prev => {
             const updated = { ...prev, ...updates };
-            console.log('✓ 前端自动赋值成功，更新的字段:', Object.keys(updates));
-            console.log('更新后的表单数据:', updated);
             return updated;
           });
         } else {
-          console.log('✗ 前端自动赋值：没有需要更新的字段');
-          console.log('可能的原因：');
-          console.log('  1. OCR 返回的字段值无效（null、undefined、空字符串）');
-          console.log('  2. 表单字段已有值，不需要覆盖');
-          console.log('  3. 字段类型不匹配');
+
+
+
+
+
         }
         
         showNotification(t('invoice.upload.autoRecognitionSuccess'), 'success');
@@ -551,20 +511,8 @@ const InvoiceUpload = () => {
         showNotification(t('invoice.upload.ocrFailed'), 'warning');
       }
     } catch (err) {
-      console.error('OCR recognize error:', err);
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        code: err.code,
-        config: {
-          url: err.config?.url,
-          method: err.config?.method,
-          timeout: err.config?.timeout
-        }
-      });
-      
+
+
       // OCR失败不影响文件选择，只显示警告
       let errorMessage = 'OCR服务暂时不可用';
       
@@ -782,9 +730,6 @@ const InvoiceUpload = () => {
     // 批量更新表单
     if (hasUpdates) {
       setFormData(prev => ({ ...prev, ...updates }));
-      console.log('✓ 手动应用OCR赋值成功，更新的字段:', Object.keys(updates));
-    } else {
-      console.log('✗ 手动应用OCR赋值：没有需要更新的字段');
     }
 
     setShowOcrDialog(false);
@@ -943,7 +888,7 @@ const InvoiceUpload = () => {
         }
       }
     } catch (err) {
-      console.error('Submit error:', err);
+
       const errorMsg = err.response?.data?.message || err.message || (editInvoiceId ? t('invoice.upload.updateFailed') : t('invoice.upload.uploadFailed'));
       showNotification(errorMsg, 'error');
       setErrors({ submit: errorMsg });

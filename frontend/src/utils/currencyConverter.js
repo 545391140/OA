@@ -48,9 +48,6 @@ export const fetchExchangeRates = async (forceRefresh = false) => {
     return DEFAULT_EXCHANGE_RATES;
   } catch (error) {
     // 静默处理错误，401错误（未授权）是正常的
-    if (process.env.NODE_ENV === 'development' && error.response?.status !== 401) {
-      console.warn('Failed to fetch exchange rates from API, using default rates:', error.message || error);
-    }
     // API失败时返回默认汇率
     return DEFAULT_EXCHANGE_RATES;
   }
@@ -80,7 +77,6 @@ export const convertFromCNY = (amountCNY, targetCurrency, customRates = null, ro
   const rate = rates[targetCurrency.toUpperCase()];
   
   if (!rate) {
-    console.warn(`Exchange rate not found for currency: ${targetCurrency}, using CNY amount`);
     return amountCNY;
   }
   
@@ -122,7 +118,6 @@ export const convertToCNY = (amount, sourceCurrency, customRates = null, roundRe
   const rate = rates[sourceCurrency.toUpperCase()];
   
   if (!rate) {
-    console.warn(`Exchange rate not found for currency: ${sourceCurrency}, using original amount`);
     return amount;
   }
   

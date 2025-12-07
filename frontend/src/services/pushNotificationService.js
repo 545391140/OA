@@ -11,7 +11,7 @@ class PushNotificationService {
    */
   async initialize() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.warn('Push notifications are not supported in this browser');
+
       return false;
     }
 
@@ -27,7 +27,7 @@ class PushNotificationService {
       
       return true;
     } catch (error) {
-      console.error('Failed to initialize push notifications:', error);
+
       return false;
     }
   }
@@ -37,7 +37,7 @@ class PushNotificationService {
    */
   async requestPermission() {
     if (!('Notification' in window)) {
-      console.warn('This browser does not support notifications');
+
       return false;
     }
 
@@ -75,13 +75,13 @@ class PushNotificationService {
       });
 
       if (response.data.success) {
-        console.log('Push notification subscription successful');
+
         return true;
       }
 
       return false;
     } catch (error) {
-      console.error('Failed to subscribe to push notifications:', error);
+
       throw error;
     }
   }
@@ -103,7 +103,7 @@ class PushNotificationService {
       await apiClient.post('/push/unsubscribe');
       return true;
     } catch (error) {
-      console.error('Failed to unsubscribe from push notifications:', error);
+
       return false;
     }
   }
@@ -120,7 +120,7 @@ class PushNotificationService {
       const subscription = await this.swRegistration.pushManager.getSubscription();
       return subscription !== null;
     } catch (error) {
-      console.error('Failed to check subscription status:', error);
+
       return false;
     }
   }

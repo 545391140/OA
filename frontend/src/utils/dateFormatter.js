@@ -88,7 +88,7 @@ export const formatDateByLanguage = (date, language = null, isRange = false) => 
     const locale = getDayjsLocale(language);
     return dayjs(date).locale(locale).format(format);
   } catch (error) {
-    console.error('Date formatting error:', error);
+
     return '-';
   }
 };

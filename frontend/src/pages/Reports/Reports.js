@@ -102,7 +102,7 @@ const Reports = () => {
           ]);
         }
       } catch (error) {
-        console.error('Failed to fetch departments:', error);
+
         // 使用默认部门列表
         setDepartments([
           { value: 'all', label: t('reports.allDepartments') || 'All Departments' }
@@ -193,7 +193,7 @@ const Reports = () => {
         throw new Error('Failed to fetch report data');
       }
     } catch (error) {
-      console.error('Failed to load report data:', error);
+
       showNotification(
         error.response?.data?.message || t('reports.loadError') || 'Failed to load report data',
         'error'
@@ -268,7 +268,7 @@ const Reports = () => {
         showNotification(t('reports.exportExcel') || 'Excel export completed', 'success');
       }
     } catch (error) {
-      console.error('Export error:', error);
+
       showNotification(t('reports.exportError') || 'Export failed', 'error');
     }
   };

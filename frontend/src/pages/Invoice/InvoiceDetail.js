@@ -155,7 +155,7 @@ const InvoiceDetail = () => {
         throw new Error(response.data?.message || t('invoice.detail.fetchError'));
       }
     } catch (err) {
-      console.error('Fetch invoice error:', err);
+
       setError(err.response?.data?.message || err.message || t('invoice.detail.fetchError'));
       showNotification(t('invoice.detail.fetchError'), 'error');
     } finally {
@@ -166,13 +166,13 @@ const InvoiceDetail = () => {
   const loadFilePreview = async (invoiceId, mimeTypeOverride = null) => {
     // 检查发票ID是否存在
     if (!invoiceId) {
-      console.warn('Cannot load preview: invoiceId is missing');
+
       return;
     }
     
     // 检查invoice是否已加载（如果已加载，检查文件路径）
     if (invoice && (!invoice.file || !invoice.file.path)) {
-      console.warn('Cannot load preview: invoice file data missing');
+
       return;
     }
 
@@ -214,7 +214,7 @@ const InvoiceDetail = () => {
       // 同时保存blob URL用于预览对话框
       setPreviewBlobUrl(url);
     } catch (err) {
-      console.error('Load preview error:', err);
+
       // 加载失败时，确保 filePreview 为 null，显示占位符
       setFilePreview(null);
       setPreviewBlobUrl(null);
@@ -237,7 +237,7 @@ const InvoiceDetail = () => {
       
       showNotification(t('invoice.detail.downloadSuccess'), 'success');
     } catch (err) {
-      console.error('Download error:', err);
+
       showNotification(t('invoice.detail.downloadError'), 'error');
     }
   };
@@ -263,7 +263,7 @@ const InvoiceDetail = () => {
       showNotification(t('invoice.detail.deleteSuccess'), 'success');
       navigate('/invoices');
     } catch (err) {
-      console.error('Delete error:', err);
+
       showNotification(t('invoice.detail.deleteError'), 'error');
     }
   };
@@ -331,7 +331,7 @@ const InvoiceDetail = () => {
         showNotification(t('invoice.detail.updateSuccess'), 'success');
       }
     } catch (err) {
-      console.error('Update error:', err);
+
       showNotification(t('invoice.detail.updateError'), 'error');
     }
   };

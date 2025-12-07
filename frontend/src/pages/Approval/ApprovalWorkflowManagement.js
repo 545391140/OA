@@ -90,7 +90,7 @@ const ApprovalWorkflowManagement = () => {
         setWorkflows(response.data.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch workflows:', error);
+
       showNotification(t('approval.workflow.loadError'), 'error');
     } finally {
       setLoading(false);
@@ -206,8 +206,6 @@ const ApprovalWorkflowManagement = () => {
       
       const method = selectedWorkflow ? 'put' : 'post';
       
-      console.log('Sending workflow data:', JSON.stringify(formData, null, 2));
-      
       const response = await apiClient[method](url, formData);
       
       if (response.data && response.data.success) {
@@ -219,9 +217,9 @@ const ApprovalWorkflowManagement = () => {
         fetchWorkflows();
       }
     } catch (error) {
-      console.error('Save workflow error:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error message:', error.response?.data?.error);
+
+
+
       showNotification(
         error.response?.data?.message || error.response?.data?.error || t('approval.workflow.saveError'),
         'error'
@@ -239,7 +237,7 @@ const ApprovalWorkflowManagement = () => {
       showNotification(t('approval.workflow.deleteSuccess'), 'success');
       fetchWorkflows();
     } catch (error) {
-      console.error('Delete workflow error:', error);
+
       showNotification(t('approval.workflow.deleteError'), 'error');
     }
   };
@@ -256,7 +254,7 @@ const ApprovalWorkflowManagement = () => {
       );
       fetchWorkflows();
     } catch (error) {
-      console.error('Toggle active error:', error);
+
       showNotification(t('messages.error.general'), 'error');
     }
   };

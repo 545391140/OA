@@ -145,11 +145,11 @@ const InvoiceSelectDialog = ({ open, onClose, onConfirm, excludeInvoiceIds = [],
         setInvoices([]);
       }
     } catch (error) {
-      console.error('Failed to fetch invoices:', error);
+
       // 处理 429 错误（请求过于频繁）
       if (error.response?.status === 429) {
         // 可以显示提示信息，但这里先静默处理
-        console.warn('请求过于频繁，请稍后再试');
+
       }
       setInvoices([]);
     } finally {

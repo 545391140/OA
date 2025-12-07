@@ -144,10 +144,10 @@ const LocationManagement = () => {
           )
         ).sort();
         setCountryOptions(countries);
-        console.log('已加载国家列表:', countries.length, '个国家');
+
       }
     } catch (err) {
-      console.error('获取国家列表失败:', err);
+
       // 如果失败，使用默认国家列表
       setCountryOptions(['中国', '美国', '日本', '韩国', '新加坡', '英国', '法国', '德国', '意大利', '西班牙']);
     }
@@ -162,7 +162,7 @@ const LocationManagement = () => {
         setCityOptions(response.data.data || []);
       }
     } catch (err) {
-      console.error('Fetch cities error:', err);
+
     }
   };
 
@@ -199,7 +199,7 @@ const LocationManagement = () => {
         throw new Error(response.data?.message || t('location.management.fetchError'));
       }
     } catch (err) {
-      console.error('Fetch locations error:', err);
+
       setError(err.response?.data?.message || err.message || t('location.management.fetchError'));
       showNotification(t('location.management.fetchError'), 'error');
     } finally {
@@ -288,7 +288,7 @@ const LocationManagement = () => {
       showNotification(t('location.management.deleteSuccess'), 'success');
       fetchLocations();
     } catch (err) {
-      console.error('Delete location error:', err);
+
       showNotification(t('location.management.deleteError'), 'error');
     } finally {
       setDeleteDialog({ open: false, location: null });
@@ -356,7 +356,7 @@ const LocationManagement = () => {
       setFormDialog({ open: false, location: null, mode: 'create' });
       fetchLocations();
     } catch (err) {
-      console.error('Save location error:', err);
+
       showNotification(err.response?.data?.message || t('location.management.saveError'), 'error');
     }
   };

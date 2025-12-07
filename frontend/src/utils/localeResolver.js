@@ -59,7 +59,7 @@ export const getLocaleFromProfile = () => {
       ? userProfile.language 
       : null;
   } catch (error) {
-    console.warn('Failed to parse user profile:', error);
+
     return null;
   }
 };
@@ -158,7 +158,7 @@ export const resolveLocale = () => {
  */
 export const setLocale = (locale) => {
   if (!SUPPORTED_LOCALES[locale]) {
-    console.warn(`Unsupported locale: ${locale}`);
+
     return false;
   }
 
@@ -175,7 +175,7 @@ export const setLocale = (locale) => {
     userProfile.language = locale;
     localStorage.setItem('userProfile', JSON.stringify(userProfile));
   } catch (error) {
-    console.warn('Failed to update user profile:', error);
+
   }
 
   return true;
