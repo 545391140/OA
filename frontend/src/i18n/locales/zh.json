@@ -44,6 +44,8 @@
     "submitting": "提交中...",
     "sheet": "张",
     "actualReimbursement": "实报实销",
+    "active": "启用",
+    "inactive": "禁用",
     "months": {
       "Jan": "一月",
       "Feb": "二月",
