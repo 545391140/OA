@@ -78,15 +78,19 @@ const TravelForm = () => {
   ];
 
   // 获取用户默认货币（从用户资料中读取）
-  // 注意：这个函数在组件初始化时调用，此时 user 可能还未加载
+  // 注意：这个函数在组件初始化时调用，此时 user 可能还未加载，currencyCodes 也可能还未加载
   // 因此我们会在 useEffect 中再次更新货币值
   const getDefaultCurrency = (currentUser) => {
     if (currentUser && currentUser.preferences && currentUser.preferences.currency) {
       const userCurrency = currentUser.preferences.currency;
-      // 验证货币值是否有效
-      if (currencyCodes.includes(userCurrency)) {
+      // 如果 currencyCodes 已加载，验证货币值是否有效
+      // 如果 currencyCodes 还未加载（空数组），先返回用户币种（用户币种应该是有效的）
+      if (currencyCodes.length === 0 || currencyCodes.includes(userCurrency)) {
         return userCurrency;
       }
+      // 如果 currencyCodes 已加载但用户币种不在列表中，仍然返回用户币种
+      // 让 useEffect 中的逻辑处理验证和警告
+      return userCurrency;
     }
     return 'USD'; // 默认值
   };
@@ -316,10 +320,13 @@ const TravelForm = () => {
   
   useEffect(() => {
     // 只在新建模式下设置，且用户信息已加载，且货币还未初始化
+    // 等待 currencyCodes 加载完成后再设置（如果 currencyCodes 为空数组，说明还在加载中）
     if (!isEdit && user && user.preferences && user.preferences.currency && !currencyInitializedRef.current) {
       const userCurrency = user.preferences.currency;
-      // 验证货币值是否有效
-      if (currencyCodes.includes(userCurrency)) {
+      
+      // 如果 currencyCodes 已加载（非空），验证货币值是否有效
+      // 如果 currencyCodes 还未加载（空数组），先设置用户币种（用户币种应该是有效的）
+      if (currencyCodes.length === 0 || currencyCodes.includes(userCurrency)) {
         setFormData(prev => {
           // 如果当前货币与用户默认货币不同，则更新
           if (prev.currency !== userCurrency) {
@@ -331,9 +338,26 @@ const TravelForm = () => {
           }
           return prev;
         });
+      } else if (currencyCodes.length > 0) {
+        // currencyCodes 已加载但用户币种不在列表中，记录警告但不阻止设置
+        console.warn('[TravelForm] 用户默认币种不在有效币种列表中:', {
+          userCurrency,
+          availableCurrencies: currencyCodes
+        });
+        // 仍然设置用户币种，让用户知道有问题
+        setFormData(prev => {
+          if (prev.currency !== userCurrency) {
+            currencyInitializedRef.current = true;
+            return {
+              ...prev,
+              currency: userCurrency
+            };
+          }
+          return prev;
+        });
       }
     }
-  }, [isEdit, user]);
+  }, [isEdit, user, currencyCodes]);
 
   // 监听表单数据变化，实时更新步骤状态
   useEffect(() => {

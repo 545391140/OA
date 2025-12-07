@@ -30,8 +30,9 @@ const SettingsSchema = new mongoose.Schema({
     },
     currency: {
       type: String,
-      default: 'USD',
-      enum: ['USD', 'CNY', 'JPY', 'KRW', 'EUR', 'GBP']
+      default: 'USD'
+      // 移除 enum 限制，允许使用数据库中的任何活跃币种
+      // 验证在路由层进行，从数据库获取活跃币种列表
     }
   },
   // 通知设置

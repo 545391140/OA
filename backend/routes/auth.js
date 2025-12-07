@@ -363,13 +363,30 @@ router.get('/me', protect, asyncHandler(async (req, res) => {
 // @desc    Update user preferences
 // @route   PUT /api/auth/preferences
 // @access  Private
-router.put('/preferences', protect, [
-  body('language').optional().isIn(['en', 'zh', 'ja', 'ko']).withMessage('Invalid language'),
-  body('currency').optional().isIn(['USD', 'CNY', 'JPY', 'KRW', 'EUR']).withMessage('Invalid currency')
-], asyncHandler(async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    throw ErrorFactory.validation('Validation errors: ' + errors.array().map(e => e.msg).join(', '));
+router.put('/preferences', protect, asyncHandler(async (req, res) => {
+  // 验证语言
+  const validLanguages = ['en', 'zh', 'ja', 'ko', 'ar', 'vi', 'th'];
+  if (req.body.language && !validLanguages.includes(req.body.language)) {
+    throw ErrorFactory.validation(`Invalid language. Must be one of: ${validLanguages.join(', ')}`);
+  }
+
+  // 验证币种：从数据库获取活跃币种列表
+  if (req.body.currency) {
+    const Currency = require('../models/Currency');
+    const activeCurrencies = await Currency.find({ isActive: true }).select('code').lean();
+    const validCurrencyCodes = activeCurrencies.map(c => c.code);
+    
+    // 确保CNY始终在列表中（即使数据库中没有）
+    if (!validCurrencyCodes.includes('CNY')) {
+      validCurrencyCodes.push('CNY');
+    }
+    
+    if (!validCurrencyCodes.includes(req.body.currency.toUpperCase())) {
+      throw ErrorFactory.validation(`Invalid currency. Must be one of active currencies: ${validCurrencyCodes.join(', ')}`);
+    }
+    
+    // 转换为大写
+    req.body.currency = req.body.currency.toUpperCase();
   }
 
   logger.info('Updating user preferences:', { userId: req.user.id, preferences: req.body });

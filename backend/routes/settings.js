@@ -170,6 +170,31 @@ router.put('/', protect, async (req, res) => {
 
     const settings = await Settings.updateUserSettings(req.user.id, updateData);
     
+    // 同步币种和时区到 User.preferences（如果设置了）
+    if (general && (general.currency || general.timezone)) {
+      const User = require('../models/User');
+      const preferenceUpdate = {};
+      if (general.currency) {
+        preferenceUpdate['preferences.currency'] = general.currency.toUpperCase();
+      }
+      if (general.timezone) {
+        preferenceUpdate['preferences.timezone'] = general.timezone;
+      }
+      
+      if (Object.keys(preferenceUpdate).length > 0) {
+        await User.findByIdAndUpdate(
+          req.user.id,
+          { $set: preferenceUpdate },
+          { new: true }
+        );
+        logger.info('Synced currency/timezone from Settings to User.preferences:', {
+          userId: req.user.id,
+          currency: general.currency,
+          timezone: general.timezone
+        });
+      }
+    }
+    
     res.json({
       success: true,
       data: {

@@ -188,11 +188,29 @@ export const AuthProvider = ({ children }) => {
   // Update user preferences
   const updatePreferences = async (preferences) => {
     try {
-      const response = await apiClient.put('/api/auth/preferences', preferences);
-      dispatch({
-        type: 'UPDATE_USER',
-        payload: { preferences: response.data.preferences }
-      });
+      const response = await apiClient.put('/auth/preferences', preferences);
+      
+      // 重新获取用户信息以确保数据同步
+      try {
+        const userResponse = await apiClient.get('/auth/me');
+        if (userResponse.data && userResponse.data.success) {
+          dispatch({
+            type: 'LOGIN_SUCCESS',
+            payload: {
+              user: userResponse.data.user,
+              token: localStorage.getItem('token')
+            }
+          });
+        }
+      } catch (userError) {
+        console.warn('Failed to refresh user data after preferences update:', userError);
+        // 如果刷新失败，仍然更新本地状态
+        dispatch({
+          type: 'UPDATE_USER',
+          payload: { preferences: response.data.preferences }
+        });
+      }
+      
       return { success: true, message: t('messages.success.saved') };
     } catch (error) {
       console.error('Update preferences error:', error);
@@ -204,7 +222,7 @@ export const AuthProvider = ({ children }) => {
   // Change password
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      await apiClient.put('/api/auth/change-password', {
+      await apiClient.put('/auth/change-password', {
         currentPassword,
         newPassword
       });

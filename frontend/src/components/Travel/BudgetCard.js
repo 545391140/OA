@@ -231,13 +231,9 @@ const BudgetCard = ({
                   calcUnit: expense?.calcUnit    // 确保包含 calcUnit
                 };
                 
-                // 根据 limitType 和 calcUnit 决定数量字段是否禁用
-                // ACTUAL 和 PER_TRIP 类型：数量固定为1，应该禁用
-                // 注意：只有明确是 ACTUAL 或 PER_TRIP 时才禁用，undefined 不应该禁用
-                const limitType = budgetItem?.limitType || expense?.limitType;
-                const calcUnit = budgetItem?.calcUnit || expense?.calcUnit;
-                // 只有当 limitType 明确为实报实销或 calcUnit 明确为 'PER_TRIP' 时才禁用
-                const quantityDisabled = isActualLimitType(limitType) || (calcUnit === 'PER_TRIP');
+                // 所有类型的数量字段都禁用编辑
+                // 数量由系统根据差旅标准和行程天数自动计算，用户不能手动修改
+                const quantityDisabled = true;
 
                 // 生成计算提示
                 const unitPriceValue = parseFloat(budgetItem.unitPrice) || 0;
