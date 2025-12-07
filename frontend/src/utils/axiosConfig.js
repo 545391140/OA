@@ -63,6 +63,12 @@ apiClient.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+    // 处理 429 请求频率过高错误
+    if (error.response?.status === 429) {
+      // 429 错误由具体页面处理，这里不统一处理，避免干扰用户
+      // 但可以记录日志
+      console.warn('[API] Rate limit exceeded:', error.config?.url);
+    }
     return Promise.reject(error);
   }
 );

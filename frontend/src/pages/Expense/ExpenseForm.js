@@ -629,10 +629,32 @@ const ExpenseForm = () => {
         }
       });
       if (response.data && response.data.success) {
-        setTravelOptions(response.data.data || []);
+        const travels = response.data.data || [];
+        setTravelOptions(travels);
+        devLog('[FETCH_TRAVEL_OPTIONS] Loaded', travels.length, 'travel options');
+        
+        // 如果没有数据，提示用户
+        if (travels.length === 0) {
+          devLog('[FETCH_TRAVEL_OPTIONS] No completed travels found');
+        }
+      } else {
+        devError('[FETCH_TRAVEL_OPTIONS] Invalid response:', response.data);
+        setTravelOptions([]);
+        showNotification(
+          response.data?.message || t('expense.form.noTravelOptions') || '无法加载差旅单列表',
+          'warning'
+        );
       }
     } catch (error) {
-      devError('Failed to fetch travel options:', error);
+      devError('[FETCH_TRAVEL_OPTIONS] Failed to fetch travel options:', error);
+      setTravelOptions([]);
+      // 429 错误是请求频率过高，不显示错误提示，避免干扰用户
+      if (error.response?.status !== 429) {
+        showNotification(
+          error.response?.data?.message || t('expense.form.failedToLoadTravels') || '加载差旅单列表失败，请稍后重试',
+          'error'
+        );
+      }
     } finally {
       setTravelLoading(false);
     }
@@ -2575,6 +2597,11 @@ const ExpenseForm = () => {
                       setSelectedTravel(null);
                     }
                   }}
+                  noOptionsText={
+                    travelLoading 
+                      ? (t('expense.form.loadingTravels') || '加载中...')
+                      : (t('expense.form.noTravelOptions') || '暂无已完成的差旅单')
+                  }
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -2592,6 +2619,11 @@ const ExpenseForm = () => {
                     />
                   )}
                 />
+                {!travelLoading && travelOptions.length === 0 && (
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    {t('expense.form.noCompletedTravels') || '当前没有已完成的差旅单。请先完成差旅申请审批流程。'}
+                  </Alert>
+                )}
               </Grid>
             )}
             {isEdit && selectedTravel && (

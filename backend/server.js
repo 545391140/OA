@@ -68,7 +68,7 @@ app.use(compression());
 // 开发环境使用内存存储，重启后自动清除限制
 const limiter = rateLimit({
   windowMs: process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000, // 15 minutes
-  max: process.env.RATE_LIMIT_MAX_REQUESTS || (process.env.NODE_ENV === 'development' ? 1000 : 500), // 开发环境1000次，生产环境500次
+  max: process.env.RATE_LIMIT_MAX_REQUESTS || (process.env.NODE_ENV === 'development' ? 2000 : 500), // 开发环境2000次，生产环境500次
   message: {
     error: 'Too many requests from this IP, please try again later.'
   },
@@ -83,9 +83,13 @@ const limiter = rateLimit({
     return process.env.NODE_ENV === 'test';
   },
   // 使用更精确的 key 生成器，避免所有请求被算作同一个IP
+  // 注意：使用 IP + 路径 + 查询参数作为 key，但移除分页参数以避免分页请求被单独计数
   keyGenerator: (req) => {
+    // 提取路径（不包含查询参数）
+    const path = req.path;
     // 使用 IP + 路径作为 key，这样不同路径的请求不会互相影响
-    return `${req.ip}-${req.path}`;
+    // 但同一路径的不同查询参数（如分页）会被视为同一类请求
+    return `${req.ip}-${path}`;
   },
   // 开发环境使用内存存储（默认），生产环境可以使用 Redis 等
   store: undefined // 使用默认的内存存储
