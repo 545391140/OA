@@ -28,19 +28,16 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
 
   // 过滤状态
   const [directOnly, setDirectOnly] = useState(false);
-  const [transferAnchorEl, setTransferAnchorEl] = useState(null);
   const [airlineAnchorEl, setAirlineAnchorEl] = useState(null);
   const [timeAnchorEl, setTimeAnchorEl] = useState(null);
   const [airportAnchorEl, setAirportAnchorEl] = useState(null);
   const [cabinAnchorEl, setCabinAnchorEl] = useState(null);
-  const [moreAnchorEl, setMoreAnchorEl] = useState(null);
   
   // 排序状态
   const [sortAnchorEl, setSortAnchorEl] = useState(null);
   const [currentSort, setCurrentSort] = useState('price-low'); // 默认低价优先
 
   // 选中的过滤条件
-  const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [selectedAirlines, setSelectedAirlines] = useState([]);
   const [selectedTimeRange, setSelectedTimeRange] = useState(null);
   const [selectedAirport, setSelectedAirport] = useState(null);
@@ -88,7 +85,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
     setDirectOnly(checked);
     onFilterChange({
       directOnly: checked,
-      transfer: selectedTransfer,
+      transfer: null,
       airlines: selectedAirlines,
       timeRange: selectedTimeRange,
       airport: selectedAirport,
@@ -96,19 +93,6 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
     });
   };
 
-  // 处理中转筛选
-  const handleTransferSelect = (value) => {
-    setSelectedTransfer(value);
-    setTransferAnchorEl(null);
-    onFilterChange({
-      directOnly,
-      transfer: value,
-      airlines: selectedAirlines,
-      timeRange: selectedTimeRange,
-      airport: selectedAirport,
-      cabin: selectedCabin,
-    });
-  };
 
   // 处理航空公司筛选
   const handleAirlineToggle = (airlineCode) => {
@@ -118,7 +102,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
     setSelectedAirlines(newSelected);
     onFilterChange({
       directOnly,
-      transfer: selectedTransfer,
+      transfer: null,
       airlines: newSelected,
       timeRange: selectedTimeRange,
       airport: selectedAirport,
@@ -132,7 +116,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
     setTimeAnchorEl(null);
     onFilterChange({
       directOnly,
-      transfer: selectedTransfer,
+      transfer: null,
       airlines: selectedAirlines,
       timeRange: range,
       airport: selectedAirport,
@@ -146,7 +130,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
     setAirportAnchorEl(null);
     onFilterChange({
       directOnly,
-      transfer: selectedTransfer,
+      transfer: null,
       airlines: selectedAirlines,
       timeRange: selectedTimeRange,
       airport,
@@ -160,7 +144,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
     setCabinAnchorEl(null);
     onFilterChange({
       directOnly,
-      transfer: selectedTransfer,
+      transfer: null,
       airlines: selectedAirlines,
       timeRange: selectedTimeRange,
       airport: selectedAirport,
@@ -178,7 +162,6 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
   // 清除所有筛选
   const handleClearFilters = () => {
     setDirectOnly(false);
-    setSelectedTransfer(null);
     setSelectedAirlines([]);
     setSelectedTimeRange(null);
     setSelectedAirport(null);
@@ -195,33 +178,33 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
 
   // 时间范围选项
   const timeRanges = [
-    { value: 'morning', label: '06:00-12:00', start: 6, end: 12 },
-    { value: 'afternoon', label: '12:00-18:00', start: 12, end: 18 },
-    { value: 'evening', label: '18:00-24:00', start: 18, end: 24 },
-    { value: 'night', label: '00:00-06:00', start: 0, end: 6 },
+    { value: 'morning', label: t('flight.filter.timeRange.morning') || '06:00-12:00', start: 6, end: 12 },
+    { value: 'afternoon', label: t('flight.filter.timeRange.afternoon') || '12:00-18:00', start: 12, end: 18 },
+    { value: 'evening', label: t('flight.filter.timeRange.evening') || '18:00-24:00', start: 18, end: 24 },
+    { value: 'night', label: t('flight.filter.timeRange.night') || '00:00-06:00', start: 0, end: 6 },
   ];
 
   // 舱位选项
   const cabinOptions = [
-    { value: 'ECONOMY', label: '经济舱' },
-    { value: 'PREMIUM_ECONOMY', label: '超级经济舱' },
-    { value: 'BUSINESS', label: '商务舱' },
-    { value: 'FIRST', label: '头等舱' },
+    { value: 'ECONOMY', label: t('flight.filter.cabin.economy') || '经济舱' },
+    { value: 'PREMIUM_ECONOMY', label: t('flight.filter.cabin.premiumEconomy') || '超级经济舱' },
+    { value: 'BUSINESS', label: t('flight.filter.cabin.business') || '商务舱' },
+    { value: 'FIRST', label: t('flight.filter.cabin.first') || '头等舱' },
   ];
 
   // 排序选项
   const sortOptions = [
-    { value: 'price-low', label: '低价优先' },
-    { value: 'price-high', label: '高价优先' },
-    { value: 'departure-early', label: '起飞时间早晚' },
-    { value: 'departure-late', label: '起飞时间晚早' },
-    { value: 'arrival-early', label: '到达时间早晚' },
-    { value: 'arrival-late', label: '到达时间晚早' },
-    { value: 'duration-short', label: '飞行时长短-长' },
-    { value: 'duration-long', label: '飞行时长长-短' },
+    { value: 'price-low', label: t('flight.filter.sort.priceLow') || '低价优先' },
+    { value: 'price-high', label: t('flight.filter.sort.priceHigh') || '高价优先' },
+    { value: 'departure-early', label: t('flight.filter.sort.departureEarly') || '起飞时间早晚' },
+    { value: 'departure-late', label: t('flight.filter.sort.departureLate') || '起飞时间晚早' },
+    { value: 'arrival-early', label: t('flight.filter.sort.arrivalEarly') || '到达时间早晚' },
+    { value: 'arrival-late', label: t('flight.filter.sort.arrivalLate') || '到达时间晚早' },
+    { value: 'duration-short', label: t('flight.filter.sort.durationShort') || '飞行时长短-长' },
+    { value: 'duration-long', label: t('flight.filter.sort.durationLong') || '飞行时长长-短' },
   ];
 
-  const hasActiveFilters = directOnly || selectedTransfer || selectedAirlines.length > 0 || 
+  const hasActiveFilters = directOnly || selectedAirlines.length > 0 || 
     selectedTimeRange || selectedAirport || selectedCabin;
 
   return (
@@ -244,39 +227,11 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
               size="small"
             />
           }
-          label="直飞/经停"
+          label={t('flight.filter.directOnly') || '直飞/经停'}
           sx={{ mr: 2 }}
         />
 
         <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-        {/* 中转筛选 */}
-        <Button
-          variant="outlined"
-          size="small"
-          endIcon={<KeyboardArrowDownIcon />}
-          onClick={(e) => setTransferAnchorEl(e.currentTarget)}
-          sx={{
-            bgcolor: selectedTransfer ? 'primary.light' : 'transparent',
-            color: selectedTransfer ? 'primary.main' : 'text.primary',
-            borderColor: '#d1d5db',
-            '&:hover': {
-              borderColor: '#9ca3af',
-              bgcolor: 'action.hover',
-            },
-          }}
-        >
-          {selectedTransfer === 'direct' ? '直飞' : selectedTransfer === 'transfer' ? '中转' : '中转'}
-        </Button>
-        <Menu
-          anchorEl={transferAnchorEl}
-          open={Boolean(transferAnchorEl)}
-          onClose={() => setTransferAnchorEl(null)}
-        >
-          <MenuItem onClick={() => handleTransferSelect('direct')}>直飞</MenuItem>
-          <MenuItem onClick={() => handleTransferSelect('transfer')}>中转</MenuItem>
-          <MenuItem onClick={() => handleTransferSelect(null)}>不限</MenuItem>
-        </Menu>
 
         {/* 航空公司筛选 */}
         <Button
@@ -294,7 +249,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             },
           }}
         >
-          航空公司{selectedAirlines.length > 0 ? ` (${selectedAirlines.length})` : ''}
+          {t('flight.filter.airline') || '航空公司'}{selectedAirlines.length > 0 ? ` (${selectedAirlines.length})` : ''}
         </Button>
         <Menu
           anchorEl={airlineAnchorEl}
@@ -336,7 +291,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             },
           }}
         >
-          {selectedTimeRange ? timeRanges.find(r => r.value === selectedTimeRange)?.label : '起抵时间'}
+          {selectedTimeRange ? timeRanges.find(r => r.value === selectedTimeRange)?.label : (t('flight.filter.timeRange') || '起抵时间')}
         </Button>
         <Menu
           anchorEl={timeAnchorEl}
@@ -352,7 +307,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
               {range.label}
             </MenuItem>
           ))}
-          <MenuItem onClick={() => handleTimeRangeSelect(null)}>不限</MenuItem>
+          <MenuItem onClick={() => handleTimeRangeSelect(null)}>{t('common.all') || '不限'}</MenuItem>
         </Menu>
 
         {/* 机场筛选 */}
@@ -371,7 +326,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             },
           }}
         >
-          {selectedAirport || '机场'}
+          {selectedAirport || (t('flight.filter.airport') || '机场')}
         </Button>
         <Menu
           anchorEl={airportAnchorEl}
@@ -390,7 +345,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
               {airport}
             </MenuItem>
           ))}
-          <MenuItem onClick={() => handleAirportSelect(null)}>不限</MenuItem>
+          <MenuItem onClick={() => handleAirportSelect(null)}>{t('common.all') || '不限'}</MenuItem>
         </Menu>
 
         {/* 舱位筛选 */}
@@ -409,7 +364,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             },
           }}
         >
-          {selectedCabin ? cabinOptions.find(c => c.value === selectedCabin)?.label : '舱位'}
+          {selectedCabin ? cabinOptions.find(c => c.value === selectedCabin)?.label : (t('flight.filter.cabin') || '舱位')}
         </Button>
         <Menu
           anchorEl={cabinAnchorEl}
@@ -425,22 +380,8 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
               {cabin.label}
             </MenuItem>
           ))}
-          <MenuItem onClick={() => handleCabinSelect(null)}>不限</MenuItem>
+          <MenuItem onClick={() => handleCabinSelect(null)}>{t('common.all') || '不限'}</MenuItem>
         </Menu>
-
-        {/* 更多筛选（占位） */}
-        <Button
-          variant="outlined"
-          size="small"
-          endIcon={<KeyboardArrowDownIcon />}
-          disabled
-          sx={{
-            borderColor: '#d1d5db',
-            color: 'text.disabled',
-          }}
-        >
-          更多
-        </Button>
 
         {/* 分隔线 */}
         <Box sx={{ flex: 1 }} />
@@ -457,7 +398,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             px: 1,
           }}
         >
-          {sortOptions.find(s => s.value === currentSort)?.label || '排序'}
+          {sortOptions.find(s => s.value === currentSort)?.label || (t('flight.filter.sort') || '排序')}
         </Button>
         <Menu
           anchorEl={sortAnchorEl}
@@ -483,7 +424,7 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             onClick={handleClearFilters}
             sx={{ color: 'text.secondary', minWidth: 'auto', px: 1 }}
           >
-            清除
+            {t('common.clearFilters') || '清除'}
           </Button>
         )}
       </Box>

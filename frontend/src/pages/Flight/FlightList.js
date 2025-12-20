@@ -52,10 +52,10 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
     const minutes = match[2] || 0;
     
     const parts = [];
-    if (hours > 0) parts.push(`${hours}小时`);
-    if (minutes > 0) parts.push(`${minutes}分钟`);
+    if (hours > 0) parts.push(`${hours}${t('flight.list.hours') || '小时'}`);
+    if (minutes > 0) parts.push(`${minutes}${t('flight.list.minutes') || '分钟'}`);
     
-    return parts.join('') || '0分钟';
+    return parts.join('') || `0${t('flight.list.minutes') || '分钟'}`;
   };
 
   // 计算中转时间
@@ -71,10 +71,10 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
     const minutes = diffMinutes % 60;
     
     const parts = [];
-    if (hours > 0) parts.push(`${hours}小时`);
-    if (minutes > 0) parts.push(`${minutes}分钟`);
+    if (hours > 0) parts.push(`${hours}${t('flight.list.hours') || '小时'}`);
+    if (minutes > 0) parts.push(`${minutes}${t('flight.list.minutes') || '分钟'}`);
     
-    return parts.join('') || '0分钟';
+    return parts.join('') || `0${t('flight.list.minutes') || '分钟'}`;
   };
 
   // 检查是否跨天
@@ -340,7 +340,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                 }}
                 onClick={() => onSelectFlight && onSelectFlight(flight)}
               >
-                <CardContent>
+                <CardContent sx={{ py: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, flexWrap: { xs: 'wrap', md: 'nowrap' }, '& > *:nth-of-type(3)': { mr: { xs: 0, md: 2 } } }}>
                     {flight.itineraries && flight.itineraries.map((itinerary, idx) => {
                       const segments = itinerary.segments || [];
@@ -386,7 +386,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                       return (
                         <React.Fragment key={idx}>
                           {/* 1. 航空公司和航班号（左侧）- 中转航班显示所有航段 */}
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: { xs: '100%', md: 180 }, order: { xs: 1, md: 1 }, gap: isTransfer ? 1 : 0 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: { xs: '100%', md: 180 }, order: { xs: 1, md: 1 }, gap: isTransfer ? 1 : 0 }}>
                             {segments.map((segment, segIdx) => {
                               const segAirlineInfo = getAirlineInfo(segment.carrierCode);
                               return (
@@ -459,7 +459,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                           </Box>
 
                           {/* 2. 出发地-目的地（包含中转信息） */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, width: { xs: '100%', md: 240 }, order: { xs: 2, md: 2 }, flex: { xs: '1 1 100%', md: '0 0 auto' }, justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0, width: { xs: '100%', md: 240 }, order: { xs: 2, md: 2 }, flex: { xs: '1 1 100%', md: '0 0 auto' } }}>
                             {/* 出发地 */}
                             <Box sx={{ flex: '0 0 auto', textAlign: 'left', mr: 0.5 }}>
                               <Typography variant="h6" color="primary" sx={{ fontWeight: 600, fontSize: { xs: '1rem', md: '1.1rem' }, lineHeight: 1.2 }}>
@@ -499,13 +499,13 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                                       whiteSpace: 'nowrap'
                                     }}
                                   >
-                                    中转{transferTimes[0].time}
+                                    {t('flight.list.transfer') || '中转'}{transferTimes[0].time}
                                   </Typography>
                                 )}
                                 
                                 {/* 中转信息气泡（中间） */}
                                 <Chip
-                                  label={`转${transferCount}次`}
+                                  label={transferCount === 1 ? (t('flight.list.transferOnce') || '转1次') : (t('flight.list.transferCount', { count: transferCount }) || `转${transferCount}次`)}
                                   size="small"
                                   sx={{
                                     bgcolor: '#ff9800',
@@ -537,7 +537,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                                 </Typography>
                                 {dayOffset && (
                                   <Typography variant="caption" color="primary" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
-                                    +{dayOffset}天
+                                    +{dayOffset}{t('flight.list.days') || '天'}
                                   </Typography>
                                 )}
                               </Box>
@@ -548,7 +548,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                           </Box>
 
                           {/* 3. 起飞时间 飞行时长 */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: { xs: '100%', md: 180 }, order: { xs: 3, md: 3 }, whiteSpace: 'nowrap', ml: { xs: 0, md: 3 }, mr: { xs: 0, md: 2 } }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: { xs: '100%', md: 180 }, order: { xs: 3, md: 3 }, whiteSpace: 'nowrap', ml: { xs: 0, md: 3 }, mr: { xs: 0, md: 2 }, minHeight: '100%' }}>
                             {/* 起飞时间（左侧） */}
                             <Box sx={{ textAlign: 'left', flex: '0 0 auto' }}>
                               <Typography variant="body1" color="text.primary" sx={{ fontWeight: 600, fontSize: { xs: '0.95rem', md: '1rem' }, whiteSpace: 'nowrap' }}>
@@ -572,7 +572,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                           </Box>
 
                           {/* 4. 价格和可预订座位 */}
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-start', md: 'flex-end' }, width: { xs: '100%', md: 140 }, order: { xs: 4, md: 4 }, ml: { xs: 0, md: 'auto' } }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-start', md: 'flex-end' }, justifyContent: 'center', width: { xs: '100%', md: 140 }, order: { xs: 4, md: 4 }, ml: { xs: 0, md: 'auto' } }}>
                             <Typography variant="h5" color="primary" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
                               {formatPrice(flight.price)}
                             </Typography>
@@ -584,7 +584,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                           </Box>
 
                           {/* 操作按钮 */}
-                          <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', md: 200 }, order: { xs: 5, md: 5 }, justifyContent: { xs: 'flex-start', md: 'flex-end' }, flexShrink: 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', md: 200 }, order: { xs: 5, md: 5 }, justifyContent: { xs: 'flex-start', md: 'flex-end' }, flexShrink: 0 }}>
                             <Button
                               variant="contained"
                               size="medium"
