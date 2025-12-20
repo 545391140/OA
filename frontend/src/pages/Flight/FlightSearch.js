@@ -110,128 +110,151 @@ const FlightSearch = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Paper elevation={3} sx={{ p: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+      <Container maxWidth="xl">
+        <Box sx={{ py: 3 }}>
+          {/* Header */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h4" gutterBottom>
+              {t('flight.search.title') || '机票搜索'}
+            </Typography>
             <Button
               startIcon={<ArrowBackIcon />}
               onClick={() => navigate(-1)}
-              sx={{ mr: 2 }}
+              variant="outlined"
             >
               {t('common.back')}
             </Button>
-            <Typography variant="h4">
-              {t('flight.search.title') || '机票搜索'}
-            </Typography>
           </Box>
 
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={3}>
-              <RegionSelector
-                label={t('flight.search.origin') || '出发地'}
-                value={originLocation}
-                onChange={(location) => setOriginLocation(location)}
-                placeholder={t('flight.search.originPlaceholder') || '搜索机场或城市'}
-                transportationType="flight"
-                allowedTypes={['airport', 'city']}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <RegionSelector
-                label={t('flight.search.destination') || '目的地'}
-                value={destinationLocation}
-                onChange={(location) => setDestinationLocation(location)}
-                placeholder={t('flight.search.destinationPlaceholder') || '搜索机场或城市'}
-                transportationType="flight"
-                allowedTypes={['airport', 'city']}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <DatePicker
-                label={t('flight.search.departureDate') || '出发日期'}
-                value={searchParams.departureDate}
-                onChange={(date) => setSearchParams({ ...searchParams, departureDate: date })}
-                minDate={dayjs()}
-                slotProps={{ textField: { fullWidth: true } }}
-              />
-            </Grid>
-            {isRoundTrip && (
-              <Grid item xs={12} md={3}>
-                <DatePicker
-                  label={t('flight.search.returnDate') || '返程日期'}
-                  value={searchParams.returnDate}
-                  onChange={(date) => setSearchParams({ ...searchParams, returnDate: date })}
-                  minDate={searchParams.departureDate}
-                  slotProps={{ textField: { fullWidth: true } }}
+          {/* Search Form */}
+          <Paper sx={{ p: 2, pb: '48px', mb: 3, position: 'relative', overflow: 'visible' }}>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: { xs: 'wrap', md: 'nowrap' }, alignItems: 'flex-start' }}>
+              <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 auto' }, minWidth: { xs: '100%', md: 0 } }}>
+                <RegionSelector
+                  label={t('flight.search.origin') || '出发地'}
+                  value={originLocation}
+                  onChange={(location) => setOriginLocation(location)}
+                  placeholder={t('flight.search.originPlaceholder') || '搜索机场或城市'}
+                  transportationType="flight"
+                  allowedTypes={['airport', 'city']}
+                  required
                 />
-              </Grid>
-            )}
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>{t('flight.search.tripType') || '行程类型'}</InputLabel>
-                <Select
-                  value={isRoundTrip ? 'round' : 'oneway'}
-                  onChange={(e) => {
-                    setIsRoundTrip(e.target.value === 'round');
-                    if (e.target.value === 'oneway') {
-                      setSearchParams({ ...searchParams, returnDate: null });
-                    }
-                  }}
-                >
-                  <MenuItem value="oneway">{t('flight.search.oneWay') || '单程'}</MenuItem>
-                  <MenuItem value="round">{t('flight.search.roundTrip') || '往返'}</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                type="number"
-                label={t('flight.search.adults') || '成人'}
-                value={searchParams.adults}
-                onChange={(e) => setSearchParams({ ...searchParams, adults: parseInt(e.target.value) || 1 })}
-                inputProps={{ min: 1, max: 9 }}
-              />
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <TextField
-                fullWidth
-                type="number"
-                label={t('flight.search.children') || '儿童'}
-                value={searchParams.children}
-                onChange={(e) => setSearchParams({ ...searchParams, children: parseInt(e.target.value) || 0 })}
-                inputProps={{ min: 0, max: 9 }}
-              />
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>{t('flight.search.travelClass') || '舱位等级'}</InputLabel>
-                <Select
-                  value={searchParams.travelClass}
-                  onChange={(e) => setSearchParams({ ...searchParams, travelClass: e.target.value })}
-                >
-                  <MenuItem value="ECONOMY">{t('flight.search.economy') || '经济舱'}</MenuItem>
-                  <MenuItem value="PREMIUM_ECONOMY">{t('flight.search.premiumEconomy') || '超级经济舱'}</MenuItem>
-                  <MenuItem value="BUSINESS">{t('flight.search.business') || '商务舱'}</MenuItem>
-                  <MenuItem value="FIRST">{t('flight.search.first') || '头等舱'}</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
+              </Box>
+              <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 auto' }, minWidth: { xs: '100%', md: 0 } }}>
+                <RegionSelector
+                  label={t('flight.search.destination') || '目的地'}
+                  value={destinationLocation}
+                  onChange={(location) => setDestinationLocation(location)}
+                  placeholder={t('flight.search.destinationPlaceholder') || '搜索机场或城市'}
+                  transportationType="flight"
+                  allowedTypes={['airport', 'city']}
+                  required
+                />
+              </Box>
+              <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 auto' }, minWidth: { xs: '100%', md: 0 } }}>
+                <DatePicker
+                  label={t('flight.search.departureDate') || '出发日期'}
+                  value={searchParams.departureDate}
+                  onChange={(date) => setSearchParams({ ...searchParams, departureDate: date })}
+                  minDate={dayjs()}
+                  slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                />
+              </Box>
+              {isRoundTrip && (
+                <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 auto' }, minWidth: { xs: '100%', md: 0 } }}>
+                  <DatePicker
+                    label={t('flight.search.returnDate') || '返程日期'}
+                    value={searchParams.returnDate}
+                    onChange={(date) => setSearchParams({ ...searchParams, returnDate: date })}
+                    minDate={searchParams.departureDate}
+                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                  />
+                </Box>
+              )}
+              <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', md: '1 1 auto' }, minWidth: { xs: 'calc(50% - 8px)', md: 0 } }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('flight.search.tripType') || '行程类型'}</InputLabel>
+                  <Select
+                    value={isRoundTrip ? 'round' : 'oneway'}
+                    onChange={(e) => {
+                      setIsRoundTrip(e.target.value === 'round');
+                      if (e.target.value === 'oneway') {
+                        setSearchParams({ ...searchParams, returnDate: null });
+                      }
+                    }}
+                    label={t('flight.search.tripType') || '行程类型'}
+                  >
+                    <MenuItem value="oneway">{t('flight.search.oneWay') || '单程'}</MenuItem>
+                    <MenuItem value="round">{t('flight.search.roundTrip') || '往返'}</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', md: '1 1 auto' }, minWidth: { xs: 'calc(50% - 8px)', md: 0 } }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="number"
+                  label={t('flight.search.adults') || '成人'}
+                  value={searchParams.adults}
+                  onChange={(e) => setSearchParams({ ...searchParams, adults: parseInt(e.target.value) || 1 })}
+                  inputProps={{ min: 1, max: 9 }}
+                />
+              </Box>
+              <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', md: '1 1 auto' }, minWidth: { xs: 'calc(50% - 8px)', md: 0 } }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="number"
+                  label={t('flight.search.children') || '儿童'}
+                  value={searchParams.children}
+                  onChange={(e) => setSearchParams({ ...searchParams, children: parseInt(e.target.value) || 0 })}
+                  inputProps={{ min: 0, max: 9 }}
+                />
+              </Box>
+              <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', md: '1 1 auto' }, minWidth: { xs: 'calc(50% - 8px)', md: 0 } }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>{t('flight.search.travelClass') || '舱位等级'}</InputLabel>
+                  <Select
+                    value={searchParams.travelClass}
+                    onChange={(e) => setSearchParams({ ...searchParams, travelClass: e.target.value })}
+                    label={t('flight.search.travelClass') || '舱位等级'}
+                  >
+                    <MenuItem value="ECONOMY">{t('flight.search.economy') || '经济舱'}</MenuItem>
+                    <MenuItem value="PREMIUM_ECONOMY">{t('flight.search.premiumEconomy') || '超级经济舱'}</MenuItem>
+                    <MenuItem value="BUSINESS">{t('flight.search.business') || '商务舱'}</MenuItem>
+                    <MenuItem value="FIRST">{t('flight.search.first') || '头等舱'}</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            </Box>
+            {/* Search Button - Centered on new line */}
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              mt: 3,
+              position: 'absolute',
+              bottom: '-24px',
+              left: 0,
+              right: 0,
+              zIndex: 1
+            }}>
               <Button
-                fullWidth
                 variant="contained"
                 startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
                 onClick={handleSearch}
                 disabled={loading}
-                sx={{ height: '56px' }}
+                sx={{ 
+                  minWidth: '200px',
+                  height: '48px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  borderRadius: '24px'
+                }}
               >
                 {t('flight.search.search') || '搜索'}
               </Button>
-            </Grid>
-          </Grid>
+            </Box>
+          </Paper>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -249,7 +272,7 @@ const FlightSearch = () => {
               }}
             />
           )}
-        </Paper>
+        </Box>
       </Container>
     </LocalizationProvider>
   );
