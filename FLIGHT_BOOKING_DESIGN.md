@@ -1093,52 +1093,337 @@ exports.confirmPrice = async (req, res) => {
 }
 
 /**
- * 创建预订
+ * 创建预订（必须关联差旅申请）
  * @route POST /api/flights/bookings
+ * @access Private
  */
 exports.createBooking = async (req, res) => {
-  // 1. 验证请求数据
-  // 2. 关联差旅申请（如果提供travelId）
-  // 3. 调用 amadeusApiService.createFlightOrder
-  // 4. 保存预订记录到数据库
-  // 5. 更新关联的差旅申请
-  // 6. 发送通知
-  // 7. 返回预订结果
-}
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { travelId, flightOffer, travelers } = req.body;
+
+    // 1. 验证 travelId 必填
+    if (!travelId) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: 'travelId参数必填：机票预订必须关联差旅申请',
+      });
+    }
+
+    // 2. 验证差旅申请存在且属于当前用户
+    const travel = await Travel.findById(travelId).session(session);
+    if (!travel) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: '差旅申请不存在',
+      });
+    }
+
+    // 3. 数据权限检查
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
+    if (!hasAccess) {
+      await session.abortTransaction();
+      throw ErrorFactory.forbidden('无权访问该差旅申请');
+    }
+
+    // 4. 验证差旅申请状态允许添加预订
+    if (!['draft', 'approved'].includes(travel.status)) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: '当前差旅申请状态不允许添加预订',
+      });
+    }
+
+    // 5. 调用 Amadeus API 创建预订
+    const bookingResult = await amadeusApiService.createFlightOrder({
+      flightOffer,
+      travelers,
+    });
+
+    // 6. 保存预订记录到数据库
+    const flightBooking = await FlightBooking.create([{
+      travelId,
+      employee: req.user.id,
+      bookingReference: bookingResult.data.associatedRecords?.airline?.reference,
+      amadeusOrderId: bookingResult.data.id,
+      flightOffer: bookingResult.data.flightOffers[0],
+      travelers: bookingResult.data.travelers,
+      status: 'confirmed',
+      price: {
+        total: bookingResult.data.price?.total,
+        currency: bookingResult.data.price?.currency,
+        base: bookingResult.data.price?.base,
+      },
+    }], { session });
+
+    // 7. 更新差旅申请（在同一事务中）
+    const bookingCost = parseFloat(bookingResult.data.price?.total || 0);
+    
+    travel.bookings.push({
+      type: 'flight',
+      provider: 'Amadeus',
+      bookingReference: bookingResult.data.associatedRecords?.airline?.reference,
+      amadeusOrderId: bookingResult.data.id,
+      flightBookingId: flightBooking[0]._id,
+      cost: bookingCost,
+      currency: bookingResult.data.price?.currency || 'USD',
+      status: 'confirmed',
+      details: {
+        origin: flightOffer.itineraries[0]?.segments[0]?.departure?.iataCode,
+        destination: flightOffer.itineraries[0]?.segments[flightOffer.itineraries[0].segments.length - 1]?.arrival?.iataCode,
+        departureDate: flightOffer.itineraries[0]?.segments[0]?.departure?.at,
+        returnDate: flightOffer.itineraries[1]?.segments[0]?.departure?.at,
+        travelers: travelers.length,
+      },
+    });
+
+    travel.estimatedCost = (travel.estimatedCost || 0) + bookingCost;
+    await travel.save({ session });
+
+    // 8. 提交事务
+    await session.commitTransaction();
+
+    // 9. 发送通知
+    await notificationService.sendBookingConfirmation(req.user.id, flightBooking[0]);
+
+    res.json({
+      success: true,
+      data: flightBooking[0],
+      message: '机票预订成功',
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    logger.error('创建机票预订失败:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '创建机票预订失败',
+    });
+  } finally {
+    session.endSession();
+  }
+};
 
 /**
- * 获取预订列表
+ * 获取预订列表（支持按差旅申请筛选）
  * @route GET /api/flights/bookings
+ * @access Private
  */
 exports.getBookings = async (req, res) => {
-  // 1. 应用数据权限过滤
-  // 2. 查询数据库
-  // 3. 返回预订列表
-}
+  try {
+    const { travelId, status } = req.query;
+    
+    let query = {};
+    query.employee = req.user.id; // 数据权限：只能查看自己的预订
+    
+    if (travelId) {
+      query.travelId = travelId; // 按差旅申请筛选
+    }
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    const bookings = await FlightBooking.find(query)
+      .populate('travelId', 'travelNumber title status')
+      .populate('employee', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    res.json({
+      success: true,
+      count: bookings.length,
+      data: bookings,
+    });
+  } catch (error) {
+    logger.error('获取预订列表失败:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '获取预订列表失败',
+    });
+  }
+};
+
+/**
+ * 获取差旅申请的机票预订
+ * @route GET /api/travel/:id/flights
+ * @access Private
+ */
+exports.getTravelFlights = async (req, res) => {
+  try {
+    const travelId = req.params.id;
+    
+    const travel = await Travel.findById(travelId);
+    if (!travel) {
+      return res.status(404).json({
+        success: false,
+        message: '差旅申请不存在',
+      });
+    }
+    
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
+    if (!hasAccess) {
+      throw ErrorFactory.forbidden('无权访问该差旅申请');
+    }
+    
+    const bookings = await FlightBooking.find({ travelId })
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    const stats = {
+      total: bookings.length,
+      confirmed: bookings.filter(b => b.status === 'confirmed').length,
+      pending: bookings.filter(b => b.status === 'pending').length,
+      cancelled: bookings.filter(b => b.status === 'cancelled').length,
+      totalCost: bookings
+        .filter(b => b.status !== 'cancelled')
+        .reduce((sum, b) => sum + parseFloat(b.price?.total || 0), 0),
+    };
+    
+    res.json({
+      success: true,
+      data: bookings,
+      stats,
+    });
+  } catch (error) {
+    logger.error('获取差旅申请机票预订失败:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '获取机票预订失败',
+    });
+  }
+};
 
 /**
  * 获取预订详情
  * @route GET /api/flights/bookings/:id
+ * @access Private
  */
 exports.getBooking = async (req, res) => {
-  // 1. 验证权限
-  // 2. 查询数据库
-  // 3. 可选：从Amadeus同步最新状态
-  // 4. 返回详情
-}
+  try {
+    const booking = await FlightBooking.findById(req.params.id)
+      .populate('travelId', 'travelNumber title status')
+      .populate('employee', 'firstName lastName email');
+    
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: '预订记录不存在',
+      });
+    }
+    
+    // 数据权限检查
+    if (booking.employee.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
+      throw ErrorFactory.forbidden('无权访问该预订');
+    }
+    
+    res.json({
+      success: true,
+      data: booking,
+    });
+  } catch (error) {
+    logger.error('获取预订详情失败:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '获取预订详情失败',
+    });
+  }
+};
 
 /**
- * 取消预订
+ * 取消预订（同步更新差旅申请）
  * @route DELETE /api/flights/bookings/:id
+ * @access Private
  */
 exports.cancelBooking = async (req, res) => {
-  // 1. 验证权限和状态
-  // 2. 调用 amadeusApiService.cancelFlightOrder
-  // 3. 更新数据库记录
-  // 4. 更新关联的差旅申请
-  // 5. 发送通知
-  // 6. 返回结果
-}
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    const booking = await FlightBooking.findById(id).session(session);
+    if (!booking) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: '预订记录不存在',
+      });
+    }
+    
+    if (booking.employee.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
+      await session.abortTransaction();
+      throw ErrorFactory.forbidden('无权取消该预订');
+    }
+    
+    if (booking.status === 'cancelled') {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: '预订已取消',
+      });
+    }
+    
+    // 调用 Amadeus API 取消订单
+    if (booking.amadeusOrderId) {
+      try {
+        await amadeusApiService.cancelFlightOrder(booking.amadeusOrderId);
+      } catch (error) {
+        logger.error('Amadeus 取消订单失败:', error);
+      }
+    }
+    
+    // 更新预订记录
+    booking.status = 'cancelled';
+    booking.cancellationReason = reason;
+    booking.cancelledAt = new Date();
+    await booking.save({ session });
+    
+    // 更新关联的差旅申请
+    if (booking.travelId) {
+      const travel = await Travel.findById(booking.travelId).session(session);
+      if (travel) {
+        const bookingIndex = travel.bookings.findIndex(
+          b => b.flightBookingId && b.flightBookingId.toString() === booking._id.toString()
+        );
+        
+        if (bookingIndex !== -1) {
+          travel.bookings[bookingIndex].status = 'cancelled';
+        }
+        
+        if (booking.status === 'confirmed') {
+          const bookingCost = parseFloat(booking.price?.total || 0);
+          travel.estimatedCost = Math.max(0, (travel.estimatedCost || 0) - bookingCost);
+        }
+        
+        await travel.save({ session });
+      }
+    }
+    
+    await session.commitTransaction();
+    await notificationService.sendBookingCancellation(req.user.id, booking, reason);
+    
+    res.json({
+      success: true,
+      message: '预订已取消',
+      data: booking,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    logger.error('取消预订失败:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '取消预订失败',
+    });
+  } finally {
+    session.endSession();
+  }
+};
 ```
 
 ### 5.3 路由 (`flights.js`)
@@ -1173,6 +1458,20 @@ router.get('/bookings/:id', getBooking);          // 获取预订详情
 router.delete('/bookings/:id', cancelBooking);    // 取消预订（同步更新差旅申请）
 
 module.exports = router;
+```
+
+### 5.4 差旅申请路由扩展 (`routes/travel.js`)
+
+在现有的差旅申请路由中添加机票预订相关端点：
+
+```javascript
+// 在 travel.js 中添加
+const {
+  getTravelFlights  // 获取差旅申请的机票预订
+} = require('../controllers/flightController');
+
+// 获取差旅申请的机票预订
+router.get('/:id/flights', protect, loadUserRole, getTravelFlights);
 ```
 
 ### 5.4 差旅申请路由扩展 (`routes/travel.js`)
