@@ -2109,25 +2109,102 @@ curl http://localhost:3001/health
 - 开发环境：允许服务启动，但记录警告
 - 生产环境：如果配置缺失，应该阻止服务启动
 
-## 11. 测试计划
+## 11. 测试计划与验证结果
 
-### 11.1 API 连接测试（新增）
-- ✅ 配置验证测试
-- ✅ 连接测试（获取 Token）
-- ✅ 功能测试（航班搜索）
-- ✅ 健康检查端点测试
+### 11.1 API 连接测试（已完成 ✅）
 
-### 11.2 单元测试
+**测试日期**: 2025-12-20  
+**测试环境**: Test Environment  
+**测试状态**: ✅ **所有测试通过（5/5）**
+
+#### 11.1.1 测试结果统计
+
+| 测试项目 | 状态 | 说明 |
+|---------|------|------|
+| 配置验证 | ✅ 通过 | API Key 和 Secret 配置正确 |
+| OAuth 2.0 认证 | ✅ 通过 | 成功获取 Access Token（有效期 1799 秒） |
+| 航班搜索 API | ✅ 通过 | 成功搜索到航班报价，数据格式正确 |
+| 响应格式验证 | ✅ 通过 | 符合 Amadeus API 标准格式 |
+| 错误处理验证 | ✅ 通过 | 错误响应格式标准，错误信息完整 |
+
+#### 11.1.2 测试详情
+
+**1. 配置验证**
+- ✅ API Key 已配置（格式正确）
+- ✅ API Secret 已配置
+- ✅ 环境变量设置正确（test）
+- ✅ Base URL: `https://test.api.amadeus.com`
+
+**2. OAuth 2.0 认证**
+- ✅ 成功获取 Access Token
+- ✅ Token 类型: Bearer
+- ✅ Token 有效期: 1799 秒（约 30 分钟）
+- ✅ Token 格式: 28 字符（Amadeus API 标准格式）
+- ✅ 应用名称: Travle
+- ✅ 用户名: liuzhijiansun@gmail.com
+
+**3. 航班搜索 API**
+- ✅ API 调用成功
+- ✅ 返回数据格式正确
+- ✅ 数据结构完整（包含 id、price、itineraries、segments）
+- ✅ 测试路线: 北京 (PEK) → 纽约 (JFK)
+- ✅ 示例价格: $609.13 USD
+- ✅ 返回结果数: 5 个航班报价
+
+**4. 响应格式验证**
+- ✅ 响应包含 `data` 数组
+- ✅ 响应包含 `meta` 对象
+- ✅ Content-Type 正确（`application/vnd.amadeus+json`）
+
+**5. 错误处理验证**
+- ✅ 错误响应格式符合标准
+- ✅ HTTP 状态码正确（400）
+- ✅ 错误代码正确（477）
+- ✅ 错误信息详细（INVALID FORMAT）
+
+#### 11.1.3 测试脚本
+
+测试脚本位置: `backend/scripts/testAmadeusApi.js`
+
+**运行方式**:
+```bash
+# 运行测试
+npm run test:amadeus
+
+# 或直接运行
+node backend/scripts/testAmadeusApi.js
+```
+
+**测试输出**:
+- 控制台输出详细的测试结果
+- JSON 报告: `backend/logs/amadeus-api-test-report.json`
+- Markdown 报告: `backend/logs/amadeus-api-test-report.md`
+
+#### 11.1.4 测试结论
+
+✅ **所有关键测试通过！** Amadeus Self-Service APIs 可以正常使用，可以开始开发机票查询和预订功能。
+
+**验证的关键点**:
+- API 配置正确
+- 认证功能正常
+- 航班搜索功能正常
+- 数据格式符合标准
+- 错误处理完善
+
+### 11.2 单元测试（待实现）
+
 - Amadeus API 服务层测试
 - 控制器测试
 - 数据模型验证测试
 
-### 11.3 集成测试
+### 11.3 集成测试（待实现）
+
 - API 端点集成测试
 - 与差旅申请集成测试
 - 错误场景测试
 
-### 11.4 端到端测试
+### 11.4 端到端测试（待实现）
+
 - 完整的预订流程测试
 - 取消流程测试
 - 与差旅申请的完整流程测试
