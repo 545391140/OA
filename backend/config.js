@@ -60,5 +60,23 @@ module.exports = {
       throw new Error('❌ CTRIP_APP_SECURITY environment variable is required in production');
     }
     return 'dev-security-placeholder';
-  })()
+  })(),
+
+  // Amadeus API配置
+  // 生产环境必须设置环境变量
+  AMADEUS_API_KEY: process.env.AMADEUS_API_KEY || (() => {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('❌ AMADEUS_API_KEY environment variable is required in production');
+    }
+    // 开发环境可以使用测试密钥
+    return process.env.AMADEUS_API_KEY || '';
+  })(),
+  AMADEUS_API_SECRET: process.env.AMADEUS_API_SECRET || (() => {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('❌ AMADEUS_API_SECRET environment variable is required in production');
+    }
+    // 开发环境可以使用测试密钥
+    return process.env.AMADEUS_API_SECRET || '';
+  })(),
+  AMADEUS_API_ENV: process.env.AMADEUS_API_ENV || 'test' // test 或 production
 };
