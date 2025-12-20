@@ -49,7 +49,8 @@
 ```
 backend/
 ├── services/
-│   └── amadeusApiService.js      # Amadeus API 服务封装
+│   ├── amadeusApiService.js      # Amadeus API 服务封装
+│   └── externalApiService.js     # 外部API通用服务（抽离公共功能）
 ├── controllers/
 │   └── flightController.js        # 机票相关控制器
 ├── routes/
@@ -57,6 +58,8 @@ backend/
 ├── models/
 │   ├── Flight.js                  # 机票数据模型
 │   └── FlightBooking.js           # 预订记录模型
+├── utils/
+│   └── apiClient.js               # 通用API客户端工具（抽离公共功能）
 └── config.js                      # 配置（添加 Amadeus API 配置）
 
 frontend/
@@ -75,6 +78,33 @@ frontend/
 │   └── services/
 │       └── flightService.js        # 前端 API 服务
 ```
+
+### 2.3 公共功能抽离设计
+
+**设计原则：**
+- 避免重复实现相同的功能
+- 统一错误处理和重试机制
+- 统一认证和Token管理
+- 统一API调用封装
+
+**抽离的公共功能：**
+
+1. **外部API通用服务** (`utils/externalApiService.js`)
+   - OAuth 2.0 认证通用实现
+   - Token缓存和自动刷新
+   - 统一的重试机制
+   - 统一的错误处理
+
+2. **API客户端工具** (`utils/apiClient.js`)
+   - 统一的HTTP请求封装
+   - 请求拦截器（添加认证头）
+   - 响应拦截器（统一错误处理）
+   - 超时和重试配置
+
+3. **数据转换工具** (`utils/dataTransform.js`)
+   - 外部API数据格式转换
+   - 统一的数据验证
+   - 数据标准化处理
 
 ## 3. Amadeus API 集成
 
@@ -275,6 +305,254 @@ grant_type=client_credentials&client_id={API_KEY}&client_secret={API_SECRET}
 ```
 
 ## 5. 后端实现
+
+### 5.0 公共功能抽离
+
+#### 5.0.1 外部API通用服务 (`utils/externalApiService.js`)
+
+**目的：** 抽离携程API和Amadeus API的共同功能，避免重复实现
+
+**功能：**
+- OAuth 2.0 认证通用实现
+- Token缓存和自动刷新
+- 统一的重试机制
+- 统一的错误处理
+
+**实现：**
+
+```javascript
+/**
+ * 外部API通用服务
+ * 用于抽离携程API和Amadeus API的共同功能
+ */
+
+class ExternalApiService {
+  constructor(config) {
+    this.config = config;
+    this.tokenCache = {
+      token: null,
+      expiresAt: null,
+    };
+  }
+
+  /**
+   * 获取Access Token（通用OAuth 2.0实现）
+   */
+  async getAccessToken() {
+    // 检查缓存
+    if (this.tokenCache.token && this.tokenCache.expiresAt && 
+        Date.now() < this.tokenCache.expiresAt - 5 * 60 * 1000) {
+      return this.tokenCache.token;
+    }
+
+    // 获取新Token
+    const token = await this.fetchAccessToken();
+    
+    // 缓存Token
+    this.tokenCache = {
+      token,
+      expiresAt: Date.now() + (this.config.tokenExpiresIn || 1799) * 1000,
+    };
+
+    return token;
+  }
+
+  /**
+   * 刷新Token
+   */
+  async refreshAccessToken() {
+    this.tokenCache = { token: null, expiresAt: null };
+    return await this.getAccessToken();
+  }
+
+  /**
+   * 统一的重试机制
+   */
+  async requestWithRetry(requestFn, maxRetries = 1) {
+    let lastError;
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        return await requestFn();
+      } catch (error) {
+        lastError = error;
+        
+        // 如果是认证错误，尝试刷新Token后重试
+        if (error.response?.status === 401 && i < maxRetries) {
+          await this.refreshAccessToken();
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    throw lastError;
+  }
+}
+
+module.exports = ExternalApiService;
+```
+
+#### 5.0.2 API客户端工具 (`utils/apiClient.js`)
+
+**目的：** 统一HTTP请求封装，供所有外部API服务使用
+
+**功能：**
+- 统一的请求封装
+- 统一的错误处理
+- 统一的超时配置
+- 统一的日志记录
+
+**实现：**
+
+```javascript
+/**
+ * 通用API客户端
+ * 统一处理HTTP请求、错误处理、日志记录
+ */
+
+const axios = require('axios');
+const logger = require('./logger');
+
+class ApiClient {
+  constructor(baseURL, defaultHeaders = {}) {
+    this.client = axios.create({
+      baseURL,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+        ...defaultHeaders,
+      },
+    });
+
+    this.setupInterceptors();
+  }
+
+  setupInterceptors() {
+    // 请求拦截器
+    this.client.interceptors.request.use(
+      (config) => {
+        logger.debug(`[API] ${config.method.toUpperCase()} ${config.url}`);
+        return config;
+      },
+      (error) => {
+        logger.error('[API] Request error:', error);
+        return Promise.reject(error);
+      }
+    );
+
+    // 响应拦截器
+    this.client.interceptors.response.use(
+      (response) => {
+        return response;
+      },
+      (error) => {
+        logger.error('[API] Response error:', {
+          status: error.response?.status,
+          message: error.message,
+          url: error.config?.url,
+        });
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  async get(url, config = {}) {
+    return this.client.get(url, config);
+  }
+
+  async post(url, data, config = {}) {
+    return this.client.post(url, data, config);
+  }
+
+  async put(url, data, config = {}) {
+    return this.client.put(url, data, config);
+  }
+
+  async delete(url, config = {}) {
+    return this.client.delete(url, config);
+  }
+}
+
+module.exports = ApiClient;
+```
+
+#### 5.0.3 Amadeus API 服务使用公共功能
+
+**重构后的 `amadeusApiService.js`：**
+
+```javascript
+const ExternalApiService = require('../utils/externalApiService');
+const ApiClient = require('../utils/apiClient');
+const config = require('../config');
+const logger = require('../utils/logger');
+
+class AmadeusApiService extends ExternalApiService {
+  constructor() {
+    const apiConfig = {
+      apiKey: config.AMADEUS_API_KEY,
+      apiSecret: config.AMADEUS_API_SECRET,
+      env: config.AMADEUS_API_ENV || 'test',
+      tokenExpiresIn: 1799, // 30分钟
+    };
+
+    super(apiConfig);
+
+    this.baseURL = apiConfig.env === 'production'
+      ? 'https://api.amadeus.com'
+      : 'https://test.api.amadeus.com';
+
+    this.apiClient = new ApiClient(this.baseURL);
+  }
+
+  /**
+   * 获取Access Token（实现父类抽象方法）
+   */
+  async fetchAccessToken() {
+    const response = await this.apiClient.post(
+      '/v1/security/oauth2/token',
+      new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: this.config.apiKey,
+        client_secret: this.config.apiSecret,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
+
+    if (response.data && response.data.access_token) {
+      return response.data.access_token;
+    }
+    throw new Error('获取Access Token失败');
+  }
+
+  /**
+   * 搜索航班（使用公共的重试机制）
+   */
+  async searchFlightOffers(searchParams) {
+    return this.requestWithRetry(async () => {
+      const accessToken = await this.getAccessToken();
+      const response = await this.apiClient.get(
+        '/v2/shopping/flight-offers',
+        {
+          params: searchParams,
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/vnd.amadeus+json',
+          },
+        }
+      );
+      return response.data;
+    });
+  }
+
+  // ... 其他方法类似
+}
+
+module.exports = new AmadeusApiService();
+```
 
 ### 5.1 Amadeus API 服务 (`amadeusApiService.js`)
 
@@ -560,10 +838,13 @@ async function confirmFlightPrice(flightOffer) {
 **基于 Amadeus Flight Create Orders API 文档：**
 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-create-orders
 
+**重要：** 创建预订时必须关联差旅申请（travelId 必填）
+
 ```javascript
 /**
  * 创建机票预订
  * @param {Object} bookingData - 预订数据
+ * @param {String} bookingData.travelId - 必填：关联的差旅申请ID
  * @param {Object} bookingData.flightOffer - 航班报价（必须是通过价格确认API返回的）
  * @param {Array} bookingData.travelers - 乘客信息数组
  * @param {Object} bookingData.travelers[].dateOfBirth - 出生日期 (YYYY-MM-DD)
@@ -578,6 +859,10 @@ async function confirmFlightPrice(flightOffer) {
  * @returns {Promise<Object>} 预订结果
  */
 async function createFlightOrder(bookingData) {
+  // 验证 travelId 必填
+  if (!bookingData.travelId) {
+    throw new Error('travelId参数必填：机票预订必须关联差旅申请');
+  }
   try {
     const { flightOffer, travelers } = bookingData;
 
@@ -882,12 +1167,26 @@ router.post('/search', searchFlights);
 router.post('/confirm-price', confirmPrice);
 
 // 预订管理
-router.post('/bookings', createBooking);
-router.get('/bookings', getBookings);
-router.get('/bookings/:id', getBooking);
-router.delete('/bookings/:id', cancelBooking);
+router.post('/bookings', createBooking);           // 创建预订（必须关联差旅申请）
+router.get('/bookings', getBookings);              // 获取预订列表（支持按差旅申请筛选）
+router.get('/bookings/:id', getBooking);          // 获取预订详情
+router.delete('/bookings/:id', cancelBooking);    // 取消预订（同步更新差旅申请）
 
 module.exports = router;
+```
+
+### 5.4 差旅申请路由扩展 (`routes/travel.js`)
+
+在现有的差旅申请路由中添加机票预订相关端点：
+
+```javascript
+// 在 travel.js 中添加
+const {
+  getTravelFlights  // 获取差旅申请的机票预订
+} = require('../controllers/flightController');
+
+// 获取差旅申请的机票预订
+router.get('/:id/flights', protect, getTravelFlights);
 ```
 
 ## 6. 前端实现
@@ -965,25 +1264,188 @@ export const cancelBooking = (id, reason) => {
 
 ## 7. 与差旅申请集成
 
-### 7.1 集成点
+### 7.1 集成设计原则
 
-1. **在差旅申请中关联机票预订**
-   - 在 Travel 模型的 `bookings` 数组中添加机票预订记录
-   - 预订类型：`type: 'flight'`
-   - 存储 Amadeus 订单ID和预订参考号
+**核心原则：**
+- 机票预订必须与差旅申请关联（可选关联改为必填）
+- 机票预订是差旅申请的组成部分
+- 预订状态变更自动同步到差旅申请
+- 预算和费用自动关联
 
-2. **从差旅申请创建机票预订**
-   - 在差旅申请详情页提供"预订机票"按钮
-   - 自动填充出发地、目的地、日期等信息
+### 7.2 数据关联设计
 
-3. **预算关联**
-   - 机票预订费用自动关联到差旅申请的 `estimatedCost`
-   - 支持多程机票的预算分配
+#### 7.2.1 FlightBooking 模型关联
 
-### 7.2 数据同步
+```javascript
+{
+  _id: ObjectId,
+  travelId: {
+    type: ObjectId,
+    ref: 'Travel',
+    required: true,  // 必填：必须关联差旅申请
+    index: true      // 添加索引提高查询性能
+  },
+  employee: {
+    type: ObjectId,
+    ref: 'User',
+    required: true
+  },
+  // ... 其他字段
+}
+```
 
-- 机票预订状态变更时，同步更新差旅申请状态
-- 取消机票时，更新差旅申请的预算和状态
+#### 7.2.2 Travel 模型扩展
+
+Travel 模型已有 `bookings` 数组，需要确保：
+- 机票预订创建时，自动添加到 Travel.bookings
+- 预订类型：`type: 'flight'`
+- 存储完整的预订信息：
+  ```javascript
+  {
+    type: 'flight',
+    provider: 'Amadeus',
+    bookingReference: String,      // Amadeus 预订参考号
+    amadeusOrderId: String,        // Amadeus 订单ID
+    flightBookingId: ObjectId,     // 关联的 FlightBooking 记录ID
+    cost: Number,
+    currency: String,
+    status: String,                // pending, confirmed, cancelled
+    details: {
+      origin: String,
+      destination: String,
+      departureDate: Date,
+      returnDate: Date,
+      travelers: Array
+    }
+  }
+  ```
+
+### 7.3 业务流程集成
+
+#### 7.3.1 从差旅申请创建机票预订
+
+**流程：**
+1. 用户在差旅申请详情页点击"预订机票"
+2. 系统自动填充搜索条件：
+   - 出发地：从 `outbound.departure` 或 `destination` 获取
+   - 目的地：从 `outbound.destination` 获取
+   - 出发日期：从 `outbound.date` 或 `startDate` 获取
+   - 返程日期：从 `inbound.date` 或 `endDate` 获取（如果有）
+   - 乘客信息：从 `employee` 关联的用户信息获取
+3. 用户搜索并选择航班
+4. 创建预订时，自动关联 `travelId`
+5. 预订成功后，更新 Travel 模型：
+   - 添加到 `bookings` 数组
+   - 更新 `estimatedCost`（累加机票费用）
+   - 更新状态（如果所有预订都完成）
+
+#### 7.3.2 独立创建机票预订（必须关联差旅申请）
+
+**流程：**
+1. 用户在机票搜索页面创建预订
+2. **必须选择关联的差旅申请**（下拉选择或搜索）
+3. 验证差旅申请：
+   - 必须是当前用户的差旅申请
+   - 状态必须是 `draft` 或 `approved`
+   - 验证日期是否匹配
+4. 创建预订并关联
+5. 同步更新差旅申请
+
+#### 7.3.3 预订状态同步
+
+**自动同步机制：**
+- 预订创建成功 → 更新 Travel.bookings，状态为 `pending`
+- 预订确认成功 → 更新 Travel.bookings，状态为 `confirmed`
+- 预订取消 → 更新 Travel.bookings，状态为 `cancelled`，并从 `estimatedCost` 中扣除费用
+
+**同步时机：**
+- 创建预订时
+- 取消预订时
+- 定期同步（可选，通过定时任务同步 Amadeus 订单状态）
+
+### 7.4 API 集成点
+
+#### 7.4.1 创建预订 API
+
+```javascript
+POST /api/flights/bookings
+{
+  travelId: ObjectId,        // 必填：关联的差旅申请ID
+  flightOffer: Object,       // 航班报价
+  travelers: Array,          // 乘客信息
+  // ... 其他字段
+}
+```
+
+**验证逻辑：**
+1. 验证 `travelId` 存在且属于当前用户
+2. 验证差旅申请状态允许添加预订
+3. 验证日期匹配（可选，允许一定灵活性）
+4. 创建预订
+5. 更新 Travel 模型
+
+#### 7.4.2 获取差旅申请的机票预订
+
+```javascript
+GET /api/travel/:id/flights
+```
+
+**返回：**
+- 该差旅申请关联的所有机票预订
+- 预订状态汇总
+- 总费用统计
+
+#### 7.4.3 取消预订时的同步
+
+```javascript
+DELETE /api/flights/bookings/:id
+{
+  reason: String  // 取消原因
+}
+```
+
+**同步逻辑：**
+1. 取消 Amadeus 订单
+2. 更新 FlightBooking 状态
+3. 从 Travel.bookings 中移除或更新状态
+4. 从 Travel.estimatedCost 中扣除费用
+5. 发送通知
+
+### 7.5 数据一致性保证
+
+**事务处理：**
+- 使用 MongoDB 事务确保数据一致性
+- 预订创建和 Travel 更新在同一事务中
+- 如果 Travel 更新失败，回滚预订创建
+
+**错误处理：**
+- 如果 Travel 更新失败，记录错误日志
+- 提供手动同步接口
+- 定期检查数据一致性
+
+### 7.6 前端集成
+
+#### 7.6.1 差旅申请详情页
+
+**添加机票预订区域：**
+- 显示已关联的机票预订列表
+- "预订机票"按钮（跳转到机票搜索页，自动填充信息）
+- 预订状态和费用显示
+
+#### 7.6.2 机票预订页面
+
+**添加差旅申请选择：**
+- 必填字段：选择关联的差旅申请
+- 下拉选择：显示用户的所有可用差旅申请
+- 搜索功能：支持按差旅单号搜索
+- 自动填充：选择差旅申请后，自动填充搜索条件
+
+#### 7.6.3 预订管理页面
+
+**显示关联信息：**
+- 显示关联的差旅申请信息
+- 支持从差旅申请跳转到机票预订
+- 支持从机票预订跳转到差旅申请
 
 ## 8. 错误处理
 
