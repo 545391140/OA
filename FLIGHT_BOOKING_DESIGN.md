@@ -18,6 +18,7 @@
 - ✅ 机票预订
 - ✅ 预订管理（查看、取消）
 - ✅ 与差旅申请集成
+- ✅ 核销时根据差旅单号查询机票预订及费用
 
 ## 2. 架构设计
 
@@ -1996,6 +1997,133 @@ exports.getTravelFlights = async (req, res) => {
 };
 
 /**
+ * 根据差旅单号查询机票预订及费用（用于核销）
+ * @route GET /api/flights/bookings/by-travel-number/:travelNumber
+ * @access Private
+ * 
+ * 用途：在费用核销时，根据差旅单号查询该差旅申请关联的所有机票预订及费用汇总
+ */
+exports.getBookingsByTravelNumber = async (req, res) => {
+  try {
+    const { travelNumber } = req.params;
+    
+    if (!travelNumber) {
+      return res.status(400).json({
+        success: false,
+        message: '差旅单号不能为空',
+      });
+    }
+    
+    // 1. 根据差旅单号查找差旅申请
+    const travel = await Travel.findOne({ travelNumber })
+      .populate('employee', 'firstName lastName email');
+    
+    if (!travel) {
+      return res.status(404).json({
+        success: false,
+        message: `差旅单号 ${travelNumber} 不存在`,
+      });
+    }
+    
+    // 2. 数据权限检查
+    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
+    if (!hasAccess) {
+      throw ErrorFactory.forbidden('无权访问该差旅申请');
+    }
+    
+    // 3. 查询该差旅申请关联的所有机票预订
+    const bookings = await FlightBooking.find({ travelId: travel._id })
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    // 4. 计算费用汇总
+    const expenseSummary = {
+      // 预订统计
+      totalBookings: bookings.length,
+      confirmedBookings: bookings.filter(b => b.status === 'confirmed').length,
+      pendingBookings: bookings.filter(b => b.status === 'pending').length,
+      cancelledBookings: bookings.filter(b => b.status === 'cancelled').length,
+      
+      // 费用统计（只统计已确认且未取消的预订）
+      totalAmount: 0,
+      totalAmountByCurrency: {}, // 按货币分类统计
+      
+      // 可核销费用（已确认且未取消的预订）
+      reimbursableAmount: 0,
+      reimbursableBookings: [],
+    };
+    
+    bookings.forEach(booking => {
+      if (booking.status === 'confirmed' && booking.status !== 'cancelled') {
+        const amount = parseFloat(booking.price?.total || 0);
+        const currency = booking.price?.currency || 'USD';
+        
+        expenseSummary.totalAmount += amount;
+        
+        // 按货币分类统计
+        if (!expenseSummary.totalAmountByCurrency[currency]) {
+          expenseSummary.totalAmountByCurrency[currency] = 0;
+        }
+        expenseSummary.totalAmountByCurrency[currency] += amount;
+        
+        // 可核销费用
+        expenseSummary.reimbursableAmount += amount;
+        expenseSummary.reimbursableBookings.push({
+          bookingId: booking._id,
+          bookingReference: booking.bookingReference,
+          amadeusOrderId: booking.amadeusOrderId,
+          amount,
+          currency,
+          departureDate: booking.flightOffer?.itineraries?.[0]?.segments?.[0]?.departure?.at,
+          arrivalDate: booking.flightOffer?.itineraries?.[0]?.segments?.[booking.flightOffer.itineraries[0].segments.length - 1]?.arrival?.at,
+          origin: booking.flightOffer?.itineraries?.[0]?.segments?.[0]?.departure?.iataCode,
+          destination: booking.flightOffer?.itineraries?.[0]?.segments?.[booking.flightOffer.itineraries[0].segments.length - 1]?.arrival?.iataCode,
+          travelers: booking.travelers?.length || 0,
+          status: booking.status,
+        });
+      }
+    });
+    
+    // 5. 返回结果
+    res.json({
+      success: true,
+      data: {
+        travel: {
+          _id: travel._id,
+          travelNumber: travel.travelNumber,
+          title: travel.title,
+          status: travel.status,
+          employee: travel.employee,
+          startDate: travel.startDate,
+          endDate: travel.endDate,
+        },
+        bookings: bookings.map(booking => ({
+          _id: booking._id,
+          bookingReference: booking.bookingReference,
+          amadeusOrderId: booking.amadeusOrderId,
+          status: booking.status,
+          price: booking.price,
+          flightOffer: {
+            itineraries: booking.flightOffer?.itineraries || [],
+            price: booking.flightOffer?.price,
+          },
+          travelers: booking.travelers || [],
+          createdAt: booking.createdAt,
+          cancelledAt: booking.cancelledAt,
+        })),
+        expenseSummary,
+      },
+    });
+  } catch (error) {
+    logger.error('根据差旅单号查询机票预订失败:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || '查询机票预订失败',
+    });
+  }
+};
+
+/**
  * 获取预订详情
  * @route GET /api/flights/bookings/:id
  * @access Private
@@ -2132,6 +2260,7 @@ const {
   confirmPrice,
   createBooking,
   getBookings,
+  getBookingsByTravelNumber,
   getBooking,
   cancelBooking
 } = require('../controllers/flightController');
@@ -2149,10 +2278,11 @@ router.post('/search', searchFlights);
 router.post('/confirm-price', confirmPrice);
 
 // 预订管理
-router.post('/bookings', createBooking);           // 创建预订（必须关联差旅申请）
-router.get('/bookings', getBookings);              // 获取预订列表（支持按差旅申请筛选）
-router.get('/bookings/:id', getBooking);          // 获取预订详情
-router.delete('/bookings/:id', cancelBooking);    // 取消预订（同步更新差旅申请）
+router.post('/bookings', createBooking);                              // 创建预订（必须关联差旅申请）
+router.get('/bookings', getBookings);                                 // 获取预订列表（支持按差旅申请筛选）
+router.get('/bookings/by-travel-number/:travelNumber', getBookingsByTravelNumber); // 根据差旅单号查询预订（用于核销）
+router.get('/bookings/:id', getBooking);                              // 获取预订详情
+router.delete('/bookings/:id', cancelBooking);                        // 取消预订（同步更新差旅申请）
 
 module.exports = router;
 ```
@@ -2390,6 +2520,90 @@ GET /api/travel/:id/flights
 - 该差旅申请关联的所有机票预订
 - 预订状态汇总
 - 总费用统计
+
+#### 7.4.3 根据差旅单号查询机票预订及费用（核销用）
+
+```javascript
+GET /api/flights/bookings/by-travel-number/:travelNumber
+```
+
+**用途：**
+- 在费用核销（报销）流程中，根据差旅单号查询机票预订及费用
+- 支持按差旅单号快速查询，无需知道差旅申请的 ID
+
+**返回数据：**
+```json
+{
+  "success": true,
+  "data": {
+    "travel": {
+      "_id": "...",
+      "travelNumber": "TR-20251206-0001",
+      "title": "差旅申请标题",
+      "status": "approved",
+      "employee": {...},
+      "startDate": "2025-12-25",
+      "endDate": "2025-12-30"
+    },
+    "bookings": [
+      {
+        "_id": "...",
+        "bookingReference": "ABC123",
+        "amadeusOrderId": "...",
+        "status": "confirmed",
+        "price": {
+          "total": "609.13",
+          "currency": "USD"
+        },
+        "flightOffer": {...},
+        "travelers": [...],
+        "createdAt": "...",
+        "cancelledAt": null
+      }
+    ],
+    "expenseSummary": {
+      "totalBookings": 2,
+      "confirmedBookings": 2,
+      "pendingBookings": 0,
+      "cancelledBookings": 0,
+      "totalAmount": 1218.26,
+      "totalAmountByCurrency": {
+        "USD": 1218.26
+      },
+      "reimbursableAmount": 1218.26,
+      "reimbursableBookings": [
+        {
+          "bookingId": "...",
+          "bookingReference": "ABC123",
+          "amount": 609.13,
+          "currency": "USD",
+          "departureDate": "2025-12-25T10:00:00Z",
+          "arrivalDate": "2025-12-25T18:00:00Z",
+          "origin": "PEK",
+          "destination": "JFK",
+          "travelers": 1,
+          "status": "confirmed"
+        }
+      ]
+    }
+  }
+}
+```
+
+**费用汇总说明：**
+- `totalBookings`: 总预订数
+- `confirmedBookings`: 已确认的预订数
+- `cancelledBookings`: 已取消的预订数
+- `totalAmount`: 总费用（所有已确认且未取消的预订）
+- `totalAmountByCurrency`: 按货币分类的费用统计
+- `reimbursableAmount`: 可核销费用（已确认且未取消的预订）
+- `reimbursableBookings`: 可核销的预订列表（包含详细信息）
+
+**使用场景：**
+1. 费用核销时，用户输入差旅单号
+2. 系统自动查询该差旅单关联的所有机票预订
+3. 显示费用汇总和可核销金额
+4. 用户可以选择将机票费用添加到报销单中
 
 #### 7.4.3 取消预订时的同步
 
