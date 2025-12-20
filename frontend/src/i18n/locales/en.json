@@ -2334,7 +2334,7 @@
       "minutes": "m",
       "transfer": "Transfer",
       "transferOnce": "1 stop",
-      "transferCount": "{{count}} stops",
+      "transferCount": "{count} stops",
       "days": "d"
     },
     "filter": {

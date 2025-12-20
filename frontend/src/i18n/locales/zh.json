@@ -2345,7 +2345,7 @@
       "minutes": "分钟",
       "transfer": "中转",
       "transferOnce": "转1次",
-      "transferCount": "转{{count}}次",
+      "transferCount": "转{count}次",
       "days": "天"
     },
     "filter": {

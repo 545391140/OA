@@ -472,8 +472,8 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                             
                             {/* 中转信息（如果有） */}
                             {isTransfer ? (
-                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, position: 'relative', px: 0, flex: '1 1 auto', minWidth: 80 }}>
-                                {/* 连接线 */}
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', px: 0, flex: '1 1 auto', minWidth: 80, minHeight: '100%' }}>
+                                {/* 连接线 - 绝对定位在中间 */}
                                 <Box sx={{ 
                                   position: 'absolute', 
                                   top: '50%', 
@@ -485,44 +485,49 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                                   transform: 'translateY(-50%)'
                                 }} />
                                 
-                                {/* 中转时间（上方） */}
-                                {transferTimes.length > 0 && (
-                                  <Typography 
-                                    variant="caption" 
-                                    color="text.secondary" 
-                                    sx={{ 
-                                      fontSize: '0.7rem', 
-                                      zIndex: 1, 
-                                      bgcolor: 'background.paper', 
-                                      px: 0.5,
-                                      fontWeight: 500,
-                                      whiteSpace: 'nowrap'
-                                    }}
-                                  >
-                                    {t('flight.list.transfer') || '中转'}{transferTimes[0].time}
-                                  </Typography>
-                                )}
-                                
-                                {/* 中转信息气泡（中间） */}
-                                <Chip
-                                  label={transferCount === 1 ? (t('flight.list.transferOnce') || '转1次') : (t('flight.list.transferCount', { count: transferCount }) || `转${transferCount}次`)}
-                                  size="small"
-                                  sx={{
-                                    bgcolor: '#ff9800',
-                                    color: 'white',
-                                    fontSize: '0.7rem',
-                                    height: 22,
-                                    zIndex: 1,
-                                    fontWeight: 600,
-                                    borderRadius: '12px',
-                                    '& .MuiChip-label': {
-                                      px: 1
-                                    }
-                                  }}
-                                />
+                                {/* 内容容器 - 确保胶囊在横线下方 */}
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, position: 'relative', zIndex: 1 }}>
+                                  {/* 中转时间（横线上方） */}
+                                  {transferTimes.length > 0 && (
+                                    <Typography 
+                                      variant="caption" 
+                                      color="text.secondary" 
+                                      sx={{ 
+                                        fontSize: '0.7rem', 
+                                        bgcolor: 'background.paper', 
+                                        px: 0.5,
+                                        fontWeight: 500,
+                                        whiteSpace: 'nowrap',
+                                        lineHeight: 1,
+                                        mb: 0.5
+                                      }}
+                                    >
+                                      {t('flight.list.transfer') || '中转'}{transferTimes[0].time}
+                                    </Typography>
+                                  )}
+                                  
+                                  {/* 中转信息气泡（横线下方） */}
+                                  <Box sx={{ mt: transferTimes.length > 0 ? 0.5 : 0 }}>
+                                    <Chip
+                                      label={transferCount === 1 ? (t('flight.list.transferOnce') || '转1次') : (t('flight.list.transferCount', { count: transferCount }) || `转${transferCount}次`)}
+                                      size="small"
+                                      sx={{
+                                        bgcolor: '#ff9800',
+                                        color: 'white',
+                                        fontSize: '0.7rem',
+                                        height: 22,
+                                        fontWeight: 600,
+                                        borderRadius: '12px',
+                                        '& .MuiChip-label': {
+                                          px: 1
+                                        }
+                                      }}
+                                    />
+                                  </Box>
+                                </Box>
                               </Box>
                             ) : (
-                              <Box sx={{ flex: '0 0 auto', px: 0.5 }}>
+                              <Box sx={{ flex: '0 0 auto', px: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%' }}>
                                 <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500, fontSize: '1.2rem' }}>
                                   →
                                 </Typography>
@@ -536,7 +541,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                                   {arrivalInfo.city || arrivalInfo.name || arrivalCode}
                                 </Typography>
                                 {dayOffset && (
-                                  <Typography variant="caption" color="primary" sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
+                                  <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#ff9800' }}>
                                     +{dayOffset}{t('flight.list.days') || '天'}
                                   </Typography>
                                 )}
