@@ -56,8 +56,15 @@ const BookingForm = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
 
-  // 从路由状态获取航班信息
-  const { flight, searchParams } = location.state || {};
+  // 从路由状态获取航班信息和搜索条件
+  const { 
+    flight, 
+    searchParams,
+    searchResults,
+    originLocation,
+    destinationLocation,
+    isRoundTrip
+  } = location.state || {};
 
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -588,7 +595,26 @@ const BookingForm = () => {
         <Alert severity="error">
           {t('flight.booking.noFlightSelected') || '未选择航班，请先搜索并选择航班'}
         </Alert>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/flight/search')} sx={{ mt: 2 }}>
+        <Button 
+          startIcon={<ArrowBackIcon />} 
+          onClick={() => {
+            // 返回时传递搜索条件，以便恢复搜索结果
+            if (searchParams && originLocation && destinationLocation) {
+              navigate('/flight/search', {
+                state: {
+                  searchParams,
+                  searchResults,
+                  originLocation,
+                  destinationLocation,
+                  isRoundTrip
+                }
+              });
+            } else {
+              navigate('/flight/search');
+            }
+          }} 
+          sx={{ mt: 2 }}
+        >
           {t('common.back') || '返回'}
         </Button>
       </Container>
@@ -600,7 +626,26 @@ const BookingForm = () => {
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mr: 2 }}>
+            <Button 
+              startIcon={<ArrowBackIcon />} 
+              onClick={() => {
+                // 返回时传递搜索条件，以便恢复搜索结果
+                if (searchParams && originLocation && destinationLocation) {
+                  navigate('/flight/search', {
+                    state: {
+                      searchParams,
+                      searchResults,
+                      originLocation,
+                      destinationLocation,
+                      isRoundTrip
+                    }
+                  });
+                } else {
+                  navigate(-1);
+                }
+              }} 
+              sx={{ mr: 2 }}
+            >
               {t('common.back') || '返回'}
             </Button>
             <Typography variant="h4">

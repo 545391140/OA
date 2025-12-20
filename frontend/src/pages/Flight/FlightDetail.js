@@ -87,6 +87,10 @@ const FlightDetail = () => {
       state: {
         flight: confirmedPrice || flight,
         searchParams,
+        searchResults,
+        originLocation,
+        destinationLocation,
+        isRoundTrip
       },
     });
   };

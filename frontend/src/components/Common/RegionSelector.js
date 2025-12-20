@@ -965,20 +965,11 @@ const RegionSelector = ({
   // 热门城市相关状态
   const [showHotCities, setShowHotCities] = useState(false);
   
-  // 自动补全相关状态
-  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
-  const [showAutocomplete, setShowAutocomplete] = useState(false);
-  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
-  const [isComposing, setIsComposing] = useState(false); // 中文输入法组合状态
-  
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
-  const suggestionsRef = useRef(null);
   
   // 请求取消控制器
   const abortControllerRef = useRef(null);
-  const autocompleteAbortControllerRef = useRef(null);
-  const autocompleteTimeoutRef = useRef(null);
   
   // 搜索结果缓存（Map<keyword, {data, timestamp}>）
   const searchCacheRef = useRef(new Map());
@@ -1082,31 +1073,6 @@ const RegionSelector = ({
     return trimmed.length >= 3;
   }, []);
 
-  /**
-   * 检查是否满足自动补全的最小长度要求（比搜索要求更宽松）
-   * 中文至少1个字符，英文/拼音至少2个字符，代码至少1个字符
-   */
-  const isValidAutocompleteLength = useCallback((keyword) => {
-    if (!keyword || !keyword.trim()) {
-      return false;
-    }
-    
-    const trimmed = keyword.trim();
-    
-    // 检查是否是代码 - 使用预编译的正则表达式
-    if (isCodeFormat(trimmed, 1, 4)) {
-      return trimmed.length >= 1;
-    }
-    
-    // 检查是否包含中文字符 - 使用预编译的正则表达式和缓存
-    if (hasChineseChar(trimmed)) {
-      // 中文至少1个字符
-      return trimmed.length >= 1;
-    }
-    
-    // 英文/拼音至少2个字符
-    return trimmed.length >= 2;
-  }, []);
 
   /**
    * 转换位置数据为标准格式（提取重复代码）
@@ -1232,117 +1198,6 @@ const RegionSelector = ({
     });
   }, [cleanExpiredCache, getCacheKey]);
 
-  /**
-   * 获取自动补全建议（轻量级搜索，只返回少量结果）
-   */
-  const fetchAutocompleteSuggestions = useCallback(async (keyword) => {
-    if (!keyword || !keyword.trim()) {
-      setAutocompleteSuggestions([]);
-      setShowAutocomplete(false);
-      return;
-    }
-
-    const trimmedKeyword = keyword.trim();
-    
-    // 检查是否满足自动补全的最小长度要求
-    if (!isValidAutocompleteLength(trimmedKeyword)) {
-      setAutocompleteSuggestions([]);
-      setShowAutocomplete(false);
-      return;
-    }
-
-    // 取消之前的请求
-    if (autocompleteAbortControllerRef.current) {
-      autocompleteAbortControllerRef.current.abort();
-    }
-
-    const abortController = new AbortController();
-    autocompleteAbortControllerRef.current = abortController;
-
-    try {
-      // 检测输入类型：中文、拼音或英语 - 使用预编译的正则表达式和缓存
-      const hasChinese = hasChineseChar(trimmedKeyword);
-      const isPinyinOrEnglishVal = isPinyinOrEnglish(trimmedKeyword);
-      
-      const params = {
-        status: 'active',
-        search: trimmedKeyword,
-        page: 1,
-        limit: 8 // 自动补全只返回8条建议
-      };
-
-      // 如果输入是拼音或英语，添加参数告诉后端优先查询 enName 和 pinyin
-      if (isPinyinOrEnglishVal) {
-        params.searchPriority = 'enName_pinyin'; // 告诉后端优先查询 enName 和 pinyin
-      }
-
-      // 根据 allowedTypes 或交通工具类型添加过滤
-      if (allowedTypes && Array.isArray(allowedTypes) && allowedTypes.length > 0) {
-        // 如果只允许一种类型，直接在 API 请求中过滤
-        if (allowedTypes.length === 1) {
-          params.type = allowedTypes[0];
-        }
-        // 如果允许多种类型，不在 API 层面过滤，在结果中过滤
-      } else if (transportationType) {
-        switch (transportationType) {
-          case 'flight':
-            // 不限制type，返回机场和城市
-            break;
-          case 'train':
-            // 不限制type，返回火车站和城市
-            break;
-          case 'car':
-          case 'bus':
-            params.type = 'city';
-            break;
-        }
-      }
-
-      const response = await apiClient.get('/locations', {
-        params,
-        signal: abortController.signal
-      });
-
-      if (abortController.signal.aborted) {
-        return;
-      }
-
-      if (response.data && response.data.success) {
-        const locations = response.data.data || [];
-        let suggestions = locations
-          .map(transformLocationData)
-          .filter(location => location !== null);
-        
-        // 如果指定了 allowedTypes，过滤自动补全建议
-        if (allowedTypes && Array.isArray(allowedTypes) && allowedTypes.length > 0) {
-          suggestions = suggestions.filter(location => allowedTypes.includes(location.type));
-        }
-        
-        suggestions = suggestions.slice(0, 8); // 限制最多8条
-
-        // 只有在请求未被取消时才更新状态
-        if (!abortController.signal.aborted) {
-          setAutocompleteSuggestions(suggestions);
-          setShowAutocomplete(suggestions.length > 0);
-          setSelectedSuggestionIndex(-1);
-        }
-      } else {
-        if (!abortController.signal.aborted) {
-          setAutocompleteSuggestions([]);
-          setShowAutocomplete(false);
-        }
-      }
-    } catch (error) {
-      if (isCancelError(error) || abortController.signal.aborted) {
-        return;
-      }
-      // 自动补全失败不影响主搜索，静默处理
-      if (!abortController.signal.aborted) {
-        setAutocompleteSuggestions([]);
-        setShowAutocomplete(false);
-      }
-    }
-  }, [transportationType, transformLocationData, isValidAutocompleteLength, isCancelError]);
 
   // 从后端API搜索地理位置数据（按需搜索，提升性能）
   const searchLocationsFromAPI = useCallback(async (keyword) => {
@@ -1644,8 +1499,6 @@ const RegionSelector = ({
   useEffect(() => {
     if (!searchValue.trim()) {
       setFilteredLocations([]);
-      setAutocompleteSuggestions([]);
-      setShowAutocomplete(false);
       // 如果输入框有焦点，根据showHotCitiesOnFocus决定是否显示热门城市
       if (document.activeElement === inputRef.current) {
         if (showHotCitiesOnFocus) {
@@ -1673,17 +1526,11 @@ const RegionSelector = ({
       setFilteredLocations([]);
       setShowHotCities(false);
       setShowDropdown(true);
-      // 如果满足自动补全条件，只显示自动补全建议
-      if (isValidAutocompleteLength(searchValue)) {
-        // 自动补全建议已经在 handleInputChange 中获取
-        return;
-      }
       return;
     }
 
-    // 有搜索内容时，隐藏热门城市和自动补全，显示搜索结果
+    // 有搜索内容时，隐藏热门城市，显示搜索结果
     setShowHotCities(false);
-    setShowAutocomplete(false);
 
     // 防抖处理，避免频繁请求
     const timeoutId = setTimeout(() => {
@@ -1697,7 +1544,7 @@ const RegionSelector = ({
         abortControllerRef.current.abort();
       }
     };
-  }, [searchValue, searchLocationsFromAPI, isValidSearchLength, isValidAutocompleteLength, selectedLocation, isUserTyping]);
+  }, [searchValue, searchLocationsFromAPI, isValidSearchLength, selectedLocation, isUserTyping]);
 
   // 组件卸载时的清理
   useEffect(() => {
@@ -1705,13 +1552,6 @@ const RegionSelector = ({
       // 取消进行中的请求
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
-      }
-      if (autocompleteAbortControllerRef.current) {
-        autocompleteAbortControllerRef.current.abort();
-      }
-      // 清除防抖定时器
-      if (autocompleteTimeoutRef.current) {
-        clearTimeout(autocompleteTimeoutRef.current);
       }
     };
   }, []);
@@ -1788,45 +1628,11 @@ const RegionSelector = ({
     if (value.trim()) {
       setShowDropdown(true);
       setShowHotCities(false); // 有输入时隐藏热门城市
-      
-      // 如果满足自动补全条件，获取建议（使用防抖）
-      if (isValidAutocompleteLength(value)) {
-        // 清除之前的防抖定时器
-        if (autocompleteTimeoutRef.current) {
-          clearTimeout(autocompleteTimeoutRef.current);
-        }
-        
-        // 根据输入类型设置不同的防抖时间
-        // 拼音/英文输入：350ms（减少不必要的 API 请求）
-        // 中文输入：200ms（保持响应速度）
-        const trimmedValue = value.trim();
-        const isPinyinOrEnglishInput = isPinyinOrEnglish(trimmedValue);
-        const debounceTime = isPinyinOrEnglishInput ? 350 : 200;
-        
-        // 设置防抖
-        autocompleteTimeoutRef.current = setTimeout(() => {
-          fetchAutocompleteSuggestions(value);
-        }, debounceTime);
-      } else {
-        // 不满足自动补全条件，清除建议
-        if (autocompleteTimeoutRef.current) {
-          clearTimeout(autocompleteTimeoutRef.current);
-          autocompleteTimeoutRef.current = null;
-        }
-        setAutocompleteSuggestions([]);
-        setShowAutocomplete(false);
-      }
     } else {
       // 清空输入，清除所有状态
-      if (autocompleteTimeoutRef.current) {
-        clearTimeout(autocompleteTimeoutRef.current);
-        autocompleteTimeoutRef.current = null;
-      }
       // 清空上次搜索关键词
       lastSearchKeywordRef.current = '';
       setShowDropdown(false);
-      setAutocompleteSuggestions([]);
-      setShowAutocomplete(false);
       // 如果输入框有焦点，根据showHotCitiesOnFocus决定是否显示热门城市
       if (document.activeElement === inputRef.current) {
         if (showHotCitiesOnFocus) {
@@ -1837,104 +1643,8 @@ const RegionSelector = ({
         setShowDropdown(true);
       }
     }
-  }, [isValidAutocompleteLength, fetchAutocompleteSuggestions]);
+  }, [showHotCitiesOnFocus]);
 
-  // 处理键盘事件（用于自动补全导航）
-  const handleKeyDown = (event) => {
-    // 如果正在使用中文输入法，不处理导航键
-    if (isComposing) {
-      return;
-    }
-
-    // 如果显示自动补全建议
-    if (showAutocomplete && autocompleteSuggestions.length > 0) {
-      switch (event.key) {
-        case 'ArrowDown':
-          event.preventDefault();
-          setSelectedSuggestionIndex(prev => {
-            const nextIndex = prev < autocompleteSuggestions.length - 1 ? prev + 1 : prev;
-            // 滚动到选中的建议
-            if (suggestionsRef.current && nextIndex >= 0) {
-              const suggestionElement = suggestionsRef.current.children[nextIndex];
-              if (suggestionElement) {
-                suggestionElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-              }
-            }
-            return nextIndex;
-          });
-          break;
-        case 'ArrowUp':
-          event.preventDefault();
-          setSelectedSuggestionIndex(prev => {
-            const nextIndex = prev > 0 ? prev - 1 : -1;
-            // 滚动到选中的建议
-            if (suggestionsRef.current && nextIndex >= 0) {
-              const suggestionElement = suggestionsRef.current.children[nextIndex];
-              if (suggestionElement) {
-                suggestionElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-              }
-            }
-            return nextIndex;
-          });
-          break;
-        case 'Enter':
-          if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < autocompleteSuggestions.length) {
-            event.preventDefault();
-            const selectedSuggestion = autocompleteSuggestions[selectedSuggestionIndex];
-            handleSelectSuggestion(selectedSuggestion);
-          }
-          break;
-        case 'Escape':
-          event.preventDefault();
-          setShowAutocomplete(false);
-          setSelectedSuggestionIndex(-1);
-          break;
-        default:
-          break;
-      }
-    }
-  };
-
-  // 处理中文输入法组合开始
-  const handleCompositionStart = () => {
-    setIsComposing(true);
-  };
-
-  // 处理中文输入法组合结束
-  const handleCompositionEnd = () => {
-    setIsComposing(false);
-  };
-
-  // 选择自动补全建议
-  const handleSelectSuggestion = useCallback((suggestion) => {
-    const displayName = getDisplayName(suggestion);
-    const displayValue = suggestion.type === 'bus'
-      ? displayName
-      : `${displayName}${suggestion.code ? ` (${suggestion.code})` : ''}`;
-    
-    // 清除防抖定时器
-    if (autocompleteTimeoutRef.current) {
-      clearTimeout(autocompleteTimeoutRef.current);
-      autocompleteTimeoutRef.current = null;
-    }
-    
-    setSearchValue(displayValue);
-    setSelectedLocation(suggestion);
-    setIsUserTyping(false); // 选择建议后，标记为非用户输入状态
-    setShowAutocomplete(false);
-    setAutocompleteSuggestions([]);
-    setSelectedSuggestionIndex(-1);
-    // 清空上次搜索关键词，允许下次搜索
-    lastSearchKeywordRef.current = '';
-    
-    // 调用onChange回调
-    onChange(suggestion);
-    
-    // 触发完整搜索以获取更多结果
-    if (isValidSearchLength(displayName)) {
-      searchLocationsFromAPI(displayName);
-    }
-  }, [getDisplayName, isValidSearchLength, searchLocationsFromAPI, onChange]);
 
 
   // 处理热门城市选择
@@ -1965,98 +1675,6 @@ const RegionSelector = ({
     return organized;
   }, [filteredLocations, searchValue]);
 
-  // 渲染自动补全建议
-  const renderAutocompleteSuggestions = () => {
-    if (!showAutocomplete || autocompleteSuggestions.length === 0) {
-      return null;
-    }
-
-    return (
-      <Box sx={{ p: 0 }}>
-        <Box sx={{ px: 2, py: 1, borderBottom: '1px solid #e5e7eb' }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
-            搜索建议
-          </Typography>
-        </Box>
-        <List ref={suggestionsRef} sx={{ p: 0, maxHeight: 300, overflowY: 'auto' }}>
-          {autocompleteSuggestions.map((suggestion, index) => {
-            const isSelected = index === selectedSuggestionIndex;
-            return (
-              <ListItem
-                key={suggestion.id || suggestion._id}
-                button
-                onClick={() => handleSelectSuggestion(suggestion)}
-                onMouseEnter={() => setSelectedSuggestionIndex(index)}
-                sx={{
-                  py: 1,
-                  px: 2,
-                  bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  {getTypeIcon(suggestion.type)}
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      <Typography variant="body2" sx={{ fontWeight: isSelected ? 600 : 400 }}>
-                        {getDisplayName(suggestion)}
-                      </Typography>
-                      {/* 城市类型显示国家代码，其他类型显示编码 */}
-                      {suggestion.type === 'city' && suggestion.countryCode ? (
-                        <Chip
-                          label={suggestion.countryCode}
-                          size="small"
-                          variant="outlined"
-                          sx={{ height: 18, fontSize: '0.7rem' }}
-                        />
-                      ) : suggestion.code && suggestion.type !== 'bus' ? (
-                        <Chip
-                          label={suggestion.code}
-                          size="small"
-                          variant="outlined"
-                          sx={{ height: 18, fontSize: '0.7rem' }}
-                        />
-                      ) : null}
-                      {/* 右侧标识区域（无机场标识显示在最右侧） */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 'auto' }}>
-                        {/* 城市类型显示无机场标识 */}
-                        {suggestion.type === 'city' && suggestion.noAirport ? (
-                          <Chip
-                            label="无机场"
-                            size="small"
-                            color="warning"
-                            variant="outlined"
-                            sx={{ 
-                              height: 18, 
-                              fontSize: '0.7rem',
-                              fontWeight: 500
-                            }}
-                          />
-                        ) : null}
-                      </Box>
-                    </Box>
-                  }
-                  secondary={
-                    <Typography variant="caption" color="text.secondary">
-                      {[
-                        suggestion.city,
-                        suggestion.province && suggestion.province !== suggestion.city ? suggestion.province : null,
-                        isChinese ? suggestion.country : (suggestion.countryCode || suggestion.country)
-                      ].filter(Boolean).join(', ')}
-                    </Typography>
-                  }
-                />
-              </ListItem>
-            );
-          })}
-        </List>
-      </Box>
-    );
-  };
 
   // 渲染下拉框内容
   const renderDropdownContent = () => {
@@ -2068,12 +1686,6 @@ const RegionSelector = ({
           currentLanguage={currentLanguage}
         />
       );
-    }
-
-    // 如果显示自动补全建议（且不满足完整搜索条件）
-    // 注意：只有在不满足完整搜索条件时才显示自动补全建议
-    if (showAutocomplete && autocompleteSuggestions.length > 0 && !isValidSearchLength(searchValue)) {
-      return renderAutocompleteSuggestions();
     }
 
     if (loading) {
@@ -2187,9 +1799,6 @@ const RegionSelector = ({
         label={label}
         value={searchValue}
         onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-        onCompositionStart={handleCompositionStart}
-        onCompositionEnd={handleCompositionEnd}
         onClick={handleInputClick}
         onFocus={handleInputFocus}
         onBlur={handleInputBlur}

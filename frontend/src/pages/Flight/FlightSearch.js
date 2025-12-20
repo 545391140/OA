@@ -81,26 +81,89 @@ const FlightSearch = () => {
     }
   };
 
+  // 辅助函数：安全地转换日期为 dayjs 对象
+  const safeDayjs = (dateValue) => {
+    if (!dateValue) return null;
+    
+    // 如果已经是 dayjs 对象，验证其有效性
+    if (dayjs.isDayjs(dateValue)) {
+      try {
+        // 安全地检查 isValid 方法是否存在
+        if (typeof dateValue.isValid === 'function') {
+          return dateValue.isValid() ? dateValue : null;
+        }
+        // 如果没有 isValid 方法，尝试重新创建 dayjs 对象
+        const d = dayjs(dateValue);
+        return d.isValid() ? d : null;
+      } catch (e) {
+        // 如果出错，尝试重新创建
+        try {
+          const d = dayjs(dateValue);
+          return d.isValid() ? d : null;
+        } catch (e2) {
+          return null;
+        }
+      }
+    }
+    
+    // 如果是字符串，尝试解析
+    if (typeof dateValue === 'string') {
+      try {
+        const d = dayjs(dateValue);
+        return d.isValid() ? d : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    
+    // 如果是 Date 对象，转换
+    if (dateValue instanceof Date) {
+      try {
+        const d = dayjs(dateValue);
+        return d.isValid() ? d : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    
+    // 如果是对象，尝试从各种可能的属性中提取日期
+    if (typeof dateValue === 'object' && dateValue !== null) {
+      try {
+        // 尝试从 $d 属性（dayjs 的内部结构）提取
+        if (dateValue.$d) {
+          const d = dayjs(dateValue.$d);
+          return d.isValid() ? d : null;
+        }
+        // 尝试直接转换
+        const d = dayjs(dateValue);
+        return d.isValid() ? d : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    
+    // 其他情况返回 null
+    return null;
+  };
+
   // 从location.state或sessionStorage恢复数据
-  // 如果是从详情页返回（有searchResults），保留搜索条件
-  // 如果是从菜单进入（没有searchResults），清空之前的搜索条件
+  // 如果是从详情页或预订页返回（有location.state），保留搜索条件并自动重新查询
+  // 如果是从菜单进入（没有location.state），清空之前的搜索条件
   const restoredData = (() => {
-    if (location.state?.searchResults) {
-      // 从详情页返回，保留搜索条件
+    // 检查是否有 location.state（从详情页或预订页返回）
+    if (location.state && (location.state.searchResults || location.state.searchParams)) {
+      // 从详情页或预订页返回，保留搜索条件
       const data = {
-        searchResults: location.state.searchResults,
+        searchResults: location.state.searchResults || null,
         searchParams: { ...location.state.searchParams },
-        originLocation: location.state.originLocation,
-        destinationLocation: location.state.destinationLocation,
-        isRoundTrip: location.state.isRoundTrip
+        originLocation: location.state.originLocation || null,
+        destinationLocation: location.state.destinationLocation || null,
+        isRoundTrip: location.state.isRoundTrip || false,
+        shouldAutoSearch: true // 标记需要自动重新查询
       };
-      // 转换日期字符串回dayjs对象
-      if (data.searchParams?.departureDate && typeof data.searchParams.departureDate === 'string') {
-        data.searchParams.departureDate = dayjs(data.searchParams.departureDate);
-      }
-      if (data.searchParams?.returnDate && typeof data.searchParams.returnDate === 'string') {
-        data.searchParams.returnDate = dayjs(data.searchParams.returnDate);
-      }
+      // 安全地转换日期字符串回dayjs对象
+      data.searchParams.departureDate = safeDayjs(data.searchParams?.departureDate) || dayjs().add(7, 'day');
+      data.searchParams.returnDate = safeDayjs(data.searchParams?.returnDate) || null;
       return data;
     } else {
       // 从菜单进入或其他方式进入，清空之前的搜索条件
@@ -117,7 +180,9 @@ const FlightSearch = () => {
 
   const [originLocation, setOriginLocation] = useState(restoredData?.originLocation || null);
   const [destinationLocation, setDestinationLocation] = useState(restoredData?.destinationLocation || null);
-  const [searchParams, setSearchParams] = useState(restoredData?.searchParams || {
+  
+  // 确保 searchParams 中的日期是有效的 dayjs 对象
+  const defaultSearchParams = {
     departureDate: dayjs().add(7, 'day'),
     returnDate: null,
     adults: 1,
@@ -127,7 +192,22 @@ const FlightSearch = () => {
     max: 50,
     currencyCode: 'USD',
     nonStop: false,
-  });
+  };
+  
+  const initialSearchParams = restoredData?.searchParams || defaultSearchParams;
+  // 确保日期值是有效的 dayjs 对象
+  if (initialSearchParams.departureDate) {
+    initialSearchParams.departureDate = safeDayjs(initialSearchParams.departureDate) || defaultSearchParams.departureDate;
+  } else {
+    initialSearchParams.departureDate = defaultSearchParams.departureDate;
+  }
+  if (initialSearchParams.returnDate) {
+    initialSearchParams.returnDate = safeDayjs(initialSearchParams.returnDate);
+  } else {
+    initialSearchParams.returnDate = null;
+  }
+  
+  const [searchParams, setSearchParams] = useState(initialSearchParams);
 
   const [searchResults, setSearchResults] = useState(restoredData?.searchResults || null);
   const [loading, setLoading] = useState(false);
@@ -187,6 +267,18 @@ const FlightSearch = () => {
     }
   };
 
+  // 如果是从详情页或预订页返回，自动重新查询
+  useEffect(() => {
+    if (restoredData?.shouldAutoSearch && originLocation && destinationLocation && searchParams.departureDate) {
+      // 延迟一下，确保组件完全加载
+      const timer = setTimeout(() => {
+        handleSearch();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 只在组件挂载时执行一次
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Container maxWidth="xl">
@@ -233,8 +325,22 @@ const FlightSearch = () => {
               <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 auto' }, minWidth: { xs: '100%', md: 0 } }}>
                 <DatePicker
                   label={t('flight.search.departureDate') || '出发日期'}
-                  value={searchParams.departureDate}
-                  onChange={(date) => setSearchParams({ ...searchParams, departureDate: date })}
+                  value={(() => {
+                    const date = searchParams.departureDate;
+                    if (date && dayjs.isDayjs(date) && date.isValid()) {
+                      return date;
+                    }
+                    // 如果日期无效，返回默认值（7天后）
+                    return dayjs().add(7, 'day');
+                  })()}
+                  onChange={(date) => {
+                    if (date && dayjs.isDayjs(date) && date.isValid()) {
+                      setSearchParams({ ...searchParams, departureDate: date });
+                    } else {
+                      // 如果日期无效，设置为默认值
+                      setSearchParams({ ...searchParams, departureDate: dayjs().add(7, 'day') });
+                    }
+                  }}
                   minDate={dayjs()}
                   slotProps={{ textField: { fullWidth: true, size: 'small' } }}
                 />
@@ -243,9 +349,27 @@ const FlightSearch = () => {
                 <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 auto' }, minWidth: { xs: '100%', md: 0 } }}>
                   <DatePicker
                     label={t('flight.search.returnDate') || '返程日期'}
-                    value={searchParams.returnDate}
-                    onChange={(date) => setSearchParams({ ...searchParams, returnDate: date })}
-                    minDate={searchParams.departureDate}
+                    value={(() => {
+                      const date = searchParams.returnDate;
+                      if (date && dayjs.isDayjs(date) && date.isValid()) {
+                        return date;
+                      }
+                      return null;
+                    })()}
+                    onChange={(date) => {
+                      if (date && dayjs.isDayjs(date) && date.isValid()) {
+                        setSearchParams({ ...searchParams, returnDate: date });
+                      } else {
+                        setSearchParams({ ...searchParams, returnDate: null });
+                      }
+                    }}
+                    minDate={(() => {
+                      const departureDate = searchParams.departureDate;
+                      if (departureDate && dayjs.isDayjs(departureDate) && departureDate.isValid()) {
+                        return departureDate;
+                      }
+                      return dayjs();
+                    })()}
                     slotProps={{ textField: { fullWidth: true, size: 'small' } }}
                   />
                 </Box>
@@ -349,8 +473,17 @@ const FlightSearch = () => {
               destinationLocation={destinationLocation}
               isRoundTrip={isRoundTrip}
               onSelectFlight={(flight) => {
-                // 导航到预订页面或显示预订对话框
-                navigate('/flight/booking', { state: { flight, searchParams } });
+                // 导航到预订页面，传递所有搜索条件以便返回时恢复
+                navigate('/flight/booking', { 
+                  state: { 
+                    flight, 
+                    searchParams,
+                    searchResults,
+                    originLocation,
+                    destinationLocation,
+                    isRoundTrip
+                  } 
+                });
               }}
             />
           )}

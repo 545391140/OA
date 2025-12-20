@@ -915,13 +915,13 @@ exports.createBooking = async (req, res) => {
 };
 
 /**
- * 获取预订列表（支持按差旅申请筛选）
+ * 获取预订列表（支持按差旅申请筛选、分页和搜索）
  * @route GET /api/flights/bookings
  * @access Private
  */
 exports.getBookings = async (req, res) => {
   try {
-    const { travelId, status } = req.query;
+    const { travelId, status, page = 1, limit = 20, search } = req.query;
     
     let query = {};
     query.employee = req.user.id; // 数据权限：只能查看自己的预订
@@ -930,20 +930,55 @@ exports.getBookings = async (req, res) => {
       query.travelId = travelId; // 按差旅申请筛选
     }
     
-    if (status) {
+    if (status && status !== 'all') {
       query.status = status;
     }
     
+    // 搜索功能：支持按预订参考号搜索
+    // 如果搜索差旅单号，需要先查找对应的 Travel 文档
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      const searchRegex = { $regex: searchTerm, $options: 'i' };
+      
+      // 如果搜索差旅单号，先查找对应的 Travel 文档
+      const Travel = require('../models/Travel');
+      const matchingTravels = await Travel.find({
+        travelNumber: searchRegex,
+        employee: req.user.id // 确保只能搜索自己的差旅申请
+      }).select('_id').lean();
+      
+      const travelIds = matchingTravels.map(t => t._id);
+      
+      query.$or = [
+        { bookingReference: searchRegex },
+        ...(travelIds.length > 0 ? [{ travelId: { $in: travelIds } }] : [])
+      ];
+    }
+    
+    // 分页参数
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const skip = (pageNum - 1) * limitNum;
+    
+    // 获取总数
+    const total = await FlightBooking.countDocuments(query);
+    
+    // 获取数据
     const bookings = await FlightBooking.find(query)
       .populate('travelId', 'travelNumber title status')
       .populate('employee', 'firstName lastName email')
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
       .lean();
     
     res.json({
       success: true,
-      count: bookings.length,
       data: bookings,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(total / limitNum),
     });
   } catch (error) {
     logger.error('获取预订列表失败:', error);
