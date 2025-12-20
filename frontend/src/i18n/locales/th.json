@@ -91,6 +91,7 @@
     "positionManagement": "จัดการตำแหน่ง",
     "userManagement": "จัดการผู้ใช้",
     "currencyManagement": "จัดการสกุลเงิน",
+    "logs": "จัดการบันทึก",
     "approvalWorkflows": "เวิร์กโฟลว์การอนุมัติ",
     "approvalStatistics": "สถิติการอนุมัติ",
     "appTitle": "การเดินทางและค่าใช้จ่าย",
@@ -2215,6 +2216,75 @@
         "nameRequired": "ชื่อสกุลเงินจำเป็นต้องมี",
         "exchangeRateRequired": "อัตราแลกเปลี่ยนต้องมากกว่า 0"
       }
+    }
+  },
+  "logs": {
+    "title": "จัดการบันทึก",
+    "noData": "ไม่มีข้อมูล",
+    "filters": {
+      "email": "อีเมล",
+      "status": "สถานะ",
+      "module": "โมดูล",
+      "action": "การดำเนินการ",
+      "startDate": "วันที่เริ่มต้น",
+      "endDate": "วันที่สิ้นสุด",
+      "all": "ทั้งหมด"
+    },
+    "status": {
+      "success": "สำเร็จ",
+      "failed": "ล้มเหลว"
+    },
+    "modules": {
+      "user": "ผู้ใช้",
+      "travel": "การเดินทาง",
+      "expense": "ค่าใช้จ่าย",
+      "approval": "การอนุมัติ",
+      "role": "บทบาท",
+      "position": "ตำแหน่ง",
+      "department": "แผนก",
+      "travel_standard": "มาตรฐานการเดินทาง",
+      "expense_item": "รายการค่าใช้จ่าย",
+      "location": "สถานที่",
+      "invoice": "ใบแจ้งหนี้",
+      "currency": "สกุลเงิน",
+      "settings": "การตั้งค่า",
+      "approval_workflow": "เวิร์กโฟลว์การอนุมัติ",
+      "unknown": "โมดูลที่ไม่ทราบ"
+    },
+    "actions": {
+      "create": "สร้าง",
+      "update": "อัปเดต",
+      "delete": "ลบ",
+      "view": "ดู",
+      "approve": "อนุมัติ",
+      "reject": "ปฏิเสธ"
+    },
+    "loginLogs": {
+      "title": "บันทึกการเข้าสู่ระบบ",
+      "columns": {
+        "user": "ผู้ใช้",
+        "email": "อีเมล",
+        "status": "สถานะ",
+        "ipAddress": "ที่อยู่ IP",
+        "loginTime": "เวลาการเข้าสู่ระบบ",
+        "failureReason": "สาเหตุของความล้มเหลว"
+      }
+    },
+    "operationLogs": {
+      "title": "บันทึกการดำเนินการ",
+      "columns": {
+        "user": "ผู้ใช้",
+        "module": "โมดูล",
+        "action": "การดำเนินการ",
+        "resourceType": "ประเภททรัพยากร",
+        "description": "คำอธิบาย",
+        "status": "สถานะ",
+        "operationTime": "เวลาการดำเนินการ"
+      }
+    },
+    "error": {
+      "fetchLoginLogs": "ไม่สามารถโหลดบันทึกการเข้าสู่ระบบ",
+      "fetchOperationLogs": "ไม่สามารถโหลดบันทึกการดำเนินการ"
     }
   }
 }

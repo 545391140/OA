@@ -741,8 +741,92 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
+    // 记录详细的 travel 信息用于调试
+    logger.debug('Travel delete - travel data:', {
+      travelId: req.params.id,
+      travelNumber: travel.travelNumber,
+      employee: travel.employee,
+      employeeType: typeof travel.employee,
+      employeeIsNull: travel.employee === null,
+      employeeIsUndefined: travel.employee === undefined,
+      isObjectId: travel.employee instanceof require('mongoose').Types.ObjectId,
+      status: travel.status
+    });
+
     // 检查权限：数据权限检查
-    const hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
+    // 如果 travel.employee 为 null 或无效，允许管理员删除，否则需要权限检查
+    let hasAccess = false;
+    
+    // 检查 employee 字段是否有效
+    const employeeId = travel.employee;
+    
+    // 安全地检查 employee 字段
+    let isValidEmployee = false;
+    if (employeeId !== null && employeeId !== undefined) {
+      // 检查是否是 Mongoose ObjectId
+      const mongoose = require('mongoose');
+      if (employeeId instanceof mongoose.Types.ObjectId) {
+        isValidEmployee = true;
+      } else if (typeof employeeId === 'object' && employeeId !== null) {
+        // 如果是对象（且不是null），检查是否有有效的 _id 或可以转换为字符串
+        if (employeeId._id !== null && employeeId._id !== undefined) {
+          isValidEmployee = true;
+        } else if (employeeId.toString && typeof employeeId.toString === 'function') {
+          try {
+            const idStr = employeeId.toString();
+            isValidEmployee = idStr && idStr !== 'null' && idStr !== 'undefined';
+          } catch (e) {
+            isValidEmployee = false;
+          }
+        } else {
+          isValidEmployee = Object.keys(employeeId).length > 0;
+        }
+      } else {
+        // 基本类型（字符串、数字等）
+        isValidEmployee = true;
+      }
+    }
+    
+    logger.debug('Travel delete - employee check:', {
+      travelId: req.params.id,
+      employeeId,
+      isValidEmployee,
+      employeeType: typeof employeeId,
+      isObjectId: employeeId instanceof require('mongoose').Types.ObjectId,
+      userRole: req.user.role
+    });
+    
+    if (!isValidEmployee) {
+      // 如果 employee 为 null 或无效，只有管理员可以删除
+      if (req.user.role === 'admin') {
+        hasAccess = true;
+        logger.info('Admin deleting travel with invalid employee:', req.params.id);
+      } else {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to delete this travel request (missing employee information)'
+        });
+      }
+    } else {
+      // 正常权限检查
+      try {
+        hasAccess = await checkResourceAccess(req, travel, 'travel', 'employee');
+      } catch (error) {
+        // 如果权限检查出错（比如 employee 字段格式不正确），记录错误并拒绝访问
+        logger.error('Error checking resource access for travel delete:', {
+          error: error.message,
+          stack: error.stack,
+          travelId: req.params.id,
+          employeeId,
+          userId: req.user?.id,
+          userRole: req.user?.role
+        });
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to delete this travel request (invalid employee information)'
+        });
+      }
+    }
     
     if (!hasAccess) {
       throw ErrorFactory.forbidden('Not authorized to delete this travel request');

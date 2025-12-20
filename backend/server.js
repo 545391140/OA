@@ -40,6 +40,8 @@ const settingsRoutes = require('./routes/settings');
 const invoiceRoutes = require('./routes/invoices');
 const ctripApiRoutes = require('./routes/ctripApi');
 const currencyRoutes = require('./routes/currencies');
+const logRoutes = require('./routes/logs');
+const operationLogMiddleware = require('./middleware/operationLog');
 
 // Connect to database
 connectDB();
@@ -179,6 +181,29 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Operation log middleware (must be before routes to intercept res.send/res.json)
+// Note: req.user will be set by protect middleware in routes, so we check it in recordLog
+app.use('/api', operationLogMiddleware({
+  excludePaths: ['/api/auth/login', '/api/auth/register', '/api/logs'],
+  excludeMethods: ['GET'], // 排除GET请求，只记录写操作
+  modules: {
+    '/api/users': 'user',
+    '/api/travel': 'travel',
+    '/api/expenses': 'expense',
+    '/api/approvals': 'approval',
+    '/api/roles': 'role',
+    '/api/positions': 'position',
+    '/api/departments': 'department',
+    '/api/travel-standards': 'travel_standard',
+    '/api/expense-items': 'expense_item',
+    '/api/locations': 'location',
+    '/api/invoices': 'invoice',
+    '/api/currencies': 'currency',
+    '/api/settings': 'settings',
+    '/api/approval-workflows': 'approval_workflow'
+  }
+}));
+
 // API routes (must be before static files to avoid interception)
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -215,6 +240,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/ctrip', ctripApiRoutes);
 app.use('/api/currencies', currencyRoutes);
+app.use('/api/logs', logRoutes);
 
 // Serve frontend static files (if deployed together)
 if (frontendExists) {

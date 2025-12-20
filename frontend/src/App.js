@@ -45,6 +45,7 @@ import CurrencyManagement from './pages/Currency/CurrencyManagement';
 import InvoiceList from './pages/Invoice/InvoiceList';
 import InvoiceUpload from './pages/Invoice/InvoiceUpload';
 import InvoiceDetail from './pages/Invoice/InvoiceDetail';
+import Logs from './pages/Logs/Logs';
 
 function App() {
   const { i18n } = useTranslation();
@@ -127,6 +128,9 @@ function App() {
               <Route path="invoices" element={<InvoiceList />} />
               <Route path="invoices/upload" element={<InvoiceUpload />} />
               <Route path="invoices/:id" element={<InvoiceDetail />} />
+              
+              {/* Logs Routes */}
+              <Route path="logs" element={<Logs />} />
             </Route>
             
             {/* Catch all route */}

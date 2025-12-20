@@ -97,6 +97,7 @@
     "currencyManagement": "Currency Management",
     "approvalWorkflows": "Approval Workflows",
     "approvalStatistics": "Approval Statistics",
+    "logs": "Logs Management",
     "appTitle": "Travel & Expense",
     "languages": {
       "en": "English",
@@ -2218,6 +2219,75 @@
         "nameRequired": "Currency name is required",
         "exchangeRateRequired": "Exchange rate must be greater than 0"
       }
+    }
+  },
+  "logs": {
+    "title": "Logs Management",
+    "noData": "No data available",
+    "filters": {
+      "email": "Email",
+      "status": "Status",
+      "module": "Module",
+      "action": "Action",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "all": "All"
+    },
+    "status": {
+      "success": "Success",
+      "failed": "Failed"
+    },
+    "modules": {
+      "user": "User",
+      "travel": "Travel",
+      "expense": "Expense",
+      "approval": "Approval",
+      "role": "Role",
+      "position": "Position",
+      "department": "Department",
+      "travel_standard": "Travel Standard",
+      "expense_item": "Expense Item",
+      "location": "Location",
+      "invoice": "Invoice",
+      "currency": "Currency",
+      "settings": "Settings",
+      "approval_workflow": "Approval Workflow",
+      "unknown": "Unknown Module"
+    },
+    "actions": {
+      "create": "Create",
+      "update": "Update",
+      "delete": "Delete",
+      "view": "View",
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "loginLogs": {
+      "title": "Login Logs",
+      "columns": {
+        "user": "User",
+        "email": "Email",
+        "status": "Status",
+        "ipAddress": "IP Address",
+        "loginTime": "Login Time",
+        "failureReason": "Failure Reason"
+      }
+    },
+    "operationLogs": {
+      "title": "Operation Logs",
+      "columns": {
+        "user": "User",
+        "module": "Module",
+        "action": "Action",
+        "resourceType": "Resource Type",
+        "description": "Description",
+        "status": "Status",
+        "operationTime": "Operation Time"
+      }
+    },
+    "error": {
+      "fetchLoginLogs": "Failed to fetch login logs",
+      "fetchOperationLogs": "Failed to fetch operation logs"
     }
   }
 }

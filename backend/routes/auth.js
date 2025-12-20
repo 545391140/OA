@@ -8,6 +8,7 @@ const { ErrorFactory } = require('../utils/AppError');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const Position = require('../models/Position');
+const LoginLog = require('../models/LoginLog');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -131,6 +132,21 @@ router.post('/login', [
 
   if (!user) {
     logger.warn('Login failed - user not found:', { email });
+    // Record failed login log
+    try {
+      const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      await LoginLog.create({
+        email,
+        ipAddress,
+        userAgent,
+        status: 'failed',
+        failureReason: 'User not found'
+      });
+    } catch (logError) {
+      logger.warn('Failed to record failed login log:', logError.message);
+    }
     throw ErrorFactory.unauthorized('Invalid credentials');
   }
 
@@ -139,6 +155,23 @@ router.post('/login', [
   // Check if user is active
   if (!user.isActive) {
     logger.warn('Login failed - account deactivated:', { email });
+    // Record failed login log
+    try {
+      const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      await LoginLog.create({
+        userId: user._id,
+        email: user.email,
+        employeeId: user.employeeId,
+        ipAddress,
+        userAgent,
+        status: 'failed',
+        failureReason: 'Account deactivated'
+      });
+    } catch (logError) {
+      logger.warn('Failed to record failed login log:', logError.message);
+    }
     throw ErrorFactory.unauthorized('Account is deactivated');
   }
 
@@ -147,6 +180,23 @@ router.post('/login', [
 
   if (!isMatch) {
     logger.warn('Login failed - password mismatch:', { email });
+    // Record failed login log
+    try {
+      const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      await LoginLog.create({
+        userId: user._id,
+        email: user.email,
+        employeeId: user.employeeId,
+        ipAddress,
+        userAgent,
+        status: 'failed',
+        failureReason: 'Invalid password'
+      });
+    } catch (logError) {
+      logger.warn('Failed to record failed login log:', logError.message);
+    }
     throw ErrorFactory.unauthorized('Invalid credentials');
   }
 
@@ -200,6 +250,24 @@ router.post('/login', [
   }
 
   const token = generateToken(user._id);
+
+  // Record login log
+  try {
+    const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    
+    await LoginLog.create({
+      userId: user._id,
+      email: user.email,
+      employeeId: user.employeeId,
+      ipAddress,
+      userAgent,
+      status: 'success'
+    });
+  } catch (logError) {
+    // Log error but don't fail login
+    logger.warn('Failed to record login log:', logError.message);
+  }
 
   res.json({
     success: true,

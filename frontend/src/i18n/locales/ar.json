@@ -91,6 +91,7 @@
     "positionManagement": "إدارة المناصب",
     "userManagement": "إدارة المستخدمين",
     "currencyManagement": "إدارة العملات",
+    "logs": "إدارة السجلات",
     "approvalWorkflows": "سير عمل الموافقة",
     "approvalStatistics": "إحصائيات الموافقة",
     "appTitle": "السفر والمصروفات",
@@ -2211,6 +2212,75 @@
         "nameRequired": "اسم العملة مطلوب",
         "exchangeRateRequired": "يجب أن يكون سعر الصرف أكبر من 0"
       }
+    }
+  },
+  "logs": {
+    "title": "إدارة السجلات",
+    "noData": "لا توجد بيانات",
+    "filters": {
+      "email": "البريد الإلكتروني",
+      "status": "الحالة",
+      "module": "الوحدة",
+      "action": "الإجراء",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "all": "الكل"
+    },
+    "status": {
+      "success": "نجح",
+      "failed": "فشل"
+    },
+    "modules": {
+      "user": "المستخدم",
+      "travel": "السفر",
+      "expense": "المصروفات",
+      "approval": "الموافقة",
+      "role": "الدور",
+      "position": "المنصب",
+      "department": "القسم",
+      "travel_standard": "معيار السفر",
+      "expense_item": "عنصر المصروفات",
+      "location": "الموقع",
+      "invoice": "الفاتورة",
+      "currency": "العملة",
+      "settings": "الإعدادات",
+      "approval_workflow": "سير عمل الموافقة",
+      "unknown": "وحدة غير معروفة"
+    },
+    "actions": {
+      "create": "إنشاء",
+      "update": "تحديث",
+      "delete": "حذف",
+      "view": "عرض",
+      "approve": "الموافقة",
+      "reject": "الرفض"
+    },
+    "loginLogs": {
+      "title": "سجلات تسجيل الدخول",
+      "columns": {
+        "user": "المستخدم",
+        "email": "البريد الإلكتروني",
+        "status": "الحالة",
+        "ipAddress": "عنوان IP",
+        "loginTime": "وقت تسجيل الدخول",
+        "failureReason": "سبب الفشل"
+      }
+    },
+    "operationLogs": {
+      "title": "سجلات العمليات",
+      "columns": {
+        "user": "المستخدم",
+        "module": "الوحدة",
+        "action": "الإجراء",
+        "resourceType": "نوع الموارد",
+        "description": "الوصف",
+        "status": "الحالة",
+        "operationTime": "وقت العملية"
+      }
+    },
+    "error": {
+      "fetchLoginLogs": "فشل في جلب سجلات تسجيل الدخول",
+      "fetchOperationLogs": "فشل في جلب سجلات العمليات"
     }
   }
 }

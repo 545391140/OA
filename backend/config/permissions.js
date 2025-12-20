@@ -132,6 +132,9 @@ const PERMISSIONS = {
   
   // 推送通知
   PUSH_NOTIFICATION_SUBSCRIBE: 'push.notification.subscribe',
+  
+  // 日志管理
+  LOG_VIEW: 'log.view',
 };
 
 /**
@@ -433,6 +436,16 @@ const PERMISSION_GROUPS = [
     permissions: [
       { code: PERMISSIONS.PUSH_NOTIFICATION_SUBSCRIBE, label: '订阅推送通知', labelEn: 'Subscribe Push Notifications', labelJa: 'プッシュ通知を購読', labelKo: '푸시 알림 구독' }
     ]
+  },
+  {
+    name: 'log',
+    label: '日志管理',
+    labelEn: 'Logs Management',
+    labelJa: 'ログ管理',
+    labelKo: '로그 관리',
+    permissions: [
+      { code: PERMISSIONS.LOG_VIEW, label: '查看日志', labelEn: 'View Logs', labelJa: 'ログを表示', labelKo: '로그 보기' }
+    ]
   }
 ];
 
@@ -466,6 +479,7 @@ const MENU_PERMISSIONS = {
   '/standard-match': PERMISSIONS.STANDARD_MATCH_VIEW,
   '/search': PERMISSIONS.SEARCH_VIEW,
   '/budgets': PERMISSIONS.BUDGET_VIEW,
+  '/logs': PERMISSIONS.LOG_VIEW,
 };
 
 module.exports = {

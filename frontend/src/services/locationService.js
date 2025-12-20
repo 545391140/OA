@@ -103,7 +103,6 @@ const getTicket = async () => {
     if (result.Status && result.Status.Success && result.Ticket) {
       // 缓存Ticket
       setCachedData(CACHE_CONFIG.TICKET_KEY, result.Ticket);
-       + '...');
       return result.Ticket;
     } else {
       throw new Error(`Ticket获取失败: ${result.Status?.Message || '未知错误'}`);
@@ -424,15 +423,13 @@ export const getAllCountries = async () => {
  */
 export const getAllPOIInfo = async (countryId = 1) => {
   // 先检查缓存
-  const cacheKey = `${CACHE_CONFIG.CITIES_KEY}_${countryId || 'all'}`;
+  const cacheKey = CACHE_CONFIG.CITIES_KEY + '_' + (countryId || 'all');
   if (isCacheValid(cacheKey)) {
 
     return getCachedData(cacheKey);
   }
 
   try {
-    `);
-    
     // 使用后端API代理获取POI数据并转换为Location格式
     const response = await apiClient.post('/ctrip/poi/locations', {
       countryId: countryId || undefined, // 如果为null，不传countryId参数
@@ -488,7 +485,7 @@ export const getGlobalPOIInfo = async (options = {}) => {
   } = options;
 
   // 检查缓存
-  const globalCacheKey = `${CACHE_CONFIG.CITIES_KEY}_global`;
+  const globalCacheKey = CACHE_CONFIG.CITIES_KEY + '_global';
   if (isCacheValid(globalCacheKey)) {
 
     return getCachedData(globalCacheKey);

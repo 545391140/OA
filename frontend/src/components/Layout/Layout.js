@@ -38,7 +38,8 @@ import {
   People as PeopleIcon,
   Search as SearchIcon,
   PictureAsPdf as InvoiceIcon,
-  AttachMoney as CurrencyIcon
+  AttachMoney as CurrencyIcon,
+  History as LogIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -141,6 +142,7 @@ const Layout = () => {
     { text: t('navigation.currencyManagement'), icon: <CurrencyIcon />, path: '/currencies', key: 'currencyManagement' },
     { text: t('navigation.approvalWorkflows'), icon: <ApprovalIcon />, path: '/approval-workflows', key: 'approvalWorkflows' },
     { text: t('navigation.approvalStatistics'), icon: <ReportIcon />, path: '/approval-statistics', key: 'approvalStatistics' },
+    { text: t('navigation.logs'), icon: <LogIcon />, path: '/logs', key: 'logs' },
   ], [t, i18n.language]);
 
   // Settings menu item (always at the bottom)

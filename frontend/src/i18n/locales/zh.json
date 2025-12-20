@@ -98,6 +98,7 @@
     "currencyManagement": "币种管理",
     "approvalWorkflows": "审批流程管理",
     "approvalStatistics": "审批统计分析",
+    "logs": "日志管理",
     "appTitle": "差旅费用管理系统",
     "languages": {
       "en": "English",
@@ -2229,6 +2230,75 @@
         "nameRequired": "币种名称不能为空",
         "exchangeRateRequired": "汇率必须大于0"
       }
+    }
+  },
+  "logs": {
+    "title": "日志管理",
+    "noData": "暂无数据",
+    "filters": {
+      "email": "邮箱",
+      "status": "状态",
+      "module": "模块",
+      "action": "操作",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "all": "全部"
+    },
+    "status": {
+      "success": "成功",
+      "failed": "失败"
+    },
+    "modules": {
+      "user": "用户",
+      "travel": "差旅",
+      "expense": "费用",
+      "approval": "审批",
+      "role": "角色",
+      "position": "岗位",
+      "department": "部门",
+      "travel_standard": "差旅标准",
+      "expense_item": "费用项目",
+      "location": "地点",
+      "invoice": "发票",
+      "currency": "货币",
+      "settings": "设置",
+      "approval_workflow": "审批流程",
+      "unknown": "未知模块"
+    },
+    "actions": {
+      "create": "创建",
+      "update": "更新",
+      "delete": "删除",
+      "view": "查看",
+      "approve": "批准",
+      "reject": "拒绝"
+    },
+    "loginLogs": {
+      "title": "登录日志",
+      "columns": {
+        "user": "用户",
+        "email": "邮箱",
+        "status": "状态",
+        "ipAddress": "IP地址",
+        "loginTime": "登录时间",
+        "failureReason": "失败原因"
+      }
+    },
+    "operationLogs": {
+      "title": "操作日志",
+      "columns": {
+        "user": "用户",
+        "module": "模块",
+        "action": "操作",
+        "resourceType": "资源类型",
+        "description": "描述",
+        "status": "状态",
+        "operationTime": "操作时间"
+      }
+    },
+    "error": {
+      "fetchLoginLogs": "获取登录日志失败",
+      "fetchOperationLogs": "获取操作日志失败"
     }
   }
 }

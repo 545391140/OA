@@ -82,6 +82,7 @@
     "positionManagement": "役職管理",
     "userManagement": "ユーザー管理",
     "currencyManagement": "通貨管理",
+    "logs": "ログ管理",
     "appTitle": "出張・経費管理システム",
     "languages": {
       "en": "English",
@@ -2069,6 +2070,75 @@
         "nameRequired": "通貨名は必須です",
         "exchangeRateRequired": "為替レートは0より大きい必要があります"
       }
+    }
+  },
+  "logs": {
+    "title": "ログ管理",
+    "noData": "データがありません",
+    "filters": {
+      "email": "メールアドレス",
+      "status": "ステータス",
+      "module": "モジュール",
+      "action": "操作",
+      "startDate": "開始日",
+      "endDate": "終了日",
+      "all": "すべて"
+    },
+    "status": {
+      "success": "成功",
+      "failed": "失敗"
+    },
+    "modules": {
+      "user": "ユーザー",
+      "travel": "出張",
+      "expense": "経費",
+      "approval": "承認",
+      "role": "役割",
+      "position": "職位",
+      "department": "部門",
+      "travel_standard": "出張基準",
+      "expense_item": "経費項目",
+      "location": "場所",
+      "invoice": "インボイス",
+      "currency": "通貨",
+      "settings": "設定",
+      "approval_workflow": "承認ワークフロー",
+      "unknown": "不明なモジュール"
+    },
+    "actions": {
+      "create": "作成",
+      "update": "更新",
+      "delete": "削除",
+      "view": "表示",
+      "approve": "承認",
+      "reject": "拒否"
+    },
+    "loginLogs": {
+      "title": "ログインログ",
+      "columns": {
+        "user": "ユーザー",
+        "email": "メールアドレス",
+        "status": "ステータス",
+        "ipAddress": "IPアドレス",
+        "loginTime": "ログイン時間",
+        "failureReason": "失敗理由"
+      }
+    },
+    "operationLogs": {
+      "title": "操作ログ",
+      "columns": {
+        "user": "ユーザー",
+        "module": "モジュール",
+        "action": "操作",
+        "resourceType": "リソースタイプ",
+        "description": "説明",
+        "status": "ステータス",
+        "operationTime": "操作時間"
+      }
+    },
+    "error": {
+      "fetchLoginLogs": "ログインログの取得に失敗しました",
+      "fetchOperationLogs": "操作ログの取得に失敗しました"
     }
   }
 }

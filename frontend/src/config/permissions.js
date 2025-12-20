@@ -132,6 +132,9 @@ export const PERMISSIONS = {
   
   // 推送通知
   PUSH_NOTIFICATION_SUBSCRIBE: 'push.notification.subscribe',
+  
+  // 日志管理
+  LOG_VIEW: 'log.view',
 };
 
 /**
@@ -164,6 +167,7 @@ export const MENU_PERMISSIONS = {
   '/standard-match': PERMISSIONS.STANDARD_MATCH_VIEW,
   '/search': PERMISSIONS.SEARCH_VIEW,
   '/budgets': PERMISSIONS.BUDGET_VIEW,
+  '/logs': PERMISSIONS.LOG_VIEW,
 };
 
 

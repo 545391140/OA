@@ -91,6 +91,7 @@
     "positionManagement": "Quản lý Chức vụ",
     "userManagement": "Quản lý Người dùng",
     "currencyManagement": "Quản lý Tiền tệ",
+    "logs": "Quản lý Nhật ký",
     "approvalWorkflows": "Quy trình Phê duyệt",
     "approvalStatistics": "Thống kê Phê duyệt",
     "appTitle": "Công tác & Chi phí",
@@ -2215,6 +2216,75 @@
         "nameRequired": "Tên tiền tệ là bắt buộc",
         "exchangeRateRequired": "Tỷ giá phải lớn hơn 0"
       }
+    }
+  },
+  "logs": {
+    "title": "Quản lý Nhật ký",
+    "noData": "Không có dữ liệu",
+    "filters": {
+      "email": "Email",
+      "status": "Trạng thái",
+      "module": "Mô-đun",
+      "action": "Thao tác",
+      "startDate": "Ngày bắt đầu",
+      "endDate": "Ngày kết thúc",
+      "all": "Tất cả"
+    },
+    "status": {
+      "success": "Thành công",
+      "failed": "Thất bại"
+    },
+    "modules": {
+      "user": "Người dùng",
+      "travel": "Công tác",
+      "expense": "Chi phí",
+      "approval": "Phê duyệt",
+      "role": "Vai trò",
+      "position": "Chức vụ",
+      "department": "Phòng ban",
+      "travel_standard": "Tiêu chuẩn Công tác",
+      "expense_item": "Mục Chi phí",
+      "location": "Địa điểm",
+      "invoice": "Hóa đơn",
+      "currency": "Tiền tệ",
+      "settings": "Cài đặt",
+      "approval_workflow": "Quy trình Phê duyệt",
+      "unknown": "Mô-đun Không xác định"
+    },
+    "actions": {
+      "create": "Tạo",
+      "update": "Cập nhật",
+      "delete": "Xóa",
+      "view": "Xem",
+      "approve": "Phê duyệt",
+      "reject": "Từ chối"
+    },
+    "loginLogs": {
+      "title": "Nhật ký Đăng nhập",
+      "columns": {
+        "user": "Người dùng",
+        "email": "Email",
+        "status": "Trạng thái",
+        "ipAddress": "Địa chỉ IP",
+        "loginTime": "Thời gian Đăng nhập",
+        "failureReason": "Lý do Thất bại"
+      }
+    },
+    "operationLogs": {
+      "title": "Nhật ký Thao tác",
+      "columns": {
+        "user": "Người dùng",
+        "module": "Mô-đun",
+        "action": "Thao tác",
+        "resourceType": "Loại Tài nguyên",
+        "description": "Mô tả",
+        "status": "Trạng thái",
+        "operationTime": "Thời gian Thao tác"
+      }
+    },
+    "error": {
+      "fetchLoginLogs": "Không thể tải nhật ký đăng nhập",
+      "fetchOperationLogs": "Không thể tải nhật ký thao tác"
     }
   }
 }
