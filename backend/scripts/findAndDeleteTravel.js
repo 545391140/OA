@@ -1,11 +1,15 @@
 const mongoose = require('mongoose');
 const Travel = require('../models/Travel');
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+const path = require('path');
+// 尝试从多个位置加载 .env 文件
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 async function findAndDeleteTravel() {
   try {
     // 连接数据库
-    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/travel-expense';
+    const config = require('../config');
+    const mongoUri = process.env.MONGODB_URI || config.MONGODB_URI || 'mongodb://localhost:27017/travel-expense';
     await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB');
 
@@ -38,9 +42,27 @@ async function findAndDeleteTravel() {
       }
     }
 
-    console.log('\n🧪 Testing delete via API...');
-    console.log('To test deletion, use:');
-    console.log(`curl -X DELETE http://localhost:3001/api/travel/${travel._id} -H "Authorization: Bearer YOUR_TOKEN"`);
+    console.log('\n📊 Travel Status:', travel.status);
+    
+    // 检查状态：只能删除草稿状态的申请
+    if (travel.status !== 'draft') {
+      console.log(`\n⚠️  Cannot delete travel request: status is "${travel.status}", only "draft" status can be deleted`);
+      await mongoose.disconnect();
+      return;
+    }
+    
+    // 执行删除
+    console.log('\n🗑️  Deleting travel request...');
+    await Travel.deleteOne({ _id: travel._id });
+    console.log('✅ Travel request deleted successfully!');
+    
+    // 验证删除
+    const verifyTravel = await Travel.findOne({ travelNumber });
+    if (!verifyTravel) {
+      console.log('✅ Verification: Travel request no longer exists in database');
+    } else {
+      console.log('⚠️  Warning: Travel request still exists after deletion');
+    }
     
     await mongoose.disconnect();
     console.log('\n✅ Disconnected from MongoDB');
@@ -52,5 +74,6 @@ async function findAndDeleteTravel() {
 }
 
 findAndDeleteTravel();
+
 
 

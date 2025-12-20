@@ -407,10 +407,18 @@ const TravelList = () => {
 
   const handleDelete = () => {
     setDeleteDialogOpen(true);
-    handleMenuClose();
+    // 只关闭菜单，但保留 selectedTravel 用于删除操作
+    setAnchorEl(null);
   };
 
   const confirmDelete = async () => {
+    // 添加空值检查
+    if (!selectedTravel) {
+      showNotification(t('travel.list.invalidTravelId'), 'error');
+      setDeleteDialogOpen(false);
+      return;
+    }
+    
     try {
       const travelId = selectedTravel._id || selectedTravel.id;
       if (!travelId) {
@@ -641,13 +649,13 @@ const TravelList = () => {
             <ViewIcon sx={{ mr: 1.5, fontSize: 20 }} />
             {t('common.view')}
           </MenuItem>
-          {(canEdit || selectedTravel?.employee?._id === user?.id) && (
+          {(canEdit || (selectedTravel?.employee && selectedTravel.employee._id === user?.id)) && (
             <MenuItem onClick={handleEdit}>
               <EditIcon sx={{ mr: 1.5, fontSize: 20 }} />
               {t('common.edit')}
             </MenuItem>
           )}
-          {(canDelete || selectedTravel?.employee?._id === user?.id) && (
+          {(canDelete || (selectedTravel?.employee && selectedTravel.employee._id === user?.id)) && (
             <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
               <DeleteIcon sx={{ mr: 1.5, fontSize: 20 }} />
               {t('common.delete')}
@@ -658,17 +666,23 @@ const TravelList = () => {
         {/* Delete Confirmation Dialog */}
         <Dialog
           open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
+          onClose={() => {
+            setDeleteDialogOpen(false);
+            setSelectedTravel(null);
+          }}
         >
           <DialogTitle>{t('dialogs.confirmDelete')}</DialogTitle>
           <DialogContent>
             <Typography>
-              {t('travel.list.confirmDeleteMessage')} "{selectedTravel?.title}"? 
+              {t('travel.list.confirmDeleteMessage')} "{selectedTravel?.title || t('travel.list.unnamedTravelRequest')}"? 
               {t('travel.list.actionCannotUndone')}
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeleteDialogOpen(false)}>
+            <Button onClick={() => {
+              setDeleteDialogOpen(false);
+              setSelectedTravel(null);
+            }}>
               {t('common.cancel')}
             </Button>
             <Button onClick={confirmDelete} color="error" variant="contained">
