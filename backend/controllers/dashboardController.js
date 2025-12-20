@@ -630,7 +630,13 @@ exports.getDashboardData = async (req, res) => {
     const dataScopeQuery = await buildDataScopeQuery(user, role, 'employee');
     const travelQuery = dataScopeQuery;
     const expenseQuery = dataScopeQuery;
-    logger.debug('[DASHBOARD_DATA] 数据权限查询条件:', JSON.stringify(travelQuery));
+    logger.debug('[DASHBOARD_DATA] 数据权限查询条件:', {
+      query: JSON.stringify(travelQuery, null, 2),
+      userRole: role?.code || 'unknown',
+      dataScope: role?.dataScope || 'unknown',
+      userId: user._id?.toString() || user.id,
+      userName: user.name || user.firstName || 'unknown'
+    });
 
     // 转换 expenseQuery 中的 employee 字段为 ObjectId（用于聚合查询）
     const expenseQueryForAggregate = convertEmployeeToObjectId({ ...expenseQuery });
@@ -757,7 +763,25 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
     currentMonth: currentMonth.toISOString(),
     lastMonth: lastMonth.toISOString(),
     nextMonth: nextMonth.toISOString(),
-    expenseQuery: JSON.stringify(expenseQueryForAggregate, null, 2)
+    expenseQuery: JSON.stringify(expenseQueryForAggregate, null, 2),
+    userRole: role?.code || 'unknown',
+    dataScope: role?.dataScope || 'unknown',
+    userId: user._id?.toString() || user.id
+  });
+  
+  // 先检查是否有符合条件的数据（用于调试）
+  const [totalExpenseCount, currentMonthExpenseCount] = await Promise.all([
+    Expense.countDocuments(expenseQueryForAggregate),
+    Expense.countDocuments(
+      Object.assign({}, expenseQueryForAggregate, { 
+        date: { $gte: currentMonth, $lt: nextMonth }
+      })
+    )
+  ]);
+  logger.debug('[DASHBOARD_STATS] Expense counts:', {
+    totalExpenseCount,
+    currentMonthExpenseCount,
+    query: JSON.stringify(expenseQueryForAggregate, null, 2)
   });
 
   // 分别查询当前月和上月的费用，确保日期比较正确
@@ -818,7 +842,10 @@ async function getDashboardStatsData(user, role, travelQuery, expenseQuery, expe
     lastMonthTotal,
     spendingTrend,
     currentMonthData: currentMonthSpendingData,
-    lastMonthData: lastMonthSpendingData
+    lastMonthData: lastMonthSpendingData,
+    currentMonthExpenseCount,
+    totalExpenseCount,
+    query: JSON.stringify(expenseQueryForAggregate, null, 2)
   });
 
   return {
