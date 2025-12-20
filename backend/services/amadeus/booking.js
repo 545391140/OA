@@ -100,6 +100,12 @@ async function createFlightOrder(bookingData) {
     }
   } catch (error) {
     logger.error('创建机票预订失败:', error.message);
+    logger.error('错误详情:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      errors: error.response?.data?.errors,
+    });
     
     // 如果是认证错误，尝试刷新Token后重试一次
     if (error.response?.status === 401) {
@@ -110,7 +116,16 @@ async function createFlightOrder(bookingData) {
     
     // 处理 API 错误响应
     if (error.response?.data?.errors) {
-      const errorDetail = error.response.data.errors[0]?.detail || error.message;
+      const errors = error.response.data.errors;
+      // 获取第一个错误的详细信息
+      const firstError = errors[0];
+      const errorDetail = firstError?.detail || firstError?.title || error.message;
+      
+      // 如果是 "Could not sell segment" 错误，提供更友好的错误信息
+      if (errorDetail.includes('Could not sell segment')) {
+        throw new Error('航班座位已售出或报价已过期，请重新搜索并确认价格后再预订');
+      }
+      
       throw new Error(errorDetail);
     }
     

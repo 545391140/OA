@@ -185,6 +185,12 @@ const BookingForm = () => {
           return;
         }
       }
+    } else if (activeStep === 2) {
+      // 在进入最后一步前，必须确认价格
+      if (!confirmedPrice) {
+        showNotification('请先确认价格后再继续', 'error');
+        return;
+      }
     }
     setActiveStep((prevStep) => prevStep + 1);
   };
@@ -262,6 +268,13 @@ const BookingForm = () => {
       return;
     }
 
+    // 必须使用确认后的价格，否则会导致 "Could not sell segment" 错误
+    if (!confirmedPrice) {
+      showNotification('请先确认价格后再提交预订', 'error');
+      setActiveStep(1); // 返回到价格确认步骤
+      return;
+    }
+
     // 验证并格式化 travelers 数据
     const validatedTravelers = travelers.map((t, index) => {
       // 验证 dateOfBirth
@@ -292,7 +305,7 @@ const BookingForm = () => {
     try {
       const bookingData = {
         travelId: selectedTravelId,
-        flightOffer: confirmedPrice || flight,
+        flightOffer: confirmedPrice, // 必须使用确认后的价格
         travelers: validatedTravelers,
       };
 
@@ -554,9 +567,22 @@ const BookingForm = () => {
                 </CardContent>
               </Card>
             ) : (
-              <Alert severity="warning">
-                {t('flight.booking.priceNotConfirmed') || '价格尚未确认，请点击确认按钮'}
-              </Alert>
+              <Box>
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  {t('flight.booking.priceNotConfirmed') || '价格尚未确认，请点击确认按钮'}
+                </Alert>
+                <Button
+                  variant="contained"
+                  onClick={handleConfirmPrice}
+                  disabled={priceConfirming}
+                  startIcon={priceConfirming ? <CircularProgress size={20} /> : <CheckCircleIcon />}
+                  fullWidth
+                >
+                  {priceConfirming 
+                    ? (t('flight.booking.confirming') || '确认中...') 
+                    : (t('flight.booking.confirmPriceButton') || '确认价格')}
+                </Button>
+              </Box>
             )}
 
             {error && (
