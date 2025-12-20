@@ -49,7 +49,11 @@
 ```
 backend/
 ├── services/
-│   ├── amadeusApiService.js      # Amadeus API 服务封装
+│   ├── amadeus/                   # Amadeus API 服务模块（模块化拆分）
+│   │   ├── index.js              # 统一导出入口
+│   │   ├── base.js                # 基础配置、认证、Token 管理
+│   │   ├── flightSearch.js        # 航班搜索和价格确认
+│   │   └── booking.js             # 预订创建和订单管理
 │   └── externalApiService.js     # 外部API通用服务（抽离公共功能）
 ├── controllers/
 │   └── flightController.js        # 机票相关控制器
@@ -561,14 +565,163 @@ module.exports = {
 };
 ```
 
-### 5.1 Amadeus API 服务 (`amadeusApiService.js`)
+### 5.1 Amadeus API 服务模块化设计
 
-#### 5.1.1 配置验证和连接测试
+**设计原则：**
+- 避免单个文件过大（目标：每个文件 < 300 行）
+- 按功能模块拆分，便于维护和测试
+- 统一导出接口，保持向后兼容
+
+**文件结构：**
+```
+backend/services/amadeus/
+├── index.js              # 统一导出入口（对外接口）
+├── base.js               # 基础功能（配置、认证、Token 管理）
+├── flightSearch.js       # 航班搜索和价格确认
+└── booking.js            # 预订创建和订单管理
+```
+
+**模块职责划分：**
+
+| 文件 | 职责 | 预估行数 |
+|------|------|---------|
+| `base.js` | 配置验证、Token 获取/刷新、基础工具函数 | ~150 行 |
+| `flightSearch.js` | 航班搜索、价格确认 | ~200 行 |
+| `booking.js` | 创建预订、订单管理（获取/取消） | ~250 行 |
+| `index.js` | 统一导出、向后兼容 | ~50 行 |
+
+**总计：** ~650 行（如果单文件会超过 600 行，拆分后更易维护）
+
+---
+
+### 5.1.1 基础模块 (`amadeus/base.js`)
+
+**职责：**
+- API 配置管理
+- OAuth 2.0 认证
+- Token 缓存和刷新
+- 基础工具函数（getBaseURL 等）
+- 配置验证和连接测试
+
+**导出接口：**
+```javascript
+module.exports = {
+  validateConfig,
+  testConnection,
+  getAccessToken,
+  refreshAccessToken,
+  getBaseURL,
+};
+```
+
+---
+
+### 5.1.2 航班搜索模块 (`amadeus/flightSearch.js`)
+
+**职责：**
+- 航班报价搜索
+- 价格确认
+
+**依赖：**
+- 依赖 `base.js` 获取 Token 和 Base URL
+
+**导出接口：**
+```javascript
+const { getAccessToken, getBaseURL } = require('./base');
+
+module.exports = {
+  searchFlightOffers,
+  confirmFlightPrice,
+};
+```
+
+---
+
+### 5.1.3 预订管理模块 (`amadeus/booking.js`)
+
+**职责：**
+- 创建机票预订
+- 获取订单详情
+- 取消订单
+
+**依赖：**
+- 依赖 `base.js` 获取 Token 和 Base URL
+
+**导出接口：**
+```javascript
+const { getAccessToken, getBaseURL } = require('./base');
+
+module.exports = {
+  createFlightOrder,
+  getFlightOrder,
+  cancelFlightOrder,
+};
+```
+
+---
+
+### 5.1.4 统一导出入口 (`amadeus/index.js`)
+
+**职责：**
+- 统一导出所有模块的功能
+- 保持向后兼容（如果之前使用 `amadeusApiService.js`）
+
+**导出接口：**
+```javascript
+const base = require('./base');
+const flightSearch = require('./flightSearch');
+const booking = require('./booking');
+
+// 统一导出所有功能
+module.exports = {
+  // 基础功能
+  ...base,
+  
+  // 航班搜索
+  ...flightSearch,
+  
+  // 预订管理
+  ...booking,
+  
+  // 为了向后兼容，也可以导出为类实例
+  // 如果之前使用 new AmadeusApiService() 的方式
+};
+```
+
+**使用方式：**
+```javascript
+// 方式一：直接导入（推荐）
+const amadeusApi = require('./services/amadeus');
+await amadeusApi.searchFlightOffers({...});
+await amadeusApi.createFlightOrder({...});
+
+// 方式二：按需导入
+const { searchFlightOffers } = require('./services/amadeus/flightSearch');
+const { createFlightOrder } = require('./services/amadeus/booking');
+```
+
+---
+
+### 5.1.5 详细实现（按模块拆分）
+
+#### 5.1.5.1 基础模块实现 (`amadeus/base.js`)
+
+**实现代码：**
 
 ```javascript
+// backend/services/amadeus/base.js
+const axios = require('axios');
+const logger = require('../../utils/logger');
+const config = require('../../config');
+
+// Token 缓存
+let tokenCache = {
+  accessToken: null,
+  expiresAt: null,
+};
+
 /**
  * 验证 API 配置
- * 在服务启动时调用，确保配置正确
  */
 async function validateConfig() {
   const apiKey = config.AMADEUS_API_KEY || process.env.AMADEUS_API_KEY;
@@ -584,7 +737,6 @@ async function validateConfig() {
 
 /**
  * 测试 API 连接
- * 通过获取 Access Token 来验证 API 是否可用
  */
 async function testConnection() {
   try {
@@ -606,27 +758,9 @@ async function testConnection() {
     throw new Error(`Amadeus API 连接测试失败: ${error.message}`);
   }
 }
-```
-
-#### 5.1.2 认证管理
-
-**基于 Amadeus 官方文档的认证实现：**
-
-```javascript
-const axios = require('axios');
-const logger = require('../utils/logger');
-const config = require('../config');
-
-// Token 缓存
-let tokenCache = {
-  accessToken: null,
-  expiresAt: null,
-};
 
 /**
  * 获取 Access Token
- * Token 有效期：1799秒（约30分钟），需要缓存并自动刷新
- * 参考：https://developers.amadeus.com/self-service/apis-docs/guides/developer-guides/authorization-262
  */
 async function getAccessToken() {
   // 检查缓存是否有效（提前5分钟刷新）
@@ -643,9 +777,7 @@ async function getAccessToken() {
       throw new Error('Amadeus API配置缺失：请配置AMADEUS_API_KEY和AMADEUS_API_SECRET');
     }
 
-    const baseURL = env === 'production' 
-      ? 'https://api.amadeus.com'
-      : 'https://test.api.amadeus.com';
+    const baseURL = getBaseURL();
 
     const response = await axios.post(
       `${baseURL}/v1/security/oauth2/token`,
@@ -696,9 +828,239 @@ function getBaseURL() {
     ? 'https://api.amadeus.com'
     : 'https://test.api.amadeus.com';
 }
+
+module.exports = {
+  validateConfig,
+  testConnection,
+  getAccessToken,
+  refreshAccessToken,
+  getBaseURL,
+};
 ```
 
-#### 5.1.3 航班搜索
+---
+
+#### 5.1.5.2 航班搜索模块实现 (`amadeus/flightSearch.js`)
+
+```javascript
+/**
+ * 验证 API 配置
+ * 在服务启动时调用，确保配置正确
+ */
+async function validateConfig() {
+  const apiKey = config.AMADEUS_API_KEY || process.env.AMADEUS_API_KEY;
+  const apiSecret = config.AMADEUS_API_SECRET || process.env.AMADEUS_API_SECRET;
+  
+  if (!apiKey || !apiSecret) {
+    throw new Error('Amadeus API 配置缺失：请设置 AMADEUS_API_KEY 和 AMADEUS_API_SECRET');
+  }
+  
+  logger.info('Amadeus API 配置验证通过');
+  return true;
+}
+
+/**
+ * 测试 API 连接
+ * 通过获取 Access Token 来验证 API 是否可用
+ */
+async function testConnection() {
+  try {
+    logger.info('正在测试 Amadeus API 连接...');
+    const token = await getAccessToken();
+    
+    if (token) {
+      logger.info('✅ Amadeus API 连接测试成功');
+      return {
+        success: true,
+        message: 'Amadeus API 连接正常',
+        environment: config.AMADEUS_API_ENV || 'test',
+      };
+    } else {
+      throw new Error('获取 Access Token 失败');
+    }
+  } catch (error) {
+    logger.error('❌ Amadeus API 连接测试失败:', error.message);
+    throw new Error(`Amadeus API 连接测试失败: ${error.message}`);
+  }
+}
+```
+
+**实现代码：**
+
+```javascript
+// backend/services/amadeus/flightSearch.js
+const axios = require('axios');
+const logger = require('../../utils/logger');
+const { getAccessToken, getBaseURL, refreshAccessToken } = require('./base');
+
+/**
+ * 搜索航班报价
+ * 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-offers-search
+ */
+async function searchFlightOffers(searchParams) {
+  try {
+    const {
+      originLocationCode,
+      destinationLocationCode,
+      departureDate,
+      returnDate,
+      adults = 1,
+      children = 0,
+      infants = 0,
+      travelClass = 'ECONOMY',
+      max = 250,
+      currencyCode = 'USD',
+      nonStop = false,
+    } = searchParams;
+
+    // 参数验证
+    if (!originLocationCode || !destinationLocationCode || !departureDate) {
+      throw new Error('缺少必填参数：originLocationCode, destinationLocationCode, departureDate');
+    }
+
+    if (adults < 1 || adults > 9) {
+      throw new Error('成人数量必须在1-9之间');
+    }
+
+    // 获取 Access Token
+    const accessToken = await getAccessToken();
+    const baseURL = getBaseURL();
+
+    // 构建查询参数
+    const params = new URLSearchParams({
+      originLocationCode,
+      destinationLocationCode,
+      departureDate,
+      adults: adults.toString(),
+      travelClass,
+      max: Math.min(max, 250).toString(),
+      currencyCode,
+    });
+
+    if (returnDate) {
+      params.append('returnDate', returnDate);
+    }
+    if (children > 0) {
+      params.append('children', children.toString());
+    }
+    if (infants > 0) {
+      params.append('infants', infants.toString());
+    }
+    if (nonStop) {
+      params.append('nonStop', 'true');
+    }
+
+    // 调用 API
+    const response = await axios.get(
+      `${baseURL}/v2/shopping/flight-offers?${params.toString()}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (response.data && response.data.data) {
+      logger.debug(`搜索到 ${response.data.data.length} 个航班报价`);
+      return {
+        success: true,
+        data: response.data.data,
+        meta: response.data.meta || {},
+      };
+    } else {
+      throw new Error('API响应格式错误');
+    }
+  } catch (error) {
+    logger.error('搜索航班报价失败:', error.message);
+    
+    // 如果是认证错误，尝试刷新Token后重试一次
+    if (error.response?.status === 401) {
+      logger.debug('Token可能过期，尝试刷新后重试...');
+      await refreshAccessToken();
+      return searchFlightOffers(searchParams);
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * 确认航班价格
+ * 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-offers-price
+ */
+async function confirmFlightPrice(flightOffer) {
+  try {
+    if (!flightOffer || !flightOffer.id) {
+      throw new Error('flightOffer参数无效：必须包含完整的航班报价对象');
+    }
+
+    // 获取 Access Token
+    const accessToken = await getAccessToken();
+    const baseURL = getBaseURL();
+
+    // 调用 API
+    const response = await axios.post(
+      `${baseURL}/v1/shopping/flight-offers/pricing`,
+      {
+        data: {
+          type: 'flight-offers-pricing',
+          flightOffers: [flightOffer],
+        },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/vnd.amadeus+json',
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (response.data && response.data.data && response.data.data.flightOffers) {
+      const confirmedOffer = response.data.data.flightOffers[0];
+      logger.debug('航班价格确认成功');
+      return {
+        success: true,
+        data: confirmedOffer,
+        meta: response.data.meta || {},
+      };
+    } else {
+      throw new Error('价格确认API响应格式错误');
+    }
+  } catch (error) {
+    logger.error('确认航班价格失败:', error.message);
+    
+    // 如果是认证错误，尝试刷新Token后重试一次
+    if (error.response?.status === 401) {
+      logger.debug('Token可能过期，尝试刷新后重试...');
+      await refreshAccessToken();
+      return confirmFlightPrice(flightOffer);
+    }
+    
+    // 处理价格变更错误
+    if (error.response?.status === 400) {
+      const errorDetail = error.response.data?.errors?.[0]?.detail;
+      if (errorDetail && errorDetail.includes('price')) {
+        throw new Error('航班价格已变更，请重新搜索');
+      }
+    }
+    
+    throw error;
+  }
+}
+
+module.exports = {
+  searchFlightOffers,
+  confirmFlightPrice,
+};
+```
+
+---
+
+#### 5.1.5.3 预订管理模块实现 (`amadeus/booking.js`)
 
 **基于 Amadeus Flight Offers Search API 文档：**
 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-offers-search
@@ -810,7 +1172,223 @@ async function searchFlightOffers(searchParams) {
 }
 ```
 
-#### 5.1.4 价格确认
+**实现代码：**
+
+```javascript
+// backend/services/amadeus/booking.js
+const axios = require('axios');
+const logger = require('../../utils/logger');
+const { getAccessToken, getBaseURL, refreshAccessToken } = require('./base');
+
+/**
+ * 创建机票预订
+ * 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-create-orders
+ */
+async function createFlightOrder(bookingData) {
+  try {
+    const { flightOffer, travelers } = bookingData;
+
+    // 数据验证
+    if (!flightOffer || !flightOffer.id) {
+      throw new Error('flightOffer参数无效');
+    }
+    if (!travelers || !Array.isArray(travelers) || travelers.length === 0) {
+      throw new Error('travelers参数无效：必须至少包含一个乘客');
+    }
+
+    // 验证乘客信息
+    travelers.forEach((traveler, index) => {
+      if (!traveler.dateOfBirth || !traveler.name || !traveler.contact) {
+        throw new Error(`乘客${index + 1}信息不完整`);
+      }
+      if (!traveler.name.firstName || !traveler.name.lastName) {
+        throw new Error(`乘客${index + 1}姓名不完整`);
+      }
+      if (!traveler.contact.emailAddress) {
+        throw new Error(`乘客${index + 1}邮箱必填`);
+      }
+    });
+
+    // 获取 Access Token
+    const accessToken = await getAccessToken();
+    const baseURL = getBaseURL();
+
+    // 构建请求体
+    const requestBody = {
+      data: {
+        type: 'flight-order',
+        flightOffers: [flightOffer],
+        travelers: travelers.map((traveler, index) => ({
+          id: traveler.id || `TRAVELER_${index + 1}`,
+          dateOfBirth: traveler.dateOfBirth,
+          name: {
+            firstName: traveler.name.firstName,
+            lastName: traveler.name.lastName,
+          },
+          contact: {
+            emailAddress: traveler.contact.emailAddress,
+            phones: traveler.contact.phones || [],
+          },
+        })),
+      },
+    };
+
+    // 调用 API
+    const response = await axios.post(
+      `${baseURL}/v1/booking/flight-orders`,
+      requestBody,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/vnd.amadeus+json',
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 60000, // 预订可能需要更长时间
+      }
+    );
+
+    if (response.data && response.data.data) {
+      logger.debug('机票预订成功');
+      return {
+        success: true,
+        data: response.data.data,
+        meta: response.data.meta || {},
+      };
+    } else {
+      throw new Error('预订API响应格式错误');
+    }
+  } catch (error) {
+    logger.error('创建机票预订失败:', error.message);
+    
+    // 如果是认证错误，尝试刷新Token后重试一次
+    if (error.response?.status === 401) {
+      logger.debug('Token可能过期，尝试刷新后重试...');
+      await refreshAccessToken();
+      return createFlightOrder(bookingData);
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * 获取订单详情
+ * 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-orders
+ */
+async function getFlightOrder(orderId) {
+  try {
+    if (!orderId) {
+      throw new Error('orderId参数必填');
+    }
+
+    // 获取 Access Token
+    const accessToken = await getAccessToken();
+    const baseURL = getBaseURL();
+
+    // 调用 API
+    const response = await axios.get(
+      `${baseURL}/v1/booking/flight-orders/${orderId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (response.data && response.data.data) {
+      return {
+        success: true,
+        data: response.data.data,
+        meta: response.data.meta || {},
+      };
+    } else {
+      throw new Error('获取订单详情API响应格式错误');
+    }
+  } catch (error) {
+    logger.error('获取订单详情失败:', error.message);
+    
+    // 如果是认证错误，尝试刷新Token后重试一次
+    if (error.response?.status === 401) {
+      logger.debug('Token可能过期，尝试刷新后重试...');
+      await refreshAccessToken();
+      return getFlightOrder(orderId);
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * 取消订单
+ */
+async function cancelFlightOrder(orderId) {
+  try {
+    if (!orderId) {
+      throw new Error('orderId参数必填');
+    }
+
+    // 获取 Access Token
+    const accessToken = await getAccessToken();
+    const baseURL = getBaseURL();
+
+    // 调用 API
+    const response = await axios.delete(
+      `${baseURL}/v1/booking/flight-orders/${orderId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (response.data && response.data.data) {
+      logger.debug('订单取消成功');
+      return {
+        success: true,
+        data: response.data.data,
+        meta: response.data.meta || {},
+      };
+    } else {
+      // DELETE请求可能返回204 No Content
+      return {
+        success: true,
+        message: '订单已取消',
+      };
+    }
+  } catch (error) {
+    logger.error('取消订单失败:', error.message);
+    
+    // 如果是认证错误，尝试刷新Token后重试一次
+    if (error.response?.status === 401) {
+      logger.debug('Token可能过期，尝试刷新后重试...');
+      await refreshAccessToken();
+      return cancelFlightOrder(orderId);
+    }
+    
+    // 处理订单无法取消的情况
+    if (error.response?.status === 400 || error.response?.status === 422) {
+      const errorDetail = error.response.data?.errors?.[0]?.detail;
+      throw new Error(errorDetail || '订单无法取消，可能已超过取消时限');
+    }
+    
+    throw error;
+  }
+}
+
+module.exports = {
+  createFlightOrder,
+  getFlightOrder,
+  cancelFlightOrder,
+};
+```
+
+---
+
+#### 5.1.5.4 统一导出入口 (`amadeus/index.js`)
 
 **基于 Amadeus Flight Offers Price API 文档：**
 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-offers-price
@@ -885,7 +1463,74 @@ async function confirmFlightPrice(flightOffer) {
 }
 ```
 
-#### 5.1.5 创建预订
+**实现代码：**
+
+```javascript
+// backend/services/amadeus/index.js
+const base = require('./base');
+const flightSearch = require('./flightSearch');
+const booking = require('./booking');
+
+// 统一导出所有功能
+module.exports = {
+  // 基础功能
+  ...base,
+  
+  // 航班搜索
+  ...flightSearch,
+  
+  // 预订管理
+  ...booking,
+};
+```
+
+**使用示例：**
+```javascript
+// 在控制器中使用
+const amadeusApi = require('../services/amadeus');
+
+// 搜索航班
+const searchResult = await amadeusApi.searchFlightOffers({
+  originLocationCode: 'PEK',
+  destinationLocationCode: 'JFK',
+  departureDate: '2025-12-25',
+  adults: 1,
+});
+
+// 创建预订
+const bookingResult = await amadeusApi.createFlightOrder({
+  flightOffer: confirmedOffer,
+  travelers: [...],
+});
+```
+
+---
+
+### 5.1.6 模块化优势
+
+**1. 代码组织清晰**
+- 每个模块职责单一，易于理解
+- 文件大小控制在合理范围内（< 300 行）
+
+**2. 便于维护**
+- 修改某个功能时，只需关注对应模块
+- 减少代码冲突的可能性
+
+**3. 便于测试**
+- 可以单独测试每个模块
+- 测试覆盖更全面
+
+**4. 便于扩展**
+- 未来添加新功能时，可以创建新模块
+- 不影响现有代码
+
+**5. 向后兼容**
+- 通过 `index.js` 统一导出，保持 API 不变
+- 现有代码无需修改
+
+---
+
+### 5.1.7 原单文件实现（已废弃，仅作参考）
 
 **基于 Amadeus Flight Create Orders API 文档：**
 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-create-orders
