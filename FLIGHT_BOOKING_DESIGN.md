@@ -551,12 +551,64 @@ class AmadeusApiService extends ExternalApiService {
   // ... 其他方法类似
 }
 
-module.exports = new AmadeusApiService();
+// 导出服务实例和方法
+const serviceInstance = new AmadeusApiService();
+
+module.exports = {
+  ...serviceInstance,
+  validateConfig: () => serviceInstance.validateConfig(),
+  testConnection: () => serviceInstance.testConnection(),
+};
 ```
 
 ### 5.1 Amadeus API 服务 (`amadeusApiService.js`)
 
-#### 5.1.1 认证管理
+#### 5.1.1 配置验证和连接测试
+
+```javascript
+/**
+ * 验证 API 配置
+ * 在服务启动时调用，确保配置正确
+ */
+async function validateConfig() {
+  const apiKey = config.AMADEUS_API_KEY || process.env.AMADEUS_API_KEY;
+  const apiSecret = config.AMADEUS_API_SECRET || process.env.AMADEUS_API_SECRET;
+  
+  if (!apiKey || !apiSecret) {
+    throw new Error('Amadeus API 配置缺失：请设置 AMADEUS_API_KEY 和 AMADEUS_API_SECRET');
+  }
+  
+  logger.info('Amadeus API 配置验证通过');
+  return true;
+}
+
+/**
+ * 测试 API 连接
+ * 通过获取 Access Token 来验证 API 是否可用
+ */
+async function testConnection() {
+  try {
+    logger.info('正在测试 Amadeus API 连接...');
+    const token = await getAccessToken();
+    
+    if (token) {
+      logger.info('✅ Amadeus API 连接测试成功');
+      return {
+        success: true,
+        message: 'Amadeus API 连接正常',
+        environment: config.AMADEUS_API_ENV || 'test',
+      };
+    } else {
+      throw new Error('获取 Access Token 失败');
+    }
+  } catch (error) {
+    logger.error('❌ Amadeus API 连接测试失败:', error.message);
+    throw new Error(`Amadeus API 连接测试失败: ${error.message}`);
+  }
+}
+```
+
+#### 5.1.2 认证管理
 
 **基于 Amadeus 官方文档的认证实现：**
 
@@ -646,7 +698,7 @@ function getBaseURL() {
 }
 ```
 
-#### 5.1.2 航班搜索
+#### 5.1.3 航班搜索
 
 **基于 Amadeus Flight Offers Search API 文档：**
 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-offers-search
@@ -758,7 +810,7 @@ async function searchFlightOffers(searchParams) {
 }
 ```
 
-#### 5.1.3 价格确认
+#### 5.1.4 价格确认
 
 **基于 Amadeus Flight Offers Price API 文档：**
 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-offers-price
@@ -833,7 +885,7 @@ async function confirmFlightPrice(flightOffer) {
 }
 ```
 
-#### 5.1.4 创建预订
+#### 5.1.5 创建预订
 
 **基于 Amadeus Flight Create Orders API 文档：**
 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-create-orders
@@ -950,7 +1002,7 @@ async function createFlightOrder(bookingData) {
 }
 ```
 
-#### 5.1.5 订单管理
+#### 5.1.6 订单管理
 
 **基于 Amadeus Flight Order Management API 文档：**
 参考：https://developers.amadeus.com/self-service/category/air/api-doc/flight-orders
@@ -1784,24 +1836,303 @@ DELETE /api/flights/bookings/:id
 - 防止恶意请求
 - 缓存常用查询结果
 
-## 10. 测试计划
+## 10. API 连接测试和验证
 
-### 10.1 单元测试
+### 10.1 测试的重要性
+
+**为什么需要测试：**
+- 验证 API 配置是否正确
+- 验证 API Key 和 Secret 是否有效
+- 验证网络连接是否正常
+- 在服务启动前发现问题
+- 提供健康检查功能
+
+### 10.2 服务启动时验证
+
+#### 10.2.1 配置验证
+
+在服务启动时验证 Amadeus API 配置：
+
+```javascript
+// backend/services/amadeusApiService.js
+
+/**
+ * 验证 API 配置
+ * 在服务启动时调用，确保配置正确
+ */
+async function validateConfig() {
+  const apiKey = config.AMADEUS_API_KEY || process.env.AMADEUS_API_KEY;
+  const apiSecret = config.AMADEUS_API_SECRET || process.env.AMADEUS_API_SECRET;
+  
+  if (!apiKey || !apiSecret) {
+    throw new Error('Amadeus API 配置缺失：请设置 AMADEUS_API_KEY 和 AMADEUS_API_SECRET');
+  }
+  
+  logger.info('Amadeus API 配置验证通过');
+  return true;
+}
+
+/**
+ * 测试 API 连接
+ * 通过获取 Access Token 来验证 API 是否可用
+ */
+async function testConnection() {
+  try {
+    logger.info('正在测试 Amadeus API 连接...');
+    const token = await getAccessToken();
+    
+    if (token) {
+      logger.info('✅ Amadeus API 连接测试成功');
+      return {
+        success: true,
+        message: 'Amadeus API 连接正常',
+        environment: config.AMADEUS_API_ENV || 'test',
+      };
+    } else {
+      throw new Error('获取 Access Token 失败');
+    }
+  } catch (error) {
+    logger.error('❌ Amadeus API 连接测试失败:', error.message);
+    throw new Error(`Amadeus API 连接测试失败: ${error.message}`);
+  }
+}
+```
+
+#### 10.2.2 在服务启动时调用
+
+```javascript
+// backend/server.js
+
+const amadeusApiService = require('./services/amadeusApiService');
+
+// 在数据库连接后，启动服务器前
+connectDB().then(async () => {
+  // 验证 Amadeus API 配置
+  try {
+    await amadeusApiService.validateConfig();
+    await amadeusApiService.testConnection();
+  } catch (error) {
+    logger.error('Amadeus API 初始化失败:', error.message);
+    logger.warn('服务将继续启动，但机票功能可能不可用');
+    // 不阻止服务启动，但记录警告
+  }
+  
+  // 启动服务器
+  app.listen(PORT, () => {
+    logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    logger.info(`📊 Health check: http://localhost:${PORT}/health`);
+  });
+});
+```
+
+### 10.3 健康检查端点
+
+#### 10.3.1 扩展健康检查端点
+
+```javascript
+// backend/routes/health.js 或 backend/server.js
+
+/**
+ * 健康检查端点（扩展版）
+ * 包含外部API状态检查
+ */
+router.get('/health', async (req, res) => {
+  const health = {
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    services: {
+      database: 'unknown',
+      amadeus: 'unknown',
+    },
+  };
+  
+  // 检查数据库连接
+  try {
+    if (mongoose.connection.readyState === 1) {
+      health.services.database = 'connected';
+    } else {
+      health.services.database = 'disconnected';
+      health.status = 'DEGRADED';
+    }
+  } catch (error) {
+    health.services.database = 'error';
+    health.status = 'DEGRADED';
+  }
+  
+  // 检查 Amadeus API 连接（可选，不阻塞）
+  try {
+    const amadeusApiService = require('../services/amadeusApiService');
+    const testResult = await Promise.race([
+      amadeusApiService.testConnection(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 5000)
+      ),
+    ]);
+    
+    if (testResult.success) {
+      health.services.amadeus = 'connected';
+    } else {
+      health.services.amadeus = 'error';
+      health.status = 'DEGRADED';
+    }
+  } catch (error) {
+    health.services.amadeus = 'disconnected';
+    // 不改变整体状态，因为 Amadeus 不是核心服务
+  }
+  
+  const statusCode = health.status === 'OK' ? 200 : 503;
+  res.status(statusCode).json(health);
+});
+```
+
+### 10.4 API 连接测试工具
+
+#### 10.4.1 测试脚本
+
+创建独立的测试脚本：
+
+```javascript
+// backend/scripts/testAmadeusApi.js
+
+/**
+ * Amadeus API 连接测试脚本
+ * 用于验证 API 配置和连接是否正常
+ */
+
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+const amadeusApiService = require('../services/amadeusApiService');
+const logger = require('../utils/logger');
+
+async function testAmadeusApi() {
+  console.log('\n🧪 开始测试 Amadeus API 连接...\n');
+  
+  try {
+    // 1. 验证配置
+    console.log('1️⃣  验证 API 配置...');
+    await amadeusApiService.validateConfig();
+    console.log('   ✅ 配置验证通过\n');
+    
+    // 2. 测试连接（获取 Token）
+    console.log('2️⃣  测试 API 连接（获取 Access Token）...');
+    const connectionTest = await amadeusApiService.testConnection();
+    console.log(`   ✅ ${connectionTest.message}`);
+    console.log(`   📍 环境: ${connectionTest.environment}\n`);
+    
+    // 3. 测试航班搜索（可选，使用测试数据）
+    console.log('3️⃣  测试航班搜索功能...');
+    try {
+      const searchResult = await amadeusApiService.searchFlightOffers({
+        originLocationCode: 'PEK',
+        destinationLocationCode: 'JFK',
+        departureDate: '2025-12-25', // 使用未来日期
+        adults: 1,
+        travelClass: 'ECONOMY',
+        max: 5, // 只获取5个结果用于测试
+      });
+      
+      if (searchResult.success && searchResult.data.length > 0) {
+        console.log(`   ✅ 搜索成功，找到 ${searchResult.data.length} 个航班报价`);
+        console.log(`   💰 示例价格: ${searchResult.data[0].price?.total} ${searchResult.data[0].price?.currency}\n`);
+      } else {
+        console.log('   ⚠️  搜索成功，但未找到航班（可能是测试数据问题）\n');
+      }
+    } catch (error) {
+      console.log(`   ⚠️  搜索测试失败: ${error.message}`);
+      console.log('   （这可能是正常的，取决于测试环境的数据可用性）\n');
+    }
+    
+    console.log('✅ 所有测试完成！Amadeus API 配置正确，可以正常使用。\n');
+    process.exit(0);
+    
+  } catch (error) {
+    console.error('\n❌ 测试失败:', error.message);
+    console.error('\n请检查：');
+    console.error('1. AMADEUS_API_KEY 和 AMADEUS_API_SECRET 是否正确设置');
+    console.error('2. 网络连接是否正常');
+    console.error('3. API Key 是否有权限访问 Test Environment');
+    console.error('4. 是否超过了 API 请求频率限制\n');
+    process.exit(1);
+  }
+}
+
+// 运行测试
+testAmadeusApi();
+```
+
+#### 10.4.2 在 package.json 中添加测试命令
+
+```json
+{
+  "scripts": {
+    "test:amadeus": "node backend/scripts/testAmadeusApi.js"
+  }
+}
+```
+
+### 10.5 使用方式
+
+#### 10.5.1 部署前测试
+
+```bash
+# 1. 设置环境变量
+export AMADEUS_API_KEY=your_api_key
+export AMADEUS_API_SECRET=your_api_secret
+export AMADEUS_API_ENV=test
+
+# 2. 运行测试脚本
+npm run test:amadeus
+
+# 或直接运行
+node backend/scripts/testAmadeusApi.js
+```
+
+#### 10.5.2 服务启动时自动验证
+
+服务启动时会自动验证配置和连接，如果失败会记录警告但不阻止服务启动。
+
+#### 10.5.3 健康检查
+
+```bash
+# 检查服务健康状态（包括 Amadeus API）
+curl http://localhost:3001/health
+```
+
+### 10.6 错误处理
+
+**测试失败时的处理：**
+- 配置缺失：阻止服务启动（如果是生产环境）
+- 连接失败：记录警告，服务继续启动（机票功能不可用）
+- Token 获取失败：记录错误，提供详细的错误信息
+
+**建议：**
+- 开发环境：允许服务启动，但记录警告
+- 生产环境：如果配置缺失，应该阻止服务启动
+
+## 11. 测试计划
+
+### 11.1 API 连接测试（新增）
+- ✅ 配置验证测试
+- ✅ 连接测试（获取 Token）
+- ✅ 功能测试（航班搜索）
+- ✅ 健康检查端点测试
+
+### 11.2 单元测试
 - Amadeus API 服务层测试
 - 控制器测试
 - 数据模型验证测试
 
-### 10.2 集成测试
+### 11.3 集成测试
 - API 端点集成测试
 - 与差旅申请集成测试
 - 错误场景测试
 
-### 10.3 端到端测试
+### 11.4 端到端测试
 - 完整的预订流程测试
 - 取消流程测试
 - 与差旅申请的完整流程测试
 
-## 11. 实现方式选择
+## 12. 实现方式选择
 
 ### 11.1 方式一：使用 Amadeus Node.js SDK（推荐）
 
@@ -1863,7 +2194,7 @@ const bookingResponse = await amadeus.booking.flightOrders.post({
 
 **当前设计文档采用方式二，但可以轻松切换到方式一。**
 
-## 12. 部署计划
+## 13. 部署计划
 
 ### 12.1 环境配置
 
@@ -1897,7 +2228,24 @@ AMADEUS_API_SECRET=your_api_secret_here
 AMADEUS_API_ENV=test  # test 或 production
 ```
 
-### 12.4 获取 API 密钥
+### 13.4 获取 API 密钥和测试
+
+**步骤：**
+1. 访问 [Amadeus for Developers](https://developers.amadeus.com/)
+2. 注册开发者账户
+3. 创建应用并获取 API Key 和 Secret
+4. **重要：在 Test Environment 中测试**
+   ```bash
+   # 设置测试环境变量
+   export AMADEUS_API_KEY=your_test_api_key
+   export AMADEUS_API_SECRET=your_test_api_secret
+   export AMADEUS_API_ENV=test
+   
+   # 运行连接测试
+   npm run test:amadeus
+   ```
+5. 确认测试通过后，申请 Production Environment 访问权限
+6. 生产环境部署前再次测试
 
 1. 访问 [Amadeus for Developers](https://developers.amadeus.com/)
 2. 注册开发者账户
@@ -1925,7 +2273,7 @@ AMADEUS_API_ENV=test  # test 或 production
 - ✅ 性能优化
 - ✅ 测试和文档
 
-## 13. 参考资料
+## 14. 参考资料
 
 ### 13.1 官方文档
 
@@ -1964,7 +2312,7 @@ AMADEUS_API_ENV=test  # test 或 production
 - [GitHub 代码示例](https://github.com/amadeus4dev)
 - [交互式示例](https://developers.amadeus.com/self-service/apis-docs/guides/examples-and-prototypes/interactive-examples-5)
 
-## 14. API 请求示例
+## 15. API 请求示例
 
 ### 14.1 搜索航班请求示例
 
@@ -2041,7 +2389,7 @@ Accept: application/vnd.amadeus+json
 }
 ```
 
-## 15. 注意事项
+## 16. 注意事项
 
 1. **API 限制**
    - Amadeus Self-Service API 有请求频率限制
