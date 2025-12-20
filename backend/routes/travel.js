@@ -7,6 +7,7 @@ const { buildDataScopeQuery } = require('../utils/dataScope');
 const { loadUserRole, checkResourceAccess } = require('../middleware/dataAccess');
 const { ErrorFactory } = require('../utils/AppError');
 const logger = require('../utils/logger');
+const { getTravelFlights } = require('../controllers/flightController');
 
 const router = express.Router();
 
@@ -1356,5 +1357,10 @@ router.get('/:id/expenses', protect, async (req, res) => {
     });
   }
 });
+
+// @desc    Get flight bookings for a travel request
+// @route   GET /api/travel/:id/flights
+// @access  Private
+router.get('/:id/flights', protect, loadUserRole, getTravelFlights);
 
 module.exports = router;
