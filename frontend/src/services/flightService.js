@@ -8,8 +8,10 @@ import apiClient from '../utils/axiosConfig';
 /**
  * 搜索航班
  * @param {Object} searchParams - 搜索参数
- * @param {String} searchParams.originLocationCode - 出发机场代码
- * @param {String} searchParams.destinationLocationCode - 到达机场代码
+ * @param {String|Object} searchParams.originLocation - 出发地位置对象或位置ID（支持城市或机场）
+ * @param {String|Object} searchParams.destinationLocation - 目的地位置对象或位置ID（支持城市或机场）
+ * @param {String} searchParams.originLocationCode - 出发机场代码（兼容旧接口，3位代码）
+ * @param {String} searchParams.destinationLocationCode - 到达机场代码（兼容旧接口，3位代码）
  * @param {String} searchParams.departureDate - 出发日期 (YYYY-MM-DD)
  * @param {String} searchParams.returnDate - 返程日期 (可选)
  * @param {Number} searchParams.adults - 成人数量

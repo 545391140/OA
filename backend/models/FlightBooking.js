@@ -25,7 +25,6 @@ const FlightBookingSchema = new mongoose.Schema({
   amadeusOrderId: {
     type: String,
     trim: true,
-    index: true,
   },
   // 航班报价信息（完整对象，存储 Amadeus API 返回的完整数据）
   flightOffer: {
@@ -81,7 +80,6 @@ const FlightBookingSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'confirmed', 'cancelled', 'failed'],
     default: 'pending',
-    index: true,
   },
   // 价格信息
   price: {

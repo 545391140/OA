@@ -32,15 +32,16 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { searchFlights } from '../../services/flightService';
 import dayjs from 'dayjs';
 import FlightList from './FlightList';
+import RegionSelector from '../../components/Common/RegionSelector';
 
 const FlightSearch = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
 
+  const [originLocation, setOriginLocation] = useState(null);
+  const [destinationLocation, setDestinationLocation] = useState(null);
   const [searchParams, setSearchParams] = useState({
-    originLocationCode: '',
-    destinationLocationCode: '',
     departureDate: dayjs().add(7, 'day'),
     returnDate: null,
     adults: 1,
@@ -58,8 +59,8 @@ const FlightSearch = () => {
   const [isRoundTrip, setIsRoundTrip] = useState(false);
 
   const handleSearch = async () => {
-    if (!searchParams.originLocationCode || !searchParams.destinationLocationCode) {
-      showNotification('请填写出发地和目的地', 'error');
+    if (!originLocation || !destinationLocation) {
+      showNotification('请选择出发地和目的地', 'error');
       return;
     }
 
@@ -78,9 +79,17 @@ const FlightSearch = () => {
 
     try {
       const params = {
-        ...searchParams,
+        originLocation: originLocation, // 传递位置对象
+        destinationLocation: destinationLocation, // 传递位置对象
         departureDate: searchParams.departureDate.format('YYYY-MM-DD'),
         returnDate: searchParams.returnDate ? searchParams.returnDate.format('YYYY-MM-DD') : undefined,
+        adults: searchParams.adults,
+        children: searchParams.children,
+        infants: searchParams.infants,
+        travelClass: searchParams.travelClass,
+        max: searchParams.max,
+        currencyCode: searchParams.currencyCode,
+        nonStop: searchParams.nonStop,
       };
 
       const response = await searchFlights(params);
@@ -118,23 +127,25 @@ const FlightSearch = () => {
 
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
+              <RegionSelector
                 label={t('flight.search.origin') || '出发地'}
-                value={searchParams.originLocationCode}
-                onChange={(e) => setSearchParams({ ...searchParams, originLocationCode: e.target.value.toUpperCase() })}
-                placeholder="PEK"
-                inputProps={{ maxLength: 3 }}
+                value={originLocation}
+                onChange={(location) => setOriginLocation(location)}
+                placeholder={t('flight.search.originPlaceholder') || '搜索机场或城市'}
+                transportationType="flight"
+                allowedTypes={['airport', 'city']}
+                required
               />
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
+              <RegionSelector
                 label={t('flight.search.destination') || '目的地'}
-                value={searchParams.destinationLocationCode}
-                onChange={(e) => setSearchParams({ ...searchParams, destinationLocationCode: e.target.value.toUpperCase() })}
-                placeholder="JFK"
-                inputProps={{ maxLength: 3 }}
+                value={destinationLocation}
+                onChange={(location) => setDestinationLocation(location)}
+                placeholder={t('flight.search.destinationPlaceholder') || '搜索机场或城市'}
+                transportationType="flight"
+                allowedTypes={['airport', 'city']}
+                required
               />
             </Grid>
             <Grid item xs={12} md={3}>

@@ -14,6 +14,7 @@ import {
   IconButton,
   Card,
   CardContent,
+  CircularProgress,
   Table,
   TableBody,
   TableRow,
@@ -82,11 +83,19 @@ const TravelDetail = () => {
   const [expenses, setExpenses] = useState([]);
   const [expensesLoading, setExpensesLoading] = useState(false);
   const [generatingExpenses, setGeneratingExpenses] = useState(false);
+  const [flightBookings, setFlightBookings] = useState([]);
+  const [flightBookingsLoading, setFlightBookingsLoading] = useState(false);
 
   useEffect(() => {
     fetchExpenseItems();
     fetchTravelDetail();
   }, [id]);
+
+  useEffect(() => {
+    if (travel && travel._id) {
+      fetchFlightBookings();
+    }
+  }, [travel?._id]);
 
   // 使用 useRef 防止重复请求
   const expensesFetchedRef = useRef(false);
@@ -176,6 +185,21 @@ const TravelDetail = () => {
       setExpenses([]);
     } finally {
       setExpensesLoading(false);
+    }
+  };
+
+  const fetchFlightBookings = async () => {
+    try {
+      setFlightBookingsLoading(true);
+      const response = await apiClient.get(`/travel/${id}/flights`);
+      if (response.data && response.data.success) {
+        setFlightBookings(response.data.data || []);
+      }
+    } catch (error) {
+      // 静默失败，不显示错误
+      setFlightBookings([]);
+    } finally {
+      setFlightBookingsLoading(false);
     }
   };
 
@@ -982,6 +1006,80 @@ const TravelDetail = () => {
               </Box>
             )}
             </Paper>
+
+          {/* 航班预订 */}
+          {(flightBookings.length > 0 || flightBookingsLoading) && (
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FlightIcon color="primary" fontSize="small" />
+                  {t('travel.detail.flightBookings') || '航班预订'}
+                </Typography>
+                <Button
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate('/flight/search', { state: { travelId: id } })}
+                >
+                  {t('travel.detail.bookFlight') || '预订航班'}
+                </Button>
+              </Box>
+              <Divider sx={{ mb: 1.5 }} />
+              {flightBookingsLoading ? (
+                <Box sx={{ py: 2, textAlign: 'center' }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : flightBookings.length > 0 ? (
+                <Grid container spacing={2}>
+                  {flightBookings.map((booking) => (
+                    <Grid item xs={12} md={6} key={booking._id}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Box>
+                              <Typography variant="subtitle2" gutterBottom>
+                                {booking.flightOffer?.itineraries?.[0]?.segments?.[0]?.departure?.iataCode} →{' '}
+                                {booking.flightOffer?.itineraries?.[0]?.segments?.[
+                                  booking.flightOffer.itineraries[0].segments.length - 1
+                                ]?.arrival?.iataCode}
+                              </Typography>
+                              {booking.bookingReference && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {t('travel.detail.bookingReference') || '预订号'}: {booking.bookingReference}
+                                </Typography>
+                              )}
+                            </Box>
+                            <Chip
+                              label={t(`flight.booking.${booking.status}`) || booking.status}
+                              color={booking.status === 'confirmed' ? 'success' : booking.status === 'cancelled' ? 'error' : 'warning'}
+                              size="small"
+                            />
+                          </Box>
+                          {booking.flightOffer?.itineraries?.[0]?.segments?.[0]?.departure?.at && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {dayjs(booking.flightOffer.itineraries[0].segments[0].departure.at).format('YYYY-MM-DD HH:mm')}
+                            </Typography>
+                          )}
+                          {booking.price && (
+                            <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+                              {formatCurrency(booking.price.total, booking.price.currency)}
+                            </Typography>
+                          )}
+                          <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                            <Button
+                              size="small"
+                              onClick={() => navigate(`/flight/bookings/${booking._id}`)}
+                            >
+                              {t('common.view') || '查看'}
+                            </Button>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : null}
+            </Paper>
+          )}
 
           {/* 费用预算 */}
           <Paper sx={{ p: 2, mb: 2 }}>

@@ -80,6 +80,8 @@
   "navigation": {
     "dashboard": "Dashboard",
     "travel": "Travel",
+    "flightSearch": "Flight Search",
+    "flightBookings": "Flight Bookings",
     "expenses": "Expenses",
     "approvals": "Approvals",
     "reports": "Reports",
@@ -743,7 +745,10 @@
         "deleteSuccess": "Deleted successfully",
         "deleteError": "Failed to delete",
         "count": "expenses"
-      }
+      },
+      "flightBookings": "Flight Bookings",
+      "bookFlight": "Book Flight",
+      "bookingReference": "Booking Reference"
     }
   },
   "travelStandard": {
@@ -2288,6 +2293,118 @@
     "error": {
       "fetchLoginLogs": "Failed to fetch login logs",
       "fetchOperationLogs": "Failed to fetch operation logs"
+    }
+  },
+  "flight": {
+    "search": {
+      "title": "Flight Search",
+      "description": "Search and compare flight prices",
+      "origin": "Origin",
+      "destination": "Destination",
+      "departureDate": "Departure Date",
+      "returnDate": "Return Date",
+      "tripType": "Trip Type",
+      "oneWay": "One Way",
+      "roundTrip": "Round Trip",
+      "adults": "Adults",
+      "children": "Children",
+      "infants": "Infants",
+      "travelClass": "Travel Class",
+      "economy": "Economy",
+      "premiumEconomy": "Premium Economy",
+      "business": "Business",
+      "first": "First",
+      "search": "Search",
+      "formPlaceholder": "Flight search form",
+      "resultsPlaceholder": "Search results will appear here"
+    },
+    "list": {
+      "title": "Flight List",
+      "results": "Search Results",
+      "noResults": "No flights found matching your criteria",
+      "noFlightsFound": "No flights found",
+      "tryDifferentSearch": "Please try different search criteria",
+      "departure": "Departure",
+      "price": "Price",
+      "availableSeats": "Available Seats",
+      "select": "Select",
+      "viewDetail": "View Details"
+    },
+    "detail": {
+      "title": "Flight Details",
+      "noFlight": "Flight information not found",
+      "outbound": "Outbound",
+      "return": "Return",
+      "terminal": "Terminal",
+      "transfer": "Transfer",
+      "price": "Price",
+      "basePrice": "Base Price",
+      "availableSeats": "Available Seats",
+      "priceConfirmed": "Price Confirmed",
+      "bookNow": "Book Now",
+      "aircraft": "Aircraft"
+    },
+    "booking": {
+      "title": "Flight Booking",
+      "selectTravel": "Select Travel Application",
+      "travelApplication": "Travel Application",
+      "noTravelAvailable": "No available travel applications, please create a travel application first",
+      "passengerInfo": "Passenger Information",
+      "addPassenger": "Add Passenger",
+      "passenger": "Passenger",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "dateOfBirth": "Date of Birth",
+      "email": "Email",
+      "countryCode": "Country Code",
+      "phone": "Phone",
+      "confirmPrice": "Confirm Price",
+      "flightInfo": "Flight Information",
+      "confirmedPrice": "Confirmed Price",
+      "priceNotConfirmed": "Price not confirmed, please click confirm button",
+      "review": "Review Booking",
+      "reviewMessage": "Please review the information above before submitting",
+      "noFlightSelected": "No flight selected, please search and select a flight first",
+      "submit": "Submit Booking",
+      "steps": {
+        "selectTravel": "Select Travel",
+        "passengerInfo": "Passenger Info",
+        "confirmPrice": "Confirm Price",
+        "submit": "Submit"
+      },
+      "newBooking": "New Booking",
+      "search": "Search bookings...",
+      "status": "Status",
+      "confirmed": "Confirmed",
+      "pending": "Pending",
+      "cancelled": "Cancelled",
+      "bookingReference": "Booking Reference",
+      "travelNumber": "Travel Number",
+      "route": "Route",
+      "date": "Date",
+      "price": "Price",
+      "noBookings": "No bookings found",
+      "cancel": "Cancel",
+      "cancelBooking": "Cancel Booking",
+      "cancelReason": "Cancellation Reason"
+    },
+    "bookingDetail": {
+      "title": "Booking Details",
+      "notFound": "Booking record not found",
+      "basicInfo": "Basic Information",
+      "bookingReference": "Booking Reference",
+      "travelNumber": "Travel Number",
+      "price": "Price",
+      "createdAt": "Created At",
+      "cancelledAt": "Cancelled At",
+      "cancellationReason": "Cancellation Reason",
+      "flightInfo": "Flight Information",
+      "passengers": "Passenger Information",
+      "name": "Name",
+      "dateOfBirth": "Date of Birth",
+      "email": "Email",
+      "phone": "Phone",
+      "cancel": "Cancel Booking"
     }
   }
 }

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -24,6 +25,7 @@ import dayjs from 'dayjs';
 
 const FlightList = ({ flights, searchParams, onSelectFlight }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const formatDuration = (duration) => {
     // 将 PT14H30M 格式转换为 "14小时30分钟"
@@ -122,15 +124,26 @@ const FlightList = ({ flights, searchParams, onSelectFlight }) => {
                             </Typography>
                           )}
                         </Box>
-                        <Button
-                          variant="contained"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectFlight && onSelectFlight(flight);
-                          }}
-                        >
-                          {t('flight.list.select') || '选择'}
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button
+                            variant="contained"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectFlight && onSelectFlight(flight);
+                            }}
+                          >
+                            {t('flight.list.select') || '选择'}
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/flight/detail', { state: { flight, searchParams } });
+                            }}
+                          >
+                            {t('flight.list.viewDetail') || '查看详情'}
+                          </Button>
+                        </Box>
                       </Box>
                     </Grid>
                   </Grid>

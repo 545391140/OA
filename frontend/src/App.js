@@ -47,7 +47,10 @@ import InvoiceUpload from './pages/Invoice/InvoiceUpload';
 import InvoiceDetail from './pages/Invoice/InvoiceDetail';
 import Logs from './pages/Logs/Logs';
 import FlightSearch from './pages/Flight/FlightSearch';
+import FlightDetail from './pages/Flight/FlightDetail';
+import BookingForm from './pages/Flight/BookingForm';
 import BookingManagement from './pages/Flight/BookingManagement';
+import BookingDetail from './pages/Flight/BookingDetail';
 
 function App() {
   const { i18n } = useTranslation();
@@ -136,7 +139,10 @@ function App() {
               
               {/* Flight Routes */}
               <Route path="flight/search" element={<FlightSearch />} />
+              <Route path="flight/detail" element={<FlightDetail />} />
+              <Route path="flight/booking" element={<BookingForm />} />
               <Route path="flight/bookings" element={<BookingManagement />} />
+              <Route path="flight/bookings/:id" element={<BookingDetail />} />
             </Route>
             
             {/* Catch all route */}

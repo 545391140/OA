@@ -2,10 +2,102 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 const FlightBooking = require('../models/FlightBooking');
 const Travel = require('../models/Travel');
+const Location = require('../models/Location');
 const { checkResourceAccess } = require('../middleware/dataAccess');
 const { ErrorFactory } = require('../utils/AppError');
 const amadeusApiService = require('../services/amadeus');
 const notificationService = require('../services/notificationService');
+
+/**
+ * 将位置（城市或机场）转换为机场代码
+ * @param {String|Object} location - 位置ID或位置对象
+ * @returns {Promise<String>} 机场代码（3位）
+ */
+async function getAirportCode(location) {
+  // 如果已经是机场代码（3位大写字母），直接返回
+  if (typeof location === 'string' && /^[A-Z]{3}$/.test(location)) {
+    return location;
+  }
+
+  // 如果是位置对象
+  let locationObj = null;
+  if (typeof location === 'object' && location !== null) {
+    locationObj = location;
+  } else if (typeof location === 'string') {
+    // 如果是位置ID，查询位置信息
+    try {
+      locationObj = await Location.findById(location);
+      if (!locationObj) {
+        throw new Error(`位置ID ${location} 不存在`);
+      }
+    } catch (error) {
+      // 如果不是有效的ObjectId，可能是机场代码
+      if (error.name === 'CastError' && /^[A-Z]{3}$/i.test(location)) {
+        return location.toUpperCase();
+      }
+      throw error;
+    }
+  } else {
+    throw new Error('无效的位置参数');
+  }
+
+  // 如果选择的是机场，直接返回机场代码
+  if (locationObj.type === 'airport') {
+    if (!locationObj.code || locationObj.code.length !== 3) {
+      throw new Error(`机场 ${locationObj.name} 的代码无效: ${locationObj.code}`);
+    }
+    return locationObj.code.toUpperCase();
+  }
+
+  // 如果选择的是城市，查找该城市的主要机场
+  if (locationObj.type === 'city') {
+    // 检查城市是否有机场标识
+    if (locationObj.noAirport) {
+      throw new Error(`城市 ${locationObj.name} 没有机场`);
+    }
+
+    // 查找该城市下的机场
+    const cityId = locationObj._id || locationObj.id;
+    const airports = await Location.find({
+      type: 'airport',
+      parentId: cityId,
+      status: 'active',
+    })
+      .sort({ name: 1 }) // 按名称排序，选择第一个
+      .limit(1)
+      .lean();
+
+    if (!airports || airports.length === 0) {
+      // 如果没有找到机场，尝试通过城市名称查找
+      const airportsByName = await Location.find({
+        type: 'airport',
+        city: locationObj.name,
+        status: 'active',
+      })
+        .sort({ name: 1 })
+        .limit(1)
+        .lean();
+
+      if (!airportsByName || airportsByName.length === 0) {
+        throw new Error(`城市 ${locationObj.name} 没有找到机场`);
+      }
+
+      const airport = airportsByName[0];
+      if (!airport.code || airport.code.length !== 3) {
+        throw new Error(`城市 ${locationObj.name} 的机场代码无效`);
+      }
+      return airport.code.toUpperCase();
+    }
+
+    const airport = airports[0];
+    if (!airport.code || airport.code.length !== 3) {
+      throw new Error(`城市 ${locationObj.name} 的机场代码无效`);
+    }
+    return airport.code.toUpperCase();
+  }
+
+  throw new Error(`不支持的位置类型: ${locationObj.type}`);
+}
 
 /**
  * 搜索航班
@@ -15,8 +107,10 @@ const notificationService = require('../services/notificationService');
 exports.searchFlights = async (req, res) => {
   try {
     const {
-      originLocationCode,
-      destinationLocationCode,
+      originLocation, // 可以是位置ID、位置对象或机场代码
+      destinationLocation, // 可以是位置ID、位置对象或机场代码
+      originLocationCode, // 兼容旧接口：直接传机场代码
+      destinationLocationCode, // 兼容旧接口：直接传机场代码
       departureDate,
       returnDate,
       adults = 1,
@@ -29,10 +123,36 @@ exports.searchFlights = async (req, res) => {
     } = req.body;
 
     // 参数验证
-    if (!originLocationCode || !destinationLocationCode || !departureDate) {
+    if (!departureDate) {
       return res.status(400).json({
         success: false,
-        message: '缺少必填参数：originLocationCode, destinationLocationCode, departureDate',
+        message: '缺少必填参数：departureDate',
+      });
+    }
+
+    // 获取出发地机场代码
+    let originCode;
+    if (originLocation) {
+      originCode = await getAirportCode(originLocation);
+    } else if (originLocationCode) {
+      originCode = await getAirportCode(originLocationCode);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必填参数：originLocation 或 originLocationCode',
+      });
+    }
+
+    // 获取目的地机场代码
+    let destinationCode;
+    if (destinationLocation) {
+      destinationCode = await getAirportCode(destinationLocation);
+    } else if (destinationLocationCode) {
+      destinationCode = await getAirportCode(destinationLocationCode);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必填参数：destinationLocation 或 destinationLocationCode',
       });
     }
 
@@ -45,8 +165,8 @@ exports.searchFlights = async (req, res) => {
 
     // 调用 Amadeus API 搜索航班
     const result = await amadeusApiService.searchFlightOffers({
-      originLocationCode,
-      destinationLocationCode,
+      originLocationCode: originCode,
+      destinationLocationCode: destinationCode,
       departureDate,
       returnDate,
       adults,

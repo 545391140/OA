@@ -81,6 +81,8 @@
   "navigation": {
     "dashboard": "仪表板",
     "travel": "差旅",
+    "flightSearch": "机票搜索",
+    "flightBookings": "机票预订",
     "expenses": "费用",
     "approvals": "审批",
     "reports": "报告",
@@ -746,7 +748,10 @@
         "deleteSuccess": "删除成功",
         "deleteError": "删除失败",
         "count": "个费用申请"
-      }
+      },
+      "flightBookings": "航班预订",
+      "bookFlight": "预订航班",
+      "bookingReference": "预订号"
     }
   },
   "travelStandard": {
@@ -2299,6 +2304,118 @@
     "error": {
       "fetchLoginLogs": "获取登录日志失败",
       "fetchOperationLogs": "获取操作日志失败"
+    }
+  },
+  "flight": {
+    "search": {
+      "title": "机票搜索",
+      "description": "搜索并比较航班价格",
+      "origin": "出发地",
+      "destination": "目的地",
+      "departureDate": "出发日期",
+      "returnDate": "返程日期",
+      "tripType": "行程类型",
+      "oneWay": "单程",
+      "roundTrip": "往返",
+      "adults": "成人",
+      "children": "儿童",
+      "infants": "婴儿",
+      "travelClass": "舱位等级",
+      "economy": "经济舱",
+      "premiumEconomy": "超级经济舱",
+      "business": "商务舱",
+      "first": "头等舱",
+      "search": "搜索",
+      "formPlaceholder": "航班搜索表单",
+      "resultsPlaceholder": "搜索结果将显示在这里"
+    },
+    "list": {
+      "title": "航班列表",
+      "results": "搜索结果",
+      "noResults": "未找到符合条件的航班",
+      "noFlightsFound": "未找到航班",
+      "tryDifferentSearch": "请尝试不同的搜索条件",
+      "departure": "出发",
+      "price": "价格",
+      "availableSeats": "可预订座位",
+      "select": "选择",
+      "viewDetail": "查看详情"
+    },
+    "detail": {
+      "title": "航班详情",
+      "noFlight": "未找到航班信息",
+      "outbound": "去程",
+      "return": "返程",
+      "terminal": "航站楼",
+      "transfer": "中转",
+      "price": "价格",
+      "basePrice": "基础价格",
+      "availableSeats": "可预订座位",
+      "priceConfirmed": "价格已确认",
+      "bookNow": "立即预订",
+      "aircraft": "机型"
+    },
+    "booking": {
+      "title": "机票预订",
+      "selectTravel": "选择差旅申请",
+      "travelApplication": "差旅申请",
+      "noTravelAvailable": "没有可用的差旅申请，请先创建差旅申请",
+      "passengerInfo": "乘客信息",
+      "addPassenger": "添加乘客",
+      "passenger": "乘客",
+      "firstName": "名",
+      "lastName": "姓",
+      "dateOfBirth": "出生日期",
+      "email": "邮箱",
+      "countryCode": "国家代码",
+      "phone": "手机号",
+      "confirmPrice": "确认价格",
+      "flightInfo": "航班信息",
+      "confirmedPrice": "确认价格",
+      "priceNotConfirmed": "价格尚未确认，请点击确认按钮",
+      "review": "确认预订",
+      "reviewMessage": "请确认以上信息无误后提交预订",
+      "noFlightSelected": "未选择航班，请先搜索并选择航班",
+      "submit": "提交预订",
+      "steps": {
+        "selectTravel": "选择差旅申请",
+        "passengerInfo": "乘客信息",
+        "confirmPrice": "确认价格",
+        "submit": "提交预订"
+      },
+      "newBooking": "新建预订",
+      "search": "搜索预订...",
+      "status": "状态",
+      "confirmed": "已确认",
+      "pending": "待确认",
+      "cancelled": "已取消",
+      "bookingReference": "预订参考号",
+      "travelNumber": "差旅单号",
+      "route": "航线",
+      "date": "日期",
+      "price": "价格",
+      "noBookings": "暂无预订记录",
+      "cancel": "取消",
+      "cancelBooking": "取消预订",
+      "cancelReason": "取消原因"
+    },
+    "bookingDetail": {
+      "title": "预订详情",
+      "notFound": "预订记录不存在",
+      "basicInfo": "基本信息",
+      "bookingReference": "预订参考号",
+      "travelNumber": "差旅单号",
+      "price": "价格",
+      "createdAt": "创建时间",
+      "cancelledAt": "取消时间",
+      "cancellationReason": "取消原因",
+      "flightInfo": "航班信息",
+      "passengers": "乘客信息",
+      "name": "姓名",
+      "dateOfBirth": "出生日期",
+      "email": "邮箱",
+      "phone": "电话",
+      "cancel": "取消预订"
     }
   }
 }

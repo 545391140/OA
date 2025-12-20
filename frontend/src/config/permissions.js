@@ -14,6 +14,12 @@ export const PERMISSIONS = {
   TRAVEL_DELETE: 'travel.delete',
   TRAVEL_APPROVE: 'travel.approve',
   
+  // 机票管理
+  FLIGHT_SEARCH: 'flight.search',
+  FLIGHT_BOOKING_VIEW: 'flight.booking.view',
+  FLIGHT_BOOKING_CREATE: 'flight.booking.create',
+  FLIGHT_BOOKING_CANCEL: 'flight.booking.cancel',
+  
   // 费用管理
   EXPENSE_VIEW: 'expense.view',
   EXPENSE_CREATE: 'expense.create',
@@ -144,6 +150,8 @@ export const PERMISSIONS = {
 export const MENU_PERMISSIONS = {
   '/dashboard': PERMISSIONS.DASHBOARD_VIEW,
   '/travel': PERMISSIONS.TRAVEL_VIEW,
+  '/flight/search': PERMISSIONS.FLIGHT_SEARCH,
+  '/flight/bookings': PERMISSIONS.FLIGHT_BOOKING_VIEW,
   '/expenses': PERMISSIONS.EXPENSE_VIEW,
   '/approvals': PERMISSIONS.APPROVAL_VIEW,
   '/reports': PERMISSIONS.REPORT_VIEW,

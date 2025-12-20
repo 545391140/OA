@@ -23,6 +23,7 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   Flight as TravelIcon,
+  FlightTakeoff as FlightSearchIcon,
   Receipt as ExpenseIcon,
   Approval as ApprovalIcon,
   Assessment as ReportIcon,
@@ -39,7 +40,8 @@ import {
   Search as SearchIcon,
   PictureAsPdf as InvoiceIcon,
   AttachMoney as CurrencyIcon,
-  History as LogIcon
+  History as LogIcon,
+  BookOnline as BookingIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -123,6 +125,8 @@ const Layout = () => {
   const menuItems = useMemo(() => [
     { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard', key: 'dashboard' },
     { text: t('navigation.travel'), icon: <TravelIcon />, path: '/travel', key: 'travel' },
+    { text: t('navigation.flightSearch'), icon: <FlightSearchIcon />, path: '/flight/search', key: 'flightSearch' },
+    { text: t('navigation.flightBookings'), icon: <BookingIcon />, path: '/flight/bookings', key: 'flightBookings' },
     { text: t('navigation.expenses'), icon: <ExpenseIcon />, path: '/expenses', key: 'expenses' },
     { text: t('invoice.title'), icon: <InvoiceIcon />, path: '/invoices', key: 'invoices' },
     { text: t('navigation.approvals'), icon: <ApprovalIcon />, path: '/approvals', key: 'approvals' },
