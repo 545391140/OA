@@ -3,8 +3,8 @@
  * 提供航班搜索功能
  */
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -37,11 +37,87 @@ import RegionSelector from '../../components/Common/RegionSelector';
 const FlightSearch = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showNotification } = useNotification();
 
-  const [originLocation, setOriginLocation] = useState(null);
-  const [destinationLocation, setDestinationLocation] = useState(null);
-  const [searchParams, setSearchParams] = useState({
+  // 从sessionStorage或location.state恢复搜索结果和搜索条件
+  const getStoredSearchData = () => {
+    try {
+      const stored = sessionStorage.getItem('flightSearchData');
+      if (stored) {
+        const data = JSON.parse(stored);
+        // 转换日期字符串回dayjs对象
+        if (data.searchParams?.departureDate) {
+          data.searchParams.departureDate = dayjs(data.searchParams.departureDate);
+        }
+        if (data.searchParams?.returnDate) {
+          data.searchParams.returnDate = dayjs(data.searchParams.returnDate);
+        }
+        return data;
+      }
+    } catch (error) {
+      console.warn('Failed to restore search data:', error);
+    }
+    return null;
+  };
+
+  // 保存搜索结果到sessionStorage
+  const saveSearchData = (results, params, origin, destination, roundTrip) => {
+    try {
+      const data = {
+        searchResults: results,
+        searchParams: {
+          ...params,
+          departureDate: params.departureDate?.format('YYYY-MM-DD'),
+          returnDate: params.returnDate?.format('YYYY-MM-DD'),
+        },
+        originLocation: origin,
+        destinationLocation: destination,
+        isRoundTrip: roundTrip,
+      };
+      sessionStorage.setItem('flightSearchData', JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save search data:', error);
+    }
+  };
+
+  // 从location.state或sessionStorage恢复数据
+  // 如果是从详情页返回（有searchResults），保留搜索条件
+  // 如果是从菜单进入（没有searchResults），清空之前的搜索条件
+  const restoredData = (() => {
+    if (location.state?.searchResults) {
+      // 从详情页返回，保留搜索条件
+      const data = {
+        searchResults: location.state.searchResults,
+        searchParams: { ...location.state.searchParams },
+        originLocation: location.state.originLocation,
+        destinationLocation: location.state.destinationLocation,
+        isRoundTrip: location.state.isRoundTrip
+      };
+      // 转换日期字符串回dayjs对象
+      if (data.searchParams?.departureDate && typeof data.searchParams.departureDate === 'string') {
+        data.searchParams.departureDate = dayjs(data.searchParams.departureDate);
+      }
+      if (data.searchParams?.returnDate && typeof data.searchParams.returnDate === 'string') {
+        data.searchParams.returnDate = dayjs(data.searchParams.returnDate);
+      }
+      return data;
+    } else {
+      // 从菜单进入或其他方式进入，清空之前的搜索条件
+      // 清除 sessionStorage 中的搜索数据
+      try {
+        sessionStorage.removeItem('flightSearchData');
+      } catch (error) {
+        console.warn('Failed to clear search data:', error);
+      }
+      // 返回 null，使用默认值
+      return null;
+    }
+  })();
+
+  const [originLocation, setOriginLocation] = useState(restoredData?.originLocation || null);
+  const [destinationLocation, setDestinationLocation] = useState(restoredData?.destinationLocation || null);
+  const [searchParams, setSearchParams] = useState(restoredData?.searchParams || {
     departureDate: dayjs().add(7, 'day'),
     returnDate: null,
     adults: 1,
@@ -53,10 +129,10 @@ const FlightSearch = () => {
     nonStop: false,
   });
 
-  const [searchResults, setSearchResults] = useState(null);
+  const [searchResults, setSearchResults] = useState(restoredData?.searchResults || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isRoundTrip, setIsRoundTrip] = useState(false);
+  const [isRoundTrip, setIsRoundTrip] = useState(restoredData?.isRoundTrip || false);
 
   const handleSearch = async () => {
     if (!originLocation || !destinationLocation) {
@@ -95,7 +171,10 @@ const FlightSearch = () => {
       const response = await searchFlights(params);
       
       if (response.data.success) {
-        setSearchResults(response.data.data);
+        const results = response.data.data;
+        setSearchResults(results);
+        // 保存搜索结果和搜索条件到sessionStorage
+        saveSearchData(results, searchParams, originLocation, destinationLocation, isRoundTrip);
         showNotification(`找到 ${response.data.count} 个航班`, 'success');
       } else {
         setError(response.data.message || '搜索失败');
@@ -266,6 +345,9 @@ const FlightSearch = () => {
             <FlightList
               flights={searchResults}
               searchParams={searchParams}
+              originLocation={originLocation}
+              destinationLocation={destinationLocation}
+              isRoundTrip={isRoundTrip}
               onSelectFlight={(flight) => {
                 // 导航到预订页面或显示预订对话框
                 navigate('/flight/booking', { state: { flight, searchParams } });

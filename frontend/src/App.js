@@ -11,6 +11,8 @@ import { NotificationProvider } from './contexts/NotificationContext';
 // Components
 import Layout from './components/Layout/Layout';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import PermissionRoute from './components/Auth/PermissionRoute';
+import { PERMISSIONS } from './config/permissions';
 import LoadingSpinner from './components/Common/LoadingSpinner';
 
 // Pages
@@ -137,12 +139,47 @@ function App() {
               {/* Logs Routes */}
               <Route path="logs" element={<Logs />} />
               
-              {/* Flight Routes */}
-              <Route path="flight/search" element={<FlightSearch />} />
-              <Route path="flight/detail" element={<FlightDetail />} />
-              <Route path="flight/booking" element={<BookingForm />} />
-              <Route path="flight/bookings" element={<BookingManagement />} />
-              <Route path="flight/bookings/:id" element={<BookingDetail />} />
+              {/* Flight Routes - 需要权限控制 */}
+              <Route 
+                path="flight/search" 
+                element={
+                  <PermissionRoute requiredPermissions={PERMISSIONS.FLIGHT_SEARCH}>
+                    <FlightSearch />
+                  </PermissionRoute>
+                } 
+              />
+              <Route 
+                path="flight/detail" 
+                element={
+                  <PermissionRoute requiredPermissions={PERMISSIONS.FLIGHT_SEARCH}>
+                    <FlightDetail />
+                  </PermissionRoute>
+                } 
+              />
+              <Route 
+                path="flight/booking" 
+                element={
+                  <PermissionRoute requiredPermissions={PERMISSIONS.FLIGHT_BOOKING_CREATE}>
+                    <BookingForm />
+                  </PermissionRoute>
+                } 
+              />
+              <Route 
+                path="flight/bookings" 
+                element={
+                  <PermissionRoute requiredPermissions={PERMISSIONS.FLIGHT_BOOKING_VIEW}>
+                    <BookingManagement />
+                  </PermissionRoute>
+                } 
+              />
+              <Route 
+                path="flight/bookings/:id" 
+                element={
+                  <PermissionRoute requiredPermissions={PERMISSIONS.FLIGHT_BOOKING_VIEW}>
+                    <BookingDetail />
+                  </PermissionRoute>
+                } 
+              />
             </Route>
             
             {/* Catch all route */}

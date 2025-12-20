@@ -37,8 +37,15 @@ const FlightDetail = () => {
   const location = useLocation();
   const { showNotification } = useNotification();
 
-  // 从路由状态获取航班信息
-  const { flight, searchParams } = location.state || {};
+  // 从路由状态获取航班信息和搜索条件
+  const { 
+    flight, 
+    searchParams, 
+    searchResults, 
+    originLocation, 
+    destinationLocation, 
+    isRoundTrip 
+  } = location.state || {};
 
   const [confirmedPrice, setConfirmedPrice] = useState(null);
   const [priceConfirming, setPriceConfirming] = useState(false);
@@ -117,7 +124,26 @@ const FlightDetail = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mr: 2 }}>
+          <Button 
+            startIcon={<ArrowBackIcon />} 
+            onClick={() => {
+              // 返回时传递搜索结果和搜索条件，以便恢复列表
+              if (searchResults) {
+                navigate('/flight/search', {
+                  state: {
+                    searchResults,
+                    searchParams,
+                    originLocation,
+                    destinationLocation,
+                    isRoundTrip
+                  }
+                });
+              } else {
+                navigate(-1);
+              }
+            }} 
+            sx={{ mr: 2 }}
+          >
             {t('common.back') || '返回'}
           </Button>
           <Typography variant="h4">
@@ -271,7 +297,25 @@ const FlightDetail = () => {
 
             {/* 操作按钮 */}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-              <Button variant="outlined" onClick={() => navigate(-1)}>
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  // 返回时传递搜索结果和搜索条件，以便恢复列表
+                  if (searchResults) {
+                    navigate('/flight/search', {
+                      state: {
+                        searchResults,
+                        searchParams,
+                        originLocation,
+                        destinationLocation,
+                        isRoundTrip
+                      }
+                    });
+                  } else {
+                    navigate(-1);
+                  }
+                }}
+              >
                 {t('common.cancel') || '取消'}
               </Button>
               <Button

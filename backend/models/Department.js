@@ -83,7 +83,10 @@ DepartmentSchema.methods.getDescendantIds = async function() {
   const descendants = [this._id];
   
   const findChildren = async (parentId) => {
-    const children = await mongoose.model('Department').find({ parent: parentId, isActive: true });
+    // 明确设置 session 为 null，确保不使用任何事务上下文
+    const children = await mongoose.model('Department').find({ parent: parentId, isActive: true })
+      .session(null)
+      .lean();
     for (const child of children) {
       descendants.push(child._id);
       await findChildren(child._id);
@@ -96,11 +99,16 @@ DepartmentSchema.methods.getDescendantIds = async function() {
 
 // Static method to get all descendant department IDs for a given department
 DepartmentSchema.statics.getDescendantIds = async function(departmentId) {
-  const department = await this.findById(departmentId);
+  // 明确设置 session 为 null，确保不使用任何事务上下文
+  const department = await this.findById(departmentId)
+    .session(null)
+    .lean();
   if (!department) {
     return [departmentId];
   }
-  return await department.getDescendantIds();
+  // 创建一个临时对象来调用实例方法
+  const tempDept = new this(department);
+  return await tempDept.getDescendantIds();
 };
 
 module.exports = mongoose.model('Department', DepartmentSchema);

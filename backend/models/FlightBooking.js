@@ -95,8 +95,14 @@ const FlightBookingSchema = new mongoose.Schema({
       type: String,
     },
     fees: [{
-      amount: String,
-      type: String,
+      amount: {
+        type: String,
+        default: '0.00',
+      },
+      type: {
+        type: String,
+        default: 'UNKNOWN',
+      },
     }],
   },
   // 取消原因

@@ -14,6 +14,12 @@ const PERMISSIONS = {
   TRAVEL_DELETE: 'travel.delete',
   TRAVEL_APPROVE: 'travel.approve',
   
+  // 机票管理
+  FLIGHT_SEARCH: 'flight.search',
+  FLIGHT_BOOKING_VIEW: 'flight.booking.view',
+  FLIGHT_BOOKING_CREATE: 'flight.booking.create',
+  FLIGHT_BOOKING_CANCEL: 'flight.booking.cancel',
+  
   // 费用管理
   EXPENSE_VIEW: 'expense.view',
   EXPENSE_CREATE: 'expense.create',
@@ -164,6 +170,19 @@ const PERMISSION_GROUPS = [
       { code: PERMISSIONS.TRAVEL_EDIT, label: '编辑差旅', labelEn: 'Edit Travel', labelJa: '出張を編集', labelKo: '출장 편집' },
       { code: PERMISSIONS.TRAVEL_DELETE, label: '删除差旅', labelEn: 'Delete Travel', labelJa: '出張を削除', labelKo: '출장 삭제' },
       { code: PERMISSIONS.TRAVEL_APPROVE, label: '审批差旅', labelEn: 'Approve Travel', labelJa: '出張を承認', labelKo: '출장 승인' }
+    ]
+  },
+  {
+    name: 'flight',
+    label: '机票管理',
+    labelEn: 'Flight Management',
+    labelJa: '航空券管理',
+    labelKo: '항공권 관리',
+    permissions: [
+      { code: PERMISSIONS.FLIGHT_SEARCH, label: '搜索航班', labelEn: 'Search Flights', labelJa: 'フライトを検索', labelKo: '항공편 검색' },
+      { code: PERMISSIONS.FLIGHT_BOOKING_VIEW, label: '查看预订', labelEn: 'View Bookings', labelJa: '予約を表示', labelKo: '예약 보기' },
+      { code: PERMISSIONS.FLIGHT_BOOKING_CREATE, label: '创建预订', labelEn: 'Create Booking', labelJa: '予約を作成', labelKo: '예약 생성' },
+      { code: PERMISSIONS.FLIGHT_BOOKING_CANCEL, label: '取消预订', labelEn: 'Cancel Booking', labelJa: '予約をキャンセル', labelKo: '예약 취소' }
     ]
   },
   {
@@ -456,6 +475,8 @@ const PERMISSION_GROUPS = [
 const MENU_PERMISSIONS = {
   '/dashboard': PERMISSIONS.DASHBOARD_VIEW,
   '/travel': PERMISSIONS.TRAVEL_VIEW,
+  '/flight/search': PERMISSIONS.FLIGHT_SEARCH,
+  '/flight/bookings': PERMISSIONS.FLIGHT_BOOKING_VIEW,
   '/expenses': PERMISSIONS.EXPENSE_VIEW,
   '/approvals': PERMISSIONS.APPROVAL_VIEW,
   '/reports': PERMISSIONS.REPORT_VIEW,

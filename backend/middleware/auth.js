@@ -215,13 +215,20 @@ const checkPermission = (...requiredPermissions) => {
         });
       }
 
-      const role = await Role.findOne({ code: req.user.role, isActive: true });
-      
+      // 如果已经加载过角色，直接使用
+      let role = req.role;
       if (!role) {
-        return res.status(403).json({
-          success: false,
-          message: `Role ${req.user.role} not found or inactive`
-        });
+        role = await Role.findOne({ code: req.user.role, isActive: true });
+        
+        if (!role) {
+          return res.status(403).json({
+            success: false,
+            message: `Role ${req.user.role} not found or inactive`
+          });
+        }
+        
+        // 将角色保存到 req.role，避免后续重复查询
+        req.role = role;
       }
 
       // Check if user's role has at least one of the required permissions

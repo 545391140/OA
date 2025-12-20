@@ -53,14 +53,21 @@ const loadUserRole = async (req, res, next) => {
  * @param {String} employeeField - 员工字段名（默认为 'employee'）
  * @returns {Promise<Boolean>} 是否有权限
  */
-async function checkResourceAccess(req, resource, resourceType = 'expense', employeeField = 'employee') {
-  // 确保角色已加载
+async function checkResourceAccess(req, resource, resourceType = 'expense', employeeField = 'employee', session = null) {
+  // 确保角色已加载（如果提供了session，说明在事务中，应该在事务外加载角色）
   if (!req.role) {
-    const role = await Role.findOne({ code: req.user.role, isActive: true });
-    if (!role) {
-      throw ErrorFactory.forbidden(`Role ${req.user.role} not found or inactive`);
+    // 如果在事务中，不应该在这里执行查询
+    if (session) {
+      throw new Error('Role must be loaded before starting transaction');
     }
-    req.role = role;
+      // 明确设置 session 为 null，确保不使用任何事务上下文
+      const role = await Role.findOne({ code: req.user.role, isActive: true })
+        .session(null)
+        .lean();
+      if (!role) {
+        throw ErrorFactory.forbidden(`Role ${req.user.role} not found or inactive`);
+      }
+      req.role = role;
   }
 
   // 根据资源类型选择检查函数

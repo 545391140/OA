@@ -29,11 +29,18 @@ export const searchFlights = (searchParams) => {
 
 /**
  * 确认航班价格
- * @param {Object} flightOffer - 航班报价对象
+ * @param {Object} params - 参数对象
+ * @param {Object} params.flightOffer - 航班报价对象（必填）
+ * @param {Array} params.travelers - 乘客信息数组（可选，如果提供则用于更新 travelerPricings 的 ID 格式）
  * @returns {Promise<Object>} 确认后的价格
  */
-export const confirmPrice = (flightOffer) => {
-  return apiClient.post('/flights/confirm-price', { flightOffer });
+export const confirmPrice = (params) => {
+  // 兼容旧接口：如果直接传入 flightOffer 对象
+  if (params.flightOffer === undefined && params.id) {
+    return apiClient.post('/flights/confirm-price', { flightOffer: params });
+  }
+  // 新接口：传入包含 flightOffer 和 travelers 的对象
+  return apiClient.post('/flights/confirm-price', params);
 };
 
 /**

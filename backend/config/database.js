@@ -32,6 +32,7 @@ const connectDB = async () => {
       // 启用写入重试（当写入操作失败时自动重试）
       retryWrites: true,
       // 读取偏好：优先从主节点读取，但允许从次节点读取（提高可用性）
+      // 注意：事务必须使用 primary，所以这里使用 primaryPreferred 仅用于非事务查询
       readPreference: 'primaryPreferred',
     });
 

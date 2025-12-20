@@ -130,7 +130,10 @@ async function getUserDataScope(user, role = null) {
   // 如果没有提供角色，从用户获取
   if (!role && user.role) {
     const Role = require('../models/Role');
-    role = await Role.findOne({ code: user.role, isActive: true });
+    // 明确设置 session 为 null，确保不使用任何事务上下文
+    role = await Role.findOne({ code: user.role, isActive: true })
+      .session(null)
+      .lean();
   }
 
   // 如果没有角色或角色没有设置数据权限，默认返回本人数据
@@ -165,7 +168,10 @@ async function getUserDataScope(user, role = null) {
     }
     
     // 查找部门信息
-    const department = await Department.findOne({ code: user.department, isActive: true });
+    // 明确设置 session 为 null，确保不使用任何事务上下文
+    const department = await Department.findOne({ code: user.department, isActive: true })
+      .session(null)
+      .lean();
     if (!department) {
       return {
         scope: DATA_SCOPE.SELF,
@@ -400,7 +406,11 @@ async function checkDataAccess(user, data, role = null, employeeField = 'employe
     // 部门权限检查
     if (dataScope.scope === DATA_SCOPE.DEPARTMENT || dataScope.scope === DATA_SCOPE.SUB_DEPARTMENT) {
       // 获取数据所属员工的部门信息
-      const dataEmployee = await User.findById(dataEmployeeIdStr).select('department');
+      // 明确设置 session 为 null，确保不使用任何事务上下文
+      const dataEmployee = await User.findById(dataEmployeeIdStr)
+        .select('department')
+        .session(null)
+        .lean();
       if (!dataEmployee || !dataEmployee.department) {
         return false;
       }
@@ -413,7 +423,9 @@ async function checkDataAccess(user, data, role = null, employeeField = 'employe
       // 本部门及下属部门权限
       if (dataScope.scope === DATA_SCOPE.SUB_DEPARTMENT) {
         if (dataScope.departmentIds && dataScope.departmentIds.length > 0) {
-          const dataEmployeeDept = await Department.findOne({ code: dataEmployee.department, isActive: true });
+          const dataEmployeeDept = await Department.findOne({ code: dataEmployee.department, isActive: true })
+            .session(null)
+            .lean();
           if (!dataEmployeeDept || !dataEmployeeDept._id) {
             return false;
           }

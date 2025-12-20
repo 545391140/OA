@@ -97,12 +97,14 @@ const BookingForm = () => {
   const fetchTravels = async () => {
     setTravelsLoading(true);
     try {
+      // 只获取已审批通过的差旅申请
       const response = await apiClient.get('/travel', {
-        params: { status: 'approved,draft', limit: 100 },
+        params: { status: 'approved', limit: 100 },
       });
       if (response.data && response.data.success) {
+        // 只保留审批通过的差旅申请
         const validTravels = (response.data.data || []).filter(
-          (t) => t.status === 'draft' || t.status === 'approved'
+          (t) => t.status === 'approved'
         );
         setTravels(validTravels);
       }
@@ -119,7 +121,14 @@ const BookingForm = () => {
     setPriceConfirming(true);
     setError(null);
     try {
-      const response = await confirmPrice(flight);
+      // 在确认价格时传入 travelers 信息，确保 travelerPricings 中的 ID 格式正确
+      const response = await confirmPrice({
+        flightOffer: flight,
+        travelers: travelers.map((t) => ({
+          ...t,
+          dateOfBirth: t.dateOfBirth ? dayjs(t.dateOfBirth).format('YYYY-MM-DD') : null,
+        })),
+      });
       if (response.data.success) {
         setConfirmedPrice(response.data.data);
         showNotification('价格确认成功', 'success');
@@ -155,6 +164,17 @@ const BookingForm = () => {
         }
         if (!traveler.contact.emailAddress) {
           showNotification(`请填写乘客${i + 1}的邮箱`, 'error');
+          return;
+        }
+        // 验证电话号码
+        if (!traveler.contact.phones || !traveler.contact.phones[0] || 
+            !traveler.contact.phones[0].number || !traveler.contact.phones[0].number.trim()) {
+          showNotification(`请填写乘客${i + 1}的电话号码`, 'error');
+          return;
+        }
+        // 验证国家代码
+        if (!traveler.contact.phones[0].countryCallingCode) {
+          showNotification(`请选择乘客${i + 1}的国家代码`, 'error');
           return;
         }
       }
@@ -201,10 +221,24 @@ const BookingForm = () => {
         const [subParent, subChild] = child.split('.');
         updated[index][parent][subParent][subChild] = value;
       } else {
-        updated[index][parent][child] = value;
+        // 如果是 dateOfBirth 字段，确保值是有效的 dayjs 对象或 null
+        if (field === 'dateOfBirth' && value && dayjs.isDayjs(value)) {
+          updated[index][parent][child] = value;
+        } else if (field === 'dateOfBirth' && !value) {
+          updated[index][parent][child] = null;
+        } else {
+          updated[index][parent][child] = value;
+        }
       }
     } else {
-      updated[index][field] = value;
+      // 如果是 dateOfBirth 字段，确保值是有效的 dayjs 对象或 null
+      if (field === 'dateOfBirth' && value && dayjs.isDayjs(value)) {
+        updated[index][field] = value;
+      } else if (field === 'dateOfBirth' && !value) {
+        updated[index][field] = null;
+      } else {
+        updated[index][field] = value;
+      }
     }
     setTravelers(updated);
   };
@@ -221,6 +255,30 @@ const BookingForm = () => {
       return;
     }
 
+    // 验证并格式化 travelers 数据
+    const validatedTravelers = travelers.map((t, index) => {
+      // 验证 dateOfBirth
+      if (!t.dateOfBirth) {
+        throw new Error(`乘客${index + 1}的出生日期必填`);
+      }
+      
+      // 验证电话号码
+      if (!t.contact.phones || !t.contact.phones[0] || 
+          !t.contact.phones[0].number || !t.contact.phones[0].number.trim()) {
+        throw new Error(`乘客${index + 1}的电话号码必填`);
+      }
+      
+      // 验证国家代码
+      if (!t.contact.phones[0].countryCallingCode) {
+        throw new Error(`乘客${index + 1}的国家代码必填`);
+      }
+      
+      return {
+        ...t,
+        dateOfBirth: dayjs(t.dateOfBirth).format('YYYY-MM-DD'),
+      };
+    });
+
     setLoading(true);
     setError(null);
 
@@ -228,10 +286,7 @@ const BookingForm = () => {
       const bookingData = {
         travelId: selectedTravelId,
         flightOffer: confirmedPrice || flight,
-        travelers: travelers.map((t) => ({
-          ...t,
-          dateOfBirth: dayjs(t.dateOfBirth).format('YYYY-MM-DD'),
-        })),
+        travelers: validatedTravelers,
       };
 
       const response = await createBooking(bookingData);
@@ -290,8 +345,28 @@ const BookingForm = () => {
               </Select>
             </FormControl>
             {travels.length === 0 && !travelsLoading && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                {t('flight.booking.noTravelAvailable') || '没有可用的差旅申请，请先创建差旅申请'}
+              <Alert 
+                severity="info" 
+                sx={{ mt: 2 }}
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => navigate('/travel/new')}
+                    sx={{ fontWeight: 600 }}
+                  >
+                    {t('flight.booking.createTravel') || '创建差旅申请'}
+                  </Button>
+                }
+              >
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
+                    {t('flight.booking.noTravelAvailable') || '没有可用的差旅申请'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('flight.booking.noTravelAvailableDesc') || '机票预订需要关联已审批通过的差旅申请。请先创建并提交差旅申请，待审批通过后再进行机票预订。'}
+                  </Typography>
+                </Box>
               </Alert>
             )}
           </Box>
@@ -353,7 +428,7 @@ const BookingForm = () => {
                     <Grid item xs={12} md={6}>
                       <DatePicker
                         label={t('flight.booking.dateOfBirth') || '出生日期'}
-                        value={traveler.dateOfBirth}
+                        value={traveler.dateOfBirth ? dayjs(traveler.dateOfBirth) : null}
                         onChange={(date) => handleTravelerChange(index, 'dateOfBirth', date)}
                         maxDate={dayjs().subtract(1, 'day')}
                         slotProps={{ textField: { fullWidth: true, required: true } }}
@@ -548,7 +623,11 @@ const BookingForm = () => {
               {t('common.previous') || '上一步'}
             </Button>
             {activeStep < steps.length - 1 ? (
-              <Button variant="contained" onClick={handleNext} disabled={loading}>
+              <Button 
+                variant="contained" 
+                onClick={handleNext} 
+                disabled={loading || (activeStep === 0 && travels.length === 0)}
+              >
                 {t('common.next') || '下一步'}
               </Button>
             ) : (

@@ -157,9 +157,74 @@ async function confirmFlightPrice(flightOffer) {
       }
     );
 
-    if (response.data && response.data.data && response.data.data.flightOffers) {
-      const confirmedOffer = response.data.data.flightOffers[0];
-      logger.debug('航班价格确认成功');
+    if (response.data && response.data.data) {
+      // Amadeus API 返回的响应结构：
+      // response.data.data.flightOffers[0] - 确认后的航班报价
+      // response.data.data.travelerPricings - 乘客定价信息（可选）
+      // response.data.data.price - 总价格（可选，可能在 flightOffers[0].price）
+      
+      const responseData = response.data.data;
+      const confirmedOffer = responseData.flightOffers?.[0];
+      
+      if (!confirmedOffer) {
+        throw new Error('价格确认API响应格式错误：未找到 flightOffers');
+      }
+      
+      // 确保返回的数据包含完整的价格信息
+      // 如果 responseData 有 price，合并到 confirmedOffer
+      if (responseData.price && !confirmedOffer.price) {
+        confirmedOffer.price = responseData.price;
+      }
+      
+      // 处理 confirmedOffer.price.fees：确保是数组格式
+      // Amadeus API 可能返回字符串格式的 fees
+      // 重要：为了避免 Mongoose 验证错误，我们完全删除 price.fees 字段
+      // 让 controller 层从 priceData 中单独处理 fees
+      if (confirmedOffer.price && confirmedOffer.price.fees) {
+        if (typeof confirmedOffer.price.fees === 'string') {
+          try {
+            // 尝试解析 JSON 字符串
+            const parsedFees = JSON.parse(confirmedOffer.price.fees);
+            if (Array.isArray(parsedFees)) {
+              confirmedOffer.price.fees = parsedFees;
+              logger.debug('价格确认：fees 字符串已解析为数组');
+            } else {
+              // 解析后不是数组，删除 fees 字段
+              delete confirmedOffer.price.fees;
+              logger.warn('价格确认：fees 解析后不是数组，已删除');
+            }
+          } catch (e) {
+            // JSON 解析失败，删除 fees 字段
+            delete confirmedOffer.price.fees;
+            logger.warn('价格确认：fees 字符串无法解析，已删除:', confirmedOffer.price.fees);
+          }
+        } else if (!Array.isArray(confirmedOffer.price.fees)) {
+          // 既不是字符串也不是数组，删除
+          delete confirmedOffer.price.fees;
+          logger.warn('价格确认：fees 类型不支持，已删除:', typeof confirmedOffer.price.fees);
+        }
+      }
+      
+      // 额外保护：完全删除 confirmedOffer.price.fees，避免任何潜在问题
+      // controller 层会从 responseData.price 或其他位置单独处理 fees
+      if (confirmedOffer.price && confirmedOffer.price.fees !== undefined) {
+        delete confirmedOffer.price.fees;
+        logger.debug('价格确认：已删除 confirmedOffer.price.fees，避免格式问题');
+      }
+      
+      // 如果 responseData 有 travelerPricings，添加到 confirmedOffer
+      if (responseData.travelerPricings) {
+        confirmedOffer.travelerPricings = responseData.travelerPricings;
+      }
+      
+      logger.debug('航班价格确认成功', {
+        hasPrice: !!confirmedOffer.price?.total,
+        hasTravelerPricings: !!confirmedOffer.travelerPricings,
+        priceTotal: confirmedOffer.price?.total,
+        feesType: confirmedOffer.price?.fees ? typeof confirmedOffer.price.fees : 'none',
+        feesIsArray: Array.isArray(confirmedOffer.price?.fees),
+      });
+      
       return {
         success: true,
         data: confirmedOffer,
@@ -169,27 +234,63 @@ async function confirmFlightPrice(flightOffer) {
       throw new Error('价格确认API响应格式错误');
     }
   } catch (error) {
-    logger.error('确认航班价格失败:', error.message);
+    const statusCode = error.response?.status;
+    const apiErrors = error.response?.data?.errors || [];
+    const apiDetail = apiErrors[0]?.detail || apiErrors[0]?.title || error.message;
+    const apiCode = apiErrors[0]?.code;
+    
+    // 记录详细的错误信息
+    logger.error('确认航班价格失败:', {
+      message: error.message,
+      statusCode,
+      apiDetail,
+      apiCode,
+      apiErrors: JSON.stringify(apiErrors),
+      flightOfferId: flightOffer?.id,
+      hasFlightOffer: !!flightOffer,
+    });
     
     // 如果是认证错误，尝试刷新Token后重试一次
-    if (error.response?.status === 401) {
+    if (statusCode === 401) {
       logger.debug('Token可能过期，尝试刷新后重试...');
       await refreshAccessToken();
       return confirmFlightPrice(flightOffer);
     }
     
     // 处理价格变更错误
-    if (error.response?.status === 400) {
-      const errorDetail = error.response.data?.errors?.[0]?.detail;
-      if (errorDetail && errorDetail.includes('price')) {
-        throw new Error('航班价格已变更，请重新搜索');
+    if (statusCode === 400) {
+      if (apiDetail && (apiDetail.includes('price') || apiDetail.includes('fare'))) {
+        const err = new Error('航班价格已变更或不可用，请重新搜索');
+        err.statusCode = 400;
+        throw err;
+      }
+      // 处理 "No fare applicable" 错误
+      if (apiDetail && (apiDetail.includes('No fare applicable') || apiDetail.includes('fare applicable'))) {
+        const err = new Error('航班报价不可用，可能已过期或已售完，请重新搜索');
+        err.statusCode = 400;
+        throw err;
       }
     }
     
     // 处理 API 错误响应
-    if (error.response?.data?.errors) {
-      const errorDetail = error.response.data.errors[0]?.detail || error.message;
-      throw new Error(errorDetail);
+    if (apiDetail) {
+      // 提供更友好的错误消息
+      let friendlyMessage = apiDetail;
+      if (apiDetail.includes('No fare applicable')) {
+        friendlyMessage = '航班报价不可用，可能已过期或已售完，请重新搜索';
+      } else if (apiDetail.includes('price')) {
+        friendlyMessage = '航班价格已变更，请重新搜索';
+      } else if (apiDetail.includes('expired') || apiDetail.includes('过期')) {
+        friendlyMessage = '航班报价已过期，请重新搜索';
+      }
+      
+      const err = new Error(friendlyMessage);
+      err.statusCode = statusCode || 400;
+      throw err;
+    }
+    
+    if (statusCode) {
+      error.statusCode = statusCode;
     }
     
     throw error;
