@@ -241,14 +241,49 @@ const FlightSearch = () => {
   const [isRoundTrip, setIsRoundTrip] = useState(restoredData?.isRoundTrip || false);
 
   // ========== 酒店搜索相关状态（完全独立） ==========
-  const [hotelSearchParams, setHotelSearchParams] = useState(() => {
-    // 从 location.state 恢复酒店搜索参数
-    if (location.state?.prefillData) {
-      return location.state.prefillData;
+  // 保存酒店搜索结果到sessionStorage
+  const saveHotelSearchData = (results, params) => {
+    try {
+      const data = {
+        searchResults: results,
+        searchParams: params,
+      };
+      sessionStorage.setItem('hotelSearchData', JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save hotel search data:', error);
     }
-    return {};
-  });
-  const [hotelResults, setHotelResults] = useState(null);
+  };
+
+  // 从sessionStorage或location.state恢复酒店搜索结果
+  const getStoredHotelSearchData = () => {
+    try {
+      // 优先从 location.state 恢复（从详情页返回）
+      if (location.state?.defaultTab === 'hotel' && (location.state.searchResults || location.state.searchParams)) {
+        return {
+          searchResults: location.state.searchResults || null,
+          searchParams: location.state.searchParams || {},
+          shouldAutoSearch: true, // 标记需要自动重新查询
+        };
+      }
+      // 从 sessionStorage 恢复
+      const stored = sessionStorage.getItem('hotelSearchData');
+      if (stored) {
+        const data = JSON.parse(stored);
+        return {
+          searchResults: data.searchResults || null,
+          searchParams: data.searchParams || {},
+          shouldAutoSearch: false,
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to restore hotel search data:', error);
+    }
+    return null;
+  };
+
+  const restoredHotelData = getStoredHotelSearchData();
+  const [hotelSearchParams, setHotelSearchParams] = useState(restoredHotelData?.searchParams || {});
+  const [hotelResults, setHotelResults] = useState(restoredHotelData?.searchResults || null);
   const [hotelLoading, setHotelLoading] = useState(false);
   const [hotelError, setHotelError] = useState(null);
 
@@ -465,15 +500,34 @@ const FlightSearch = () => {
     } else {
       // 切换到酒店 Tab，保存机票搜索状态
       saveSearchData(searchResults, searchParams, originLocation, destinationLocation, isRoundTrip);
+      // 清除酒店搜索的 sessionStorage（从菜单进入时）
+      if (!location.state?.defaultTab) {
+        try {
+          sessionStorage.removeItem('hotelSearchData');
+        } catch (error) {
+          console.warn('Failed to clear hotel search data:', error);
+        }
+      }
     }
   };
 
-  // 如果是从详情页或预订页返回，自动重新查询
+  // 如果是从详情页或预订页返回，自动重新查询（机票）
   useEffect(() => {
     if (restoredData?.shouldAutoSearch && originLocation && destinationLocation && searchParams.departureDate) {
       // 延迟一下，确保组件完全加载
       const timer = setTimeout(() => {
         handleSearch();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []); // 只在组件挂载时执行一次
+
+  // 如果是从详情页或预订页返回，自动重新查询（酒店）
+  useEffect(() => {
+    if (restoredHotelData?.shouldAutoSearch && hotelSearchParams?.cityCode && hotelSearchParams?.checkInDate && hotelSearchParams?.checkOutDate) {
+      // 延迟一下，确保组件完全加载
+      const timer = setTimeout(() => {
+        handleHotelSearch(hotelSearchParams);
       }, 100);
       return () => clearTimeout(timer);
     }

@@ -113,13 +113,22 @@ const HotelDetail = () => {
   };
 
   const handleBack = () => {
-    navigate('/flight/search', {
-      state: {
-        defaultTab: 'hotel',
-        searchResults,
-        searchParams,
-      },
-    });
+    // 返回时传递搜索结果和搜索条件，以便恢复列表（与机票逻辑一致）
+    if (searchResults) {
+      navigate('/flight/search', {
+        state: {
+          defaultTab: 'hotel',
+          searchResults,
+          searchParams,
+        },
+      });
+    } else {
+      navigate('/flight/search', {
+        state: {
+          defaultTab: 'hotel',
+        },
+      });
+    }
   };
 
   if (!hotel) {
