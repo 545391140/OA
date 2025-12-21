@@ -22,6 +22,10 @@ import {
 } from '@mui/material';
 import {
   Search as SearchIcon,
+  FlightTakeoff as FlightTakeoffIcon,
+  FlightLand as FlightLandIcon,
+  Explore as ExploreIcon,
+  Speed as SpeedIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -478,6 +482,205 @@ const FlightSearch = () => {
                 });
               }}
             />
+          )}
+
+          {!searchResults && !loading && !error && (
+            <Paper
+              elevation={0}
+              sx={{
+                mt: 4,
+                p: 6,
+                textAlign: 'center',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: 4,
+                color: 'white',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)',
+                  pointerEvents: 'none',
+                }
+              }}
+            >
+              <Box sx={{ position: 'relative', zIndex: 1 }}>
+                {/* 图标装饰 */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 3 }}>
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(255, 255, 255, 0.2)',
+                      backdropFilter: 'blur(10px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      animation: 'float 3s ease-in-out infinite',
+                      '@keyframes float': {
+                        '0%, 100%': { transform: 'translateY(0px)' },
+                        '50%': { transform: 'translateY(-10px)' },
+                      },
+                    }}
+                  >
+                    <FlightTakeoffIcon sx={{ fontSize: 48, color: 'white' }} />
+                  </Box>
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(255, 255, 255, 0.2)',
+                      backdropFilter: 'blur(10px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      animation: 'float 3s ease-in-out infinite 0.5s',
+                      '@keyframes float': {
+                        '0%, 100%': { transform: 'translateY(0px)' },
+                        '50%': { transform: 'translateY(-10px)' },
+                      },
+                    }}
+                  >
+                    <SpeedIcon sx={{ fontSize: 48, color: 'white' }} />
+                  </Box>
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(255, 255, 255, 0.2)',
+                      backdropFilter: 'blur(10px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      animation: 'float 3s ease-in-out infinite 1s',
+                      '@keyframes float': {
+                        '0%, 100%': { transform: 'translateY(0px)' },
+                        '50%': { transform: 'translateY(-10px)' },
+                      },
+                    }}
+                  >
+                    <FlightLandIcon sx={{ fontSize: 48, color: 'white' }} />
+                  </Box>
+                </Box>
+
+                {/* 主标题 */}
+                <Typography
+                  variant="h3"
+                  sx={{
+                    fontWeight: 700,
+                    mb: 2,
+                    fontSize: { xs: '2rem', md: '3rem' },
+                    textShadow: '0 2px 10px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  {t('flight.search.placeholder.title') || '快速订票，轻松出差'}
+                </Typography>
+
+                {/* 副标题 */}
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mb: 4,
+                    opacity: 0.95,
+                    fontSize: { xs: '1rem', md: '1.25rem' },
+                    fontWeight: 300,
+                    maxWidth: '600px',
+                    mx: 'auto',
+                  }}
+                >
+                  {t('flight.search.placeholder.subtitle') || '输入出发地和目的地，一键搜索全球航班，让您的差旅更便捷'}
+                </Typography>
+
+                {/* 功能特点 */}
+                <Grid container spacing={3} sx={{ mt: 4, maxWidth: '800px', mx: 'auto' }}>
+                  <Grid item xs={12} sm={4}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: 'rgba(255, 255, 255, 0.15)',
+                        backdropFilter: 'blur(10px)',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        transition: 'transform 0.3s',
+                        '&:hover': {
+                          transform: 'translateY(-5px)',
+                          bgcolor: 'rgba(255, 255, 255, 0.2)',
+                        },
+                      }}
+                    >
+                      <ExploreIcon sx={{ fontSize: 40, mb: 1 }} />
+                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                        {t('flight.search.placeholder.feature1.title') || '全球覆盖'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9, textAlign: 'center' }}>
+                        {t('flight.search.placeholder.feature1.desc') || '覆盖全球主要城市和机场'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: 'rgba(255, 255, 255, 0.15)',
+                        backdropFilter: 'blur(10px)',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        transition: 'transform 0.3s',
+                        '&:hover': {
+                          transform: 'translateY(-5px)',
+                          bgcolor: 'rgba(255, 255, 255, 0.2)',
+                        },
+                      }}
+                    >
+                      <SpeedIcon sx={{ fontSize: 40, mb: 1 }} />
+                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                        {t('flight.search.placeholder.feature2.title') || '快速搜索'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9, textAlign: 'center' }}>
+                        {t('flight.search.placeholder.feature2.desc') || '实时比价，快速找到最优航班'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: 'rgba(255, 255, 255, 0.15)',
+                        backdropFilter: 'blur(10px)',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        transition: 'transform 0.3s',
+                        '&:hover': {
+                          transform: 'translateY(-5px)',
+                          bgcolor: 'rgba(255, 255, 255, 0.2)',
+                        },
+                      }}
+                    >
+                      <FlightTakeoffIcon sx={{ fontSize: 40, mb: 1 }} />
+                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                        {t('flight.search.placeholder.feature3.title') || '便捷预订'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9, textAlign: 'center' }}>
+                        {t('flight.search.placeholder.feature3.desc') || '一站式预订，简化差旅流程'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+            </Paper>
           )}
         </Box>
       </Container>

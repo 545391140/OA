@@ -2330,7 +2330,23 @@
       "formPlaceholder": "航班搜索表单",
       "resultsPlaceholder": "搜索结果将显示在这里",
       "originPlaceholder": "请输入出发地",
-      "destinationPlaceholder": "请输入目的地"
+      "destinationPlaceholder": "请输入目的地",
+      "placeholder": {
+        "title": "快速订票，轻松出差",
+        "subtitle": "输入出发地和目的地，一键搜索全球航班，让您的差旅更便捷",
+        "feature1": {
+          "title": "全球覆盖",
+          "desc": "覆盖全球主要城市和机场"
+        },
+        "feature2": {
+          "title": "快速搜索",
+          "desc": "实时比价，快速找到最优航班"
+        },
+        "feature3": {
+          "title": "便捷预订",
+          "desc": "一站式预订，简化差旅流程"
+        }
+      }
     },
     "list": {
       "title": "航班列表",

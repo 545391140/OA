@@ -2319,7 +2319,23 @@
       "formPlaceholder": "Flight search form",
       "resultsPlaceholder": "Search results will appear here",
       "originPlaceholder": "Enter origin",
-      "destinationPlaceholder": "Enter destination"
+      "destinationPlaceholder": "Enter destination",
+      "placeholder": {
+        "title": "Quick Booking, Easy Travel",
+        "subtitle": "Enter origin and destination to search flights worldwide, making your business travel more convenient",
+        "feature1": {
+          "title": "Global Coverage",
+          "desc": "Covering major cities and airports worldwide"
+        },
+        "feature2": {
+          "title": "Quick Search",
+          "desc": "Real-time price comparison, quickly find the best flights"
+        },
+        "feature3": {
+          "title": "Easy Booking",
+          "desc": "One-stop booking, simplifying your travel process"
+        }
+      }
     },
     "list": {
       "title": "Flight List",
