@@ -142,15 +142,22 @@ frontend/
 
 ### 3.2 使用的 API 端点
 
-| API | 端点 | 方法 | 用途 | 文档链接 |
-|-----|------|------|------|----------|
-| **Hotel Search** | `/v3/shopping/hotel-offers` | GET | 搜索酒店报价 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-search) |
-| **Hotel Offers Search** | `/v3/shopping/hotel-offers/by-hotel` | GET | 根据酒店ID搜索报价 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-offers-search) |
-| **Hotel Offer Price** | `/v3/shopping/hotel-offers/{offerId}/price` | GET | 确认酒店价格 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-offers-price) |
-| **Hotel Booking** | `/v1/booking/hotel-bookings` | POST | 创建酒店预订 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-booking) |
-| **Hotel Booking Management** | `/v1/booking/hotel-bookings/{bookingId}` | GET/DELETE | 查看/取消订单 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-booking-management) |
-| **Hotel Name Autocomplete** | `/v1/reference-data/locations/hotels/by-geocode` | GET | 酒店名称自动完成 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete) |
-| **Hotel Ratings** | `/v2/e-reputation/hotel-sentiments` | GET | 酒店评分查询 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-ratings) |
+| API | 端点 | 方法 | 用途 | 文档链接 | 测试状态 |
+|-----|------|------|------|----------|---------|
+| **酒店地理坐标搜索** | `/v1/reference-data/locations/hotels/by-geocode` | GET | 通过地理坐标搜索酒店 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete) | ✅ 可用 |
+| **酒店城市搜索** | `/v1/reference-data/locations/hotels/by-city` | GET | 通过城市代码搜索酒店 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete) | ✅ 可用 |
+| **酒店ID搜索** | `/v1/reference-data/locations/hotels/by-hotels` | GET | 通过酒店ID搜索酒店信息 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete) | ✅ 可用 |
+| **Hotel Offers Search** | `/v3/shopping/hotel-offers/by-hotel` | GET | 根据酒店ID搜索报价 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-offers-search) | ⚠️ 需验证参数格式 |
+| **Hotel Offer Price** | `/v3/shopping/hotel-offers/{offerId}/price` | GET | 确认酒店价格 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-offers-price) | ⚠️ 依赖报价搜索 |
+| **Hotel Booking** | `/v1/booking/hotel-bookings` | POST | 创建酒店预订 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-booking) | ❌ 未测试 |
+| **Hotel Booking Management** | `/v1/booking/hotel-bookings/{bookingId}` | GET/DELETE | 查看/取消订单 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-booking-management) | ❌ 未测试 |
+| **Hotel Ratings** | `/v2/e-reputation/hotel-sentiments` | GET | 酒店评分查询 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-ratings) | ⚠️ API可用但测试环境无数据 |
+
+**重要说明**：
+- 三个酒店搜索接口（by-geocode, by-city, by-hotels）已测试通过 ✅
+- 这些接口用于获取酒店列表和基本信息
+- 获取酒店列表后，需要使用 `/v3/shopping/hotel-offers/by-hotel` 搜索报价
+- 报价搜索 API 的参数格式需要进一步验证
 
 ### 3.3 API 基础 URL
 
@@ -352,17 +359,237 @@ backend/services/amadeus/
 const { getAccessToken, getBaseURL } = require('./base');
 
 module.exports = {
-  searchHotelOffers,
-  searchHotelOffersByHotel,
-  confirmHotelPrice,
-  getHotelNameAutocomplete,
-  getHotelRatings,
+  // 酒店搜索（三个接口）
+  searchHotelsByGeocode,      // 通过地理坐标搜索
+  searchHotelsByCity,          // 通过城市搜索
+  searchHotelsByHotels,         // 通过酒店ID搜索
+  
+  // 酒店报价搜索
+  searchHotelOffersByHotel,    // 根据酒店ID搜索报价
+  
+  // 价格确认和评分
+  confirmHotelPrice,            // 确认酒店价格
+  getHotelRatings,              // 酒店评分查询
 };
 ```
 
 **详细实现：**
 
-#### 5.1.1.1 搜索酒店报价
+#### 5.1.1.1 通过地理坐标搜索酒店
+
+```javascript
+/**
+ * 通过地理坐标搜索酒店
+ * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete
+ * 
+ * @param {Object} searchParams - 搜索参数
+ * @param {Number} searchParams.latitude - 纬度（必填）
+ * @param {Number} searchParams.longitude - 经度（必填）
+ * @param {Number} searchParams.radius - 搜索半径（可选，单位：公里，默认5）
+ * @param {String} searchParams.hotelSource - 酒店来源（可选，ALL, AMADEUS, EXPEDIA，默认ALL）
+ * @returns {Promise<Object>} 酒店列表
+ */
+async function searchHotelsByGeocode(searchParams) {
+  try {
+    const {
+      latitude,
+      longitude,
+      radius = 5,
+      hotelSource = 'ALL',
+    } = searchParams;
+
+    // 参数验证
+    if (!latitude || !longitude) {
+      throw new Error('缺少必填参数：latitude 和 longitude');
+    }
+
+    // 获取 Access Token
+    const accessToken = await getAccessToken();
+    const baseURL = getBaseURL();
+
+    // 构建查询参数
+    const params = {
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      radius: radius.toString(),
+      hotelSource,
+    };
+
+    // 调用 API
+    const response = await axios.get(
+      `${baseURL}/v1/reference-data/locations/hotels/by-geocode`,
+      {
+        params,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (response.data && response.data.data) {
+      logger.debug(`找到 ${response.data.data.length} 个酒店`);
+      return {
+        success: true,
+        data: response.data.data,
+        meta: response.data.meta || {},
+      };
+    } else {
+      throw new Error('API响应格式错误');
+    }
+  } catch (error) {
+    logger.error('通过地理坐标搜索酒店失败:', error.message);
+    
+    if (error.response?.status === 401) {
+      logger.debug('Token可能过期，尝试刷新后重试...');
+      await refreshAccessToken();
+      return searchHotelsByGeocode(searchParams);
+    }
+    
+    throw error;
+  }
+}
+```
+
+#### 5.1.1.2 通过城市搜索酒店
+
+```javascript
+/**
+ * 通过城市搜索酒店
+ * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete
+ * 
+ * @param {Object} searchParams - 搜索参数
+ * @param {String} searchParams.cityCode - 城市代码（IATA代码，如：NYC）（必填）
+ * @param {String} searchParams.hotelSource - 酒店来源（可选，ALL, AMADEUS, EXPEDIA，默认ALL）
+ * @returns {Promise<Object>} 酒店列表
+ */
+async function searchHotelsByCity(searchParams) {
+  try {
+    const {
+      cityCode,
+      hotelSource = 'ALL',
+    } = searchParams;
+
+    // 参数验证
+    if (!cityCode) {
+      throw new Error('缺少必填参数：cityCode');
+    }
+
+    // 获取 Access Token
+    const accessToken = await getAccessToken();
+    const baseURL = getBaseURL();
+
+    // 构建查询参数
+    const params = {
+      cityCode,
+      hotelSource,
+    };
+
+    // 调用 API
+    const response = await axios.get(
+      `${baseURL}/v1/reference-data/locations/hotels/by-city`,
+      {
+        params,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (response.data && response.data.data) {
+      logger.debug(`找到 ${response.data.data.length} 个酒店`);
+      return {
+        success: true,
+        data: response.data.data,
+        meta: response.data.meta || {},
+      };
+    } else {
+      throw new Error('API响应格式错误');
+    }
+  } catch (error) {
+    logger.error('通过城市搜索酒店失败:', error.message);
+    
+    if (error.response?.status === 401) {
+      logger.debug('Token可能过期，尝试刷新后重试...');
+      await refreshAccessToken();
+      return searchHotelsByCity(searchParams);
+    }
+    
+    throw error;
+  }
+}
+```
+
+#### 5.1.1.3 通过酒店ID搜索酒店
+
+```javascript
+/**
+ * 通过酒店ID搜索酒店
+ * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete
+ * 
+ * @param {Object} searchParams - 搜索参数
+ * @param {String} searchParams.hotelIds - 酒店ID（单个或多个，逗号分隔）（必填）
+ * @returns {Promise<Object>} 酒店列表
+ */
+async function searchHotelsByHotels(searchParams) {
+  try {
+    const { hotelIds } = searchParams;
+
+    // 参数验证
+    if (!hotelIds) {
+      throw new Error('缺少必填参数：hotelIds');
+    }
+
+    // 获取 Access Token
+    const accessToken = await getAccessToken();
+    const baseURL = getBaseURL();
+
+    // 构建查询参数
+    const params = {
+      hotelIds: hotelIds, // 可以是单个ID或逗号分隔的多个ID
+    };
+
+    // 调用 API
+    const response = await axios.get(
+      `${baseURL}/v1/reference-data/locations/hotels/by-hotels`,
+      {
+        params,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (response.data && response.data.data) {
+      logger.debug(`找到 ${response.data.data.length} 个酒店`);
+      return {
+        success: true,
+        data: response.data.data,
+        meta: response.data.meta || {},
+      };
+    } else {
+      throw new Error('API响应格式错误');
+    }
+  } catch (error) {
+    logger.error('通过酒店ID搜索酒店失败:', error.message);
+    
+    if (error.response?.status === 401) {
+      logger.debug('Token可能过期，尝试刷新后重试...');
+      await refreshAccessToken();
+      return searchHotelsByHotels(searchParams);
+    }
+    
+    throw error;
+  }
+}
+```
+
+#### 5.1.1.4 根据酒店ID搜索报价
 
 ```javascript
 /**
@@ -490,7 +717,7 @@ async function searchHotelOffers(searchParams) {
 }
 ```
 
-#### 5.1.1.2 根据酒店ID搜索报价
+#### 5.1.1.5 根据酒店ID搜索报价
 
 ```javascript
 /**
@@ -574,7 +801,7 @@ async function searchHotelOffersByHotel(searchParams) {
 }
 ```
 
-#### 5.1.1.3 确认酒店价格
+#### 5.1.1.6 确认酒店价格
 
 ```javascript
 /**
@@ -638,7 +865,7 @@ async function confirmHotelPrice(offerId) {
 }
 ```
 
-#### 5.1.1.4 酒店名称自动完成
+#### 5.1.1.7 酒店名称自动完成（已废弃，使用 searchHotelsByGeocode 替代）
 
 ```javascript
 /**
@@ -720,7 +947,7 @@ async function getHotelNameAutocomplete(searchParams) {
 }
 ```
 
-#### 5.1.1.5 酒店评分查询
+#### 5.1.1.8 酒店评分查询
 
 ```javascript
 /**

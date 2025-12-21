@@ -195,25 +195,21 @@ async function testAuthentication() {
 }
 
 /**
- * 测试 3: 酒店搜索 API (Hotel Search)
- * 注意：v3 API 需要使用 hotelIds 参数，不能使用 cityCode
- * 流程：先通过地理坐标获取酒店列表，然后使用 hotelIds 搜索报价
+ * 测试 3.1: 通过地理坐标搜索酒店 (by-geocode)
  */
-async function testHotelSearch() {
-  console.log('\n🏨 测试 3: 酒店搜索 API (Hotel Search)');
+async function testHotelSearchByGeocode() {
+  console.log('\n🏨 测试 3.1: 通过地理坐标搜索酒店 (by-geocode)');
   console.log('─'.repeat(60));
   
   try {
     const token = await getAccessToken();
     if (!token) {
-      addTestResult('酒店搜索', 'failed', '无法获取 Access Token');
+      addTestResult('地理坐标搜索', 'failed', '无法获取 Access Token');
       return false;
     }
 
     const baseURL = getBaseURL();
     
-    // 步骤1: 先通过地理坐标获取酒店列表
-    console.log('   📍 步骤1: 通过地理坐标获取酒店列表...');
     const geocodeParams = {
       latitude: 40.7128,  // 纽约纬度
       longitude: -74.0060, // 纽约经度
@@ -221,7 +217,9 @@ async function testHotelSearch() {
       hotelSource: 'ALL',
     };
 
-    const geocodeResponse = await axios.get(
+    console.log('   🔍 搜索参数:', JSON.stringify(geocodeParams, null, 2));
+
+    const response = await axios.get(
       `${baseURL}/v1/reference-data/locations/hotels/by-geocode`,
       {
         params: geocodeParams,
@@ -233,33 +231,304 @@ async function testHotelSearch() {
       }
     );
 
+    if (!response.data?.data || !Array.isArray(response.data.data)) {
+      addTestResult('地理坐标搜索', 'failed', 'API响应格式错误：缺少data数组');
+      return false;
+    }
+
+    const hotels = response.data.data;
+    console.log(`   📊 找到 ${hotels.length} 个酒店`);
+
+    if (hotels.length === 0) {
+      addTestResult('地理坐标搜索', 'warning', '搜索成功但未找到酒店（可能是测试环境数据问题）');
+    } else {
+      const firstHotel = hotels[0];
+      console.log('   🏨 第一个酒店:', JSON.stringify({
+        hotelId: firstHotel.hotelId,
+        name: firstHotel.name,
+        geoCode: firstHotel.geoCode,
+      }, null, 2));
+
+      addTestResult('地理坐标搜索', 'passed', `成功找到 ${hotels.length} 个酒店`, {
+        hotelsFound: hotels.length,
+        sampleHotel: {
+          hotelId: firstHotel.hotelId,
+          name: firstHotel.name,
+          geoCode: firstHotel.geoCode,
+        },
+      }, geocodeParams, {
+        status: response.status,
+        dataCount: hotels.length,
+      });
+    }
+
+    return hotels.length > 0 ? hotels : null;
+  } catch (error) {
+    let errorMessage = error.message;
+    if (error.response) {
+      errorMessage += ` (HTTP ${error.response.status})`;
+      if (error.response.data?.errors) {
+        errorMessage += `: ${JSON.stringify(error.response.data.errors[0])}`;
+      }
+      console.error('   错误响应:', JSON.stringify(error.response.data, null, 2));
+    }
+    addTestResult('地理坐标搜索', 'failed', errorMessage);
+    return null;
+  }
+}
+
+/**
+ * 测试 3.2: 通过城市搜索酒店 (by-city)
+ */
+async function testHotelSearchByCity() {
+  console.log('\n🏨 测试 3.2: 通过城市搜索酒店 (by-city)');
+  console.log('─'.repeat(60));
+  
+  try {
+    const token = await getAccessToken();
+    if (!token) {
+      addTestResult('城市搜索', 'failed', '无法获取 Access Token');
+      return false;
+    }
+
+    const baseURL = getBaseURL();
+    
+    const cityParams = {
+      cityCode: 'NYC', // 纽约城市代码
+      hotelSource: 'ALL',
+    };
+
+    console.log('   🔍 搜索参数:', JSON.stringify(cityParams, null, 2));
+
+    // 等待1秒避免频率限制
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const response = await axios.get(
+      `${baseURL}/v1/reference-data/locations/hotels/by-city`,
+      {
+        params: cityParams,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (!response.data?.data || !Array.isArray(response.data.data)) {
+      addTestResult('城市搜索', 'failed', 'API响应格式错误：缺少data数组');
+      return false;
+    }
+
+    const hotels = response.data.data;
+    console.log(`   📊 找到 ${hotels.length} 个酒店`);
+
+    if (hotels.length === 0) {
+      addTestResult('城市搜索', 'warning', '搜索成功但未找到酒店（可能是测试环境数据问题）');
+    } else {
+      const firstHotel = hotels[0];
+      console.log('   🏨 第一个酒店:', JSON.stringify({
+        hotelId: firstHotel.hotelId,
+        name: firstHotel.name,
+      }, null, 2));
+
+      addTestResult('城市搜索', 'passed', `成功找到 ${hotels.length} 个酒店`, {
+        hotelsFound: hotels.length,
+        cityCode: 'NYC',
+        sampleHotel: {
+          hotelId: firstHotel.hotelId,
+          name: firstHotel.name,
+        },
+      }, cityParams, {
+        status: response.status,
+        dataCount: hotels.length,
+      });
+    }
+
+    return hotels.length > 0 ? hotels : null;
+  } catch (error) {
+    let errorMessage = error.message;
+    if (error.response) {
+      errorMessage += ` (HTTP ${error.response.status})`;
+      if (error.response.data?.errors) {
+        errorMessage += `: ${JSON.stringify(error.response.data.errors[0])}`;
+      }
+      console.error('   错误响应:', JSON.stringify(error.response.data, null, 2));
+    }
+    addTestResult('城市搜索', 'failed', errorMessage);
+    return null;
+  }
+}
+
+/**
+ * 测试 3.3: 通过酒店ID搜索酒店 (by-hotels)
+ */
+async function testHotelSearchByHotels() {
+  console.log('\n🏨 测试 3.3: 通过酒店ID搜索酒店 (by-hotels)');
+  console.log('─'.repeat(60));
+  
+  try {
+    const token = await getAccessToken();
+    if (!token) {
+      addTestResult('酒店ID搜索', 'failed', '无法获取 Access Token');
+      return false;
+    }
+
+    const baseURL = getBaseURL();
+    
+    // 先通过地理坐标获取一个酒店ID
+    const geocodeResponse = await axios.get(
+      `${baseURL}/v1/reference-data/locations/hotels/by-geocode`,
+      {
+        params: {
+          latitude: 40.7128,
+          longitude: -74.0060,
+          radius: 5,
+          hotelSource: 'ALL',
+        },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
     if (!geocodeResponse.data?.data || geocodeResponse.data.data.length === 0) {
-      addTestResult('酒店搜索', 'warning', '无法获取酒店列表（地理坐标搜索无结果），跳过此测试');
+      addTestResult('酒店ID搜索', 'warning', '无法获取酒店ID（地理坐标搜索无结果），跳过此测试');
       return true;
     }
 
-    const hotels = geocodeResponse.data.data;
-    const hotelIds = hotels.slice(0, 3).map(h => h.hotelId).filter(Boolean);
+    const hotelId = geocodeResponse.data.data[0].hotelId;
+    if (!hotelId) {
+      addTestResult('酒店ID搜索', 'warning', '无法从搜索结果中提取酒店ID，跳过此测试');
+      return true;
+    }
+
+    console.log(`   🏨 使用酒店ID: ${hotelId}`);
+
+    const hotelParams = {
+      hotelIds: hotelId,
+    };
+
+    console.log('   🔍 搜索参数:', JSON.stringify(hotelParams, null, 2));
+
+    // 等待1秒避免频率限制
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const response = await axios.get(
+      `${baseURL}/v1/reference-data/locations/hotels/by-hotels`,
+      {
+        params: hotelParams,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (!response.data?.data || !Array.isArray(response.data.data)) {
+      addTestResult('酒店ID搜索', 'failed', 'API响应格式错误：缺少data数组');
+      return false;
+    }
+
+    const hotels = response.data.data;
+    console.log(`   📊 找到 ${hotels.length} 个酒店`);
+
+    if (hotels.length === 0) {
+      addTestResult('酒店ID搜索', 'warning', '搜索成功但未找到酒店（可能是测试环境数据问题）');
+    } else {
+      const firstHotel = hotels[0];
+      console.log('   🏨 酒店信息:', JSON.stringify({
+        hotelId: firstHotel.hotelId,
+        name: firstHotel.name,
+      }, null, 2));
+
+      addTestResult('酒店ID搜索', 'passed', `成功找到 ${hotels.length} 个酒店`, {
+        hotelId,
+        hotelsFound: hotels.length,
+        sampleHotel: {
+          hotelId: firstHotel.hotelId,
+          name: firstHotel.name,
+        },
+      }, hotelParams, {
+        status: response.status,
+        dataCount: hotels.length,
+      });
+    }
+
+    return true;
+  } catch (error) {
+    let errorMessage = error.message;
+    if (error.response) {
+      errorMessage += ` (HTTP ${error.response.status})`;
+      if (error.response.data?.errors) {
+        errorMessage += `: ${JSON.stringify(error.response.data.errors[0])}`;
+      }
+      console.error('   错误响应:', JSON.stringify(error.response.data, null, 2));
+    }
+    addTestResult('酒店ID搜索', 'failed', errorMessage);
+    return false;
+  }
+}
+
+/**
+ * 测试 3.4: 酒店报价搜索 (Hotel Offers Search)
+ * 使用通过上述接口获取的酒店ID搜索报价
+ */
+async function testHotelOffersSearch() {
+  console.log('\n🏨 测试 3.4: 酒店报价搜索 (Hotel Offers Search)');
+  console.log('─'.repeat(60));
+  
+  try {
+    const token = await getAccessToken();
+    if (!token) {
+      addTestResult('酒店报价搜索', 'failed', '无法获取 Access Token');
+      return false;
+    }
+
+    const baseURL = getBaseURL();
     
-    if (hotelIds.length === 0) {
-      addTestResult('酒店搜索', 'warning', '无法从酒店列表中提取酒店ID，跳过此测试');
+    // 先通过地理坐标获取酒店ID
+    const geocodeResponse = await axios.get(
+      `${baseURL}/v1/reference-data/locations/hotels/by-geocode`,
+      {
+        params: {
+          latitude: 40.7128,
+          longitude: -74.0060,
+          radius: 5,
+          hotelSource: 'ALL',
+        },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.amadeus+json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    if (!geocodeResponse.data?.data || geocodeResponse.data.data.length === 0) {
+      addTestResult('酒店报价搜索', 'warning', '无法获取酒店ID（地理坐标搜索无结果），跳过此测试');
       return true;
     }
 
-    console.log(`   ✅ 找到 ${hotels.length} 个酒店，使用前 ${hotelIds.length} 个酒店ID进行搜索`);
+    const hotelId = geocodeResponse.data.data[0].hotelId;
+    if (!hotelId) {
+      addTestResult('酒店报价搜索', 'warning', '无法从搜索结果中提取酒店ID，跳过此测试');
+      return true;
+    }
 
-    // 步骤2: 使用 hotelIds 搜索报价
+    console.log(`   🏨 使用酒店ID: ${hotelId}`);
+
+    // 搜索报价
     const checkInDate = new Date();
-    checkInDate.setDate(checkInDate.getDate() + 30); // 30天后
+    checkInDate.setDate(checkInDate.getDate() + 30);
     const checkOutDate = new Date(checkInDate);
-    checkOutDate.setDate(checkOutDate.getDate() + 2); // 住2晚
+    checkOutDate.setDate(checkOutDate.getDate() + 2);
 
-    // 尝试使用单个酒店ID（先测试单个，如果成功再测试多个）
-    // 根据 Amadeus API 文档，hotelIds 应该是逗号分隔的字符串
-    const singleHotelId = hotelIds[0]; // 先测试单个酒店
-    
     const searchParams = {
-      hotelIds: singleHotelId, // 单个酒店ID
+      hotelIds: hotelId,
       checkInDate: checkInDate.toISOString().split('T')[0],
       checkOutDate: checkOutDate.toISOString().split('T')[0],
       adults: 1,
@@ -267,7 +536,7 @@ async function testHotelSearch() {
       currencyCode: 'USD',
     };
 
-    console.log('   🔍 步骤2: 搜索报价参数（单个酒店）:', JSON.stringify(searchParams, null, 2));
+    console.log('   🔍 搜索报价参数:', JSON.stringify(searchParams, null, 2));
 
     // 等待1秒避免频率限制
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -286,12 +555,12 @@ async function testHotelSearch() {
 
     // 验证响应格式
     if (!response.data) {
-      addTestResult('酒店搜索', 'failed', 'API响应为空');
+      addTestResult('酒店报价搜索', 'failed', 'API响应为空');
       return false;
     }
 
     if (!response.data.data || !Array.isArray(response.data.data)) {
-      addTestResult('酒店搜索', 'failed', 'API响应格式错误：缺少data数组');
+      addTestResult('酒店报价搜索', 'failed', 'API响应格式错误：缺少data数组');
       return false;
     }
 
@@ -299,7 +568,7 @@ async function testHotelSearch() {
     console.log(`   📊 找到 ${hotelOffers.length} 个酒店报价`);
 
     if (hotelOffers.length === 0) {
-      addTestResult('酒店搜索', 'warning', '搜索成功但未找到报价（可能是测试环境数据问题或酒店已满员）', {
+      addTestResult('酒店报价搜索', 'warning', '搜索成功但未找到报价（可能是测试环境数据问题或酒店已满员）', {
         note: '可以尝试更改日期或使用 includeClosed=true 参数',
       });
     } else {
@@ -321,9 +590,9 @@ async function testHotelSearch() {
         console.log('   🎫 报价ID:', firstOffer.id);
       }
 
-      addTestResult('酒店搜索', 'passed', `成功搜索到 ${hotelOffers.length} 个酒店报价`, {
+      addTestResult('酒店报价搜索', 'passed', `成功搜索到 ${hotelOffers.length} 个酒店报价`, {
         hotelsFound: hotelOffers.length,
-        hotelIdUsed: singleHotelId,
+        hotelIdUsed: hotelId,
         hotelStructure,
         sampleHotel: {
           hotelId: firstHotel.hotel?.hotelId,
@@ -354,7 +623,7 @@ async function testHotelSearch() {
 
 /**
  * 测试 4: 根据酒店ID搜索报价 (Hotel Offers Search by Hotel)
- * 这个测试与测试3类似，但专门测试单个酒店ID的搜索
+ * 这个测试专门测试单个酒店ID的报价搜索
  */
 async function testHotelOffersByHotel() {
   console.log('\n🏨 测试 4: 根据酒店ID搜索报价 (Hotel Offers Search by Hotel)');
@@ -932,10 +1201,19 @@ async function runTests() {
       process.exit(1);
     }
     
-    // 测试 3: 酒店搜索
-    await testHotelSearch();
+    // 测试 3.1: 通过地理坐标搜索酒店
+    const geocodeHotels = await testHotelSearchByGeocode();
     
-    // 测试 4: 根据酒店ID搜索
+    // 测试 3.2: 通过城市搜索酒店
+    await testHotelSearchByCity();
+    
+    // 测试 3.3: 通过酒店ID搜索酒店
+    await testHotelSearchByHotels();
+    
+    // 测试 3.4: 酒店报价搜索
+    await testHotelOffersSearch();
+    
+    // 测试 4: 根据酒店ID搜索报价（保留原有测试）
     await testHotelOffersByHotel();
     
     // 测试 5: 价格确认
