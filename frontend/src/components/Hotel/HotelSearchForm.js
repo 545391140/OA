@@ -209,13 +209,14 @@ const HotelSearchForm = ({
             variant="contained"
             startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
             onClick={handleSearch}
-            disabled={loading || (!cityCode && !cityLocation && !hotelName.trim()) || !checkInDate || !checkOutDate}
+            disabled={loading || !cityCode && !cityLocation || !checkInDate || !checkOutDate}
             sx={{ 
               minWidth: '200px',
               height: '48px',
               fontSize: '16px',
               fontWeight: 600,
-              borderRadius: '24px'
+              borderRadius: '24px',
+              textTransform: 'none',
             }}
           >
             {t('hotel.search.search') || '搜索'}

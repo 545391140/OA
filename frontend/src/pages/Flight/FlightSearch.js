@@ -760,7 +760,8 @@ const FlightSearch = () => {
                   height: '48px',
                   fontSize: '16px',
                   fontWeight: 600,
-                  borderRadius: '24px'
+                  borderRadius: '24px',
+                  textTransform: 'none',
                 }}
               >
                 {t('flight.search.search') || '搜索'}
