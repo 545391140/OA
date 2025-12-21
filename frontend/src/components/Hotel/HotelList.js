@@ -156,7 +156,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
   return (
     <Box>
       {/* 筛选和排序栏 */}
-      <Paper sx={{ p: 2, mb: 2 }}>
+      <Paper sx={{ p: 2, mb: 2, mt: 3 }}>
         <Grid container spacing={2} alignItems="center">
           {/* 酒店名称搜索 */}
           <Grid item xs={12} sm={4}>
