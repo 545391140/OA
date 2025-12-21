@@ -231,6 +231,19 @@ router.post('/', protect, async (req, res) => {
       employee: req.user.id
     };
 
+    // 验证并转换 tripType 值
+    if (travelData.tripType) {
+      // 兼容旧值：将 mainland_china 转换为 domestic，cross_border 转换为 international
+      if (travelData.tripType === 'mainland_china') {
+        travelData.tripType = 'domestic';
+      } else if (travelData.tripType === 'cross_border') {
+        travelData.tripType = 'international';
+      } else if (!['domestic', 'international'].includes(travelData.tripType)) {
+        logger.warn(`Invalid tripType value: ${travelData.tripType}, using default: domestic`);
+        travelData.tripType = 'domestic';
+      }
+    }
+
     // 确保 requestName 有值：如果为空，使用当前登录用户的姓名
     if (!travelData.requestName || !travelData.requestName.trim()) {
       const currentUser = await User.findById(req.user.id).select('firstName lastName email employeeId');
@@ -372,6 +385,15 @@ router.post('/', protect, async (req, res) => {
     });
   } catch (error) {
     logger.error('Create travel error:', error);
+    
+    // 如果是 tripType 验证错误，提供更友好的错误信息
+    if (error.message && error.message.includes('tripType') && error.message.includes('not a valid enum')) {
+      return res.status(400).json({
+        success: false,
+        message: '行程类型无效。有效值为：domestic（境内）或 international（境外）。'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -411,6 +433,19 @@ router.put('/:id', protect, async (req, res) => {
 
     // 处理日期字段转换
     const updateData = { ...req.body };
+    
+    // 验证并转换 tripType 值
+    if (updateData.tripType) {
+      // 兼容旧值：将 mainland_china 转换为 domestic，cross_border 转换为 international
+      if (updateData.tripType === 'mainland_china') {
+        updateData.tripType = 'domestic';
+      } else if (updateData.tripType === 'cross_border') {
+        updateData.tripType = 'international';
+      } else if (!['domestic', 'international'].includes(updateData.tripType)) {
+        logger.warn(`Invalid tripType value: ${updateData.tripType}, using default: domestic`);
+        updateData.tripType = 'domestic';
+      }
+    }
     
     // 确保 requestName 有值：如果为空，使用当前登录用户的姓名
     if (updateData.hasOwnProperty('requestName') && (!updateData.requestName || !updateData.requestName.trim())) {
@@ -712,6 +747,15 @@ router.put('/:id', protect, async (req, res) => {
     });
   } catch (error) {
     logger.error('Update travel error:', error);
+    
+    // 如果是 tripType 验证错误，提供更友好的错误信息
+    if (error.message && error.message.includes('tripType') && error.message.includes('not a valid enum')) {
+      return res.status(400).json({
+        success: false,
+        message: '行程类型无效。有效值为：domestic（境内）或 international（境外）。'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'

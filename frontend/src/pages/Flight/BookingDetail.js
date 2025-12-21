@@ -38,11 +38,21 @@ import {
   Cancel as CancelIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
+  LocationOn as LocationIcon,
+  AirportShuttle as AirportIcon,
+  FlightTakeoff as TakeoffIcon,
+  FlightLand as LandingIcon,
+  SwapHoriz as TransferIcon,
+  AirlineStops as StopsIcon,
+  Luggage as LuggageIcon,
+  EventSeat as SeatIcon,
+  LocalOffer as TaxIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { getBooking, cancelBooking } from '../../services/flightService';
+import { getAirlineInfo } from '../../utils/flightUtils';
 import dayjs from 'dayjs';
 
 const BookingDetail = () => {
@@ -130,6 +140,28 @@ const BookingDetail = () => {
     return `${price.total} ${price.currency}`;
   };
 
+  // 获取机场城市名称
+  const getAirportCity = (iataCode, location) => {
+    if (location) {
+      return location.name || location.cityName || iataCode;
+    }
+    return iataCode;
+  };
+
+  // 计算中转时间
+  const calculateTransferTime = (arrivalTime, nextDepartureTime) => {
+    if (!arrivalTime || !nextDepartureTime) return null;
+    const arrival = dayjs(arrivalTime);
+    const departure = dayjs(nextDepartureTime);
+    const diffMinutes = departure.diff(arrival, 'minute');
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    if (hours > 0) {
+      return `${hours}小时${minutes}分钟`;
+    }
+    return `${minutes}分钟`;
+  };
+
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -206,14 +238,6 @@ const BookingDetail = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="body2" color="text.secondary">
-                  {t('flight.bookingDetail.price') || '价格'}
-                </Typography>
-                <Typography variant="h6" color="primary">
-                  {formatPrice(booking.price)}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Typography variant="body2" color="text.secondary">
                   {t('flight.bookingDetail.createdAt') || '创建时间'}
                 </Typography>
                 <Typography variant="body1">
@@ -241,66 +265,387 @@ const BookingDetail = () => {
 
         {/* 航班信息 */}
         {booking.flightOffer?.itineraries && (
-          <Card sx={{ mb: 3 }}>
+          <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {t('flight.bookingDetail.flightInfo') || '航班信息'}
-              </Typography>
-              {booking.flightOffer.itineraries.map((itinerary, idx) => (
-                <Box key={idx} sx={{ mb: idx < booking.flightOffer.itineraries.length - 1 ? 3 : 0 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="subtitle1">
-                      {idx === 0
-                        ? t('flight.detail.outbound') || '去程'
-                        : t('flight.detail.return') || '返程'}
-                    </Typography>
-                    <Chip
-                      label={formatDuration(itinerary.duration)}
-                      icon={<ScheduleIcon />}
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                    />
-                  </Box>
+              {booking.flightOffer.itineraries.map((itinerary, idx) => {
+                // 获取出发和目的地位置信息（从第一个和最后一个航段）
+                const firstSegment = itinerary.segments?.[0];
+                const lastSegment = itinerary.segments?.[itinerary.segments?.length - 1];
+                const originLocation = firstSegment?.departure ? { name: firstSegment.departure.iataCode } : null;
+                const destinationLocation = lastSegment?.arrival ? { name: lastSegment.arrival.iataCode } : null;
 
-                  {itinerary.segments?.map((segment, segIdx) => (
-                    <Box key={segIdx} sx={{ mb: 2 }}>
-                      <Grid container spacing={2} alignItems="center">
-                        <Grid item xs={12} md={3}>
-                          <Box>
-                            <Typography variant="h6" color="primary">
-                              {segment.departure?.iataCode}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {dayjs(segment.departure?.at).format('YYYY-MM-DD HH:mm')}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <FlightIcon sx={{ fontSize: 24, color: 'primary.main', mr: 1 }} />
-                            <Typography variant="body2" color="text.secondary">
-                              {segment.carrierCode} {segment.number} • {formatDuration(segment.duration)}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={12} md={3}>
-                          <Box sx={{ textAlign: 'right' }}>
-                            <Typography variant="h6" color="primary">
-                              {segment.arrival?.iataCode}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {dayjs(segment.arrival?.at).format('YYYY-MM-DD HH:mm')}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                      </Grid>
-                      {segIdx < itinerary.segments.length - 1 && <Divider sx={{ my: 2 }} />}
+                return (
+                  <Box key={idx} sx={{ mb: idx < booking.flightOffer.itineraries.length - 1 ? 3 : 0 }}>
+                    {/* 行程标题 */}
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      mb: 3,
+                      pb: 2,
+                      borderBottom: '2px solid',
+                      borderColor: 'primary.main'
+                    }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {idx === 0 ? (
+                          <TakeoffIcon color="primary" />
+                        ) : (
+                          <LandingIcon color="primary" />
+                        )}
+                        <Typography variant="h5" fontWeight="bold">
+                          {idx === 0
+                            ? t('flight.detail.outbound') || '去程'
+                            : t('flight.detail.return') || '返程'}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={formatDuration(itinerary.duration)}
+                        icon={<ScheduleIcon />}
+                        color="primary"
+                        sx={{ fontSize: '0.95rem', fontWeight: 600 }}
+                      />
                     </Box>
-                  ))}
-                  {idx < booking.flightOffer.itineraries.length - 1 && <Divider sx={{ my: 2 }} />}
+
+                    {itinerary.segments?.map((segment, segIdx) => {
+                      const isLastSegment = segIdx === itinerary.segments.length - 1;
+                      const nextSegment = !isLastSegment ? itinerary.segments[segIdx + 1] : null;
+                      const transferTime = nextSegment 
+                        ? calculateTransferTime(segment.arrival?.at, nextSegment.departure?.at)
+                        : null;
+
+                      return (
+                        <Box key={segIdx}>
+                          <Grid container spacing={3} sx={{ mb: segIdx < itinerary.segments.length - 1 ? 3 : 0 }}>
+                            {/* 出发机场 */}
+                            <Grid item xs={12} md={3}>
+                              <Box sx={{ 
+                                p: 2, 
+                                borderRadius: 2, 
+                                bgcolor: 'rgba(25, 118, 210, 0.08)',
+                                border: '1px solid',
+                                borderColor: 'primary.main'
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                  <LocationIcon color="primary" fontSize="small" />
+                                  <Typography variant="h4" color="primary" fontWeight="bold">
+                                    {segment.departure?.iataCode}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                  {getAirportCity(
+                                    segment.departure?.iataCode,
+                                    segIdx === 0 && idx === 0 ? originLocation : null
+                                  )}
+                                </Typography>
+                                {segment.departure?.terminal ? (
+                                  <Chip
+                                    icon={<AirportIcon />}
+                                    label={`${t('flight.detail.terminal') || '航站楼'} ${segment.departure.terminal}`}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ mb: 1 }}
+                                  />
+                                ) : (
+                                  <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1 }}>
+                                    {t('flight.detail.terminalNotAvailable') || '航站楼信息暂未提供'}
+                                  </Typography>
+                                )}
+                                <Typography variant="h6" sx={{ mt: 1.5, fontWeight: 600 }}>
+                                  {dayjs(segment.departure?.at).format('HH:mm')}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {dayjs(segment.departure?.at).format('YYYY年MM月DD日 dddd')}
+                                </Typography>
+                              </Box>
+                            </Grid>
+
+                            {/* 航班信息 */}
+                            <Grid item xs={12} md={6}>
+                              <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                p: 2
+                              }}>
+                                {/* 飞行时长 */}
+                                <Box sx={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: 1,
+                                  mb: 2,
+                                  p: 1.5,
+                                  borderRadius: 2,
+                                  bgcolor: 'rgba(0, 0, 0, 0.02)',
+                                  width: '100%',
+                                  justifyContent: 'center'
+                                }}>
+                                  <ScheduleIcon color="primary" />
+                                  <Typography variant="body1" fontWeight="medium">
+                                    {formatDuration(segment.duration)}
+                                  </Typography>
+                                </Box>
+
+                                {/* 航班号和航空公司 */}
+                                <Box sx={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                  mb: 1.5,
+                                  p: 2,
+                                  borderRadius: 2,
+                                  bgcolor: 'rgba(0, 0, 0, 0.02)',
+                                  width: '100%'
+                                }}>
+                                  <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 2,
+                                    width: '100%',
+                                    justifyContent: 'center'
+                                  }}>
+                                    <FlightIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+                                    <Box sx={{ textAlign: 'center' }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                        <Typography variant="h6" fontWeight="bold">
+                                          {segment.carrierCode} {segment.number}
+                                        </Typography>
+                                        {segment.aircraft?.code && (
+                                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                            {t('flight.detail.aircraft') || '机型'}: {segment.aircraft.code}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                      {(() => {
+                                        const airlineInfo = getAirlineInfo(segment.carrierCode);
+                                        return airlineInfo.name && airlineInfo.name !== segment.carrierCode ? (
+                                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
+                                            {airlineInfo.name}
+                                          </Typography>
+                                        ) : null;
+                                      })()}
+                                    </Box>
+                                  </Box>
+                                </Box>
+
+                                {/* 舱位信息 */}
+                                {segment.class && (
+                                  <Chip
+                                    label={`${t('flight.detail.cabinClass') || '舱位'}: ${segment.class}`}
+                                    size="small"
+                                    color="info"
+                                    variant="outlined"
+                                    sx={{ mt: 1 }}
+                                  />
+                                )}
+                              </Box>
+                            </Grid>
+
+                            {/* 到达机场 */}
+                            <Grid item xs={12} md={3}>
+                              <Box sx={{ 
+                                p: 2, 
+                                borderRadius: 2, 
+                                bgcolor: 'rgba(46, 125, 50, 0.08)',
+                                border: '1px solid',
+                                borderColor: 'success.main',
+                                textAlign: 'right'
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, justifyContent: 'flex-end' }}>
+                                  <LocationIcon color="success" fontSize="small" />
+                                  <Typography variant="h4" color="success.main" fontWeight="bold">
+                                    {segment.arrival?.iataCode}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                  {getAirportCity(
+                                    segment.arrival?.iataCode,
+                                    isLastSegment && idx === 0 ? destinationLocation : null
+                                  )}
+                                </Typography>
+                                {segment.arrival?.terminal ? (
+                                  <Chip
+                                    icon={<AirportIcon />}
+                                    label={`${t('flight.detail.terminal') || '航站楼'} ${segment.arrival.terminal}`}
+                                    size="small"
+                                    variant="outlined"
+                                    color="success"
+                                    sx={{ mb: 1 }}
+                                  />
+                                ) : (
+                                  <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1 }}>
+                                    {t('flight.detail.terminalNotAvailable') || '航站楼信息暂未提供'}
+                                  </Typography>
+                                )}
+                                <Typography variant="h6" sx={{ mt: 1.5, fontWeight: 600 }}>
+                                  {dayjs(segment.arrival?.at).format('HH:mm')}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {dayjs(segment.arrival?.at).format('YYYY年MM月DD日 dddd')}
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          </Grid>
+
+                          {/* 中转信息 */}
+                          {!isLastSegment && transferTime && (
+                            <Box sx={{ 
+                              my: 3,
+                              p: 2,
+                              borderRadius: 2,
+                              bgcolor: 'rgba(237, 108, 2, 0.08)',
+                              border: '1px solid',
+                              borderColor: 'warning.main'
+                            }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                                <StopsIcon color="warning" />
+                                <Chip
+                                  icon={<TransferIcon />}
+                                  label={`${t('flight.detail.transfer') || '中转'} ${getAirportCity(segment.arrival?.iataCode)}`}
+                                  color="warning"
+                                  sx={{ fontWeight: 600 }}
+                                />
+                                <Typography variant="body1" color="text.secondary">
+                                  {t('flight.detail.transferTime') || '中转时间'}: <strong>{transferTime}</strong>
+                                </Typography>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 价格信息 */}
+        {booking.price && (
+          <Card sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <MoneyIcon color="primary" />
+                    {t('flight.detail.price') || '价格信息'}
+                  </Typography>
+                  <Chip
+                    icon={<CheckCircleIcon />}
+                    label={t('flight.booking.confirmed') || '已确认'}
+                    color="success"
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
                 </Box>
-              ))}
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h3" color="primary" fontWeight="bold">
+                    {formatPrice(booking.price)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {t('flight.detail.totalPrice') || '总价'}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              {/* 价格明细 */}
+              {(() => {
+                // 计算总卡片数
+                const cardCount = (booking.price?.base ? 1 : 0) + 
+                                 (booking.price?.fees && Array.isArray(booking.price.fees) && booking.price.fees.length > 0 ? booking.price.fees.length + 1 : 0) +
+                                 (booking.flightOffer?.numberOfBookableSeats ? 1 : 0) +
+                                 (booking.flightOffer?.itineraries?.[0]?.segments?.[0]?.class ? 1 : 0);
+                const itemWidth = cardCount > 0 ? Math.floor(12 / cardCount) : 12;
+                
+                return (
+                  <Grid container spacing={2}>
+                    {booking.price?.base && (
+                      <Grid item xs={12} sm={itemWidth}>
+                        <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {t('flight.detail.basePrice') || '基础价格'}
+                          </Typography>
+                          <Typography variant="h6" fontWeight="medium">
+                            {booking.price.base} {booking.price.currency}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    )}
+                    {booking.price?.fees && Array.isArray(booking.price.fees) && booking.price.fees.length > 0 && (
+                      <>
+                        {/* 费用总和 */}
+                        <Grid item xs={12} sm={itemWidth}>
+                          <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {t('flight.detail.fees') || '费用合计'}
+                            </Typography>
+                            <Typography variant="h6" fontWeight="medium">
+                              {booking.price.fees.reduce((sum, fee) => sum + parseFloat(fee.amount || 0), 0).toFixed(2)} {booking.price.currency}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        {/* 费用明细 */}
+                        {booking.price.fees.map((fee, index) => (
+                          <Grid item xs={12} sm={itemWidth} key={index}>
+                            <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
+                              <Typography variant="caption" color="text.secondary">
+                                {fee.type === 'SUPPLIER' ? (t('flight.detail.supplierFee') || '供应商费用') :
+                                 fee.type === 'TICKETING' ? (t('flight.detail.ticketingFee') || '出票费') :
+                                 fee.type === 'FORM_OF_PAYMENT' ? (t('flight.detail.paymentFee') || '支付手续费') :
+                                 fee.type === 'SERVICE' ? (t('flight.detail.serviceFee') || '服务费') :
+                                 fee.type === 'TAX' ? (t('flight.detail.tax') || '税费') :
+                                 (t('flight.detail.fee') || '费用')} {fee.type !== 'UNKNOWN' ? `(${fee.type})` : ''}
+                              </Typography>
+                              <Typography variant="h6" fontWeight="medium">
+                                {parseFloat(fee.amount || 0).toFixed(2)} {booking.price.currency}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        ))}
+                      </>
+                    )}
+                    {booking.flightOffer?.numberOfBookableSeats && (
+                      <Grid item xs={12} sm={itemWidth}>
+                        <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(2, 136, 209, 0.08)' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <SeatIcon fontSize="small" />
+                            {t('flight.detail.availableSeats') || '可预订座位'}
+                          </Typography>
+                          <Typography variant="h6" fontWeight="medium" color="info.main">
+                            {booking.flightOffer.numberOfBookableSeats}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    )}
+                    {booking.flightOffer?.itineraries?.[0]?.segments?.[0]?.class && (
+                      <Grid item xs={12} sm={itemWidth}>
+                        <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(0, 0, 0, 0.02)' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {t('flight.detail.cabinClass') || '舱位等级'}
+                          </Typography>
+                          <Typography variant="h6" fontWeight="medium">
+                            {booking.flightOffer.itineraries[0].segments[0].class}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    )}
+                  </Grid>
+                );
+              })()}
+
+              {/* 行李信息提示 */}
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <LuggageIcon />
+                  <Typography variant="body2">
+                    {t('flight.detail.baggageInfo') || '行李信息请以航空公司规定为准，预订时请仔细查看相关条款。'}
+                  </Typography>
+                </Box>
+              </Alert>
             </CardContent>
           </Card>
         )}

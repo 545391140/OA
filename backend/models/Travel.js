@@ -25,12 +25,12 @@ const TravelSchema = new mongoose.Schema({
   },
   travelType: {
     type: String,
-    enum: ['domestic', 'international'],
+    enum: ['domestic', 'international'], // 境内、境外
     default: 'domestic'
   },
   tripType: {
     type: String,
-    enum: ['domestic', 'cross_border'],
+    enum: ['domestic', 'international'], // 境内、境外
     default: 'domestic'
   },
   costOwingDepartment: {
@@ -233,6 +233,38 @@ const TravelSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Pre-save hook: 确保 tripType 值有效
+TravelSchema.pre('save', function(next) {
+  // 兼容旧值：将 mainland_china 转换为 domestic，cross_border 转换为 international
+  if (this.tripType === 'mainland_china') {
+    this.tripType = 'domestic';
+  } else if (this.tripType === 'cross_border') {
+    this.tripType = 'international';
+  }
+  // 如果 tripType 不是有效值，使用默认值
+  if (this.tripType && !['domestic', 'international'].includes(this.tripType)) {
+    logger.warn(`Invalid tripType value: ${this.tripType}, using default: domestic`);
+    this.tripType = 'domestic';
+  }
+  next();
+});
+
+// Pre-validate hook: 在验证前确保 tripType 值有效
+TravelSchema.pre('validate', function(next) {
+  // 兼容旧值：将 mainland_china 转换为 domestic，cross_border 转换为 international
+  if (this.tripType === 'mainland_china') {
+    this.tripType = 'domestic';
+  } else if (this.tripType === 'cross_border') {
+    this.tripType = 'international';
+  }
+  // 如果 tripType 不是有效值，使用默认值
+  if (this.tripType && !['domestic', 'international'].includes(this.tripType)) {
+    logger.warn(`Invalid tripType value: ${this.tripType}, using default: domestic`);
+    this.tripType = 'domestic';
+  }
+  next();
 });
 
 // Index for better query performance

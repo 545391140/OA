@@ -2328,7 +2328,9 @@
       "first": "头等舱",
       "search": "搜索",
       "formPlaceholder": "航班搜索表单",
-      "resultsPlaceholder": "搜索结果将显示在这里"
+      "resultsPlaceholder": "搜索结果将显示在这里",
+      "originPlaceholder": "请输入出发地",
+      "destinationPlaceholder": "请输入目的地"
     },
     "list": {
       "title": "航班列表",
@@ -2383,18 +2385,35 @@
       "return": "返程",
       "terminal": "航站楼",
       "transfer": "中转",
+      "transferTime": "中转时间",
       "price": "价格",
       "basePrice": "基础价格",
+      "taxes": "税费",
       "availableSeats": "可预订座位",
       "priceConfirmed": "价格已确认",
       "bookNow": "立即预订",
-      "aircraft": "机型"
+      "aircraft": "机型",
+      "cabinClass": "舱位",
+      "totalPrice": "总价",
+      "baggageInfo": "行李信息请以航空公司规定为准，预订时请仔细查看相关条款。",
+      "terminalNotAvailable": "航站楼信息暂未提供",
+      "fees": "费用合计",
+      "supplierFee": "供应商费用",
+      "ticketingFee": "出票费",
+      "paymentFee": "支付手续费",
+      "serviceFee": "服务费",
+      "tax": "税费",
+      "fee": "费用"
     },
     "booking": {
       "title": "机票预订",
       "selectTravel": "选择差旅申请",
       "travelApplication": "差旅申请",
       "noTravelAvailable": "没有可用的差旅申请，请先创建差旅申请",
+      "noTravelAvailableDesc": "机票预订需要关联已审批通过的差旅申请。请先创建并提交差旅申请，待审批通过后再进行机票预订。",
+      "createTravel": "创建差旅申请",
+      "confirmPriceButton": "确认价格",
+      "basePrice": "基础价格",
       "passengerInfo": "乘客信息",
       "addPassenger": "添加乘客",
       "passenger": "乘客",
@@ -2450,7 +2469,9 @@
       "dateOfBirth": "出生日期",
       "email": "邮箱",
       "phone": "电话",
-      "cancel": "取消预订"
+      "cancel": "取消预订",
+      "cancelBooking": "取消预订",
+      "cancelReason": "取消原因"
     }
   }
 }

@@ -2317,7 +2317,9 @@
       "first": "First",
       "search": "Search",
       "formPlaceholder": "Flight search form",
-      "resultsPlaceholder": "Search results will appear here"
+      "resultsPlaceholder": "Search results will appear here",
+      "originPlaceholder": "Enter origin",
+      "destinationPlaceholder": "Enter destination"
     },
     "list": {
       "title": "Flight List",
@@ -2372,18 +2374,35 @@
       "return": "Return",
       "terminal": "Terminal",
       "transfer": "Transfer",
+      "transferTime": "Transfer Time",
       "price": "Price",
       "basePrice": "Base Price",
+      "taxes": "Taxes",
       "availableSeats": "Available Seats",
       "priceConfirmed": "Price Confirmed",
       "bookNow": "Book Now",
-      "aircraft": "Aircraft"
+      "aircraft": "Aircraft",
+      "cabinClass": "Cabin Class",
+      "totalPrice": "Total Price",
+      "baggageInfo": "Baggage information is subject to airline regulations. Please review relevant terms and conditions when booking.",
+      "terminalNotAvailable": "Terminal information not available",
+      "fees": "Total Fees",
+      "supplierFee": "Supplier Fee",
+      "ticketingFee": "Ticketing Fee",
+      "paymentFee": "Payment Fee",
+      "serviceFee": "Service Fee",
+      "tax": "Tax",
+      "fee": "Fee"
     },
     "booking": {
       "title": "Flight Booking",
       "selectTravel": "Select Travel Application",
       "travelApplication": "Travel Application",
       "noTravelAvailable": "No available travel applications, please create a travel application first",
+      "noTravelAvailableDesc": "Flight booking requires an associated approved travel application. Please create and submit a travel application first, and proceed with flight booking after approval.",
+      "createTravel": "Create Travel Application",
+      "confirmPriceButton": "Confirm Price",
+      "basePrice": "Base Price",
       "passengerInfo": "Passenger Information",
       "addPassenger": "Add Passenger",
       "passenger": "Passenger",
@@ -2439,7 +2458,9 @@
       "dateOfBirth": "Date of Birth",
       "email": "Email",
       "phone": "Phone",
-      "cancel": "Cancel Booking"
+      "cancel": "Cancel Booking",
+      "cancelBooking": "Cancel Booking",
+      "cancelReason": "Cancellation Reason"
     }
   }
 }
