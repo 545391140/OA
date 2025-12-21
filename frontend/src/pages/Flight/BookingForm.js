@@ -46,8 +46,67 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { confirmPrice, createBooking } from '../../services/flightService';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+import { pinyin } from 'pinyin-pro';
 
 const steps = ['selectTravel', 'passengerInfo', 'confirmPrice', 'submit'];
+
+// 检测字符串是否包含中文字符
+const containsChinese = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  return /[\u4e00-\u9fa5]/.test(str);
+};
+
+// 将中文转换为拼音，保留已有的英文字母
+const convertToPinyin = (name) => {
+  if (!name || typeof name !== 'string') {
+    return '';
+  }
+  
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    return '';
+  }
+  
+  // 如果包含中文，需要转换
+  if (containsChinese(trimmedName)) {
+    try {
+      // 使用 pinyin-pro 转换整个字符串（会自动处理中英文混合）
+      const pinyinResult = pinyin(trimmedName, { toneType: 'none' });
+      
+      if (!pinyinResult || typeof pinyinResult !== 'string') {
+        // 如果转换失败，尝试只保留英文字母
+        const englishOnly = trimmedName.replace(/[^A-Za-z]/g, '');
+        return englishOnly ? englishOnly.toUpperCase() : '';
+      }
+      
+      // 移除所有空格和特殊字符，只保留字母，转换为大写
+      const result = pinyinResult.replace(/\s+/g, '').replace(/[^A-Za-z]/g, '').toUpperCase();
+      
+      // 如果转换后为空，说明可能是特殊字符，尝试保留原字符串中的英文字母
+      if (!result) {
+        const englishOnly = trimmedName.replace(/[^A-Za-z]/g, '');
+        return englishOnly ? englishOnly.toUpperCase() : '';
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('拼音转换失败:', error, '原始名字:', trimmedName);
+      // 如果转换失败，尝试只保留英文字母
+      const englishOnly = trimmedName.replace(/[^A-Za-z]/g, '');
+      return englishOnly ? englishOnly.toUpperCase() : '';
+    }
+  }
+  
+  // 如果不包含中文，只保留英文字母、连字符和空格，然后转换为大写
+  const result = trimmedName.replace(/[^A-Za-z\-\s']/g, '').replace(/\s+/g, '').toUpperCase();
+  
+  // 如果结果为空，说明只包含特殊字符
+  if (!result || !result.trim()) {
+    return '';
+  }
+  
+  return result;
+};
 
 const BookingForm = () => {
   const { t } = useTranslation();
@@ -174,10 +233,15 @@ const BookingForm = () => {
     setError(null);
     try {
       // 在确认价格时传入 travelers 信息，确保 travelerPricings 中的 ID 格式正确
+      // 自动转换中文名字为拼音
       const response = await confirmPrice({
         flightOffer: flight,
         travelers: travelers.map((t) => ({
           ...t,
+          name: {
+            firstName: convertToPinyin(t.name.firstName),
+            lastName: convertToPinyin(t.name.lastName),
+          },
           dateOfBirth: t.dateOfBirth ? dayjs(t.dateOfBirth).format('YYYY-MM-DD') : null,
         })),
       });
@@ -206,10 +270,27 @@ const BookingForm = () => {
       // 验证乘客信息
       for (let i = 0; i < travelers.length; i++) {
         const traveler = travelers[i];
-        if (!traveler.name.firstName || !traveler.name.lastName) {
-          showNotification(`请填写乘客${i + 1}的姓名`, 'error');
+        if (!traveler.name.firstName || !traveler.name.firstName.trim()) {
+          showNotification(`请填写乘客${i + 1}的名字`, 'error');
           return;
         }
+        if (!traveler.name.lastName || !traveler.name.lastName.trim()) {
+          showNotification(`请填写乘客${i + 1}的姓氏`, 'error');
+          return;
+        }
+        
+        // 验证名字格式（转换后不能为空）
+        const convertedFirstName = convertToPinyin(traveler.name.firstName);
+        const convertedLastName = convertToPinyin(traveler.name.lastName);
+        if (!convertedFirstName || !convertedFirstName.trim()) {
+          showNotification(`乘客${i + 1}的名字格式无效，请使用英文字母或中文（将自动转换为拼音）`, 'error');
+          return;
+        }
+        if (!convertedLastName || !convertedLastName.trim()) {
+          showNotification(`乘客${i + 1}的姓氏格式无效，请使用英文字母或中文（将自动转换为拼音）`, 'error');
+          return;
+        }
+        
         if (!traveler.dateOfBirth) {
           showNotification(`请选择乘客${i + 1}的出生日期`, 'error');
           return;
@@ -322,6 +403,14 @@ const BookingForm = () => {
 
     // 验证并格式化 travelers 数据
     const validatedTravelers = travelers.map((t, index) => {
+      // 验证姓名（在转换前先检查）
+      if (!t.name.firstName || !t.name.firstName.trim()) {
+        throw new Error(`乘客${index + 1}的名字必填`);
+      }
+      if (!t.name.lastName || !t.name.lastName.trim()) {
+        throw new Error(`乘客${index + 1}的姓氏必填`);
+      }
+      
       // 验证 dateOfBirth
       if (!t.dateOfBirth) {
         throw new Error(`乘客${index + 1}的出生日期必填`);
@@ -338,8 +427,24 @@ const BookingForm = () => {
         throw new Error(`乘客${index + 1}的国家代码必填`);
       }
       
+      // 自动转换中文名字为拼音
+      const convertedFirstName = convertToPinyin(t.name.firstName);
+      const convertedLastName = convertToPinyin(t.name.lastName);
+      
+      // 验证转换后的名字不为空
+      if (!convertedFirstName || !convertedFirstName.trim()) {
+        throw new Error(`乘客${index + 1}的名字格式无效，请使用英文字母或中文（将自动转换为拼音）。当前输入: "${t.name.firstName}"`);
+      }
+      if (!convertedLastName || !convertedLastName.trim()) {
+        throw new Error(`乘客${index + 1}的姓氏格式无效，请使用英文字母或中文（将自动转换为拼音）。当前输入: "${t.name.lastName}"`);
+      }
+      
       return {
         ...t,
+        name: {
+          firstName: convertedFirstName,
+          lastName: convertedLastName,
+        },
         dateOfBirth: dayjs(t.dateOfBirth).format('YYYY-MM-DD'),
       };
     });
@@ -479,6 +584,11 @@ const BookingForm = () => {
                         value={traveler.name.firstName}
                         onChange={(e) => handleTravelerChange(index, 'name.firstName', e.target.value)}
                         required
+                        helperText={
+                          traveler.name.firstName && containsChinese(traveler.name.firstName)
+                            ? `将转换为: ${convertToPinyin(traveler.name.firstName)}`
+                            : ''
+                        }
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -488,6 +598,11 @@ const BookingForm = () => {
                         value={traveler.name.lastName}
                         onChange={(e) => handleTravelerChange(index, 'name.lastName', e.target.value)}
                         required
+                        helperText={
+                          traveler.name.lastName && containsChinese(traveler.name.lastName)
+                            ? `将转换为: ${convertToPinyin(traveler.name.lastName)}`
+                            : ''
+                        }
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
