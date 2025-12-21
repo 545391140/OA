@@ -978,8 +978,9 @@ exports.getBooking = async (req, res) => {
       });
     }
     
-    // 数据权限检查
-    if (booking.employee.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
+    // 数据权限检查：使用统一的数据权限管理
+    const hasAccess = await checkResourceAccess(req, booking, 'hotelBooking', 'employee');
+    if (!hasAccess) {
       throw ErrorFactory.forbidden('无权访问该预订');
     }
     
@@ -1010,6 +1011,36 @@ exports.getBooking = async (req, res) => {
  * @access Private
  */
 exports.cancelBooking = async (req, res) => {
+  // 在事务开始前，先进行权限检查（避免在事务中执行数据库查询）
+  // 确保角色已加载
+  if (!req.role && req.user?.role) {
+    req.role = await Role.findOne({ code: req.user.role, isActive: true })
+      .session(null)
+      .lean();
+    if (!req.role) {
+      return res.status(403).json({
+        success: false,
+        message: `Role ${req.user.role} not found or inactive`
+      });
+    }
+  }
+
+  // 先查询预订记录（不使用事务）
+  const booking = await HotelBooking.findById(req.params.id);
+  if (!booking) {
+    return res.status(404).json({
+      success: false,
+      message: '预订记录不存在',
+    });
+  }
+
+  // 数据权限检查：使用统一的数据权限管理
+  const hasAccess = await checkResourceAccess(req, booking, 'hotelBooking', 'employee');
+  if (!hasAccess) {
+    throw ErrorFactory.forbidden('无权取消该预订');
+  }
+
+  // 现在开始事务（所有需要查询的操作都在事务外完成）
   const session = await mongoose.startSession();
   session.startTransaction({
     readPreference: ReadPreference.PRIMARY,
@@ -1021,8 +1052,9 @@ exports.cancelBooking = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
     
-    const booking = await HotelBooking.findById(id).session(session);
-    if (!booking) {
+    // 重新在事务中加载预订记录
+    const bookingInSession = await HotelBooking.findById(id).session(session);
+    if (!bookingInSession) {
       await session.abortTransaction();
       return res.status(404).json({
         success: false,
@@ -1030,12 +1062,7 @@ exports.cancelBooking = async (req, res) => {
       });
     }
     
-    if (booking.employee.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
-      await session.abortTransaction();
-      throw ErrorFactory.forbidden('无权取消该预订');
-    }
-    
-    if (booking.status === 'cancelled') {
+    if (bookingInSession.status === 'cancelled') {
       await session.abortTransaction();
       return res.status(400).json({
         success: false,
@@ -1044,9 +1071,9 @@ exports.cancelBooking = async (req, res) => {
     }
     
     // 调用 Amadeus API 取消订单
-    if (booking.amadeusBookingId) {
+    if (bookingInSession.amadeusBookingId) {
       try {
-        await amadeusApiService.cancelHotelBooking(booking.amadeusBookingId);
+        await amadeusApiService.cancelHotelBooking(bookingInSession.amadeusBookingId);
       } catch (error) {
         logger.error('Amadeus 取消订单失败:', error);
         // 即使 Amadeus API 失败，也继续更新本地状态
@@ -1054,32 +1081,35 @@ exports.cancelBooking = async (req, res) => {
     }
     
     // 更新预订记录
-    booking.status = 'cancelled';
-    booking.cancellationReason = reason;
-    booking.cancelledAt = new Date();
-    booking.cancelledBy = req.user.id;
-    booking.statusHistory.push({
+    bookingInSession.status = 'cancelled';
+    bookingInSession.cancellationReason = reason;
+    bookingInSession.cancelledAt = new Date();
+    bookingInSession.cancelledBy = req.user.id;
+    bookingInSession.statusHistory.push({
       status: 'cancelled',
       changedAt: new Date(),
       changedBy: req.user.id,
       reason,
     });
-    await booking.save({ session });
+    await bookingInSession.save({ session });
     
     // 更新关联的差旅申请
-    if (booking.travelId) {
-      const travel = await Travel.findById(booking.travelId).session(session);
+    if (bookingInSession.travelId) {
+      const travel = await Travel.findById(bookingInSession.travelId).session(session);
       if (travel) {
         const bookingIndex = travel.bookings.findIndex(
-          b => b.hotelBookingId && b.hotelBookingId.toString() === booking._id.toString()
+          b => b.hotelBookingId && b.hotelBookingId.toString() === bookingInSession._id.toString()
         );
         
         if (bookingIndex !== -1) {
           travel.bookings[bookingIndex].status = 'cancelled';
         }
         
-        if (booking.status === 'confirmed') {
-          const bookingCost = parseFloat(booking.price?.total || 0);
+        // 如果之前的状态是 confirmed，需要从差旅申请的总费用中减去该预订的费用
+        // 注意：此时 bookingInSession.status 已经是 'cancelled'，需要使用之前的状态
+        const previousStatus = booking.status || bookingInSession.status;
+        if (previousStatus === 'confirmed') {
+          const bookingCost = parseFloat(bookingInSession.price?.total || 0);
           travel.estimatedCost = Math.max(0, (travel.estimatedCost || 0) - bookingCost);
         }
         
@@ -1092,7 +1122,7 @@ exports.cancelBooking = async (req, res) => {
     // 发送通知
     try {
       if (notificationService && typeof notificationService.sendBookingCancellation === 'function') {
-        await notificationService.sendBookingCancellation(req.user.id, booking, reason);
+        await notificationService.sendBookingCancellation(req.user.id, bookingInSession, reason);
       }
     } catch (notifError) {
       logger.warn('发送取消通知失败:', notifError);
@@ -1102,7 +1132,7 @@ exports.cancelBooking = async (req, res) => {
     res.json({
       success: true,
       message: '预订已取消',
-      data: booking,
+      data: bookingInSession,
     });
   } catch (error) {
     await session.abortTransaction();
