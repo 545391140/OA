@@ -618,7 +618,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
         </Typography>
       ) : (
         <Grid container spacing={2}>
-          {displayFlights.map((flight, index) => (
+            {displayFlights.map((flight, index) => (
             <Grid item xs={12} key={flight.id || index}>
               <Card
                 sx={{
