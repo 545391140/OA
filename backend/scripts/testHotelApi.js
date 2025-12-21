@@ -475,7 +475,7 @@ async function testHotelSearchByHotels() {
 
 /**
  * 测试 3.4: 酒店报价搜索 (Hotel Offers Search)
- * 使用通过上述接口获取的酒店ID搜索报价
+ * 使用 cityCode 参数搜索多个酒店报价（根据 Amadeus API 文档 v3.0.9）
  */
 async function testHotelOffersSearch() {
   console.log('\n🏨 测试 3.4: 酒店报价搜索 (Hotel Offers Search)');
@@ -489,8 +489,8 @@ async function testHotelOffersSearch() {
     }
 
     const baseURL = getBaseURL();
-    
-    // 先通过地理坐标获取酒店ID
+
+    // 先通过地理坐标获取多个酒店ID
     const geocodeResponse = await axios.get(
       `${baseURL}/v1/reference-data/locations/hotels/by-geocode`,
       {
@@ -513,38 +513,55 @@ async function testHotelOffersSearch() {
       return true;
     }
 
-    const hotelId = geocodeResponse.data.data[0].hotelId;
-    if (!hotelId) {
+    // 获取前5个酒店ID
+    const hotelIds = geocodeResponse.data.data.slice(0, 5).map(h => h.hotelId).filter(Boolean);
+    if (hotelIds.length === 0) {
       addTestResult('酒店报价搜索', 'warning', '无法从搜索结果中提取酒店ID，跳过此测试');
       return true;
     }
 
-    console.log(`   🏨 使用酒店ID: ${hotelId}`);
+    console.log(`   🏨 使用 ${hotelIds.length} 个酒店ID: ${hotelIds.join(', ')}`);
 
-    // 搜索报价
+    // 搜索报价 - 使用多个 hotelIds（根据 API 文档，hotelIds 是必填参数）
     const checkInDate = new Date();
     checkInDate.setDate(checkInDate.getDate() + 30);
     const checkOutDate = new Date(checkInDate);
     checkOutDate.setDate(checkOutDate.getDate() + 2);
 
-    const searchParams = {
-      hotelIds: hotelId,
+    // 构建参数 - hotelIds 需要作为数组传递
+    const searchParams = new URLSearchParams({
+      checkInDate: checkInDate.toISOString().split('T')[0],
+      checkOutDate: checkOutDate.toISOString().split('T')[0],
+      adults: '1',
+      roomQuantity: '1',
+      currencyCode: 'USD',
+    });
+
+    // 添加多个 hotelIds 参数
+    hotelIds.forEach(hotelId => {
+      searchParams.append('hotelIds', hotelId);
+    });
+
+    console.log('   🔍 搜索报价参数 (使用多个 hotelIds):', {
+      hotelIds: hotelIds,
       checkInDate: checkInDate.toISOString().split('T')[0],
       checkOutDate: checkOutDate.toISOString().split('T')[0],
       adults: 1,
       roomQuantity: 1,
       currencyCode: 'USD',
-    };
-
-    console.log('   🔍 搜索报价参数:', JSON.stringify(searchParams, null, 2));
+    });
 
     // 等待1秒避免频率限制
     await new Promise(resolve => setTimeout(resolve, 1000));
 
+    // 等待1秒避免频率限制
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // 根据 Amadeus API 文档 v3.0.9，正确的端点是 /v3/shopping/hotel-offers (getMultiHotelOffers)
+    console.log('   📍 使用正确的端点: /v3/shopping/hotel-offers (getMultiHotelOffers)');
     const response = await axios.get(
-      `${baseURL}/v3/shopping/hotel-offers/by-hotel`,
+      `${baseURL}/v3/shopping/hotel-offers?${searchParams.toString()}`,
       {
-        params: searchParams,
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/vnd.amadeus+json',
@@ -592,14 +609,22 @@ async function testHotelOffersSearch() {
 
       addTestResult('酒店报价搜索', 'passed', `成功搜索到 ${hotelOffers.length} 个酒店报价`, {
         hotelsFound: hotelOffers.length,
-        hotelIdUsed: hotelId,
+        searchMethod: 'hotelIds',
+        hotelIdsUsed: hotelIds,
         hotelStructure,
         sampleHotel: {
           hotelId: firstHotel.hotel?.hotelId,
           name: firstHotel.hotel?.name,
           offersCount: firstHotel.offers?.length || 0,
         },
-      }, searchParams, {
+      }, {
+        hotelIds: hotelIds,
+        checkInDate: checkInDate.toISOString().split('T')[0],
+        checkOutDate: checkOutDate.toISOString().split('T')[0],
+        adults: 1,
+        roomQuantity: 1,
+        currencyCode: 'USD',
+      }, {
         status: response.status,
         dataCount: hotelOffers.length,
         hasMeta: !!response.data.meta,
@@ -616,7 +641,7 @@ async function testHotelOffersSearch() {
       }
       console.error('   错误响应:', JSON.stringify(error.response.data, null, 2));
     }
-    addTestResult('酒店搜索', 'failed', errorMessage);
+    addTestResult('酒店报价搜索', 'failed', errorMessage);
     return false;
   }
 }
@@ -699,8 +724,10 @@ async function testHotelOffersByHotel() {
     // 等待1秒避免频率限制
     await new Promise(resolve => setTimeout(resolve, 1000));
 
+    // 根据 Amadeus API 文档 v3.0.9，正确的端点是 /v3/shopping/hotel-offers
+    console.log('   📍 使用正确的端点: /v3/shopping/hotel-offers (getMultiHotelOffers)');
     const response = await axios.get(
-      `${baseURL}/v3/shopping/hotel-offers/by-hotel`,
+      `${baseURL}/v3/shopping/hotel-offers`,
       {
         params: {
           hotelIds: hotelId,
@@ -856,9 +883,10 @@ async function testHotelPrice() {
     // 等待1秒避免频率限制
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // 确认价格
+    // 根据 Amadeus API 文档 v3.0.9，价格确认端点是 /v3/shopping/hotel-offers/{offerId} (getOfferPricing)
+    console.log('   📍 使用正确的端点: /v3/shopping/hotel-offers/{offerId} (getOfferPricing)');
     const response = await axios.get(
-      `${baseURL}/v3/shopping/hotel-offers/${offerId}/price`,
+      `${baseURL}/v3/shopping/hotel-offers/${offerId}`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,

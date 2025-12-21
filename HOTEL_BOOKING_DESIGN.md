@@ -147,8 +147,8 @@ frontend/
 | **酒店地理坐标搜索** | `/v1/reference-data/locations/hotels/by-geocode` | GET | 通过地理坐标搜索酒店 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete) | ✅ 可用 |
 | **酒店城市搜索** | `/v1/reference-data/locations/hotels/by-city` | GET | 通过城市代码搜索酒店 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete) | ✅ 可用 |
 | **酒店ID搜索** | `/v1/reference-data/locations/hotels/by-hotels` | GET | 通过酒店ID搜索酒店信息 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete) | ✅ 可用 |
-| **Hotel Offers Search** | `/v3/shopping/hotel-offers/by-hotel` | GET | 根据酒店ID搜索报价 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-offers-search) | ⚠️ 需验证参数格式 |
-| **Hotel Offer Price** | `/v3/shopping/hotel-offers/{offerId}/price` | GET | 确认酒店价格 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-offers-price) | ⚠️ 依赖报价搜索 |
+| **Hotel Offers Search** | `/v3/shopping/hotel-offers` | GET | 根据酒店ID搜索报价（getMultiHotelOffers） | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-search) | ✅ 可用（需使用多个hotelIds） |
+| **Hotel Offer Price** | `/v3/shopping/hotel-offers/{offerId}` | GET | 确认酒店价格（getOfferPricing） | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-search) | ⚠️ 需验证 |
 | **Hotel Booking** | `/v1/booking/hotel-bookings` | POST | 创建酒店预订 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-booking) | ❌ 未测试 |
 | **Hotel Booking Management** | `/v1/booking/hotel-bookings/{bookingId}` | GET/DELETE | 查看/取消订单 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-booking-management) | ❌ 未测试 |
 | **Hotel Ratings** | `/v2/e-reputation/hotel-sentiments` | GET | 酒店评分查询 | [文档](https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-ratings) | ⚠️ API可用但测试环境无数据 |
@@ -156,8 +156,9 @@ frontend/
 **重要说明**：
 - 三个酒店搜索接口（by-geocode, by-city, by-hotels）已测试通过 ✅
 - 这些接口用于获取酒店列表和基本信息
-- 获取酒店列表后，需要使用 `/v3/shopping/hotel-offers/by-hotel` 搜索报价
-- 报价搜索 API 的参数格式需要进一步验证
+- 获取酒店列表后，需要使用 `/v3/shopping/hotel-offers` 搜索报价（API v3.0.9）
+- 报价搜索 API 要求使用 `hotelIds` 参数（必填），建议使用多个酒店ID以提高成功率
+- API 端点已更新为正确的 `/v3/shopping/hotel-offers`（不是 `/by-hotel`）
 
 ### 3.3 API 基础 URL
 
