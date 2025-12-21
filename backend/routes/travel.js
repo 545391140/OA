@@ -8,6 +8,7 @@ const { loadUserRole, checkResourceAccess } = require('../middleware/dataAccess'
 const { ErrorFactory } = require('../utils/AppError');
 const logger = require('../utils/logger');
 const { getTravelFlights } = require('../controllers/flightController');
+const { getTravelHotels } = require('../controllers/hotelController');
 
 const router = express.Router();
 
@@ -1406,5 +1407,10 @@ router.get('/:id/expenses', protect, async (req, res) => {
 // @route   GET /api/travel/:id/flights
 // @access  Private
 router.get('/:id/flights', protect, loadUserRole, getTravelFlights);
+
+// @desc    Get hotel bookings for a travel request
+// @route   GET /api/travel/:id/hotels
+// @access  Private
+router.get('/:id/hotels', protect, loadUserRole, getTravelHotels);
 
 module.exports = router;

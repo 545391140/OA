@@ -42,6 +42,7 @@ const ctripApiRoutes = require('./routes/ctripApi');
 const currencyRoutes = require('./routes/currencies');
 const logRoutes = require('./routes/logs');
 const flightRoutes = require('./routes/flights');
+const hotelRoutes = require('./routes/hotels');
 const operationLogMiddleware = require('./middleware/operationLog');
 
 // Connect to database
@@ -243,6 +244,7 @@ app.use('/api/ctrip', ctripApiRoutes);
 app.use('/api/currencies', currencyRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/flights', flightRoutes);
+app.use('/api/hotels', hotelRoutes);
 
 // Serve frontend static files (if deployed together)
 if (frontendExists) {
