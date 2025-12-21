@@ -74,19 +74,43 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
     console.log(`🏨 HotelList 收到 ${hotels.length} 个酒店数据`);
     if (hotels[0]) {
       const firstHotel = hotels[0];
+      const hotelInfo = firstHotel.hotel || {};
       console.log('📋 第一个酒店完整数据结构:', JSON.stringify({
         hotel: {
-          hotelId: firstHotel.hotel?.hotelId,
-          name: firstHotel.hotel?.name,
-          address: firstHotel.hotel?.address,
-          contact: firstHotel.hotel?.contact,
-          description: firstHotel.hotel?.description,
-          media: firstHotel.hotel?.media,
-          rating: firstHotel.hotel?.rating,
+          hotelId: hotelInfo.hotelId,
+          name: hotelInfo.name,
+          address: hotelInfo.address,
+          contact: hotelInfo.contact,
+          hasContact: !!hotelInfo.contact,
+          contactPhone: hotelInfo.contact?.phone,
+          contactEmail: hotelInfo.contact?.email,
+          description: hotelInfo.description,
+          hasDescription: !!hotelInfo.description,
+          descriptionText: hotelInfo.description?.text,
+          media: hotelInfo.media,
+          mediaType: Array.isArray(hotelInfo.media) ? 'array' : typeof hotelInfo.media,
+          mediaLength: Array.isArray(hotelInfo.media) ? hotelInfo.media.length : 'N/A',
+          firstMediaItem: Array.isArray(hotelInfo.media) && hotelInfo.media.length > 0 ? hotelInfo.media[0] : 'N/A',
         },
         offersCount: firstHotel.offers?.length || 0,
         hasOffers: !!firstHotel.offers && Array.isArray(firstHotel.offers),
       }, null, 2));
+      
+      // 专门检查联系方式和描述字段
+      console.log('📞 联系方式检查:', {
+        hasContact: !!hotelInfo.contact,
+        contact: hotelInfo.contact,
+        phone: hotelInfo.contact?.phone,
+        email: hotelInfo.contact?.email,
+        willShowPhone: !!(hotelInfo.contact?.phone),
+        willShowEmail: !!(hotelInfo.contact?.email),
+      });
+      console.log('📝 描述检查:', {
+        hasDescription: !!hotelInfo.description,
+        description: hotelInfo.description,
+        descriptionText: hotelInfo.description?.text,
+        willShowDescription: !!(hotelInfo.description?.text),
+      });
     }
 
     let filtered = [...hotels];
@@ -258,38 +282,88 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
                           position: 'relative',
                         }}
                       >
-                        {hotelInfo.media && hotelInfo.media.length > 0 && !imageErrors[hotelInfo.hotelId] ? (
-                          <img
-                            src={hotelInfo.media[0].uri}
-                            alt={hotelInfo.name || '酒店图片'}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                            }}
-                            onError={() => {
-                              // 图片加载失败时记录错误，但只在组件仍然挂载时更新状态
-                              if (isMountedRef.current && hotelInfo.hotelId) {
-                                setImageErrors(prev => ({
-                                  ...prev,
-                                  [hotelInfo.hotelId]: true,
-                                }));
-                              }
-                            }}
-                          />
-                        ) : (
-                          <Box
-                            sx={{
-                              width: '100%',
-                              height: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <HotelIcon sx={{ fontSize: { xs: 48, sm: 64 }, color: 'grey.400' }} />
-                          </Box>
-                        )}
+                        {(() => {
+                          // 获取图片URL，支持多种格式
+                          let imageUrl = null;
+                          
+                          if (hotelInfo.media && Array.isArray(hotelInfo.media) && hotelInfo.media.length > 0) {
+                            const firstMedia = hotelInfo.media[0];
+                            // 支持不同的media格式：{ uri: '...' } 或直接是字符串URL
+                            imageUrl = firstMedia.uri || firstMedia.url || (typeof firstMedia === 'string' ? firstMedia : null);
+                          }
+                          
+                          // 如果没有图片URL，使用占位图片服务
+                          // 注意：Amadeus API 不返回 media 字段，所以使用占位图片
+                          if (!imageUrl) {
+                            // 使用酒店名称生成占位图片URL（使用 Unsplash Source 或其他占位服务）
+                            const hotelName = hotelInfo.name || 'Hotel';
+                            // 使用 hotelId 作为占位图片的标识
+                            const hotelId = hotelInfo.hotelId || 'default';
+                            // 使用 Unsplash Source API（免费，无需API Key）
+                            imageUrl = `https://source.unsplash.com/400x300/?hotel,${encodeURIComponent(hotelName)}`;
+                            // 备用方案：使用 placeholder.com
+                            // imageUrl = `https://via.placeholder.com/400x300/cccccc/666666?text=${encodeURIComponent(hotelName.substring(0, 20))}`;
+                          }
+                          
+                          // 如果有图片URL且未标记为错误，显示图片
+                          if (imageUrl && !imageErrors[hotelInfo.hotelId]) {
+                            return (
+                              <img
+                                src={imageUrl}
+                                alt={hotelInfo.name || '酒店图片'}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                }}
+                                onError={(e) => {
+                                  // 图片加载失败时记录错误，但只在组件仍然挂载时更新状态
+                                  console.warn('图片加载失败:', {
+                                    hotelId: hotelInfo.hotelId,
+                                    imageUrl,
+                                    hotelName: hotelInfo.name,
+                                    hasMedia: !!hotelInfo.media,
+                                    error: e,
+                                  });
+                                  if (isMountedRef.current && hotelInfo.hotelId) {
+                                    setImageErrors(prev => ({
+                                      ...prev,
+                                      [hotelInfo.hotelId]: true,
+                                    }));
+                                  }
+                                }}
+                                onLoad={() => {
+                                  console.log('图片加载成功:', {
+                                    hotelId: hotelInfo.hotelId,
+                                    imageUrl,
+                                    hotelName: hotelInfo.name,
+                                    isPlaceholder: !hotelInfo.media,
+                                  });
+                                }}
+                              />
+                            );
+                          }
+                          
+                          // 如果图片加载失败，显示默认图标
+                          return (
+                            <Box
+                              sx={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                bgcolor: 'grey.100',
+                              }}
+                            >
+                              <HotelIcon sx={{ fontSize: { xs: 48, sm: 64 }, color: 'grey.400', mb: 1 }} />
+                              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', px: 1 }}>
+                                {hotelInfo.name || '酒店图片'}
+                              </Typography>
+                            </Box>
+                          );
+                        })()}
                       </Box>
                     </Grid>
 
@@ -310,14 +384,15 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
                         </Box>
                       )}
 
-                      {/* 城市 */}
-                      {hotelInfo.address?.cityName && (
+                      {/* 城市 - 优先显示搜索时使用的城市 */}
+                      {(searchParams?.cityName || searchParams?.cityLocation?.name || hotelInfo.address?.cityName) && (
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
                           <LocationIcon fontSize="small" color="action" sx={{ mt: 0.5, mr: 1, flexShrink: 0 }} />
                           <Typography variant="body2" color="text.secondary">
                             <strong style={{ marginRight: '4px' }}>{t('hotel.list.city') || '城市'}:</strong>
-                            {hotelInfo.address.cityName}
-                            {hotelInfo.address.countryCode && `, ${hotelInfo.address.countryCode}`}
+                            {searchParams?.cityName || searchParams?.cityLocation?.name || hotelInfo.address?.cityName}
+                            {(searchParams?.cityLocation?.countryCode || hotelInfo.address?.countryCode) && 
+                              `, ${searchParams?.cityLocation?.countryCode || hotelInfo.address.countryCode}`}
                           </Typography>
                         </Box>
                       )}
@@ -326,27 +401,52 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
                       {hotelInfo.address && (hotelInfo.address.lines?.length > 0 || hotelInfo.address.postalCode || hotelInfo.address.stateCode) && (
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
                           <LocationIcon fontSize="small" color="action" sx={{ mt: 0.5, mr: 1, flexShrink: 0 }} />
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                              <strong>{t('hotel.list.address') || '地址'}:</strong>
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {hotelInfo.address.lines && hotelInfo.address.lines.length > 0
-                                ? hotelInfo.address.lines.join(', ')
-                                : ''}
-                              {hotelInfo.address.postalCode && (hotelInfo.address.lines?.length > 0 ? ', ' : '') + hotelInfo.address.postalCode}
-                              {hotelInfo.address.stateCode && (hotelInfo.address.postalCode || hotelInfo.address.lines?.length > 0 ? ', ' : '') + hotelInfo.address.stateCode}
-                            </Typography>
-                          </Box>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{
+                              flex: 1,
+                              minWidth: 0,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                            title={
+                              hotelInfo.address.lines && hotelInfo.address.lines.length > 0
+                                ? hotelInfo.address.lines.join(', ') +
+                                  (hotelInfo.address.postalCode ? ', ' + hotelInfo.address.postalCode : '') +
+                                  (hotelInfo.address.stateCode ? ', ' + hotelInfo.address.stateCode : '')
+                                : (hotelInfo.address.postalCode || '') +
+                                  (hotelInfo.address.stateCode ? (hotelInfo.address.postalCode ? ', ' : '') + hotelInfo.address.stateCode : '')
+                            }
+                          >
+                            <strong>{t('hotel.list.address') || '地址'}:</strong>{' '}
+                            {hotelInfo.address.lines && hotelInfo.address.lines.length > 0
+                              ? hotelInfo.address.lines.join(', ')
+                              : ''}
+                            {hotelInfo.address.postalCode && (hotelInfo.address.lines?.length > 0 ? ', ' : '') + hotelInfo.address.postalCode}
+                            {hotelInfo.address.stateCode && (hotelInfo.address.postalCode || hotelInfo.address.lines?.length > 0 ? ', ' : '') + hotelInfo.address.stateCode}
+                          </Typography>
                         </Box>
                       )}
 
                       {/* 电话 */}
                       {hotelInfo.contact?.phone && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <PhoneIcon fontSize="small" color="action" sx={{ mr: 1, flexShrink: 0 }} />
-                          <Typography variant="body2" color="text.secondary">
-                            <strong style={{ marginRight: '4px' }}>{t('hotel.list.phone') || '电话'}:</strong>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                          <PhoneIcon fontSize="small" color="action" sx={{ mt: 0.5, mr: 1, flexShrink: 0 }} />
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{
+                              flex: 1,
+                              minWidth: 0,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                            title={hotelInfo.contact.phone}
+                          >
+                            <strong>{t('hotel.list.phone') || '电话'}:</strong>{' '}
                             <a 
                               href={`tel:${hotelInfo.contact.phone}`} 
                               style={{ color: 'inherit', textDecoration: 'none' }}
@@ -360,10 +460,21 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
 
                       {/* 邮箱 */}
                       {hotelInfo.contact?.email && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <EmailIcon fontSize="small" color="action" sx={{ mr: 1, flexShrink: 0 }} />
-                          <Typography variant="body2" color="text.secondary">
-                            <strong style={{ marginRight: '4px' }}>{t('hotel.list.email') || '邮箱'}:</strong>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                          <EmailIcon fontSize="small" color="action" sx={{ mt: 0.5, mr: 1, flexShrink: 0 }} />
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{
+                              flex: 1,
+                              minWidth: 0,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                            title={hotelInfo.contact.email}
+                          >
+                            <strong>{t('hotel.list.email') || '邮箱'}:</strong>{' '}
                             <a 
                               href={`mailto:${hotelInfo.contact.email}`} 
                               style={{ color: 'inherit', textDecoration: 'none' }}
@@ -377,16 +488,26 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
 
                       {/* 酒店描述 */}
                       {hotelInfo.description?.text && (
-                        <Box sx={{ mt: 1.5, mb: 1 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ 
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            lineHeight: 1.5,
-                          }}>
-                            <strong style={{ marginRight: '4px' }}>{t('hotel.list.description') || '描述'}:</strong>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                          <Box sx={{ mt: 0.5, mr: 1, flexShrink: 0, width: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>📝</Typography>
+                          </Box>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{
+                              flex: 1,
+                              minWidth: 0,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              lineHeight: 1.5,
+                            }}
+                            title={hotelInfo.description.text}
+                          >
+                            <strong>{t('hotel.list.description') || '描述'}:</strong>{' '}
                             {hotelInfo.description.text}
                           </Typography>
                         </Box>

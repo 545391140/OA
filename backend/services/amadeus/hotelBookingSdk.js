@@ -104,6 +104,17 @@ async function createHotelBooking(bookingData) {
       if (!guest.contact.emailAddress) {
         throw new Error(`客人${index + 1}邮箱必填`);
       }
+      // 验证电话：必须至少有一个有效的电话号码
+      if (!guest.contact.phones || !Array.isArray(guest.contact.phones) || guest.contact.phones.length === 0) {
+        throw new Error(`客人${index + 1}电话必填`);
+      }
+      const firstPhone = guest.contact.phones[0];
+      if (!firstPhone || !firstPhone.number || !firstPhone.number.trim()) {
+        throw new Error(`客人${index + 1}电话号码必填`);
+      }
+      if (!firstPhone.countryCallingCode || !firstPhone.countryCallingCode.trim()) {
+        throw new Error(`客人${index + 1}电话国家代码必填`);
+      }
     });
 
     // 构建 v2 API 请求体
@@ -115,27 +126,52 @@ async function createHotelBooking(bookingData) {
     // - travelAgent: { contact: { email } }
     
     // 格式化电话号码（从 phones 数组转换为完整字符串）
+    // Amadeus API 要求：phone 字段必须是有效的电话号码字符串，格式：+国家代码+号码（如：+8613800138000）
     const formatPhone = (phones) => {
       if (!phones || phones.length === 0) {
         return null;
       }
       const phone = phones[0];
-      const countryCode = phone.countryCallingCode?.replace(/^\+/, '') || '';
-      const number = phone.number || '';
-      return countryCode && number ? `+${countryCode}${number}` : number;
+      if (!phone || !phone.number || !phone.number.trim()) {
+        return null;
+      }
+      
+      // 清理国家代码：移除 + 号，只保留数字
+      let countryCode = (phone.countryCallingCode || '').trim().replace(/^\+/, '');
+      // 清理号码：移除所有非数字字符
+      let number = phone.number.trim().replace(/\D/g, '');
+      
+      // 验证：国家代码和号码都不能为空
+      if (!countryCode || !number) {
+        return null;
+      }
+      
+      // 验证：号码长度应该在合理范围内（至少7位，最多15位）
+      if (number.length < 7 || number.length > 15) {
+        throw new Error(`电话号码格式无效：号码长度应在7-15位之间，当前为${number.length}位`);
+      }
+      
+      // 返回格式：+国家代码+号码（如：+8613800138000）
+      return `+${countryCode}${number}`;
     };
 
     const requestBody = {
       data: {
         type: 'hotel-order',
-        guests: guests.map((guest, index) => ({
-          tid: index + 1,  // Transaction ID，从 1 开始
-          title: guest.title || 'MR',  // MR, MRS, MS, MISS
-          firstName: guest.name.firstName.toUpperCase(),
-          lastName: guest.name.lastName.toUpperCase(),
-          phone: formatPhone(guest.contact.phones) || '',
-          email: guest.contact.emailAddress.toLowerCase(),
-        })),
+        guests: guests.map((guest, index) => {
+          const formattedPhone = formatPhone(guest.contact.phones);
+          if (!formattedPhone) {
+            throw new Error(`客人${index + 1}电话号码格式无效`);
+          }
+          return {
+            tid: index + 1,  // Transaction ID，从 1 开始
+            title: guest.title || 'MR',  // MR, MRS, MS, MISS
+            firstName: guest.name.firstName.toUpperCase(),
+            lastName: guest.name.lastName.toUpperCase(),
+            phone: formattedPhone,  // 格式：+国家代码+号码（如：+8613800138000）
+            email: guest.contact.emailAddress.toLowerCase(),
+          };
+        }),
         travelAgent: {
           contact: {
             email: travelAgentEmail || guests[0].contact.emailAddress.toLowerCase(),

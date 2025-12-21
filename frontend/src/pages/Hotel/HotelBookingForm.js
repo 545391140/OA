@@ -95,6 +95,13 @@ const HotelBookingForm = () => {
       setGuests(prev => {
         if (prev.length > 0) {
           const updated = [...prev];
+          const firstGuest = updated[0];
+          
+          // 检查是否需要更新电话：如果当前电话为空，且用户有电话，则更新
+          const currentPhoneNumber = firstGuest.contact?.phones?.[0]?.number?.trim();
+          const userPhone = user.phone?.trim();
+          const shouldUpdatePhone = !currentPhoneNumber && userPhone;
+          
           updated[0] = {
             ...updated[0],
             id: updated[0].id || 'GUEST_1',
@@ -105,11 +112,15 @@ const HotelBookingForm = () => {
             contact: {
               ...updated[0].contact,
               emailAddress: updated[0].contact.emailAddress || user.email || '',
-              phones: updated[0].contact.phones.length > 0 ? updated[0].contact.phones : [{
+              phones: shouldUpdatePhone ? [{
+                deviceType: 'MOBILE',
+                countryCallingCode: '+86', // 默认中国区号
+                number: userPhone,
+              }] : (updated[0].contact.phones.length > 0 ? updated[0].contact.phones : [{
                 deviceType: 'MOBILE',
                 countryCallingCode: '+86',
-                number: user.phone || '',
-              }],
+                number: '', // 如果用户没有电话，留空让用户填写
+              }]),
             },
           };
           return updated;
@@ -268,6 +279,43 @@ const HotelBookingForm = () => {
     if (!hotel || !offerId) {
       showNotification('酒店信息缺失', 'error');
       return;
+    }
+
+    // 验证客人信息
+    for (let i = 0; i < guests.length; i++) {
+      const guest = guests[i];
+      if (!guest.name.firstName || !guest.name.firstName.trim()) {
+        showNotification(`客人${i + 1}的名字必填`, 'error');
+        return;
+      }
+      if (!guest.name.lastName || !guest.name.lastName.trim()) {
+        showNotification(`客人${i + 1}的姓氏必填`, 'error');
+        return;
+      }
+      if (!guest.contact.emailAddress || !guest.contact.emailAddress.trim()) {
+        showNotification(`客人${i + 1}的邮箱必填`, 'error');
+        return;
+      }
+      // 验证电话：必须至少有一个有效的电话号码
+      if (!guest.contact.phones || guest.contact.phones.length === 0) {
+        showNotification(`客人${i + 1}的电话必填`, 'error');
+        return;
+      }
+      const firstPhone = guest.contact.phones[0];
+      if (!firstPhone || !firstPhone.number || !firstPhone.number.trim()) {
+        showNotification(`客人${i + 1}的电话号码必填`, 'error');
+        return;
+      }
+      if (!firstPhone.countryCallingCode || !firstPhone.countryCallingCode.trim()) {
+        showNotification(`客人${i + 1}的电话国家代码必填`, 'error');
+        return;
+      }
+      // 验证电话号码格式：号码应该只包含数字，长度在7-15位之间
+      const phoneNumber = firstPhone.number.trim().replace(/\D/g, '');
+      if (phoneNumber.length < 7 || phoneNumber.length > 15) {
+        showNotification(`客人${i + 1}的电话号码格式无效：号码长度应在7-15位之间`, 'error');
+        return;
+      }
     }
 
     setLoading(true);

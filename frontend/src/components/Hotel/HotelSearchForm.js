@@ -87,6 +87,8 @@ const HotelSearchForm = ({
     // 构建搜索参数
     const searchParams = {
       cityCode: finalCityCode,
+      cityName: cityLocation?.name || cityLocation?.city || null, // 保存搜索时使用的城市名称
+      cityLocation: cityLocation, // 保存完整的城市位置信息
       checkInDate: checkInDate.format('YYYY-MM-DD'),
       checkOutDate: checkOutDate.format('YYYY-MM-DD'),
       adults,
@@ -103,7 +105,7 @@ const HotelSearchForm = ({
       <Paper sx={{ p: 2, pb: '48px', mb: 4, position: 'relative', overflow: 'visible' }}>
         <Grid container spacing={2} alignItems="flex-start">
           {/* 城市选择 */}
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={4}>
             <RegionSelector
               label={t('hotel.search.city') || '城市'}
               value={cityLocation}
@@ -181,7 +183,7 @@ const HotelSearchForm = ({
           </Grid>
 
           {/* 房间数量 */}
-          <Grid item xs={6} md={1}>
+          <Grid item xs={6} md={2}>
             <TextField
               fullWidth
               size="small"

@@ -223,21 +223,37 @@ async function searchHotelOffersByHotel(searchParams) {
     });
 
     // SDK可能返回空数组（没有可用报价），这是正常情况
+    // 注意：API可能返回两种格式：
+    // 1. 数组格式：[{ type: "hotel-offers", hotel: {...}, offers: [...] }, ...]
+    // 2. 单个对象格式：{ type: "hotel-offers", hotel: {...}, offers: [...] }
     if (response && response.data !== undefined && response.data !== null) {
       // 如果data是数组，返回结果（即使为空数组）
       if (Array.isArray(response.data)) {
-        logger.debug(`搜索到 ${response.data.length} 个酒店报价`);
+        logger.debug(`搜索到 ${response.data.length} 个酒店报价（数组格式）`);
         return {
           success: true,
           data: response.data,
           meta: response.meta || {},
         };
       }
-      // 如果data不是数组，记录详细信息并返回空数组（而不是抛出错误）
-      // 这种情况通常发生在API返回空对象或其他非预期格式时
-      logger.warn('API响应data不是数组，返回空结果:', {
+      
+      // 如果data是单个对象，检查是否是 hotel-offers 格式
+      if (typeof response.data === 'object' && response.data.type === 'hotel-offers') {
+        logger.debug('搜索到 1 个酒店报价（单个对象格式）');
+        // 将单个对象包装成数组返回，保持与数组格式的一致性
+        return {
+          success: true,
+          data: [response.data],
+          meta: response.meta || {},
+        };
+      }
+      
+      // 如果data不是数组也不是预期的对象格式，记录详细信息并返回空数组
+      logger.warn('API响应data格式不符合预期，返回空结果:', {
         dataType: typeof response.data,
-        data: response.data,
+        isArray: Array.isArray(response.data),
+        hasType: response.data?.type,
+        dataKeys: response.data ? Object.keys(response.data) : [],
         hotelIdsCount: Array.isArray(hotelIds) ? hotelIds.length : 1,
       });
       // 返回空数组而不是抛出错误

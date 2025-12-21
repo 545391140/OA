@@ -461,10 +461,43 @@ const FlightSearch = () => {
       // 创建酒店ID到酒店信息的映射
       const hotelInfoMap = new Map();
       hotels.forEach(hotel => {
-        if (hotel.hotelId) {
-          hotelInfoMap.set(hotel.hotelId, hotel);
+        // hotels数组中的每个元素可能直接就是hotel对象，也可能嵌套在hotel属性中
+        const hotelData = hotel.hotel || hotel;
+        if (hotelData.hotelId) {
+          hotelInfoMap.set(hotelData.hotelId, hotelData);
         }
       });
+      
+      // 调试：打印第一个酒店的基本信息结构
+      if (hotels.length > 0) {
+        const firstHotel = hotels[0];
+        const firstHotelData = firstHotel.hotel || firstHotel;
+        console.log('🔍 第一个酒店基本信息结构（来自searchHotelsByCity）:', JSON.stringify({
+          hotelId: firstHotelData.hotelId,
+          name: firstHotelData.name,
+          hasContact: !!firstHotelData.contact,
+          contact: firstHotelData.contact,
+          hasDescription: !!firstHotelData.description,
+          description: firstHotelData.description,
+          hasAddress: !!firstHotelData.address,
+          address: firstHotelData.address,
+          allKeys: Object.keys(firstHotelData),
+        }, null, 2));
+      }
+      
+      // 调试：打印第一个报价结果的结构
+      if (allResults.length > 0) {
+        const firstOffer = allResults[0];
+        console.log('🔍 第一个报价结果结构（来自searchHotelOffers）:', JSON.stringify({
+          hotelId: firstOffer.hotel?.hotelId,
+          hotelName: firstOffer.hotel?.name,
+          hasContact: !!firstOffer.hotel?.contact,
+          contact: firstOffer.hotel?.contact,
+          hasDescription: !!firstOffer.hotel?.description,
+          description: firstOffer.hotel?.description,
+          hotelKeys: firstOffer.hotel ? Object.keys(firstOffer.hotel) : [],
+        }, null, 2));
+      }
       
       // 将基本信息合并到报价结果中
       results = results.map(offerResult => {
@@ -473,23 +506,42 @@ const FlightSearch = () => {
         
         if (baseInfo && offerResult.hotel) {
           // 合并基本信息（地址、联系方式、描述、媒体等）
+          // 优先使用报价结果中的字段，如果不存在则使用基本信息中的
+          const mergedHotel = {
+            ...offerResult.hotel,
+            // 合并地址
+            address: offerResult.hotel.address || baseInfo.address,
+            // 合并联系方式（优先使用报价结果中的，如果不存在则使用基本信息中的）
+            contact: offerResult.hotel.contact || baseInfo.contact,
+            // 合并描述（优先使用报价结果中的，如果不存在则使用基本信息中的）
+            description: offerResult.hotel.description || baseInfo.description,
+            // 合并媒体
+            media: offerResult.hotel.media || baseInfo.media,
+            // 合并设施
+            amenities: offerResult.hotel.amenities || baseInfo.amenities,
+            // 保留报价结果中的其他字段
+            hotelId: offerResult.hotel.hotelId,
+            name: offerResult.hotel.name || baseInfo.name,
+            cityCode: offerResult.hotel.cityCode || baseInfo.cityCode,
+            geoCode: offerResult.hotel.geoCode || baseInfo.geoCode,
+            rating: offerResult.hotel.rating || baseInfo.rating,
+          };
+          
+          // 调试：打印合并后的数据
+          if (offerResult === results[0]) {
+            console.log('✅ 合并后的第一个酒店数据:', JSON.stringify({
+              hotelId: mergedHotel.hotelId,
+              name: mergedHotel.name,
+              hasContact: !!mergedHotel.contact,
+              contact: mergedHotel.contact,
+              hasDescription: !!mergedHotel.description,
+              description: mergedHotel.description,
+            }, null, 2));
+          }
+          
           return {
             ...offerResult,
-            hotel: {
-              ...offerResult.hotel,
-              // 如果报价结果中没有这些字段，使用基本信息中的
-              address: offerResult.hotel.address || baseInfo.address,
-              contact: offerResult.hotel.contact || baseInfo.contact,
-              description: offerResult.hotel.description || baseInfo.description,
-              media: offerResult.hotel.media || baseInfo.media,
-              amenities: offerResult.hotel.amenities || baseInfo.amenities,
-              // 保留报价结果中的其他字段
-              hotelId: offerResult.hotel.hotelId,
-              name: offerResult.hotel.name || baseInfo.name,
-              cityCode: offerResult.hotel.cityCode || baseInfo.cityCode,
-              geoCode: offerResult.hotel.geoCode || baseInfo.geoCode,
-              rating: offerResult.hotel.rating || baseInfo.rating,
-            },
+            hotel: mergedHotel,
           };
         }
         return offerResult;
