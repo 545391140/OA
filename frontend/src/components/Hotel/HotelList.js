@@ -230,7 +230,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
                       <Box
                         sx={{
                           width: '100%',
-                          height: 200,
+                          height: { xs: 150, sm: 120 },
                           bgcolor: 'grey.200',
                           borderRadius: 2,
                           display: 'flex',
@@ -238,7 +238,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
                           justifyContent: 'center',
                         }}
                       >
-                        <HotelIcon sx={{ fontSize: 64, color: 'grey.400' }} />
+                        <HotelIcon sx={{ fontSize: { xs: 48, sm: 40 }, color: 'grey.400' }} />
                       </Box>
                     </Grid>
 
