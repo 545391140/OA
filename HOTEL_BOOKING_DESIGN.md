@@ -112,6 +112,19 @@ frontend/
 - 与航班功能共享基础服务
 - 便于维护和扩展
 
+**⚠️ 重要约束：代码隔离原则**
+- **严禁修改机票预订相关代码**：在实现酒店预订功能期间，不得修改任何机票预订相关的现有代码
+- **仅添加新功能**：只允许在 `FlightSearch.js` 中添加 Tab 切换功能，不修改现有的机票搜索逻辑
+- **保持向后兼容**：确保所有机票预订功能保持完全不变，用户体验不受影响
+- **独立组件**：酒店相关组件完全独立，不依赖或修改航班组件
+- **除非用户明确要求**：只有在用户主动提出修改机票预订功能时，才进行相关修改
+
+**实现策略：**
+- 在 `FlightSearch.js` 中，通过条件渲染（`activeTab === 0` vs `activeTab === 1`）来切换显示机票和酒店内容
+- 机票 Tab 的所有逻辑和组件保持不变，仅在外层添加 Tab 容器
+- 酒店 Tab 的所有功能都是新增的独立组件和逻辑
+- 两个 Tab 的状态完全独立，互不干扰
+
 ## 3. Amadeus API 集成
 
 ### 3.1 API 认证
@@ -1846,30 +1859,54 @@ module.exports = mongoose.model('HotelBooking', HotelBookingSchema);
 
 ```javascript
 // frontend/src/pages/Flight/FlightSearch.js（修改）
+// ⚠️ 注意：只添加 Tab 切换功能，不修改现有的机票搜索逻辑
 import { Tabs, Tab, Box } from '@mui/material';
-import FlightSearchForm from './FlightSearchForm';  // 机票搜索表单（现有）
+import FlightSearchForm from './FlightSearchForm';  // 机票搜索表单（现有，保持不变）
 import HotelSearchForm from '../Hotel/HotelSearchForm';  // 酒店搜索表单（新增）
-import FlightList from './FlightList';  // 航班列表（现有）
+import FlightList from './FlightList';  // 航班列表（现有，保持不变）
 import HotelList from '../Hotel/HotelList';  // 酒店列表（新增）
 
 const FlightSearch = () => {
+  // 新增：Tab 状态管理
   const [activeTab, setActiveTab] = useState(0); // 0: 机票, 1: 酒店
+  
+  // 现有的机票搜索相关状态保持不变
+  // const [flightSearchParams, setFlightSearchParams] = useState({});
+  // const [flightResults, setFlightResults] = useState(null);
+  // ... 所有现有的机票相关状态和函数保持不变
+  
+  // 新增：酒店搜索相关状态（完全独立）
+  const [hotelSearchParams, setHotelSearchParams] = useState({});
+  const [hotelResults, setHotelResults] = useState(null);
+  
+  // 新增：Tab 切换处理
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+  
+  // 新增：酒店搜索处理
+  const handleHotelSearch = async (params) => {
+    // 酒店搜索逻辑
+  };
   
   return (
     <Container>
-      {/* Tab 切换器 */}
-      <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+      {/* 新增：Tab 切换器 */}
+      <Tabs value={activeTab} onChange={handleTabChange}>
         <Tab label="机票预订" icon={<FlightTakeoffIcon />} />
         <Tab label="酒店预订" icon={<HotelIcon />} />
       </Tabs>
       
-      {/* 根据 Tab 显示对应的搜索表单和结果 */}
+      {/* 根据 Tab 显示对应内容 */}
       {activeTab === 0 ? (
+        // ⚠️ 机票 Tab：完全保持现有代码不变
         <>
+          {/* 现有的机票搜索表单和列表组件，不做任何修改 */}
           <FlightSearchForm onSearch={handleFlightSearch} />
           {flightResults && <FlightList flights={flightResults} />}
         </>
       ) : (
+        // 新增：酒店 Tab：完全独立的新功能
         <>
           <HotelSearchForm onSearch={handleHotelSearch} />
           {hotelResults && <HotelList hotels={hotelResults} />}
@@ -1879,6 +1916,12 @@ const FlightSearch = () => {
   );
 };
 ```
+
+**⚠️ 实现注意事项：**
+1. **不修改现有代码**：机票搜索相关的所有函数、状态、组件都保持原样
+2. **仅添加包装**：在现有代码外层添加 Tab 容器和条件渲染
+3. **独立状态**：酒店相关的状态和函数完全独立，不影响机票功能
+4. **向后兼容**：确保 URL `/flight/search` 默认显示机票 Tab，保持现有行为
 
 **Tab 页功能说明：**
 
@@ -2740,6 +2783,26 @@ Accept: application/vnd.amadeus+json
 ```
 
 ## 15. 注意事项
+
+### 15.1 ⚠️ 代码隔离原则（重要）
+
+**核心约束：**
+- **严禁修改机票预订相关代码**：在实现酒店预订功能期间，不得修改任何机票预订相关的现有代码
+- **仅添加新功能**：只允许在 `FlightSearch.js` 中添加 Tab 切换功能，不修改现有的机票搜索逻辑
+- **保持向后兼容**：确保所有机票预订功能保持完全不变，用户体验不受影响
+- **独立组件**：酒店相关组件完全独立，不依赖或修改航班组件
+- **除非用户明确要求**：只有在用户主动提出修改机票预订功能时，才进行相关修改
+
+**实施检查清单：**
+- [ ] 机票搜索表单组件（`FlightSearchForm`）未修改
+- [ ] 航班列表组件（`FlightList`）未修改
+- [ ] 航班筛选栏组件（`FlightFilterBar`）未修改
+- [ ] 机票搜索相关的所有状态和函数未修改
+- [ ] 机票搜索相关的所有 API 调用未修改
+- [ ] 机票预订流程未修改
+- [ ] 仅添加了 Tab 容器和酒店相关的新代码
+
+### 15.2 API 限制
 
 1. **API 限制**
    - Amadeus Self-Service API 有请求频率限制
