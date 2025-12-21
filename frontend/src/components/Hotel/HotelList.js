@@ -34,7 +34,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
 
   // 排序和过滤状态
   const [sortType, setSortType] = useState('price-low');
-  const [priceRange, setPriceRange] = useState([0, 10000]);
+  const [priceRange, setPriceRange] = useState([0, 100000]); // 增加价格上限，避免过滤掉高价格酒店
   const [minRating, setMinRating] = useState(0);
 
   // 格式化价格
@@ -57,13 +57,35 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
   const filteredAndSortedHotels = useMemo(() => {
     if (!hotels || hotels.length === 0) return [];
 
+    console.log(`🏨 HotelList 收到 ${hotels.length} 个酒店数据`);
+    console.log('📋 第一个酒店数据结构:', hotels[0] ? {
+      hasHotel: !!hotels[0].hotel,
+      hotelId: hotels[0].hotel?.hotelId,
+      hotelName: hotels[0].hotel?.name,
+      offersCount: hotels[0].offers?.length || 0,
+      hasOffers: !!hotels[0].offers && Array.isArray(hotels[0].offers),
+      price: hotels[0].offers?.[0]?.price,
+    } : '无数据');
+
     let filtered = [...hotels];
 
-    // 价格过滤
+    // 价格过滤（只过滤有价格的酒店，价格为0或无效的也保留）
+    const beforePriceFilter = filtered.length;
     filtered = filtered.filter(hotel => {
       const price = parseFloat(hotel.offers?.[0]?.price?.total || 0);
-      return price >= priceRange[0] && price <= priceRange[1];
+      // 如果价格为0或无效，保留（可能是数据问题）
+      if (!price || price === 0 || isNaN(price)) {
+        return true;
+      }
+      const inRange = price >= priceRange[0] && price <= priceRange[1];
+      if (!inRange) {
+        console.log(`🚫 价格过滤: ${hotel.hotel?.name} 价格 ${price} 不在范围 [${priceRange[0]}, ${priceRange[1]}]`);
+      }
+      return inRange;
     });
+    if (filtered.length < beforePriceFilter) {
+      console.log(`💰 价格过滤: ${beforePriceFilter} -> ${filtered.length} (移除了 ${beforePriceFilter - filtered.length} 个)`);
+    }
 
     // 评分过滤
     if (minRating > 0) {
@@ -92,6 +114,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
       }
     });
 
+    console.log(`✅ 最终过滤后: ${filtered.length} 个酒店`);
     return filtered;
   }, [hotels, sortType, priceRange, minRating]);
 

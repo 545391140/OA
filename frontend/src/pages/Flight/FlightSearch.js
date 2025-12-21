@@ -353,6 +353,15 @@ const FlightSearch = () => {
       if (offersResponse.data.success) {
         const results = offersResponse.data.data || [];
         console.log(`💰 找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中）`);
+        console.log('📊 报价数据结构:', results.length > 0 ? {
+          firstHotel: {
+            hasHotel: !!results[0].hotel,
+            hotelId: results[0].hotel?.hotelId,
+            hotelName: results[0].hotel?.name,
+            offersCount: results[0].offers?.length || 0,
+            hasOffers: !!results[0].offers && Array.isArray(results[0].offers),
+          }
+        } : '无数据');
         setHotelResults(results);
         
         // 如果报价数量少于酒店数量，提示用户
