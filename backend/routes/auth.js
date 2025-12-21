@@ -383,6 +383,7 @@ router.get('/me', protect, asyncHandler(async (req, res) => {
         jobLevel: user.jobLevel,
         manager: user.manager,
         phone: user.phone,
+        dateOfBirth: user.dateOfBirth,
         residenceCountry: residenceCountry,
         residenceCity: residenceCity,
         avatar: user.avatar,
@@ -474,6 +475,71 @@ router.put('/preferences', protect, asyncHandler(async (req, res) => {
     success: true,
     message: 'Preferences updated successfully',
     preferences: user.preferences
+  });
+}));
+
+// @desc    Update current user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+router.put('/profile', protect, [
+  body('email').optional().isEmail().withMessage('Please include a valid email'),
+  body('firstName').optional().notEmpty().withMessage('First name cannot be empty'),
+  body('lastName').optional().notEmpty().withMessage('Last name cannot be empty')
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw ErrorFactory.validation('Validation errors: ' + errors.array().map(e => e.msg).join(', '));
+  }
+
+  const { firstName, lastName, email, phone, department, jobLevel, dateOfBirth } = req.body;
+
+  logger.info('Updating user profile:', { userId: req.user.id, updateData: { firstName, lastName, email, phone, department, jobLevel, dateOfBirth } });
+
+  // 构建更新数据对象，只包含提供的字段
+  const updateData = {};
+  if (firstName !== undefined) updateData.firstName = firstName;
+  if (lastName !== undefined) updateData.lastName = lastName;
+  if (email !== undefined) updateData.email = email;
+  if (phone !== undefined) updateData.phone = phone;
+  if (department !== undefined) updateData.department = department;
+  if (jobLevel !== undefined) updateData.jobLevel = jobLevel;
+  if (dateOfBirth !== undefined) {
+    // 如果dateOfBirth是字符串，转换为Date对象；如果是null，设置为null
+    updateData.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
+  }
+
+  // 如果邮箱被更改，检查新邮箱是否已存在
+  if (updateData.email && updateData.email !== req.user.email) {
+    const existingUser = await User.findOne({ email: updateData.email });
+    if (existingUser) {
+      throw ErrorFactory.conflict('Email already exists');
+    }
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    updateData,
+    { new: true, runValidators: true }
+  ).select('-password');
+
+  if (!user) {
+    throw ErrorFactory.notFound('User not found');
+  }
+
+  logger.info('User profile updated successfully:', { userId: user._id });
+  res.json({
+    success: true,
+    message: 'Profile updated successfully',
+    user: {
+      id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+      department: user.department,
+      jobLevel: user.jobLevel,
+      dateOfBirth: user.dateOfBirth
+    }
   });
 }));
 

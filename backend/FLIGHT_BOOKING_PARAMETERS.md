@@ -313,3 +313,4 @@ Amadeus 返回: { data: { id, price: { total }, flightOffers: [...], travelers: 
 3. **乘客ID匹配**: `backend/controllers/flightController.js` 第365-427行
 4. **电话号码规范化**: `backend/controllers/flightController.js` 第493-508行
 
+

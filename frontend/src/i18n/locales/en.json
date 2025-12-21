@@ -175,6 +175,7 @@
     "department": "Department",
     "position": "Position",
     "phone": "Phone",
+    "dateOfBirth": "Date of Birth",
     "manager": "Manager",
     "role": "Role",
     "residenceCountry": "Residence Country",

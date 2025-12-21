@@ -43,3 +43,4 @@ tail -f "$LOG_FILE" | grep -v '^\.$'
 
 
 
+

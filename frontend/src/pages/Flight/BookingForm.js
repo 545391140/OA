@@ -79,11 +79,15 @@ const BookingForm = () => {
   const [travelers, setTravelers] = useState([
     {
       id: 'TRAVELER_1',
-      dateOfBirth: null,
+      dateOfBirth: user?.dateOfBirth ? dayjs(user.dateOfBirth) : null,
       name: { firstName: user?.firstName || '', lastName: user?.lastName || '' },
       contact: {
         emailAddress: user?.email || '',
-        phones: [{ deviceType: 'MOBILE', countryCallingCode: '+86', number: '' }],
+        phones: [{ 
+          deviceType: 'MOBILE', 
+          countryCallingCode: '+86', 
+          number: user?.phone || '' 
+        }],
       },
     },
   ]);
@@ -100,6 +104,47 @@ const BookingForm = () => {
       handleConfirmPrice();
     }
   }, [activeStep]);
+
+  // 当用户信息加载后，自动更新第一个乘客的信息（包括手机号和生日）
+  useEffect(() => {
+    if (user) {
+      setTravelers(prev => {
+        // 如果第一个乘客的信息为空，则自动填入用户信息
+        if (prev.length > 0) {
+          const firstTraveler = prev[0];
+          const shouldUpdate = 
+            !firstTraveler.contact.phones[0]?.number ||
+            !firstTraveler.dateOfBirth ||
+            !firstTraveler.name.firstName ||
+            !firstTraveler.name.lastName ||
+            !firstTraveler.contact.emailAddress;
+          
+          if (shouldUpdate) {
+            const updated = [...prev];
+            updated[0] = {
+              ...updated[0],
+              name: {
+                firstName: updated[0].name.firstName || user.firstName || '',
+                lastName: updated[0].name.lastName || user.lastName || '',
+              },
+              contact: {
+                ...updated[0].contact,
+                emailAddress: updated[0].contact.emailAddress || user.email || '',
+                phones: [{
+                  deviceType: 'MOBILE',
+                  countryCallingCode: updated[0].contact.phones[0]?.countryCallingCode || '+86',
+                  number: updated[0].contact.phones[0]?.number || user.phone || '',
+                }],
+              },
+              dateOfBirth: updated[0].dateOfBirth || (user.dateOfBirth ? dayjs(user.dateOfBirth) : null),
+            };
+            return updated;
+          }
+        }
+        return prev;
+      });
+    }
+  }, [user?.phone, user?.firstName, user?.lastName, user?.email, user?.dateOfBirth]);
 
   const fetchTravels = async () => {
     setTravelsLoading(true);

@@ -42,6 +42,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import apiClient from '../../utils/axiosConfig';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 
 const Profile = () => {
   const { t } = useTranslation();
@@ -70,6 +74,7 @@ const Profile = () => {
             lastName: response.data.user.lastName || '',
             email: response.data.user.email || '',
             phone: response.data.user.phone || '',
+            dateOfBirth: response.data.user.dateOfBirth ? dayjs(response.data.user.dateOfBirth) : null,
             department: response.data.user.department || '',
             position: response.data.user.position || '',
             jobLevel: response.data.user.jobLevel || '',
@@ -90,6 +95,7 @@ const Profile = () => {
             lastName: authUser.lastName || '',
             email: authUser.email || '',
             phone: authUser.phone || '',
+            dateOfBirth: authUser.dateOfBirth ? dayjs(authUser.dateOfBirth) : null,
             department: authUser.department || '',
             position: authUser.position || '',
             jobLevel: authUser.jobLevel || '',
@@ -114,6 +120,7 @@ const Profile = () => {
     lastName: '',
     email: '',
     phone: '',
+    dateOfBirth: null,
     department: '',
     position: '',
     jobLevel: '',
@@ -241,17 +248,42 @@ const Profile = () => {
     try {
       setLoading(true);
       
-      // Update preferences
-      const result = await updatePreferences(profileData.preferences);
+      // Update basic profile information (firstName, lastName, email, phone, department, jobLevel, dateOfBirth)
+      const profileUpdateData = {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        email: profileData.email,
+        phone: profileData.phone,
+        department: profileData.department,
+        jobLevel: profileData.jobLevel,
+        dateOfBirth: profileData.dateOfBirth ? dayjs(profileData.dateOfBirth).format('YYYY-MM-DD') : null
+      };
+
+      const profileResponse = await apiClient.put('/auth/profile', profileUpdateData);
       
-      if (result.success) {
+      if (!profileResponse.data.success) {
+        showNotification(profileResponse.data.message || 'Failed to update profile', 'error');
+        setLoading(false);
+        return;
+      }
+
+      // Update preferences
+      const preferencesResult = await updatePreferences(profileData.preferences);
+      
+      if (preferencesResult.success) {
+        // Refresh user data from API
+        const userResponse = await apiClient.get('/auth/me');
+        if (userResponse.data && userResponse.data.success) {
+          setUser(userResponse.data.user);
+        }
         showNotification('Profile updated successfully', 'success');
         setIsEditing(false);
       } else {
-        showNotification(result.message, 'error');
+        showNotification(preferencesResult.message, 'error');
       }
     } catch (error) {
-      showNotification('Failed to update profile', 'error');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update profile';
+      showNotification(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -291,6 +323,7 @@ const Profile = () => {
       lastName: user?.lastName || '',
       email: user?.email || '',
       phone: user?.phone || '',
+      dateOfBirth: user?.dateOfBirth ? dayjs(user.dateOfBirth) : null,
       department: user?.department || '',
       position: user?.position || '',
       jobLevel: user?.jobLevel || '',
@@ -315,11 +348,12 @@ const Profile = () => {
   }
 
   return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Container maxWidth="xl">
-      <Box sx={{ py: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          {t('navigation.profile')}
-        </Typography>
+        <Box sx={{ py: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            {t('navigation.profile')}
+          </Typography>
 
         <Grid container spacing={3}>
           {/* Profile Overview */}
@@ -485,6 +519,24 @@ const Profile = () => {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
+                  <DatePicker
+                    label={t('user.dateOfBirth') || '出生日期'}
+                    value={profileData.dateOfBirth ? dayjs(profileData.dateOfBirth) : null}
+                    onChange={(date) => handleInputChange('dateOfBirth', date)}
+                    maxDate={dayjs()}
+                    disabled={!isEditing}
+                    slotProps={{ 
+                      textField: { 
+                        fullWidth: true,
+                        InputProps: {
+                          startAdornment: <ScheduleIcon color="action" sx={{ mr: 1 }} />
+                        }
+                      } 
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
                     label={t('user.department')}
@@ -641,8 +693,9 @@ const Profile = () => {
             </Button>
           </DialogActions>
         </Dialog>
-      </Box>
-    </Container>
+        </Box>
+      </Container>
+    </LocalizationProvider>
   );
 };
 

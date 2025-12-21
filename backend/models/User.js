@@ -63,6 +63,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  dateOfBirth: {
+    type: Date,
+    default: null
+  },
   residenceCountry: {
     type: mongoose.Schema.Types.Mixed, // 可以是字符串或Location ObjectId
     default: null,
