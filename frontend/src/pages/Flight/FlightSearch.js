@@ -22,7 +22,6 @@ import {
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -288,13 +287,6 @@ const FlightSearch = () => {
             <Typography variant="h4" gutterBottom>
               {t('flight.search.title') || '机票搜索'}
             </Typography>
-            <Button
-              startIcon={<ArrowBackIcon />}
-              onClick={() => navigate(-1)}
-              variant="outlined"
-            >
-              {t('common.back')}
-            </Button>
           </Box>
 
           {/* Search Form */}

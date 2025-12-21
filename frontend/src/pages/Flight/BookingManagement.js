@@ -51,9 +51,10 @@ import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
 import { getBookings, cancelBooking } from '../../services/flightService';
 import { useDateFormat } from '../../utils/dateFormatter';
+import { getAirportInfoBatch } from '../../utils/flightUtils';
 
 // 优化的表格行组件，使用React.memo避免不必要的重渲染
-const BookingTableRow = React.memo(({ booking, onMenuOpen, getStatusColor, t, showNotification }) => {
+const BookingTableRow = React.memo(({ booking, onMenuOpen, getStatusColor, t, showNotification, airportInfoMap }) => {
   const formatDate = useDateFormat(false);
   
   const handleCopyNumber = useCallback((e, number) => {
@@ -74,11 +75,56 @@ const BookingTableRow = React.memo(({ booking, onMenuOpen, getStatusColor, t, sh
 
   const route = useMemo(() => {
     const segments = booking.flightOffer?.itineraries?.[0]?.segments;
-    if (!segments || segments.length === 0) return '-';
-    const origin = segments[0]?.departure?.iataCode || '-';
-    const destination = segments[segments.length - 1]?.arrival?.iataCode || '-';
-    return `${origin} → ${destination}`;
-  }, [booking.flightOffer]);
+    if (!segments || segments.length === 0) {
+      return { routeText: '-', hasTransfer: false };
+    }
+    const originCode = segments[0]?.departure?.iataCode;
+    const destinationCode = segments[segments.length - 1]?.arrival?.iataCode;
+    
+    if (!originCode || !destinationCode) {
+      return { routeText: '-', hasTransfer: false };
+    }
+    
+    // 判断是否有中转
+    const isTransfer = segments.length > 1;
+    const transferCount = segments.length - 1;
+    
+    // 获取机场信息
+    const originInfo = airportInfoMap?.get(originCode);
+    const destinationInfo = airportInfoMap?.get(destinationCode);
+    
+    // 获取显示名称：优先城市名称，其次机场名称（如果名称不等于代码），最后使用代码
+    const getDisplayName = (info, code) => {
+      if (!info) return code; // 如果信息还没加载，显示代码
+      if (info.city && info.city.trim()) return info.city; // 优先显示城市名称
+      if (info.name && info.name !== code && info.name.trim()) return info.name; // 其次显示机场名称（如果名称不等于代码）
+      return code; // 最后显示代码
+    };
+    
+    const originDisplay = getDisplayName(originInfo, originCode);
+    const destinationDisplay = getDisplayName(destinationInfo, destinationCode);
+    
+    // 构建航线显示：出发地 → 目的地
+    const routeText = `${originDisplay}(${originCode}) → ${destinationDisplay}(${destinationCode})`;
+    
+    // 如果有中转，生成中转标签文本
+    let transferLabel = '';
+    if (isTransfer) {
+      if (transferCount === 1) {
+        transferLabel = t('flight.list.transferOnce') || '转1次';
+      } else {
+        // 使用 transferCount 翻译键，替换 {count} 占位符
+        const transferCountKey = t('flight.list.transferCount', { count: transferCount });
+        transferLabel = transferCountKey || `转${transferCount}次`;
+      }
+    }
+    
+    return {
+      routeText,
+      hasTransfer: isTransfer,
+      transferLabel
+    };
+  }, [booking.flightOffer, airportInfoMap, t]);
 
   return (
     <TableRow hover>
@@ -143,11 +189,24 @@ const BookingTableRow = React.memo(({ booking, onMenuOpen, getStatusColor, t, sh
         </Box>
       </TableCell>
       <TableCell>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <LocationIcon color="action" fontSize="small" />
           <Typography variant="body2">
-            {route}
+            {route.routeText}
           </Typography>
+          {route.hasTransfer && (
+            <Chip
+              label={route.transferLabel}
+              size="small"
+              sx={{
+                bgcolor: '#FF9800',
+                color: '#fff',
+                fontSize: '0.75rem',
+                height: '20px',
+                fontWeight: 500
+              }}
+            />
+          )}
         </Box>
       </TableCell>
       <TableCell>
@@ -183,13 +242,6 @@ const BookingTableRow = React.memo(({ booking, onMenuOpen, getStatusColor, t, sh
       </TableCell>
     </TableRow>
   );
-}, (prevProps, nextProps) => {
-  // 自定义比较函数，只在关键属性变化时重渲染
-  return (
-    prevProps.booking._id === nextProps.booking._id &&
-    prevProps.booking.status === nextProps.booking.status &&
-    prevProps.booking.bookingReference === nextProps.booking.bookingReference
-  );
 });
 
 BookingTableRow.displayName = 'BookingTableRow';
@@ -208,6 +260,7 @@ const BookingManagement = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [airportInfoMap, setAirportInfoMap] = useState(new Map());
   
   // 分页状态
   const [page, setPage] = useState(0);
@@ -249,6 +302,43 @@ const BookingManagement = () => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, rowsPerPage, statusFilter, debouncedSearchTerm]);
+
+  // 获取机场信息
+  useEffect(() => {
+    const fetchAirportInfo = async () => {
+      const airportCodes = new Set();
+      
+      bookings.forEach(booking => {
+        booking.flightOffer?.itineraries?.forEach(itinerary => {
+          itinerary.segments?.forEach(segment => {
+            if (segment.departure?.iataCode) {
+              airportCodes.add(segment.departure.iataCode);
+            }
+            if (segment.arrival?.iataCode) {
+              airportCodes.add(segment.arrival.iataCode);
+            }
+          });
+        });
+      });
+
+      if (airportCodes.size > 0) {
+        try {
+          const infoMap = await getAirportInfoBatch(Array.from(airportCodes));
+          console.log('[BookingManagement] 机场信息获取完成:', Array.from(infoMap.entries()));
+          setAirportInfoMap(infoMap);
+        } catch (error) {
+          console.warn('Failed to fetch airport info:', error);
+        }
+      } else {
+        // 如果没有机场代码，清空地图
+        setAirportInfoMap(new Map());
+      }
+    };
+
+    if (bookings.length > 0) {
+      fetchAirportInfo();
+    }
+  }, [bookings]);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -447,6 +537,7 @@ const BookingManagement = () => {
                     getStatusColor={getStatusColor}
                     t={t}
                     showNotification={showNotification}
+                    airportInfoMap={airportInfoMap}
                   />
                 ))}
               </TableBody>

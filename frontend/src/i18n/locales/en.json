@@ -2437,6 +2437,8 @@
       "route": "Route",
       "date": "Date",
       "price": "Price",
+      "transfer": "Transfer",
+      "transfers": " transfers",
       "noBookings": "No bookings found",
       "cancel": "Cancel",
       "cancelBooking": "Cancel Booking",

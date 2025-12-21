@@ -2448,6 +2448,8 @@
       "route": "航线",
       "date": "日期",
       "price": "价格",
+      "transfer": "中转",
+      "transfers": "次中转",
       "noBookings": "暂无预订记录",
       "cancel": "取消",
       "cancelBooking": "取消预订",
