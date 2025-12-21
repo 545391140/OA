@@ -101,6 +101,22 @@ async function createHotelBooking(bookingData) {
       if (!guest.name.firstName || !guest.name.lastName) {
         throw new Error(`客人${index + 1}姓名不完整`);
       }
+      
+      // 验证名字格式：只允许字母（Amadeus API 要求，参考机票预订）
+      // 注意：前端已经将中文转换为拼音并移除了所有非字母字符
+      const firstNameRegex = /^[A-Za-z]+$/;
+      const lastNameRegex = /^[A-Za-z]+$/;
+      
+      // 先清理名字，移除所有非字母字符
+      const cleanedFirstName = guest.name.firstName.trim().replace(/[^A-Za-z]/g, '');
+      const cleanedLastName = guest.name.lastName.trim().replace(/[^A-Za-z]/g, '');
+      
+      if (!cleanedFirstName || !firstNameRegex.test(cleanedFirstName)) {
+        throw new Error(`客人${index + 1}的名字格式无效：只能包含英文字母。当前值: "${guest.name.firstName}"`);
+      }
+      if (!cleanedLastName || !lastNameRegex.test(cleanedLastName)) {
+        throw new Error(`客人${index + 1}的姓氏格式无效：只能包含英文字母。当前值: "${guest.name.lastName}"`);
+      }
       if (!guest.contact.emailAddress) {
         throw new Error(`客人${index + 1}邮箱必填`);
       }
@@ -163,11 +179,24 @@ async function createHotelBooking(bookingData) {
           if (!formattedPhone) {
             throw new Error(`客人${index + 1}电话号码格式无效`);
           }
+          // 清理名字：移除所有非字母字符（包括空格），然后转换为大写
+          // 确保符合 Amadeus API 要求：只包含字母（参考机票预订的处理方式）
+          const cleanFirstName = guest.name.firstName.trim().replace(/[^A-Za-z]/g, '').toUpperCase();
+          const cleanLastName = guest.name.lastName.trim().replace(/[^A-Za-z]/g, '').toUpperCase();
+          
+          // 最终验证：确保清理后的名字不为空
+          if (!cleanFirstName || !cleanFirstName.trim()) {
+            throw new Error(`客人${index + 1}的名字格式无效：清理后为空。原始值: "${guest.name.firstName}"`);
+          }
+          if (!cleanLastName || !cleanLastName.trim()) {
+            throw new Error(`客人${index + 1}的姓氏格式无效：清理后为空。原始值: "${guest.name.lastName}"`);
+          }
+          
           return {
             tid: index + 1,  // Transaction ID，从 1 开始
             title: guest.title || 'MR',  // MR, MRS, MS, MISS
-            firstName: guest.name.firstName.toUpperCase(),
-            lastName: guest.name.lastName.toUpperCase(),
+            firstName: cleanFirstName,  // 已清理并转换为大写
+            lastName: cleanLastName,  // 已清理并转换为大写
             phone: formattedPhone,  // 格式：+国家代码+号码（如：+8613800138000）
             email: guest.contact.emailAddress.toLowerCase(),
           };

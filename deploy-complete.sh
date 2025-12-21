@@ -89,6 +89,8 @@ $SSH_CMD "$SERVER_USER@$SERVER_HOST" "mkdir -p $DEPLOY_PATH/backend $DEPLOY_PATH
 
 # 上传后端文件（强制同步所有文件，保护上传文件目录）
 echo "   同步后端文件（强制同步所有文件，确保最新代码）..."
+echo "   ⚠️  注意：环境变量文件 (.env*) 会被同步，请确保服务器上的配置正确"
+echo "   📦 同步 package.json 和 package-lock.json（确保新SDK依赖被识别）..."
 rsync -avz --progress \
     -e "$RSYNC_SSH" \
     --exclude='node_modules' \
@@ -98,6 +100,9 @@ rsync -avz --progress \
     --exclude='.git' \
     --exclude='.DS_Store' \
     --exclude='*.swp' \
+    --include='.env*' \
+    --include='package.json' \
+    --include='package-lock.json' \
     --checksum \
     backend/ "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/backend/"
 
@@ -173,13 +178,66 @@ if [ -d "build" ]; then
 fi
 cd ..
 
-# 检查后端依赖（仅在 package.json 更新时安装）
+# 检查后端依赖（强制检查并安装新SDK）
 cd backend
-if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules/.package-lock.json" ] || [ "package-lock.json" -nt "node_modules/.package-lock.json" ]; then
-    echo "检测到后端依赖变化，安装依赖..."
-    npm install --production 2>&1 | tail -20
+echo "检查后端依赖和SDK..."
+
+# 检查 package-lock.json 是否存在且有效
+if [ ! -f "package-lock.json" ]; then
+    echo "⚠️  package-lock.json 不存在，强制重新安装依赖..."
+    rm -rf node_modules 2>/dev/null || true
+    npm install --production 2>&1 | tail -30
+elif [ ! -d "node_modules" ]; then
+    echo "⚠️  node_modules 不存在，安装依赖..."
+    npm install --production 2>&1 | tail -30
 else
-    echo "✅ 后端依赖无需更新"
+    # 使用文件修改时间来判断是否需要更新（更可靠的方法）
+    NEED_INSTALL=false
+    
+    # 检查 package.json 是否比 node_modules 中的 lock 文件新
+    if [ "package.json" -nt "node_modules/.package-lock.json" ] 2>/dev/null; then
+        NEED_INSTALL=true
+        echo "检测到 package.json 已更新"
+    fi
+    
+    # 检查 package-lock.json 是否比 node_modules 中的 lock 文件新
+    if [ "package-lock.json" -nt "node_modules/.package-lock.json" ] 2>/dev/null; then
+        NEED_INSTALL=true
+        echo "检测到 package-lock.json 已更新"
+    fi
+    
+    # 如果 node_modules/.package-lock.json 不存在，也需要安装
+    if [ ! -f "node_modules/.package-lock.json" ]; then
+        NEED_INSTALL=true
+        echo "检测到 node_modules/.package-lock.json 不存在"
+    fi
+    
+    if [ "$NEED_INSTALL" = true ]; then
+        echo "📦 检测到依赖变化，重新安装依赖和SDK..."
+        echo "   这将确保所有新的SDK和依赖包被正确安装..."
+        npm install --production 2>&1 | tail -30
+        echo "✅ 依赖安装完成，验证关键SDK..."
+        # 验证关键SDK是否安装成功
+        if [ -d "node_modules/amadeus" ]; then
+            echo "   ✅ Amadeus SDK 已安装"
+        else
+            echo "   ⚠️  警告: Amadeus SDK 未找到"
+        fi
+        if [ -d "node_modules/@mistralai" ]; then
+            echo "   ✅ Mistral AI SDK 已安装"
+        else
+            echo "   ⚠️  警告: Mistral AI SDK 未找到"
+        fi
+        if [ -d "node_modules/openai" ]; then
+            echo "   ✅ OpenAI SDK 已安装"
+        fi
+        if [ -d "node_modules/mongoose" ]; then
+            echo "   ✅ Mongoose 已安装"
+        fi
+    else
+        echo "✅ 后端依赖无需更新（package-lock.json 未变化）"
+        echo "   如需强制重新安装，请删除服务器上的 node_modules 目录"
+    fi
 fi
 cd ..
 

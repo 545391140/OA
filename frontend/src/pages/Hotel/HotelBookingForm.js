@@ -39,8 +39,67 @@ import { useNotification } from '../../contexts/NotificationContext';
 import { createHotelBooking } from '../../services/hotelService';
 import apiClient from '../../utils/axiosConfig';
 import dayjs from 'dayjs';
+import { pinyin } from 'pinyin-pro';
 
 const steps = ['选择差旅申请', '填写客人信息', '确认预订'];
+
+// 检测字符串是否包含中文字符
+const containsChinese = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  return /[\u4e00-\u9fa5]/.test(str);
+};
+
+// 将中文转换为拼音，保留已有的英文字母
+const convertToPinyin = (name) => {
+  if (!name || typeof name !== 'string') {
+    return '';
+  }
+  
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    return '';
+  }
+  
+  // 如果包含中文，需要转换
+  if (containsChinese(trimmedName)) {
+    try {
+      // 使用 pinyin-pro 转换整个字符串（会自动处理中英文混合）
+      const pinyinResult = pinyin(trimmedName, { toneType: 'none' });
+      
+      if (!pinyinResult || typeof pinyinResult !== 'string') {
+        // 如果转换失败，尝试只保留英文字母
+        const englishOnly = trimmedName.replace(/[^A-Za-z]/g, '');
+        return englishOnly ? englishOnly.toUpperCase() : '';
+      }
+      
+      // 移除所有空格和特殊字符，只保留字母，转换为大写
+      const result = pinyinResult.replace(/\s+/g, '').replace(/[^A-Za-z]/g, '').toUpperCase();
+      
+      // 如果转换后为空，说明可能是特殊字符，尝试保留原字符串中的英文字母
+      if (!result) {
+        const englishOnly = trimmedName.replace(/[^A-Za-z]/g, '');
+        return englishOnly ? englishOnly.toUpperCase() : '';
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('拼音转换失败:', error, '原始名字:', trimmedName);
+      // 如果转换失败，尝试只保留英文字母
+      const englishOnly = trimmedName.replace(/[^A-Za-z]/g, '');
+      return englishOnly ? englishOnly.toUpperCase() : '';
+    }
+  }
+  
+  // 如果不包含中文，只保留英文字母、连字符和空格，然后转换为大写
+  const result = trimmedName.replace(/[^A-Za-z\-\s']/g, '').replace(/\s+/g, '').toUpperCase();
+  
+  // 如果结果为空，说明只包含特殊字符
+  if (!result || !result.trim()) {
+    return '';
+  }
+  
+  return result;
+};
 
 const HotelBookingForm = () => {
   const { t } = useTranslation();
@@ -292,6 +351,19 @@ const HotelBookingForm = () => {
         showNotification(`客人${i + 1}的姓氏必填`, 'error');
         return;
       }
+      
+      // 验证转换后的名字不为空
+      const convertedFirstName = convertToPinyin(guest.name.firstName);
+      const convertedLastName = convertToPinyin(guest.name.lastName);
+      
+      if (!convertedFirstName || !convertedFirstName.trim()) {
+        showNotification(`客人${i + 1}的名字格式无效，请使用英文字母或中文（将自动转换为拼音）。当前输入: "${guest.name.firstName}"`, 'error');
+        return;
+      }
+      if (!convertedLastName || !convertedLastName.trim()) {
+        showNotification(`客人${i + 1}的姓氏格式无效，请使用英文字母或中文（将自动转换为拼音）。当前输入: "${guest.name.lastName}"`, 'error');
+        return;
+      }
       if (!guest.contact.emailAddress || !guest.contact.emailAddress.trim()) {
         showNotification(`客人${i + 1}的邮箱必填`, 'error');
         return;
@@ -338,22 +410,28 @@ const HotelBookingForm = () => {
         travelId: selectedTravelId, // 必填：差旅申请ID
         offerId: offerId, // 必填：报价ID
         hotelOffer: hotel, // 必填：完整的酒店报价对象
-        guests: guests.map((guest) => ({
-          // 确保格式符合数据库要求
-          id: guest.id, // 必填：String
-          name: {
-            firstName: guest.name.firstName.trim(), // 必填：String, trim
-            lastName: guest.name.lastName.trim(), // 必填：String, trim
-          },
-          contact: {
-            emailAddress: guest.contact.emailAddress.toLowerCase().trim(), // 必填：String, lowercase
-            phones: guest.contact.phones.filter(phone => phone.number && phone.number.trim()).map(phone => ({
-              deviceType: phone.deviceType || 'MOBILE', // enum: MOBILE, LANDLINE
-              countryCallingCode: phone.countryCallingCode || '',
-              number: phone.number.trim(),
-            })),
-          },
-        })),
+        guests: guests.map((guest) => {
+          // 自动转换中文名字为拼音
+          const convertedFirstName = convertToPinyin(guest.name.firstName);
+          const convertedLastName = convertToPinyin(guest.name.lastName);
+          
+          return {
+            // 确保格式符合数据库要求
+            id: guest.id, // 必填：String
+            name: {
+              firstName: convertedFirstName, // 必填：String, 已转换为拼音
+              lastName: convertedLastName, // 必填：String, 已转换为拼音
+            },
+            contact: {
+              emailAddress: guest.contact.emailAddress.toLowerCase().trim(), // 必填：String, lowercase
+              phones: guest.contact.phones.filter(phone => phone.number && phone.number.trim()).map(phone => ({
+                deviceType: phone.deviceType || 'MOBILE', // enum: MOBILE, LANDLINE
+                countryCallingCode: phone.countryCallingCode || '',
+                number: phone.number.trim(),
+              })),
+            },
+          };
+        }),
         specialRequests: specialRequests.trim() || undefined, // 可选
         // payments 和 rooms 可选，如果需要可以添加
       };
@@ -362,12 +440,9 @@ const HotelBookingForm = () => {
 
       if (response.data.success) {
         showNotification('酒店预订成功', 'success');
-        // 导航到预订详情页或预订管理页
-        navigate('/hotel/bookings', {
-          state: {
-            bookingId: response.data.data._id,
-          },
-        });
+        // 导航到预订详情页
+        const bookingId = response.data.data._id;
+        navigate(`/hotel/bookings/${bookingId}`);
       } else {
         throw new Error(response.data.message || '预订失败');
       }
@@ -514,6 +589,11 @@ const HotelBookingForm = () => {
                         value={guest.name.firstName}
                         onChange={(e) => handleGuestChange(index, 'name.firstName', e.target.value)}
                         required
+                        helperText={
+                          guest.name.firstName && containsChinese(guest.name.firstName)
+                            ? `将转换为: ${convertToPinyin(guest.name.firstName)}`
+                            : ''
+                        }
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -523,6 +603,11 @@ const HotelBookingForm = () => {
                         value={guest.name.lastName}
                         onChange={(e) => handleGuestChange(index, 'name.lastName', e.target.value)}
                         required
+                        helperText={
+                          guest.name.lastName && containsChinese(guest.name.lastName)
+                            ? `将转换为: ${convertToPinyin(guest.name.lastName)}`
+                            : ''
+                        }
                       />
                     </Grid>
                     <Grid item xs={12}>
