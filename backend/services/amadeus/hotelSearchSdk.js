@@ -219,15 +219,46 @@ async function searchHotelOffersByHotel(searchParams) {
       currencyCode,
     });
 
-    if (response.data && response.data) {
-      logger.debug(`搜索到 ${response.data.length} 个酒店报价`);
+    // 详细记录响应格式，便于调试
+    logger.debug('Amadeus SDK响应:', {
+      hasResponse: !!response,
+      hasData: !!response?.data,
+      dataType: typeof response?.data,
+      isArray: Array.isArray(response?.data),
+      dataLength: Array.isArray(response?.data) ? response.data.length : 'N/A',
+      responseKeys: response ? Object.keys(response) : [],
+    });
+
+    // SDK可能返回空数组（没有可用报价），这是正常情况
+    if (response && response.data !== undefined && response.data !== null) {
+      // 如果data是数组，返回结果（即使为空数组）
+      if (Array.isArray(response.data)) {
+        logger.debug(`搜索到 ${response.data.length} 个酒店报价`);
+        return {
+          success: true,
+          data: response.data,
+          meta: response.meta || {},
+        };
+      }
+      // 如果data不是数组，记录详细信息
+      logger.warn('API响应data不是数组:', {
+        dataType: typeof response.data,
+        data: response.data,
+      });
+      throw new Error(`API响应格式错误：期望数组，实际为 ${typeof response.data}`);
+    } else {
+      // 响应为空或data不存在
+      logger.warn('API响应为空或data不存在:', {
+        hasResponse: !!response,
+        hasData: !!response?.data,
+        response: response,
+      });
+      // 返回空数组而不是抛出错误（某些酒店可能没有可用报价）
       return {
         success: true,
-        data: response.data,
-        meta: response.meta || {},
+        data: [],
+        meta: response?.meta || {},
       };
-    } else {
-      throw new Error('API响应格式错误');
     }
   } catch (error) {
     // 记录详细错误信息

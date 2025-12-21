@@ -379,9 +379,9 @@ const FlightSearch = () => {
             console.log(`   ⚠️  第 ${batchIndex} 批查询失败或无结果`);
           }
           
-          // 批次之间延迟，避免频率限制
+          // 批次之间延迟，避免频率限制（增加到1秒）
           if (batchIndex < batches.length) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
         } catch (err) {
           const errorMsg = err.response?.data?.message || err.message || '未知错误';
