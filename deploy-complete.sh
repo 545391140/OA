@@ -87,8 +87,8 @@ echo -e "${BLUE}   ✅ 配置文件会同步更新：.env*, config.js${NC}"
 # 创建服务器目录（不删除现有文件）
 $SSH_CMD "$SERVER_USER@$SERVER_HOST" "mkdir -p $DEPLOY_PATH/backend $DEPLOY_PATH/frontend"
 
-# 上传后端文件（只同步修改的文件，保护上传文件目录）
-echo "   同步后端文件（增量，包含配置文件）..."
+# 上传后端文件（强制同步所有文件，保护上传文件目录）
+echo "   同步后端文件（强制同步所有文件，确保最新代码）..."
 rsync -avz --progress \
     -e "$RSYNC_SSH" \
     --exclude='node_modules' \
@@ -98,6 +98,7 @@ rsync -avz --progress \
     --exclude='.git' \
     --exclude='.DS_Store' \
     --exclude='*.swp' \
+    --checksum \
     backend/ "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/backend/"
 
 # 上传前端文件（只同步修改的文件，包含build目录和配置文件）

@@ -642,10 +642,14 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                       const firstSegment = segments[0];
                       const lastSegment = segments[segments.length - 1];
                       
-                      if (!firstSegment || !lastSegment) return null;
+                      if (!firstSegment || !lastSegment || segments.length === 0) return null;
                       
+                      // 确保中转次数计算正确：segments.length - 1
+                      // 1个segment = 0次中转（直飞）
+                      // 2个segments = 1次中转
+                      // 3个segments = 2次中转
                       const isTransfer = segments.length > 1;
-                      const transferCount = segments.length - 1;
+                      const transferCount = Math.max(0, segments.length - 1);
                       
                       // 计算中转时间（如果有中转）
                       let transferTimes = [];

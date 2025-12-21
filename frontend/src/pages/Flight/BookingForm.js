@@ -54,7 +54,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { confirmPrice, createBooking } from '../../services/flightService';
 import apiClient from '../../utils/axiosConfig';
-import { getAirlineInfo } from '../../utils/flightUtils';
+import { getAirlineInfo, getAirportInfoBatch } from '../../utils/flightUtils';
 import dayjs from 'dayjs';
 import { pinyin } from 'pinyin-pro';
 
@@ -135,11 +135,92 @@ const BookingForm = () => {
     isRoundTrip
   } = location.state || {};
 
-  // 获取机场城市名称
-  const getAirportCity = (iataCode, location) => {
+  const [airportInfoMap, setAirportInfoMap] = useState(new Map());
+
+  // 获取机场信息
+  useEffect(() => {
+    const fetchAirportInfo = async () => {
+      if (!flight?.itineraries) return;
+      
+      const airportCodes = new Set();
+      flight.itineraries.forEach(itinerary => {
+        itinerary.segments?.forEach(segment => {
+          if (segment.departure?.iataCode) {
+            airportCodes.add(segment.departure.iataCode);
+          }
+          if (segment.arrival?.iataCode) {
+            airportCodes.add(segment.arrival.iataCode);
+          }
+        });
+      });
+
+      if (airportCodes.size > 0) {
+        try {
+          const infoMap = await getAirportInfoBatch(Array.from(airportCodes));
+          setAirportInfoMap(infoMap);
+        } catch (error) {
+          console.warn('获取机场信息失败:', error);
+          setAirportInfoMap(new Map());
+        }
+      }
+    };
+
+    if (flight) {
+      fetchAirportInfo();
+    }
+  }, [flight]);
+
+  // 获取机场显示名称：优先城市名称，其次机场名称，最后才是代码（主标题使用）
+  const getAirportDisplayName = (iataCode, location) => {
+    if (!iataCode) return '';
+    
+    // 优先使用airportInfoMap中的信息
+    const airportInfo = airportInfoMap.get(iataCode);
+    if (airportInfo) {
+      if (airportInfo.city && airportInfo.city.trim()) {
+        return airportInfo.city; // 优先显示城市名称
+      }
+      if (airportInfo.name && airportInfo.name !== iataCode && airportInfo.name.trim()) {
+        return airportInfo.name; // 其次显示机场名称
+      }
+    }
+    
+    // 如果没有airportInfoMap信息，尝试使用location
     if (location) {
       return location.name || location.cityName || iataCode;
     }
+    
+    // 最后返回代码
+    return iataCode;
+  };
+
+  // 获取机场城市名称（用于下方小字显示，格式：名称 代码）
+  const getAirportCity = (iataCode, location) => {
+    if (!iataCode) return '';
+    
+    let displayName = '';
+    
+    // 优先使用airportInfoMap中的信息
+    const airportInfo = airportInfoMap.get(iataCode);
+    if (airportInfo) {
+      if (airportInfo.city && airportInfo.city.trim()) {
+        displayName = airportInfo.city; // 优先显示城市名称
+      } else if (airportInfo.name && airportInfo.name !== iataCode && airportInfo.name.trim()) {
+        displayName = airportInfo.name; // 其次显示机场名称
+      }
+    }
+    
+    // 如果没有airportInfoMap信息，尝试使用location
+    if (!displayName && location) {
+      displayName = location.name || location.cityName || '';
+    }
+    
+    // 如果有名称，显示"名称 代码"，否则只显示代码
+    if (displayName && displayName !== iataCode) {
+      return `${displayName} ${iataCode}`;
+    }
+    
+    // 最后返回代码
     return iataCode;
   };
 
@@ -736,7 +817,7 @@ const BookingForm = () => {
 
                         return (
                           <Box key={segIdx}>
-                            <Grid container spacing={3} sx={{ mb: segIdx < itinerary.segments.length - 1 ? 3 : 0 }}>
+                            <Grid container spacing={3} sx={{ mb: (!isLastSegment && transferTime) ? 0 : (segIdx < itinerary.segments.length - 1 ? 3 : 0) }}>
                               {/* 出发机场 */}
                               <Grid item xs={12} md={3}>
                                 <Box sx={{ 
@@ -748,16 +829,18 @@ const BookingForm = () => {
                                 }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                                     <LocationIcon color="primary" fontSize="small" />
-                                    <Typography variant="h4" color="primary" fontWeight="bold">
-                                      {segment.departure?.iataCode}
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                                      <Typography variant="h4" color="primary" fontWeight="bold">
+                                        {getAirportDisplayName(
+                                          segment.departure?.iataCode,
+                                          idx === 0 ? originLocation : destinationLocation
+                                        )}
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                        {segment.departure?.iataCode}
+                                      </Typography>
+                                    </Box>
                                   </Box>
-                                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                    {getAirportCity(
-                                      segment.departure?.iataCode,
-                                      idx === 0 ? originLocation : destinationLocation
-                                    )}
-                                  </Typography>
                                   {segment.departure?.terminal ? (
                                     <Chip
                                       icon={<AirportIcon />}
@@ -875,16 +958,18 @@ const BookingForm = () => {
                                 }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, justifyContent: 'flex-end' }}>
                                     <LocationIcon color="success" fontSize="small" />
-                                    <Typography variant="h4" color="success.main" fontWeight="bold">
-                                      {segment.arrival?.iataCode}
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                                      <Typography variant="h4" color="success.main" fontWeight="bold">
+                                        {getAirportDisplayName(
+                                          segment.arrival?.iataCode,
+                                          idx === 0 ? destinationLocation : originLocation
+                                        )}
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                        {segment.arrival?.iataCode}
+                                      </Typography>
+                                    </Box>
                                   </Box>
-                                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                    {getAirportCity(
-                                      segment.arrival?.iataCode,
-                                      idx === 0 ? destinationLocation : originLocation
-                                    )}
-                                  </Typography>
                                   {segment.arrival?.terminal ? (
                                     <Chip
                                       icon={<AirportIcon />}
@@ -912,7 +997,8 @@ const BookingForm = () => {
                             {/* 中转信息 */}
                             {!isLastSegment && transferTime && (
                               <Box sx={{ 
-                                my: 3,
+                                mt: 3,
+                                mb: 3,
                                 p: 2,
                                 borderRadius: 2,
                                 bgcolor: 'rgba(237, 108, 2, 0.08)',

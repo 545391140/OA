@@ -86,8 +86,12 @@ const BookingTableRow = React.memo(({ booking, onMenuOpen, getStatusColor, t, sh
     }
     
     // 判断是否有中转
+    // 确保中转次数计算正确：segments.length - 1
+    // 1个segment = 0次中转（直飞）
+    // 2个segments = 1次中转
+    // 3个segments = 2次中转
     const isTransfer = segments.length > 1;
-    const transferCount = segments.length - 1;
+    const transferCount = Math.max(0, segments.length - 1);
     
     // 获取机场信息
     const originInfo = airportInfoMap?.get(originCode);
