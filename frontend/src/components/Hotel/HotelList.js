@@ -144,9 +144,34 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
 
   return (
     <Box>
-      {/* 筛选栏 */}
+      {/* 筛选和排序栏 */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={4}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                size="small"
+                variant={sortType === 'price-low' ? 'contained' : 'outlined'}
+                onClick={() => setSortType('price-low')}
+              >
+                {t('hotel.list.priceLow') || '价格从低到高'}
+              </Button>
+              <Button
+                size="small"
+                variant={sortType === 'price-high' ? 'contained' : 'outlined'}
+                onClick={() => setSortType('price-high')}
+              >
+                {t('hotel.list.priceHigh') || '价格从高到低'}
+              </Button>
+              <Button
+                size="small"
+                variant={sortType === 'rating-high' ? 'contained' : 'outlined'}
+                onClick={() => setSortType('rating-high')}
+              >
+                {t('hotel.list.ratingHigh') || '评分从高到低'}
+              </Button>
+            </Box>
+          </Grid>
         </Grid>
       </Paper>
 
