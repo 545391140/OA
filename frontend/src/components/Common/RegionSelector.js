@@ -1720,11 +1720,16 @@ const RegionSelector = ({
     // 使用已缓存的 organizedLocations（在组件顶层通过 useMemo 计算）
     // 使用优化的 LocationListItem 组件（React.memo）
 
+    // 确保 organizedLocations 存在且是数组
+    if (!organizedLocations || organizedLocations.length === 0) {
+      return null;
+    }
+
     return (
       <List sx={{ p: 0 }}>
         {organizedLocations.map((location, index) => (
           <LocationListItem
-            key={location.id || location._id}
+            key={location.id || location._id || `location-${index}`}
             location={location}
             index={index}
             isLast={index === organizedLocations.length - 1}
@@ -1813,7 +1818,7 @@ const RegionSelector = ({
               <SearchIcon sx={{ color: 'text.secondary' }} />
             </InputAdornment>
           ),
-          endAdornment: searchValue && !disabled && (
+          endAdornment: (searchValue && !disabled) ? (
             <InputAdornment position="end">
               <IconButton
                 onClick={handleClear}
@@ -1823,7 +1828,7 @@ const RegionSelector = ({
                 <ClearIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </InputAdornment>
-          ),
+          ) : null,
         }}
       />
 
@@ -1838,7 +1843,7 @@ const RegionSelector = ({
             ...getDropdownPosition(),
           }}
         >
-          {renderDropdownContent()}
+          {renderDropdownContent() || null}
         </DropdownPaper>,
         document.body
       )}
