@@ -320,14 +320,19 @@ const FlightSearch = () => {
       });
 
       if (!cityResponse.data.success || !cityResponse.data.data || cityResponse.data.data.length === 0) {
-        setHotelError('未找到酒店');
+        const errorMsg = `未找到酒店（城市代码: ${params.cityCode}）。请确认城市代码是否正确，北京应为 BJS，上海应为 SHA。`;
+        setHotelError(errorMsg);
         setHotelResults([]);
+        showNotification(errorMsg, 'warning');
         return;
       }
 
       const hotels = cityResponse.data.data;
-      // 提取前10个酒店ID
-      const hotelIds = hotels.slice(0, 10).map(h => h.hotelId).filter(Boolean);
+      console.log(`🔍 找到 ${hotels.length} 个酒店（城市代码: ${params.cityCode}）`);
+      
+      // 提取更多酒店ID（增加到20个，提高成功率）
+      const hotelIds = hotels.slice(0, 20).map(h => h.hotelId).filter(Boolean);
+      console.log(`📋 提取了 ${hotelIds.length} 个酒店ID用于报价搜索`);
 
       if (hotelIds.length === 0) {
         setHotelError('无法获取酒店ID');
@@ -347,8 +352,17 @@ const FlightSearch = () => {
 
       if (offersResponse.data.success) {
         const results = offersResponse.data.data || [];
+        console.log(`💰 找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中）`);
         setHotelResults(results);
-        showNotification(`找到 ${results.length} 个酒店报价`, 'success');
+        
+        // 如果报价数量少于酒店数量，提示用户
+        if (results.length < hotelIds.length && results.length > 0) {
+          showNotification(`找到 ${results.length} 个酒店报价（共 ${hotels.length} 个酒店，其中 ${hotelIds.length} 个已查询）`, 'info');
+        } else if (results.length === 0) {
+          showNotification(`未找到可用报价（已查询 ${hotelIds.length} 个酒店）`, 'warning');
+        } else {
+          showNotification(`找到 ${results.length} 个酒店报价`, 'success');
+        }
       } else {
         setHotelError(offersResponse.data.message || '搜索失败');
       }
