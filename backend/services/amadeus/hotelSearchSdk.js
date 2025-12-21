@@ -30,6 +30,14 @@ function handleSdkError(error) {
     return errorObj;
   }
   
+  // 如果是网络错误或其他错误，保留原始错误信息
+  if (error.message) {
+    const errorObj = new Error(error.message);
+    errorObj.statusCode = error.statusCode || 500;
+    errorObj.originalError = error;
+    return errorObj;
+  }
+  
   // 其他错误
   return error;
 }
@@ -222,7 +230,27 @@ async function searchHotelOffersByHotel(searchParams) {
       throw new Error('API响应格式错误');
     }
   } catch (error) {
-    logger.error('根据酒店ID搜索报价失败:', error.message);
+    // 记录详细错误信息
+    logger.error('根据酒店ID搜索报价失败:', {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode,
+      description: error.description,
+      hotelIds: Array.isArray(hotelIds) ? hotelIds.slice(0, 5).join(',') + '...' : hotelIds,
+      hotelIdsCount: Array.isArray(hotelIds) ? hotelIds.length : 1,
+      checkInDate,
+      checkOutDate,
+      error: error,
+    });
+    
+    // 如果是SDK错误，尝试获取更详细的错误信息
+    if (error.response) {
+      logger.error('SDK错误响应:', error.response);
+    }
+    if (error.request) {
+      logger.error('SDK请求信息:', error.request);
+    }
+    
     throw handleSdkError(error);
   }
 }

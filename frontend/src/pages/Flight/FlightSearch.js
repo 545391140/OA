@@ -384,7 +384,15 @@ const FlightSearch = () => {
             await new Promise(resolve => setTimeout(resolve, 500));
           }
         } catch (err) {
-          console.error(`   ❌ 第 ${batchIndex} 批查询失败:`, err.message);
+          const errorMsg = err.response?.data?.message || err.message || '未知错误';
+          const errorStatus = err.response?.status || 'N/A';
+          console.error(`   ❌ 第 ${batchIndex} 批查询失败 (HTTP ${errorStatus}):`, errorMsg);
+          console.error(`   错误详情:`, {
+            status: errorStatus,
+            message: errorMsg,
+            hotelIdsCount: batch.length,
+            hotelIds: batch.slice(0, 3).join(', ') + (batch.length > 3 ? '...' : ''),
+          });
           // 继续查询下一批，不中断整个流程
         }
       }
@@ -394,49 +402,40 @@ const FlightSearch = () => {
       
       console.log(`💰 总计找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中，成功率: ${successRate}%）`);
 
+      // 详细分析结果
       if (results.length > 0) {
-        
-        console.log(`💰 找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中，成功率: ${successRate}%）`);
-        
-        // 详细分析结果
-        if (results.length > 0) {
-          console.log('📊 报价数据结构分析:');
-          results.forEach((hotel, index) => {
-            console.log(`   酒店 ${index + 1}:`, {
-              hotelId: hotel.hotel?.hotelId,
-              hotelName: hotel.hotel?.name,
-              offersCount: hotel.offers?.length || 0,
-              price: hotel.offers?.[0]?.price?.total,
-              currency: hotel.offers?.[0]?.price?.currency,
-            });
+        console.log('📊 报价数据结构分析:');
+        results.forEach((hotel, index) => {
+          console.log(`   酒店 ${index + 1}:`, {
+            hotelId: hotel.hotel?.hotelId,
+            hotelName: hotel.hotel?.name,
+            offersCount: hotel.offers?.length || 0,
+            price: hotel.offers?.[0]?.price?.total,
+            currency: hotel.offers?.[0]?.price?.currency,
           });
-        } else {
-          console.log('⚠️  未找到任何报价，可能原因：');
-          console.log('   1. 指定日期没有可用房间');
-          console.log('   2. 酒店在测试环境数据有限');
-          console.log('   3. 搜索参数不匹配（如房间数量、客人数量）');
-          console.log('   建议：尝试调整日期或搜索参数');
-        }
-        
-        setHotelResults(results);
-        
-        // 如果报价数量少于酒店数量，提示用户
-        if (results.length < hotelIds.length && results.length > 0) {
-          const message = `找到 ${results.length} 个酒店报价（共 ${hotels.length} 个酒店，其中 ${hotelIds.length} 个已查询，成功率 ${successRate}%）`;
-          showNotification(message, 'info');
-          console.log(`💡 提示: ${message}`);
-          console.log(`💡 建议: 如果结果太少，可以尝试调整日期范围或增加搜索的酒店数量`);
-        } else if (results.length === 0) {
-          const message = `未找到可用报价（已查询 ${hotelIds.length} 个酒店）。建议：1) 调整入住/退房日期 2) 尝试未来30-60天的日期 3) 检查搜索参数`;
-          showNotification(message, 'warning');
-          console.log(`⚠️  ${message}`);
-        } else {
-          showNotification(`找到 ${results.length} 个酒店报价`, 'success');
-        }
+        });
       } else {
-        const errorMsg = offersResponse.data.message || '搜索失败';
-        setHotelError(errorMsg);
-        console.error('❌ 报价搜索失败:', errorMsg);
+        console.log('⚠️  未找到任何报价，可能原因：');
+        console.log('   1. 指定日期没有可用房间');
+        console.log('   2. 酒店在测试环境数据有限');
+        console.log('   3. 搜索参数不匹配（如房间数量、客人数量）');
+        console.log('   建议：尝试调整日期或搜索参数');
+      }
+      
+      setHotelResults(results);
+      
+      // 如果报价数量少于酒店数量，提示用户
+      if (results.length < hotelIds.length && results.length > 0) {
+        const message = `找到 ${results.length} 个酒店报价（共 ${hotels.length} 个酒店，其中 ${hotelIds.length} 个已查询，成功率 ${successRate}%）`;
+        showNotification(message, 'info');
+        console.log(`💡 提示: ${message}`);
+        console.log(`💡 建议: 如果结果太少，可以尝试调整日期范围`);
+      } else if (results.length === 0) {
+        const message = `未找到可用报价（已查询 ${hotelIds.length} 个酒店）。建议：1) 调整入住/退房日期 2) 尝试未来30-60天的日期 3) 检查搜索参数`;
+        showNotification(message, 'warning');
+        console.log(`⚠️  ${message}`);
+      } else {
+        showNotification(`找到 ${results.length} 个酒店报价`, 'success');
       }
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || '搜索酒店失败';

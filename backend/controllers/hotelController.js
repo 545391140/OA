@@ -172,11 +172,25 @@ exports.searchHotelOffers = async (req, res) => {
       count: result.data ? result.data.length : 0,
     });
   } catch (error) {
-    logger.error('搜索酒店报价失败:', error);
+    logger.error('搜索酒店报价失败:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      code: error.code,
+      stack: error.stack,
+      hotelIds: Array.isArray(hotelIds) ? `${hotelIds.length}个酒店` : hotelIds,
+      error: error,
+    });
+    
     const status = error.statusCode || 500;
+    const message = error.message || '搜索酒店报价失败';
+    
     res.status(status).json({
       success: false,
-      message: error.message || '搜索酒店报价失败',
+      message,
+      ...(process.env.NODE_ENV === 'development' && {
+        error: error.name,
+        code: error.code,
+      }),
     });
   }
 };
