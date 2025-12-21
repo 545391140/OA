@@ -209,7 +209,7 @@ const HotelSearchForm = ({
             variant="contained"
             startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
             onClick={handleSearch}
-            disabled={loading || !cityCode && !cityLocation || !checkInDate || !checkOutDate}
+            disabled={loading || (!cityCode && !cityLocation && !hotelName.trim()) || !checkInDate || !checkOutDate}
             sx={{ 
               minWidth: '200px',
               height: '48px',
