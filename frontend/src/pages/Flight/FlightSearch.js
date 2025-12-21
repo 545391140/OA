@@ -1,6 +1,6 @@
 /**
- * 机票搜索页面
- * 提供航班搜索功能
+ * 机/酒搜索页面
+ * 提供航班和酒店搜索功能
  */
 
 import React, { useState, useEffect } from 'react';

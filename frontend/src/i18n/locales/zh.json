@@ -81,7 +81,7 @@
   "navigation": {
     "dashboard": "仪表板",
     "travel": "差旅",
-    "flightSearch": "机票搜索",
+    "flightSearch": "机/酒搜索",
     "flightBookings": "机票预订",
     "expenses": "费用",
     "approvals": "审批",
@@ -2309,7 +2309,8 @@
   },
   "flight": {
     "search": {
-      "title": "机票搜索",
+      "tab": "机票",
+      "title": "机/酒搜索",
       "description": "搜索并比较航班价格",
       "origin": "出发地",
       "destination": "目的地",
@@ -2492,6 +2493,75 @@
       "cancel": "取消预订",
       "cancelBooking": "取消预订",
       "cancelReason": "取消原因"
+    }
+  },
+  "hotel": {
+    "search": {
+      "tab": "酒店",
+      "placeholder": {
+        "title": "寻找理想住宿",
+        "subtitle": "搜索全球酒店，预订您的理想住宿"
+      },
+      "city": "城市",
+      "cityPlaceholder": "请输入城市名称",
+      "hotelName": "酒店名称",
+      "hotelNamePlaceholder": "请输入酒店名称",
+      "checkIn": "入住日期",
+      "checkOut": "退房日期",
+      "adults": "成人",
+      "children": "儿童",
+      "rooms": "房间数",
+      "search": "搜索"
+    },
+    "list": {
+      "sortBy": "排序方式",
+      "priceLow": "价格：低到高",
+      "priceHigh": "价格：高到低",
+      "ratingHigh": "评分：高到低",
+      "beds": "张床",
+      "perNight": "每晚",
+      "nights": "晚",
+      "select": "选择",
+      "searchName": "按酒店名称搜索",
+      "searchNamePlaceholder": "请输入酒店名称"
+    },
+    "detail": {
+      "back": "返回",
+      "roomType": "房型",
+      "beds": "张床",
+      "perNight": "每晚",
+      "nights": "晚",
+      "basePrice": "基础价格",
+      "book": "预订",
+      "details": "详情",
+      "checkIn": "入住日期",
+      "checkOut": "退房日期",
+      "guests": "客人",
+      "adults": "成人",
+      "rooms": "房间数",
+      "room": "房间",
+      "confirming": "确认中..."
+    },
+    "booking": {
+      "back": "返回",
+      "selectTravel": "选择差旅申请",
+      "selectTravelDesc": "酒店预订需要关联已审批通过的差旅申请。请选择差旅申请或创建新的差旅申请。",
+      "travel": "差旅申请",
+      "noTravels": "没有可用的差旅申请，请先创建差旅申请",
+      "cancel": "取消",
+      "next": "下一步",
+      "guestInfo": "客人信息",
+      "addGuest": "添加客人",
+      "guest": "客人",
+      "firstName": "名",
+      "lastName": "姓",
+      "email": "邮箱",
+      "phoneType": "电话类型",
+      "mobile": "手机",
+      "landline": "座机",
+      "countryCode": "国家代码",
+      "phoneNumber": "电话号码",
+      "specialRequests": "特殊要求"
     }
   }
 }
