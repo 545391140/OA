@@ -184,11 +184,20 @@ const HotelBookingSchema = new mongoose.Schema({
     base: {
       type: String,
     },
-    taxes: [{
-      amount: String,
-      code: String,
-      type: String,
-    }],
+    taxes: {
+      type: [{
+        amount: {
+          type: String,
+        },
+        code: {
+          type: String,
+        },
+        type: {
+          type: String,
+        },
+      }],
+      default: [],
+    },
     variations: {
       average: {
         base: String,

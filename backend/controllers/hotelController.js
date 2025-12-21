@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { ReadPreference } = require('mongodb');
 const logger = require('../utils/logger');
 const HotelBooking = require('../models/HotelBooking');
 const Travel = require('../models/Travel');
@@ -271,7 +272,11 @@ exports.getHotelRatings = async (req, res) => {
  */
 exports.createBooking = async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
+  session.startTransaction({
+    readPreference: ReadPreference.PRIMARY,
+    readConcern: { level: 'snapshot' },
+    writeConcern: { w: 'majority' },
+  });
 
   try {
     const { travelId, offerId, hotelOffer, guests, payments, rooms, specialRequests } = req.body;
@@ -336,12 +341,58 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // 7. 调用 Amadeus API 创建预订
+    // 7. 构建 payment 参数（v2 API 要求）
+    // 如果前端没有提供 payment，使用默认测试支付信息
+    let payment = null;
+    if (payments && payments.length > 0) {
+      // 使用第一个支付信息，转换为 v2 API 格式
+      const firstPayment = payments[0];
+      payment = {
+        method: firstPayment.method || 'CREDIT_CARD',
+        paymentCard: {
+          paymentCardInfo: {
+            vendorCode: firstPayment.vendorCode || 'VI', // VI=Visa, MC=MasterCard, AX=American Express
+            cardNumber: firstPayment.cardNumber || '',
+            expiryDate: firstPayment.expiryDate || '', // YYYY-MM 格式
+            holderName: firstPayment.holderName || '',
+          },
+        },
+      };
+    } else {
+      // 如果没有提供支付信息，使用默认测试支付信息（仅用于测试环境）
+      // 注意：生产环境应该要求前端提供支付信息
+      if (process.env.NODE_ENV === 'production') {
+        await session.abortTransaction();
+        return res.status(400).json({
+          success: false,
+          message: 'payment参数必填：生产环境必须提供支付信息',
+        });
+      }
+      // 测试环境使用默认测试卡号
+      const guestName = guests[0]?.name;
+      const holderName = guestName 
+        ? `${guestName.firstName.toUpperCase()} ${guestName.lastName.toUpperCase()}`
+        : 'TEST USER';
+      
+      payment = {
+        method: 'CREDIT_CARD',
+        paymentCard: {
+          paymentCardInfo: {
+            vendorCode: 'VI', // Visa
+            cardNumber: '4151289722471370', // 测试卡号
+            expiryDate: '2026-08', // YYYY-MM 格式
+            holderName: holderName,
+          },
+        },
+      };
+    }
+
+    // 8. 调用 Amadeus API 创建预订
     const bookingResult = await amadeusApiService.createHotelBooking({
       offerId,
       guests,
-      payments,
-      rooms,
+      payment, // v2 API 要求 payment（单数）
+      travelAgentEmail: req.user.email, // 使用当前用户的邮箱作为旅行社邮箱
     });
 
     if (!bookingResult.success || !bookingResult.data) {
@@ -352,13 +403,13 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // 8. 提取预订信息
+    // 9. 提取预订信息
     const bookingData = bookingResult.data;
     const hotelInfo = hotelOffer.hotel || {};
     const priceInfo = bookingData.price || hotelOffer.offers?.[0]?.price || {};
     const offerInfo = hotelOffer.offers?.[0] || {};
 
-    // 9. 构建预订文档
+    // 10. 构建预订文档
     const bookingDoc = {
       travelId,
       employee: req.user.id,
@@ -379,7 +430,36 @@ exports.createBooking = async (req, res) => {
       },
       checkIn: new Date(offerInfo.checkInDate || hotelOffer.checkInDate),
       checkOut: new Date(offerInfo.checkOutDate || hotelOffer.checkOutDate),
-      guests: bookingData.guests || guests,
+      // 转换 guests 格式：v2 API 返回的格式需要转换为模型期望的格式
+      // v2 API 格式: { tid, title, firstName, lastName, phone, email }
+      // 模型格式: { id, name: { firstName, lastName }, contact: { emailAddress, phones } }
+      guests: (bookingData.guests && Array.isArray(bookingData.guests)) 
+        ? bookingData.guests.map((guest, index) => ({
+            id: guest.id || `GUEST_${index + 1}`,
+            name: {
+              firstName: guest.firstName || '',
+              lastName: guest.lastName || '',
+            },
+            contact: {
+              emailAddress: guest.email || '',
+              phones: guest.phone ? [{
+                deviceType: 'MOBILE',
+                countryCallingCode: guest.phone.match(/^\+(\d+)/)?.[1] || '',
+                number: guest.phone.replace(/^\+\d+/, '') || guest.phone,
+              }] : [],
+            },
+          }))
+        : guests.map((guest, index) => ({
+            id: guest.id || `GUEST_${index + 1}`,
+            name: {
+              firstName: guest.name?.firstName || '',
+              lastName: guest.name?.lastName || '',
+            },
+            contact: {
+              emailAddress: guest.contact?.emailAddress || '',
+              phones: guest.contact?.phones || [],
+            },
+          })),
       adults: offerInfo.guests?.adults || guests.length,
       children: offerInfo.guests?.children || 0,
       rooms: bookingData.rooms || rooms || [{
@@ -393,7 +473,51 @@ exports.createBooking = async (req, res) => {
         total: priceInfo.total || '0',
         currency: priceInfo.currency || 'USD',
         base: priceInfo.base,
-        taxes: priceInfo.taxes || [],
+        // 确保 taxes 是正确的对象数组格式
+        // 处理各种可能的格式：数组、字符串化的数组、字符串等
+        taxes: (() => {
+          let taxesValue = priceInfo.taxes;
+          
+          // 如果是字符串，尝试解析
+          if (typeof taxesValue === 'string') {
+            try {
+              // 尝试解析 JSON
+              taxesValue = JSON.parse(taxesValue);
+            } catch (e) {
+              // 如果解析失败，尝试替换单引号为双引号后再解析
+              try {
+                const normalized = taxesValue.replace(/'/g, '"');
+                taxesValue = JSON.parse(normalized);
+              } catch (e2) {
+                // 如果还是失败，返回空数组
+                logger.warn('无法解析 taxes 字符串，返回空数组:', taxesValue);
+                return [];
+              }
+            }
+          }
+          
+          // 确保是数组
+          if (!Array.isArray(taxesValue)) {
+            return [];
+          }
+          
+          // 转换每个 tax 对象
+          return taxesValue.map(tax => {
+            // 如果 tax 是字符串，跳过
+            if (typeof tax === 'string') {
+              return null;
+            }
+            // 如果是对象，提取字段
+            if (tax && typeof tax === 'object') {
+              return {
+                amount: String(tax.amount || tax.value || '0'),
+                code: tax.code || tax.type || undefined,
+                type: tax.type || tax.code || undefined,
+              };
+            }
+            return null;
+          }).filter(Boolean); // 过滤掉 null 值
+        })(),
         variations: priceInfo.variations,
       },
       priceAmount: parseFloat(priceInfo.total || 0),
@@ -420,10 +544,10 @@ exports.createBooking = async (req, res) => {
       lastSyncedAt: new Date(),
     };
 
-    // 10. 保存预订记录到数据库
+    // 11. 保存预订记录到数据库
     const hotelBooking = await HotelBooking.create([bookingDoc], { session });
 
-    // 11. 更新差旅申请（在同一事务中）
+    // 12. 更新差旅申请（在同一事务中）
     const bookingCost = parseFloat(priceInfo.total || 0);
     
     travel.bookings.push({
@@ -447,10 +571,10 @@ exports.createBooking = async (req, res) => {
     travel.estimatedCost = (travel.estimatedCost || 0) + bookingCost;
     await travel.save({ session });
 
-    // 12. 提交事务
+    // 13. 提交事务
     await session.commitTransaction();
 
-    // 13. 发送通知
+    // 14. 发送通知
     try {
       if (notificationService && typeof notificationService.sendBookingConfirmation === 'function') {
         await notificationService.sendBookingConfirmation(req.user.id, hotelBooking[0]);
@@ -467,16 +591,18 @@ exports.createBooking = async (req, res) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    logger.error('创建酒店预订失败:', error);
+    logger.error(`创建酒店预订失败: ${error.message}`);
+    logger.error(`错误堆栈: ${error.stack}`);
     
-    // 处理 AppError
-    if (error.statusCode) {
+    // 处理 AppError（但不使用 401，避免前端跳转到登录页）
+    if (error.statusCode && error.statusCode !== 401) {
       return res.status(error.statusCode).json({
         success: false,
         message: error.message,
       });
     }
     
+    // 对于 401 或其他错误，统一返回 500
     res.status(500).json({
       success: false,
       message: error.message || '创建酒店预订失败',
@@ -770,7 +896,11 @@ exports.getBooking = async (req, res) => {
  */
 exports.cancelBooking = async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction();
+  session.startTransaction({
+    readPreference: ReadPreference.PRIMARY,
+    readConcern: { level: 'snapshot' },
+    writeConcern: { w: 'majority' },
+  });
 
   try {
     const { id } = req.params;
@@ -861,15 +991,18 @@ exports.cancelBooking = async (req, res) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    logger.error('取消预订失败:', error);
+    logger.error(`取消预订失败: ${error.message}`);
+    logger.error(`错误堆栈: ${error.stack}`);
     
-    if (error.statusCode) {
+    // 处理 AppError（但不使用 401，避免前端跳转到登录页）
+    if (error.statusCode && error.statusCode !== 401) {
       return res.status(error.statusCode).json({
         success: false,
         message: error.message,
       });
     }
     
+    // 对于 401 或其他错误，统一返回 500
     res.status(500).json({
       success: false,
       message: error.message || '取消预订失败',
