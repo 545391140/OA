@@ -2459,6 +2459,7 @@
       "transfer": "Transfer",
       "transfers": " transfers",
       "noBookings": "No bookings found",
+      "createFirstBooking": "Create your first booking",
       "cancel": "Cancel",
       "cancelBooking": "Cancel Booking",
       "cancelReason": "Cancellation Reason"
