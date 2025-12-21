@@ -345,18 +345,56 @@ const FlightSearch = () => {
       }
 
       // 步骤2：搜索酒店报价
-      const offersResponse = await searchHotelOffers({
-        hotelIds: hotelIds,
-        checkInDate: params.checkInDate,
-        checkOutDate: params.checkOutDate,
-        adults: params.adults,
-        roomQuantity: params.roomQuantity,
-        currencyCode: params.currencyCode || 'USD',
-      });
+      // 分批查询：每批最多20个酒店ID，避免API限制
+      const BATCH_SIZE = 20;
+      const batches = [];
+      for (let i = 0; i < hotelIds.length; i += BATCH_SIZE) {
+        batches.push(hotelIds.slice(i, i + BATCH_SIZE));
+      }
+      
+      console.log(`📦 将 ${hotelIds.length} 个酒店ID分成 ${batches.length} 批查询（每批最多 ${BATCH_SIZE} 个）`);
+      
+      const allResults = [];
+      let batchIndex = 0;
+      
+      for (const batch of batches) {
+        batchIndex++;
+        console.log(`🔄 查询第 ${batchIndex}/${batches.length} 批（${batch.length} 个酒店）...`);
+        
+        try {
+          const offersResponse = await searchHotelOffers({
+            hotelIds: batch,
+            checkInDate: params.checkInDate,
+            checkOutDate: params.checkOutDate,
+            adults: params.adults,
+            roomQuantity: params.roomQuantity,
+            currencyCode: params.currencyCode || 'USD',
+          });
+          
+          if (offersResponse.data.success && offersResponse.data.data) {
+            const batchResults = offersResponse.data.data || [];
+            console.log(`   ✅ 第 ${batchIndex} 批找到 ${batchResults.length} 个报价`);
+            allResults.push(...batchResults);
+          } else {
+            console.log(`   ⚠️  第 ${batchIndex} 批查询失败或无结果`);
+          }
+          
+          // 批次之间延迟，避免频率限制
+          if (batchIndex < batches.length) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } catch (err) {
+          console.error(`   ❌ 第 ${batchIndex} 批查询失败:`, err.message);
+          // 继续查询下一批，不中断整个流程
+        }
+      }
+      
+      const results = allResults;
+      const successRate = hotelIds.length > 0 ? ((results.length / hotelIds.length) * 100).toFixed(1) : 0;
+      
+      console.log(`💰 总计找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中，成功率: ${successRate}%）`);
 
-      if (offersResponse.data.success) {
-        const results = offersResponse.data.data || [];
-        const successRate = hotelIds.length > 0 ? ((results.length / hotelIds.length) * 100).toFixed(1) : 0;
+      if (results.length > 0) {
         
         console.log(`💰 找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中，成功率: ${successRate}%）`);
         
