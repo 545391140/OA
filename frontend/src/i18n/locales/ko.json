@@ -67,6 +67,8 @@
   "navigation": {
     "dashboard": "대시보드",
     "travel": "출장",
+    "flightSearch": "항공/호텔 검색",
+    "flightBookings": "예약 관리",
     "expenses": "비용",
     "approvals": "승인",
     "reports": "보고서",
@@ -2139,6 +2141,28 @@
     "error": {
       "fetchLoginLogs": "로그인 로그를 가져오지 못했습니다",
       "fetchOperationLogs": "작업 로그를 가져오지 못했습니다"
+    }
+  },
+  "flight": {
+    "booking": {
+      "managementTitle": "예약 관리",
+      "fetchError": "예약 목록을 가져오지 못했습니다"
+    }
+  },
+  "hotel": {
+    "booking": {
+      "title": "호텔 예약 목록",
+      "confirmed": "확인됨",
+      "pending": "대기 중",
+      "cancelled": "취소됨",
+      "newBooking": "새 예약",
+      "search": "예약 검색...",
+      "status": "상태",
+      "noBookings": "예약을 찾을 수 없습니다",
+      "createFirstBooking": "첫 번째 예약 만들기",
+      "cancelBooking": "예약 취소",
+      "cancelReason": "취소 사유",
+      "fetchError": "예약 목록을 가져오지 못했습니다"
     }
   }
 }

@@ -76,6 +76,8 @@
   "navigation": {
     "dashboard": "Bảng điều khiển",
     "travel": "Công tác",
+    "flightSearch": "Tìm kiếm Chuyến bay/Khách sạn",
+    "flightBookings": "Quản lý Đặt chỗ",
     "expenses": "Chi phí",
     "approvals": "Phê duyệt",
     "reports": "Báo cáo",
@@ -2285,6 +2287,28 @@
     "error": {
       "fetchLoginLogs": "Không thể tải nhật ký đăng nhập",
       "fetchOperationLogs": "Không thể tải nhật ký thao tác"
+    }
+  },
+  "flight": {
+    "booking": {
+      "managementTitle": "Quản lý Đặt chỗ",
+      "fetchError": "Không thể tải danh sách đặt chỗ"
+    }
+  },
+  "hotel": {
+    "booking": {
+      "title": "Danh sách Đặt phòng Khách sạn",
+      "confirmed": "Đã xác nhận",
+      "pending": "Đang chờ",
+      "cancelled": "Đã hủy",
+      "newBooking": "Đặt phòng mới",
+      "search": "Tìm kiếm đặt phòng...",
+      "status": "Trạng thái",
+      "noBookings": "Không tìm thấy đặt phòng",
+      "createFirstBooking": "Tạo đặt phòng đầu tiên",
+      "cancelBooking": "Hủy đặt phòng",
+      "cancelReason": "Lý do hủy",
+      "fetchError": "Không thể tải danh sách đặt phòng"
     }
   }
 }

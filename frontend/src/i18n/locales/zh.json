@@ -2477,7 +2477,8 @@
       "createFirstBooking": "创建您的第一个预订",
       "cancel": "取消",
       "cancelBooking": "取消预订",
-      "cancelReason": "取消原因"
+      "cancelReason": "取消原因",
+      "fetchError": "获取预订列表失败"
     },
     "bookingDetail": {
       "title": "预订详情",

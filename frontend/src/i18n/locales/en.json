@@ -2415,6 +2415,7 @@
     },
     "booking": {
       "title": "Flight Booking",
+      "managementTitle": "Booking Management",
       "selectTravel": "Select Travel Application",
       "travelApplication": "Travel Application",
       "noTravelAvailable": "No available travel applications, please create a travel application first",
@@ -2462,7 +2463,8 @@
       "createFirstBooking": "Create your first booking",
       "cancel": "Cancel",
       "cancelBooking": "Cancel Booking",
-      "cancelReason": "Cancellation Reason"
+      "cancelReason": "Cancellation Reason",
+      "fetchError": "Failed to fetch bookings"
     },
     "bookingDetail": {
       "title": "Booking Details",
@@ -2533,6 +2535,18 @@
       "confirming": "Confirming..."
     },
     "booking": {
+      "title": "Hotel Booking",
+      "confirmed": "Confirmed",
+      "pending": "Pending",
+      "cancelled": "Cancelled",
+      "newBooking": "New Booking",
+      "search": "Search bookings...",
+      "status": "Status",
+      "noBookings": "No bookings found",
+      "createFirstBooking": "Create your first booking",
+      "cancelBooking": "Cancel Booking",
+      "cancelReason": "Cancellation Reason",
+      "fetchError": "Failed to fetch bookings",
       "back": "Back",
       "selectTravel": "Select Travel Application",
       "selectTravelDesc": "Hotel booking requires an associated approved travel application. Please select a travel application or create a new one.",

@@ -67,6 +67,8 @@
   "navigation": {
     "dashboard": "ダッシュボード",
     "travel": "出張",
+    "flightSearch": "機/酒検索",
+    "flightBookings": "予約管理",
     "expenses": "経費",
     "approvals": "承認",
     "reports": "レポート",
@@ -2139,6 +2141,28 @@
     "error": {
       "fetchLoginLogs": "ログインログの取得に失敗しました",
       "fetchOperationLogs": "操作ログの取得に失敗しました"
+    }
+  },
+  "flight": {
+    "booking": {
+      "managementTitle": "予約管理",
+      "fetchError": "予約リストの取得に失敗しました"
+    }
+  },
+  "hotel": {
+    "booking": {
+      "title": "ホテル予約リスト",
+      "confirmed": "確認済み",
+      "pending": "確認待ち",
+      "cancelled": "キャンセル済み",
+      "newBooking": "新しい予約",
+      "search": "予約を検索...",
+      "status": "ステータス",
+      "noBookings": "予約が見つかりません",
+      "createFirstBooking": "最初の予約を作成",
+      "cancelBooking": "予約をキャンセル",
+      "cancelReason": "キャンセル理由",
+      "fetchError": "予約リストの取得に失敗しました"
     }
   }
 }

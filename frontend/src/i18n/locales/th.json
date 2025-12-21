@@ -76,6 +76,8 @@
   "navigation": {
     "dashboard": "แดชบอร์ด",
     "travel": "การเดินทาง",
+    "flightSearch": "ค้นหาเที่ยวบิน/โรงแรม",
+    "flightBookings": "การจัดการการจอง",
     "expenses": "ค่าใช้จ่าย",
     "approvals": "การอนุมัติ",
     "reports": "รายงาน",
@@ -2285,6 +2287,28 @@
     "error": {
       "fetchLoginLogs": "ไม่สามารถโหลดบันทึกการเข้าสู่ระบบ",
       "fetchOperationLogs": "ไม่สามารถโหลดบันทึกการดำเนินการ"
+    }
+  },
+  "flight": {
+    "booking": {
+      "managementTitle": "การจัดการการจอง",
+      "fetchError": "ไม่สามารถโหลดรายการจอง"
+    }
+  },
+  "hotel": {
+    "booking": {
+      "title": "รายการจองโรงแรม",
+      "confirmed": "ยืนยันแล้ว",
+      "pending": "รอดำเนินการ",
+      "cancelled": "ยกเลิกแล้ว",
+      "newBooking": "จองใหม่",
+      "search": "ค้นหาการจอง...",
+      "status": "สถานะ",
+      "noBookings": "ไม่พบการจอง",
+      "createFirstBooking": "สร้างการจองครั้งแรก",
+      "cancelBooking": "ยกเลิกการจอง",
+      "cancelReason": "เหตุผลในการยกเลิก",
+      "fetchError": "ไม่สามารถโหลดรายการจอง"
     }
   }
 }
