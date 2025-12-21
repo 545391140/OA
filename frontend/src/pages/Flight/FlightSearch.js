@@ -276,7 +276,19 @@ const FlightSearch = () => {
           shouldAutoSearch: true, // 标记需要自动重新查询
         };
       }
-      // 从 sessionStorage 恢复
+      
+      // 从菜单进入时（没有 location.state），清空酒店搜索结果
+      if (!location.state || !location.state.defaultTab) {
+        // 清除 sessionStorage 中的酒店搜索数据
+        try {
+          sessionStorage.removeItem('hotelSearchData');
+        } catch (error) {
+          console.warn('Failed to clear hotel search data:', error);
+        }
+        return null;
+      }
+      
+      // 从 sessionStorage 恢复（仅当有 location.state 但不是酒店相关时，比如从其他页面跳转）
       const stored = sessionStorage.getItem('hotelSearchData');
       if (stored) {
         const data = JSON.parse(stored);
