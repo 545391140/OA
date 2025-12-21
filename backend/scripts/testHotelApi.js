@@ -606,14 +606,11 @@ async function testHotelOffersSearch() {
       addTestResult('酒店报价搜索', 'warning', `查询了 ${hotelIds.length} 个酒店但未找到报价（可能是测试环境数据问题或酒店已满员）`, {
         note: '可以尝试更改日期或使用不同的搜索参数',
         hotelsQueried: hotelIds.length,
+        successBatches,
+        failedBatches,
+        totalBatches: batches.length,
       });
       return true;
-    }
-
-    if (hotelOffers.length === 0) {
-      addTestResult('酒店报价搜索', 'warning', '搜索成功但未找到报价（可能是测试环境数据问题或酒店已满员）', {
-        note: '可以尝试更改日期或使用 includeClosed=true 参数',
-      });
     } else {
       // 检查第一个酒店的数据结构
       const firstHotel = hotelOffers[0];
