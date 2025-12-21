@@ -10,8 +10,8 @@ const path = require('path');
 // 配置
 const BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
 const TEST_USER = {
-  email: process.env.TEST_USER_EMAIL || 'admin@example.com',
-  password: process.env.TEST_USER_PASSWORD || 'password123',
+  email: process.env.TEST_USER_EMAIL || 'admin@company.com',
+  password: process.env.TEST_USER_PASSWORD || '123456',
 };
 
 // 测试结果存储
@@ -61,22 +61,43 @@ async function login() {
     console.log('\n🔐 登录获取认证 Token');
     console.log('─'.repeat(60));
 
-    const response = await axios.post(`${BASE_URL}/api/auth/login`, {
-      email: TEST_USER.email,
-      password: TEST_USER.password,
-    });
+    // 尝试多个可能的测试账号（优先使用配置的账号）
+    const testAccounts = [
+      { email: TEST_USER.email, password: TEST_USER.password },
+      { email: 'admin@company.com', password: '123456' },
+      { email: 'admin@company.com', password: 'admin123456' },
+      { email: 'admin@example.com', password: 'admin123' },
+      { email: 'test@example.com', password: 'test123' },
+    ];
 
-    if (response.data.success && response.data.token) {
-      authToken = response.data.token;
-      console.log('   ✅ 登录成功');
-      addTestResult('登录', 'passed', '成功获取认证 Token');
-      return true;
-    } else {
-      throw new Error('登录响应格式错误');
+    for (const account of testAccounts) {
+      try {
+        console.log(`   🔍 尝试登录: ${account.email}`);
+        const response = await axios.post(`${BASE_URL}/api/auth/login`, account, {
+          timeout: 5000,
+          validateStatus: () => true, // 不抛出错误，手动处理
+        });
+
+        if (response.status === 200 && response.data.success && response.data.token) {
+          authToken = response.data.token;
+          console.log(`   ✅ 登录成功: ${account.email}`);
+          addTestResult('登录', 'passed', `成功获取认证 Token (${account.email})`);
+          return true;
+        }
+      } catch (error) {
+        // 继续尝试下一个账号
+        if (error.response?.status === 401) {
+          console.log(`   ⚠️  登录失败: ${account.email} - ${error.response?.data?.message || 'Invalid credentials'}`);
+        }
+        continue;
+      }
     }
+
+    // 所有账号都失败
+    throw new Error('所有测试账号登录失败，请检查用户凭据或设置环境变量 TEST_USER_EMAIL 和 TEST_USER_PASSWORD');
   } catch (error) {
-    console.error('   ❌ 登录失败:', error.response?.data?.message || error.message);
-    addTestResult('登录', 'failed', error.response?.data?.message || error.message);
+    console.error('   ❌ 登录失败:', error.message);
+    addTestResult('登录', 'failed', error.message);
     return false;
   }
 }
