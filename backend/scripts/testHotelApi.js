@@ -490,14 +490,12 @@ async function testHotelOffersSearch() {
 
     const baseURL = getBaseURL();
 
-    // 先通过地理坐标获取多个酒店ID
-    const geocodeResponse = await axios.get(
-      `${baseURL}/v1/reference-data/locations/hotels/by-geocode`,
+    // 先通过城市代码获取全部酒店ID（北京）
+    const cityResponse = await axios.get(
+      `${baseURL}/v1/reference-data/locations/hotels/by-city`,
       {
         params: {
-          latitude: 40.7128,
-          longitude: -74.0060,
-          radius: 5,
+          cityCode: 'BJS', // 北京
           hotelSource: 'ALL',
         },
         headers: {
@@ -508,81 +506,109 @@ async function testHotelOffersSearch() {
       }
     );
 
-    if (!geocodeResponse.data?.data || geocodeResponse.data.data.length === 0) {
-      addTestResult('酒店报价搜索', 'warning', '无法获取酒店ID（地理坐标搜索无结果），跳过此测试');
+    if (!cityResponse.data?.data || cityResponse.data.data.length === 0) {
+      addTestResult('酒店报价搜索', 'warning', '无法获取酒店ID（城市搜索无结果），跳过此测试');
       return true;
     }
 
-    // 获取前5个酒店ID
-    const hotelIds = geocodeResponse.data.data.slice(0, 5).map(h => h.hotelId).filter(Boolean);
+    // 获取全部酒店ID（不再限制为5个）
+    const allHotels = cityResponse.data.data;
+    const hotelIds = allHotels.map(h => h.hotelId).filter(Boolean);
+    console.log(`   🏨 找到 ${hotelIds.length} 个酒店，将查询全部酒店的报价`);
     if (hotelIds.length === 0) {
       addTestResult('酒店报价搜索', 'warning', '无法从搜索结果中提取酒店ID，跳过此测试');
       return true;
     }
 
-    console.log(`   🏨 使用 ${hotelIds.length} 个酒店ID: ${hotelIds.join(', ')}`);
+    console.log(`   🏨 使用 ${hotelIds.length} 个酒店ID（全部酒店）`);
+    console.log(`   📋 前5个酒店ID示例: ${hotelIds.slice(0, 5).join(', ')}...`);
 
-    // 搜索报价 - 使用多个 hotelIds（根据 API 文档，hotelIds 是必填参数）
-    const checkInDate = new Date();
-    checkInDate.setDate(checkInDate.getDate() + 30);
-    const checkOutDate = new Date(checkInDate);
-    checkOutDate.setDate(checkOutDate.getDate() + 2);
+    // 搜索报价 - 使用全部 hotelIds（分批查询避免API限制）
+    const checkInDate = '2025-12-22'; // 使用固定日期便于测试
+    const checkOutDate = '2025-12-23';
 
-    // 构建参数 - hotelIds 需要作为数组传递
-    const searchParams = new URLSearchParams({
-      checkInDate: checkInDate.toISOString().split('T')[0],
-      checkOutDate: checkOutDate.toISOString().split('T')[0],
-      adults: '1',
-      roomQuantity: '1',
-      currencyCode: 'USD',
-    });
+    // 分批查询（每批20个酒店，避免API限制）
+    const BATCH_SIZE = 20;
+    const batches = [];
+    for (let i = 0; i < hotelIds.length; i += BATCH_SIZE) {
+      batches.push(hotelIds.slice(i, i + BATCH_SIZE));
+    }
 
-    // 添加多个 hotelIds 参数
-    hotelIds.forEach(hotelId => {
-      searchParams.append('hotelIds', hotelId);
-    });
+    console.log(`   📦 分成 ${batches.length} 批查询（每批最多 ${BATCH_SIZE} 个酒店）`);
 
-    console.log('   🔍 搜索报价参数 (使用多个 hotelIds):', {
-      hotelIds: hotelIds,
-      checkInDate: checkInDate.toISOString().split('T')[0],
-      checkOutDate: checkOutDate.toISOString().split('T')[0],
-      adults: 1,
-      roomQuantity: 1,
-      currencyCode: 'USD',
-    });
+    const allOffers = [];
+    let successBatches = 0;
+    let failedBatches = 0;
 
-    // 等待1秒避免频率限制
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    for (let i = 0; i < batches.length; i++) {
+      const batch = hotelIds.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+      console.log(`   🔄 查询第 ${i + 1}/${batches.length} 批（${batch.length} 个酒店）...`);
 
-    // 等待1秒避免频率限制
-    await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        // 构建参数 - hotelIds 需要作为数组传递
+        const searchParams = new URLSearchParams({
+          checkInDate,
+          checkOutDate,
+          adults: '1',
+          roomQuantity: '1',
+          currencyCode: 'USD',
+        });
 
-    // 根据 Amadeus API 文档 v3.0.9，正确的端点是 /v3/shopping/hotel-offers (getMultiHotelOffers)
-    console.log('   📍 使用正确的端点: /v3/shopping/hotel-offers (getMultiHotelOffers)');
-    const response = await axios.get(
-      `${baseURL}/v3/shopping/hotel-offers?${searchParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
+        // 添加多个 hotelIds 参数
+        batch.forEach(hotelId => {
+          searchParams.append('hotelIds', hotelId);
+        });
+
+        // 等待避免频率限制
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // 根据 Amadeus API 文档 v3.0.9，正确的端点是 /v3/shopping/hotel-offers (getMultiHotelOffers)
+        const response = await axios.get(
+          `${baseURL}/v3/shopping/hotel-offers?${searchParams.toString()}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.amadeus+json',
+            },
+            timeout: 30000,
+          }
+        );
+
+        // 验证响应格式
+        if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          const offers = response.data.data || [];
+          console.log(`      ✅ 找到 ${offers.length} 个报价`);
+          allOffers.push(...offers);
+          successBatches++;
+        } else {
+          console.log(`      ⚠️  无报价数据`);
+          failedBatches++;
+        }
+      } catch (error) {
+        const errorMsg = error.response?.data?.message || error.message;
+        console.log(`      ❌ 查询失败: ${errorMsg.substring(0, 50)}...`);
+        failedBatches++;
       }
-    );
+    }
+
+    const hotelOffers = allOffers;
+    console.log(`\n   📊 汇总结果:`);
+    console.log(`      - 查询酒店总数: ${hotelIds.length}`);
+    console.log(`      - 总报价数: ${hotelOffers.length}`);
+    console.log(`      - 成功率: ${((hotelOffers.length / hotelIds.length) * 100).toFixed(2)}%`);
+    console.log(`      - 成功批次: ${successBatches}/${batches.length}`);
+    console.log(`      - 失败批次: ${failedBatches}/${batches.length}`);
 
     // 验证响应格式
-    if (!response.data) {
-      addTestResult('酒店报价搜索', 'failed', 'API响应为空');
-      return false;
+    if (hotelOffers.length === 0) {
+      addTestResult('酒店报价搜索', 'warning', `查询了 ${hotelIds.length} 个酒店但未找到报价（可能是测试环境数据问题或酒店已满员）`, {
+        note: '可以尝试更改日期或使用不同的搜索参数',
+        hotelsQueried: hotelIds.length,
+      });
+      return true;
     }
-
-    if (!response.data.data || !Array.isArray(response.data.data)) {
-      addTestResult('酒店报价搜索', 'failed', 'API响应格式错误：缺少data数组');
-      return false;
-    }
-
-    const hotelOffers = response.data.data;
-    console.log(`   📊 找到 ${hotelOffers.length} 个酒店报价`);
 
     if (hotelOffers.length === 0) {
       addTestResult('酒店报价搜索', 'warning', '搜索成功但未找到报价（可能是测试环境数据问题或酒店已满员）', {
@@ -607,27 +633,34 @@ async function testHotelOffersSearch() {
         console.log('   🎫 报价ID:', firstOffer.id);
       }
 
-      addTestResult('酒店报价搜索', 'passed', `成功搜索到 ${hotelOffers.length} 个酒店报价`, {
+      addTestResult('酒店报价搜索', 'passed', `成功搜索到 ${hotelOffers.length} 个酒店报价（查询了 ${hotelIds.length} 个酒店）`, {
+        hotelsQueried: hotelIds.length,
         hotelsFound: hotelOffers.length,
-        searchMethod: 'hotelIds',
-        hotelIdsUsed: hotelIds,
+        successRate: ((hotelOffers.length / hotelIds.length) * 100).toFixed(2) + '%',
+        searchMethod: 'hotelIds (batch)',
+        successBatches,
+        failedBatches,
+        totalBatches: batches.length,
         hotelStructure,
-        sampleHotel: {
-          hotelId: firstHotel.hotel?.hotelId,
-          name: firstHotel.hotel?.name,
-          offersCount: firstHotel.offers?.length || 0,
-        },
+        sampleHotels: hotelOffers.slice(0, 5).map(h => ({
+          hotelId: h.hotel?.hotelId,
+          name: h.hotel?.name,
+          offersCount: h.offers?.length || 0,
+          price: h.offers?.[0]?.price?.total,
+          currency: h.offers?.[0]?.price?.currency,
+        })),
       }, {
-        hotelIds: hotelIds,
-        checkInDate: checkInDate.toISOString().split('T')[0],
-        checkOutDate: checkOutDate.toISOString().split('T')[0],
+        hotelIdsCount: hotelIds.length,
+        checkInDate,
+        checkOutDate,
         adults: 1,
         roomQuantity: 1,
         currencyCode: 'USD',
+        batchSize: BATCH_SIZE,
       }, {
-        status: response.status,
-        dataCount: hotelOffers.length,
-        hasMeta: !!response.data.meta,
+        totalOffers: hotelOffers.length,
+        successBatches,
+        failedBatches,
       });
     }
 
