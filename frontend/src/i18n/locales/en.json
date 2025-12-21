@@ -80,7 +80,7 @@
   "navigation": {
     "dashboard": "Dashboard",
     "travel": "Travel",
-    "flightSearch": "Flight Search",
+    "flightSearch": "Flight/Hotel Search",
     "flightBookings": "Flight Bookings",
     "expenses": "Expenses",
     "approvals": "Approvals",
@@ -2298,7 +2298,8 @@
   },
   "flight": {
     "search": {
-      "title": "Flight Search",
+      "tab": "Flight",
+      "title": "Flight/Hotel Search",
       "description": "Search and compare flight prices",
       "origin": "Origin",
       "destination": "Destination",
@@ -2481,6 +2482,75 @@
       "cancel": "Cancel Booking",
       "cancelBooking": "Cancel Booking",
       "cancelReason": "Cancellation Reason"
+    }
+  },
+  "hotel": {
+    "search": {
+      "tab": "Hotel",
+      "placeholder": {
+        "title": "Find Your Perfect Stay",
+        "subtitle": "Search hotels worldwide and book your ideal accommodation"
+      },
+      "city": "City",
+      "cityPlaceholder": "Enter city name",
+      "hotelName": "Hotel Name",
+      "hotelNamePlaceholder": "Enter hotel name",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "adults": "Adults",
+      "children": "Children",
+      "rooms": "Rooms",
+      "search": "Search"
+    },
+    "list": {
+      "sortBy": "Sort by",
+      "priceLow": "Price: Low to High",
+      "priceHigh": "Price: High to Low",
+      "ratingHigh": "Rating: High to Low",
+      "beds": "beds",
+      "perNight": "per night",
+      "nights": "nights",
+      "select": "Select",
+      "searchName": "Search by hotel name",
+      "searchNamePlaceholder": "Enter hotel name"
+    },
+    "detail": {
+      "back": "Back",
+      "roomType": "Room Type",
+      "beds": "beds",
+      "perNight": "per night",
+      "nights": "nights",
+      "basePrice": "Base Price",
+      "book": "Book",
+      "details": "Details",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "guests": "Guests",
+      "adults": "Adults",
+      "rooms": "Rooms",
+      "room": "Room",
+      "confirming": "Confirming..."
+    },
+    "booking": {
+      "back": "Back",
+      "selectTravel": "Select Travel Application",
+      "selectTravelDesc": "Hotel booking requires an associated approved travel application. Please select a travel application or create a new one.",
+      "travel": "Travel Application",
+      "noTravels": "No available travel applications, please create a travel application first",
+      "cancel": "Cancel",
+      "next": "Next",
+      "guestInfo": "Guest Information",
+      "addGuest": "Add Guest",
+      "guest": "Guest",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "phoneType": "Phone Type",
+      "mobile": "Mobile",
+      "landline": "Landline",
+      "countryCode": "Country Code",
+      "phoneNumber": "Phone Number",
+      "specialRequests": "Special Requests"
     }
   }
 }
