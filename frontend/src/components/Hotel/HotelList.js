@@ -32,7 +32,8 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // 过滤状态
+  // 排序和过滤状态
+  const [sortType, setSortType] = useState('price-low');
   const [priceRange, setPriceRange] = useState([0, 100000]); // 增加价格上限，避免过滤掉高价格酒店
   const [minRating, setMinRating] = useState(0);
 
@@ -94,9 +95,28 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
       });
     }
 
+    // 排序
+    filtered.sort((a, b) => {
+      const priceA = parseFloat(a.offers?.[0]?.price?.total || 0);
+      const priceB = parseFloat(b.offers?.[0]?.price?.total || 0);
+
+      switch (sortType) {
+        case 'price-low':
+          return priceA - priceB;
+        case 'price-high':
+          return priceB - priceA;
+        case 'rating-high':
+          const ratingA = a.hotel?.rating || 0;
+          const ratingB = b.hotel?.rating || 0;
+          return ratingB - ratingA;
+        default:
+          return 0;
+      }
+    });
+
     console.log(`✅ 最终过滤后: ${filtered.length} 个酒店`);
     return filtered;
-  }, [hotels, priceRange, minRating]);
+  }, [hotels, sortType, priceRange, minRating]);
 
   const handleSelectHotel = (hotel) => {
     if (onSelectHotel) {
