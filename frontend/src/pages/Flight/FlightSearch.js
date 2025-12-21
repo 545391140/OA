@@ -749,7 +749,7 @@ const FlightSearch = () => {
             </Alert>
           )}
 
-          {searchResults && (
+          {searchResults && Array.isArray(searchResults) && searchResults.length > 0 && (
             <FlightList
               flights={searchResults}
               searchParams={searchParams}
@@ -772,7 +772,7 @@ const FlightSearch = () => {
             />
           )}
 
-          {!searchResults && !loading && !error && (
+          {(!searchResults || !Array.isArray(searchResults) || searchResults.length === 0) && !loading && !error && (
             <Paper
               elevation={0}
               sx={{
