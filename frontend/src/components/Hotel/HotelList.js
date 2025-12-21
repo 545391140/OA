@@ -16,6 +16,7 @@ import {
   Divider,
   Rating,
   Paper,
+  TextField,
 } from '@mui/material';
 import {
   Hotel as HotelIcon,
@@ -36,6 +37,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
   const [sortType, setSortType] = useState('price-low');
   const [priceRange, setPriceRange] = useState([0, 100000]); // 增加价格上限，避免过滤掉高价格酒店
   const [minRating, setMinRating] = useState(0);
+  const [hotelNameFilter, setHotelNameFilter] = useState(''); // 酒店名称搜索
 
   // 格式化价格
   const formatPrice = (price) => {
@@ -95,6 +97,15 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
       });
     }
 
+    // 酒店名称过滤
+    if (hotelNameFilter.trim()) {
+      const nameFilter = hotelNameFilter.trim().toLowerCase();
+      filtered = filtered.filter(hotel => {
+        const hotelName = (hotel.hotel?.name || '').toLowerCase();
+        return hotelName.includes(nameFilter);
+      });
+    }
+
     // 排序
     filtered.sort((a, b) => {
       const priceA = parseFloat(a.offers?.[0]?.price?.total || 0);
@@ -116,7 +127,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
 
     console.log(`✅ 最终过滤后: ${filtered.length} 个酒店`);
     return filtered;
-  }, [hotels, sortType, priceRange, minRating]);
+  }, [hotels, sortType, priceRange, minRating, hotelNameFilter]);
 
   const handleSelectHotel = (hotel) => {
     if (onSelectHotel) {
@@ -147,28 +158,44 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
       {/* 筛选和排序栏 */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
+          {/* 酒店名称搜索 */}
           <Grid item xs={12} sm={4}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label={t('hotel.list.searchName') || '搜索酒店名称'}
+              value={hotelNameFilter}
+              onChange={(e) => setHotelNameFilter(e.target.value)}
+              placeholder={t('hotel.list.searchNamePlaceholder') || '输入酒店名称'}
+              InputProps={{
+                startAdornment: <HotelIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+              }}
+            />
+          </Grid>
+
+          {/* 排序按钮 */}
+          <Grid item xs={12} sm={8}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Button
                 size="small"
                 variant={sortType === 'price-low' ? 'contained' : 'outlined'}
                 onClick={() => setSortType('price-low')}
               >
-                {t('hotel.list.priceLow') || '价格从低到高'}
+                {t('hotel.list.priceLow') || '价格: 低到高'}
               </Button>
               <Button
                 size="small"
                 variant={sortType === 'price-high' ? 'contained' : 'outlined'}
                 onClick={() => setSortType('price-high')}
               >
-                {t('hotel.list.priceHigh') || '价格从高到低'}
+                {t('hotel.list.priceHigh') || '价格: 高到低'}
               </Button>
               <Button
                 size="small"
                 variant={sortType === 'rating-high' ? 'contained' : 'outlined'}
                 onClick={() => setSortType('rating-high')}
               >
-                {t('hotel.list.ratingHigh') || '评分从高到低'}
+                {t('hotel.list.ratingHigh') || '评分: 高到低'}
               </Button>
             </Box>
           </Grid>
