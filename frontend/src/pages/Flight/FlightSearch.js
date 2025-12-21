@@ -177,8 +177,19 @@ const FlightSearch = () => {
   // 如果是从菜单进入（没有location.state），清空之前的搜索条件
   const restoredData = (() => {
     // 检查是否有 location.state（从详情页或预订页返回）
+    // 重要：如果 defaultTab === 'hotel'，说明是酒店相关的返回，不应该恢复机票数据
+    if (location.state && location.state.defaultTab === 'hotel') {
+      // 从酒店详情页返回，不恢复机票数据，清空机票搜索结果
+      try {
+        sessionStorage.removeItem('flightSearchData');
+      } catch (error) {
+        console.warn('Failed to clear flight search data:', error);
+      }
+      return null;
+    }
+    
     if (location.state && (location.state.searchResults || location.state.searchParams)) {
-      // 从详情页或预订页返回，保留搜索条件
+      // 从机票详情页或预订页返回，保留搜索条件
       const data = {
         searchResults: location.state.searchResults || null,
         searchParams: { ...location.state.searchParams },
@@ -489,7 +500,7 @@ const FlightSearch = () => {
     setActiveTab(newValue);
     // 切换 Tab 时，可以保存当前 Tab 的状态到 sessionStorage
     if (newValue === 0) {
-      // 切换到机票 Tab，保存酒店搜索状态
+      // 切换到机票 Tab，保存酒店搜索状态，并清空机票搜索结果（避免显示酒店数据）
       try {
         if (hotelResults && hotelSearchParams) {
           sessionStorage.setItem('hotelSearchData', JSON.stringify({
@@ -500,6 +511,8 @@ const FlightSearch = () => {
       } catch (error) {
         console.warn('Failed to save hotel search data:', error);
       }
+      // 清空机票搜索结果，避免显示之前的数据
+      setSearchResults(null);
     } else {
       // 切换到酒店 Tab，保存机票搜索状态
       saveSearchData(searchResults, searchParams, originLocation, destinationLocation, isRoundTrip);
