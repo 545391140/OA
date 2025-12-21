@@ -19,6 +19,8 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -26,6 +28,7 @@ import {
   FlightLand as FlightLandIcon,
   Explore as ExploreIcon,
   Speed as SpeedIcon,
+  Hotel as HotelIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -33,15 +36,35 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
 import { searchFlights } from '../../services/flightService';
+import {
+  searchHotelsByCity,
+  searchHotelOffers,
+} from '../../services/hotelService';
 import dayjs from 'dayjs';
 import FlightList from './FlightList';
 import RegionSelector from '../../components/Common/RegionSelector';
+import HotelSearchForm from '../../components/Hotel/HotelSearchForm';
+import HotelList from '../../components/Hotel/HotelList';
 
 const FlightSearch = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { showNotification } = useNotification();
+
+  // Tab 状态管理
+  const [activeTab, setActiveTab] = useState(() => {
+    // 从 location.state 或 URL 参数获取默认 Tab
+    if (location.state?.defaultTab === 'hotel') {
+      return 1; // 酒店 Tab
+    }
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'hotel') {
+      return 1;
+    }
+    return 0; // 默认机票 Tab
+  });
 
   // 从sessionStorage或location.state恢复搜索结果和搜索条件
   const getStoredSearchData = () => {
@@ -217,6 +240,19 @@ const FlightSearch = () => {
   const [error, setError] = useState(null);
   const [isRoundTrip, setIsRoundTrip] = useState(restoredData?.isRoundTrip || false);
 
+  // ========== 酒店搜索相关状态（完全独立） ==========
+  const [hotelSearchParams, setHotelSearchParams] = useState(() => {
+    // 从 location.state 恢复酒店搜索参数
+    if (location.state?.prefillData) {
+      return location.state.prefillData;
+    }
+    return {};
+  });
+  const [hotelResults, setHotelResults] = useState(null);
+  const [hotelLoading, setHotelLoading] = useState(false);
+  const [hotelError, setHotelError] = useState(null);
+
+  // ========== 机票搜索处理（保持不变） ==========
   const handleSearch = async () => {
     if (!originLocation || !destinationLocation) {
       showNotification('请选择出发地和目的地', 'error');
@@ -270,6 +306,83 @@ const FlightSearch = () => {
     }
   };
 
+  // ========== 酒店搜索处理（新增） ==========
+  const handleHotelSearch = async (params) => {
+    setHotelLoading(true);
+    setHotelError(null);
+    setHotelSearchParams(params);
+
+    try {
+      // 步骤1：通过城市搜索酒店
+      const cityResponse = await searchHotelsByCity({
+        cityCode: params.cityCode,
+        hotelSource: 'ALL',
+      });
+
+      if (!cityResponse.data.success || !cityResponse.data.data || cityResponse.data.data.length === 0) {
+        setHotelError('未找到酒店');
+        setHotelResults([]);
+        return;
+      }
+
+      const hotels = cityResponse.data.data;
+      // 提取前10个酒店ID
+      const hotelIds = hotels.slice(0, 10).map(h => h.hotelId).filter(Boolean);
+
+      if (hotelIds.length === 0) {
+        setHotelError('无法获取酒店ID');
+        setHotelResults([]);
+        return;
+      }
+
+      // 步骤2：搜索酒店报价
+      const offersResponse = await searchHotelOffers({
+        hotelIds: hotelIds,
+        checkInDate: params.checkInDate,
+        checkOutDate: params.checkOutDate,
+        adults: params.adults,
+        roomQuantity: params.roomQuantity,
+        currencyCode: params.currencyCode || 'USD',
+      });
+
+      if (offersResponse.data.success) {
+        const results = offersResponse.data.data || [];
+        setHotelResults(results);
+        showNotification(`找到 ${results.length} 个酒店报价`, 'success');
+      } else {
+        setHotelError(offersResponse.data.message || '搜索失败');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || '搜索酒店失败';
+      setHotelError(errorMsg);
+      showNotification(errorMsg, 'error');
+    } finally {
+      setHotelLoading(false);
+    }
+  };
+
+  // Tab 切换处理
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+    // 切换 Tab 时，可以保存当前 Tab 的状态到 sessionStorage
+    if (newValue === 0) {
+      // 切换到机票 Tab，保存酒店搜索状态
+      try {
+        if (hotelResults && hotelSearchParams) {
+          sessionStorage.setItem('hotelSearchData', JSON.stringify({
+            searchResults: hotelResults,
+            searchParams: hotelSearchParams,
+          }));
+        }
+      } catch (error) {
+        console.warn('Failed to save hotel search data:', error);
+      }
+    } else {
+      // 切换到酒店 Tab，保存机票搜索状态
+      saveSearchData(searchResults, searchParams, originLocation, destinationLocation, isRoundTrip);
+    }
+  };
+
   // 如果是从详情页或预订页返回，自动重新查询
   useEffect(() => {
     if (restoredData?.shouldAutoSearch && originLocation && destinationLocation && searchParams.departureDate) {
@@ -289,12 +402,45 @@ const FlightSearch = () => {
           {/* Header */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h4" gutterBottom>
-              {t('flight.search.title') || '机票搜索'}
+              {t('flight.search.title') || '预订搜索'}
             </Typography>
           </Box>
 
-          {/* Search Form */}
-          <Paper sx={{ p: 2, pb: '48px', mb: 3, position: 'relative', overflow: 'visible' }}>
+          {/* Tab 切换器 */}
+          <Paper elevation={1} sx={{ mb: 3 }}>
+            <Tabs 
+              value={activeTab} 
+              onChange={handleTabChange}
+              variant="fullWidth"
+              sx={{
+                borderBottom: 1,
+                borderColor: 'divider',
+                '& .MuiTab-root': {
+                  minHeight: 64,
+                  fontSize: '16px',
+                  fontWeight: 600,
+                },
+              }}
+            >
+              <Tab 
+                label={t('flight.search.tab') || '机票预订'} 
+                icon={<FlightTakeoffIcon />} 
+                iconPosition="start"
+              />
+              <Tab 
+                label={t('hotel.search.tab') || '酒店预订'} 
+                icon={<HotelIcon />} 
+                iconPosition="start"
+              />
+            </Tabs>
+          </Paper>
+
+          {/* 根据 Tab 显示对应内容 */}
+          {activeTab === 0 ? (
+            <>
+              {/* ========== 机票 Tab：完全保持现有代码不变 ========== */}
+              {/* Search Form */}
+              <Paper sx={{ p: 2, pb: '48px', mb: 3, position: 'relative', overflow: 'visible' }}>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: { xs: 'wrap', md: 'nowrap' }, alignItems: 'flex-start' }}>
               <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 auto' }, minWidth: { xs: '100%', md: 0 } }}>
                 <RegionSelector
@@ -681,6 +827,63 @@ const FlightSearch = () => {
                 </Grid>
               </Box>
             </Paper>
+          )}
+            </>
+          ) : (
+            <>
+              {/* ========== 酒店 Tab：完全独立的新功能 ========== */}
+              <HotelSearchForm
+                onSearch={handleHotelSearch}
+                initialValues={hotelSearchParams}
+                loading={hotelLoading}
+                prefillData={location.state?.prefillData}
+              />
+
+              {hotelError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {hotelError}
+                </Alert>
+              )}
+
+              {hotelResults && (
+                <HotelList
+                  hotels={hotelResults}
+                  searchParams={hotelSearchParams}
+                  onSelectHotel={(hotel) => {
+                    // 导航到酒店详情页
+                    navigate('/hotel/detail', {
+                      state: {
+                        hotel,
+                        searchParams: hotelSearchParams,
+                        searchResults: hotelResults,
+                      },
+                    });
+                  }}
+                />
+              )}
+
+              {!hotelResults && !hotelLoading && !hotelError && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    mt: 4,
+                    p: 6,
+                    textAlign: 'center',
+                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                    borderRadius: 4,
+                    color: 'white',
+                  }}
+                >
+                  <HotelIcon sx={{ fontSize: 64, mb: 2 }} />
+                  <Typography variant="h4" gutterBottom>
+                    {t('hotel.search.placeholder.title') || '搜索酒店，轻松入住'}
+                  </Typography>
+                  <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                    {t('hotel.search.placeholder.subtitle') || '选择城市和日期，搜索全球酒店'}
+                  </Typography>
+                </Paper>
+              )}
+            </>
           )}
         </Box>
       </Container>
