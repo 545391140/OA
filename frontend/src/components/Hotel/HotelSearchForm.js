@@ -100,7 +100,7 @@ const HotelSearchForm = ({
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Paper sx={{ p: 2, pb: '48px', mb: 3, position: 'relative', overflow: 'visible' }}>
+      <Paper sx={{ p: 2, pb: '48px', mb: 4, position: 'relative', overflow: 'visible' }}>
         <Grid container spacing={2} alignItems="flex-start">
           {/* 城市选择 */}
           <Grid item xs={12} md={3}>
