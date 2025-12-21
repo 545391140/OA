@@ -459,6 +459,9 @@ const FlightSearch = () => {
       
       setHotelResults(results);
       
+      // 保存酒店搜索结果和搜索条件到sessionStorage
+      saveHotelSearchData(results, params);
+      
       // 如果报价数量少于酒店数量，提示用户
       if (results.length < hotelIds.length && results.length > 0) {
         const message = `找到 ${results.length} 个酒店报价（共 ${hotels.length} 个酒店，其中 ${hotelIds.length} 个已查询，成功率 ${successRate}%）`;
