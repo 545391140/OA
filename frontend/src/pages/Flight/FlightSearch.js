@@ -330,9 +330,13 @@ const FlightSearch = () => {
       const hotels = cityResponse.data.data;
       console.log(`🔍 找到 ${hotels.length} 个酒店（城市代码: ${params.cityCode}）`);
       
-      // 提取更多酒店ID（增加到20个，提高成功率）
-      const hotelIds = hotels.slice(0, 20).map(h => h.hotelId).filter(Boolean);
+      // 提取更多酒店ID（增加到50个，提高成功率）
+      // 注意：Amadeus API可能对hotelIds数量有限制，如果失败可以分批查询
+      const hotelIds = hotels.slice(0, 50).map(h => h.hotelId).filter(Boolean);
       console.log(`📋 提取了 ${hotelIds.length} 个酒店ID用于报价搜索`);
+      console.log(`📅 搜索日期: ${params.checkInDate} 至 ${params.checkOutDate}`);
+      console.log(`👥 客人: ${params.adults} 成人, ${params.children || 0} 儿童`);
+      console.log(`🛏️  房间: ${params.roomQuantity} 间`);
 
       if (hotelIds.length === 0) {
         setHotelError('无法获取酒店ID');
@@ -352,28 +356,49 @@ const FlightSearch = () => {
 
       if (offersResponse.data.success) {
         const results = offersResponse.data.data || [];
-        console.log(`💰 找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中）`);
-        console.log('📊 报价数据结构:', results.length > 0 ? {
-          firstHotel: {
-            hasHotel: !!results[0].hotel,
-            hotelId: results[0].hotel?.hotelId,
-            hotelName: results[0].hotel?.name,
-            offersCount: results[0].offers?.length || 0,
-            hasOffers: !!results[0].offers && Array.isArray(results[0].offers),
-          }
-        } : '无数据');
+        const successRate = hotelIds.length > 0 ? ((results.length / hotelIds.length) * 100).toFixed(1) : 0;
+        
+        console.log(`💰 找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中，成功率: ${successRate}%）`);
+        
+        // 详细分析结果
+        if (results.length > 0) {
+          console.log('📊 报价数据结构分析:');
+          results.forEach((hotel, index) => {
+            console.log(`   酒店 ${index + 1}:`, {
+              hotelId: hotel.hotel?.hotelId,
+              hotelName: hotel.hotel?.name,
+              offersCount: hotel.offers?.length || 0,
+              price: hotel.offers?.[0]?.price?.total,
+              currency: hotel.offers?.[0]?.price?.currency,
+            });
+          });
+        } else {
+          console.log('⚠️  未找到任何报价，可能原因：');
+          console.log('   1. 指定日期没有可用房间');
+          console.log('   2. 酒店在测试环境数据有限');
+          console.log('   3. 搜索参数不匹配（如房间数量、客人数量）');
+          console.log('   建议：尝试调整日期或搜索参数');
+        }
+        
         setHotelResults(results);
         
         // 如果报价数量少于酒店数量，提示用户
         if (results.length < hotelIds.length && results.length > 0) {
-          showNotification(`找到 ${results.length} 个酒店报价（共 ${hotels.length} 个酒店，其中 ${hotelIds.length} 个已查询）`, 'info');
+          const message = `找到 ${results.length} 个酒店报价（共 ${hotels.length} 个酒店，其中 ${hotelIds.length} 个已查询，成功率 ${successRate}%）`;
+          showNotification(message, 'info');
+          console.log(`💡 提示: ${message}`);
+          console.log(`💡 建议: 如果结果太少，可以尝试调整日期范围或增加搜索的酒店数量`);
         } else if (results.length === 0) {
-          showNotification(`未找到可用报价（已查询 ${hotelIds.length} 个酒店）`, 'warning');
+          const message = `未找到可用报价（已查询 ${hotelIds.length} 个酒店）。建议：1) 调整入住/退房日期 2) 尝试未来30-60天的日期 3) 检查搜索参数`;
+          showNotification(message, 'warning');
+          console.log(`⚠️  ${message}`);
         } else {
           showNotification(`找到 ${results.length} 个酒店报价`, 'success');
         }
       } else {
-        setHotelError(offersResponse.data.message || '搜索失败');
+        const errorMsg = offersResponse.data.message || '搜索失败';
+        setHotelError(errorMsg);
+        console.error('❌ 报价搜索失败:', errorMsg);
       }
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || '搜索酒店失败';
