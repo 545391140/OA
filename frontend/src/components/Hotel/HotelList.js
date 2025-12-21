@@ -32,8 +32,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // 排序和过滤状态
-  const [sortType, setSortType] = useState('price-low');
+  // 过滤状态
   const [priceRange, setPriceRange] = useState([0, 100000]); // 增加价格上限，避免过滤掉高价格酒店
   const [minRating, setMinRating] = useState(0);
 
@@ -95,28 +94,9 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
       });
     }
 
-    // 排序
-    filtered.sort((a, b) => {
-      const priceA = parseFloat(a.offers?.[0]?.price?.total || 0);
-      const priceB = parseFloat(b.offers?.[0]?.price?.total || 0);
-
-      switch (sortType) {
-        case 'price-low':
-          return priceA - priceB;
-        case 'price-high':
-          return priceB - priceA;
-        case 'rating-high':
-          const ratingA = a.hotel?.rating || 0;
-          const ratingB = b.hotel?.rating || 0;
-          return ratingB - ratingA;
-        default:
-          return 0;
-      }
-    });
-
     console.log(`✅ 最终过滤后: ${filtered.length} 个酒店`);
     return filtered;
-  }, [hotels, sortType, priceRange, minRating]);
+  }, [hotels, priceRange, minRating]);
 
   const handleSelectHotel = (hotel) => {
     if (onSelectHotel) {
@@ -144,37 +124,9 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
 
   return (
     <Box>
-      {/* 筛选和排序栏 */}
+      {/* 筛选栏 */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={4}>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              {t('hotel.list.sortBy') || '排序方式'}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                size="small"
-                variant={sortType === 'price-low' ? 'contained' : 'outlined'}
-                onClick={() => setSortType('price-low')}
-              >
-                {t('hotel.list.priceLow') || '价格从低到高'}
-              </Button>
-              <Button
-                size="small"
-                variant={sortType === 'price-high' ? 'contained' : 'outlined'}
-                onClick={() => setSortType('price-high')}
-              >
-                {t('hotel.list.priceHigh') || '价格从高到低'}
-              </Button>
-              <Button
-                size="small"
-                variant={sortType === 'rating-high' ? 'contained' : 'outlined'}
-                onClick={() => setSortType('rating-high')}
-              >
-                {t('hotel.list.ratingHigh') || '评分从高到低'}
-              </Button>
-            </Box>
-          </Grid>
         </Grid>
       </Paper>
 
