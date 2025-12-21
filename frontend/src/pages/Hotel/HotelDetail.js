@@ -101,10 +101,36 @@ const HotelDetail = () => {
       return;
     }
 
+    // 确保酒店信息完整：如果使用了 confirmedPrice，需要合并原始的 hotel 信息
+    // 因为 confirmedPrice 可能只包含价格信息，不包含完整的地址等详细信息
+    let hotelToSubmit = offerToUse;
+    if (confirmedPrice && hotel) {
+      // 合并信息：优先使用 confirmedPrice 的价格信息，但保留原始 hotel 的完整信息
+      hotelToSubmit = {
+        ...confirmedPrice,
+        hotel: {
+          ...hotel.hotel, // 保留原始酒店的完整信息（包括地址）
+          ...confirmedPrice.hotel, // 使用确认价格后的酒店信息（如果有更新）
+        },
+        offers: confirmedPrice.offers || hotel.offers, // 使用确认价格后的报价
+      };
+    }
+
+    // 调试：检查传递的酒店信息是否包含地址
+    console.log('📋 跳转到预订页面时的酒店信息:', JSON.stringify({
+      hotelId: hotelToSubmit?.hotel?.hotelId,
+      name: hotelToSubmit?.hotel?.name,
+      hasAddress: !!hotelToSubmit?.hotel?.address,
+      address: hotelToSubmit?.hotel?.address,
+      cityCode: hotelToSubmit?.hotel?.cityCode,
+      cityName: hotelToSubmit?.hotel?.address?.cityName,
+      countryCode: hotelToSubmit?.hotel?.address?.countryCode,
+    }, null, 2));
+
     // 导航到预订页面
     navigate('/hotel/booking', {
       state: {
-        hotel: offerToUse,
+        hotel: hotelToSubmit,
         offerId,
         searchParams,
         searchResults,

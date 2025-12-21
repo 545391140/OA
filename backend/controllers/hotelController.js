@@ -284,6 +284,22 @@ exports.createBooking = async (req, res) => {
   try {
     const { travelId, offerId, hotelOffer, guests, payments, rooms, specialRequests } = req.body;
 
+    // 调试：记录接收到的 hotelOffer 信息
+    logger.debug('接收到的 hotelOffer 数据结构:', {
+      hasHotelOffer: !!hotelOffer,
+      hotelOfferType: hotelOffer?.type,
+      hasHotel: !!hotelOffer?.hotel,
+      hotelId: hotelOffer?.hotel?.hotelId,
+      hotelName: hotelOffer?.hotel?.name,
+      hasAddress: !!hotelOffer?.hotel?.address,
+      address: hotelOffer?.hotel?.address,
+      cityCode: hotelOffer?.hotel?.cityCode,
+      cityName: hotelOffer?.hotel?.address?.cityName,
+      countryCode: hotelOffer?.hotel?.address?.countryCode,
+      hotelOfferKeys: hotelOffer ? Object.keys(hotelOffer) : [],
+      hotelKeys: hotelOffer?.hotel ? Object.keys(hotelOffer.hotel) : [],
+    });
+
     // 1. 验证 travelId 必填
     if (!travelId) {
       await session.abortTransaction();
@@ -413,6 +429,26 @@ exports.createBooking = async (req, res) => {
     const offerInfo = hotelOffer.offers?.[0] || {};
 
     // 10. 构建预订文档
+    // 确保地址信息完整：优先使用 hotelOffer.hotel.address，如果不存在则尝试从其他字段提取
+    // 注意：hotelOffer 可能来自不同的API响应，需要检查多个可能的路径
+    const hotelAddress = hotelInfo.address || 
+                        hotelOffer.hotel?.address || 
+                        (hotelOffer.type === 'hotel-offers' ? hotelOffer.hotel?.address : null) ||
+                        {};
+    
+    // 记录调试信息
+    logger.debug('保存酒店预订 - 地址信息检查:', {
+      hasHotelInfoAddress: !!hotelInfo.address,
+      hasHotelOfferHotelAddress: !!hotelOffer.hotel?.address,
+      hotelInfoAddress: hotelInfo.address,
+      hotelOfferHotelAddress: hotelOffer.hotel?.address,
+      hotelOfferType: hotelOffer.type,
+      cityCode: hotelInfo.cityCode,
+      cityName: hotelAddress.cityName || hotelInfo.address?.cityName,
+      countryCode: hotelAddress.countryCode || hotelInfo.address?.countryCode,
+      fullHotelOffer: JSON.stringify(hotelOffer, null, 2).substring(0, 500), // 只记录前500字符
+    });
+
     const bookingDoc = {
       travelId,
       employee: req.user.id,
@@ -429,7 +465,16 @@ exports.createBooking = async (req, res) => {
           latitude: hotelInfo.latitude,
           longitude: hotelInfo.longitude,
         } : undefined,
-        address: hotelInfo.address,
+        // 确保地址对象完整，包含所有可能的字段
+        // 优先使用 hotelInfo.address，如果不存在则使用 hotelOffer.hotel.address
+        address: hotelAddress && Object.keys(hotelAddress).length > 0 ? {
+          countryCode: hotelAddress.countryCode || hotelInfo.countryCode,
+          postalCode: hotelAddress.postalCode,
+          stateCode: hotelAddress.stateCode,
+          cityName: hotelAddress.cityName || hotelInfo.cityName,
+          lines: Array.isArray(hotelAddress.lines) ? hotelAddress.lines : (hotelAddress.lines ? [hotelAddress.lines] : (hotelAddress.lines ? [String(hotelAddress.lines)] : [])),
+          region: hotelAddress.region,
+        } : undefined, // 如果没有地址信息，设置为 undefined 而不是空对象
       },
       checkIn: new Date(offerInfo.checkInDate || hotelOffer.checkInDate),
       checkOut: new Date(offerInfo.checkOutDate || hotelOffer.checkOutDate),

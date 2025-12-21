@@ -322,6 +322,17 @@ const HotelBookingForm = () => {
     setError(null);
 
     try {
+      // 调试：检查酒店信息是否包含地址
+      console.log('📋 提交预订时的酒店信息:', JSON.stringify({
+        hotelId: hotel?.hotel?.hotelId,
+        name: hotel?.hotel?.name,
+        hasAddress: !!hotel?.hotel?.address,
+        address: hotel?.hotel?.address,
+        cityCode: hotel?.hotel?.cityCode,
+        cityName: hotel?.hotel?.address?.cityName,
+        countryCode: hotel?.hotel?.address?.countryCode,
+      }, null, 2));
+
       // 构建预订数据（确保格式符合数据库要求）
       const bookingData = {
         travelId: selectedTravelId, // 必填：差旅申请ID

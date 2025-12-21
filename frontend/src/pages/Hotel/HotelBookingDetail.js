@@ -157,6 +157,10 @@ const HotelBookingDetail = () => {
   const hotel = hotelOffer.hotel || {};
   const address = hotel.address || {};
   const price = hotelOffer.offers?.[0]?.price || booking.price;
+  
+  // 获取入住和退房日期（优先使用直接字段，回退到 hotelOffer）
+  const checkInDate = booking.checkIn || hotelOffer.checkInDate;
+  const checkOutDate = booking.checkOut || hotelOffer.checkOutDate;
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -333,7 +337,7 @@ const HotelBookingDetail = () => {
                     {t('hotel.search.checkIn') || '入住日期'}
                   </Typography>
                   <Typography variant="h5" color="primary" fontWeight="bold" sx={{ mt: 1 }}>
-                    {hotelOffer.checkInDate ? formatDate(hotelOffer.checkInDate) : '-'}
+                    {checkInDate ? formatDate(checkInDate) : '-'}
                   </Typography>
                 </Box>
               </Grid>
@@ -343,17 +347,17 @@ const HotelBookingDetail = () => {
                     {t('hotel.search.checkOut') || '退房日期'}
                   </Typography>
                   <Typography variant="h5" color="success.main" fontWeight="bold" sx={{ mt: 1 }}>
-                    {hotelOffer.checkOutDate ? formatDate(hotelOffer.checkOutDate) : '-'}
+                    {checkOutDate ? formatDate(checkOutDate) : '-'}
                   </Typography>
                 </Box>
               </Grid>
-              {hotelOffer.checkInDate && hotelOffer.checkOutDate && (
+              {checkInDate && checkOutDate && (
                 <Grid item xs={12}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
                     <PeopleIcon color="action" />
                     <Typography variant="body1">
                       {t('hotel.bookingDetail.nights') || '入住天数'}:{' '}
-                      {dayjs(hotelOffer.checkOutDate).diff(dayjs(hotelOffer.checkInDate), 'day')}{' '}
+                      {dayjs(checkOutDate).diff(dayjs(checkInDate), 'day')}{' '}
                       {t('hotel.list.nights') || '晚'}
                     </Typography>
                   </Box>
@@ -426,43 +430,145 @@ const HotelBookingDetail = () => {
         )}
 
         {/* 房间信息 */}
-        {booking.rooms && booking.rooms.length > 0 && (
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <BedIcon color="primary" />
-                {t('hotel.bookingDetail.rooms') || '房间信息'}
-              </Typography>
-              <Grid container spacing={2}>
-                {booking.rooms.map((room, index) => (
-                  <Grid item xs={12} md={6} key={index}>
-                    <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(0, 0, 0, 0.02)', border: '1px solid', borderColor: 'divider' }}>
-                      <Typography variant="subtitle1" fontWeight="bold">
-                        {t('hotel.booking.room') || '房间'} {index + 1}
-                      </Typography>
-                      {room.type && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          {t('hotel.detail.roomType') || '房型'}: {room.type}
-                        </Typography>
-                      )}
-                      {room.beds && (
-                        <Typography variant="body2" color="text.secondary">
-                          {t('hotel.list.beds') || '床'}: {room.beds}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
-        )}
+        {(() => {
+          // 尝试从多个数据源获取房间信息
+          let roomList = [];
+          
+          // 1. 优先使用 booking.rooms
+          if (booking.rooms && Array.isArray(booking.rooms) && booking.rooms.length > 0) {
+            roomList = booking.rooms;
+          } 
+          // 2. 如果没有，尝试从 hotelOffer.offers[0].room 获取
+          else if (booking.hotelOffer?.offers?.[0]?.room) {
+            const room = booking.hotelOffer.offers[0].room;
+            roomList = Array.isArray(room) ? room : [room];
+          }
+          // 3. 如果还没有，遍历所有 offers 查找 room 信息
+          else if (booking.hotelOffer?.offers && Array.isArray(booking.hotelOffer.offers)) {
+            booking.hotelOffer.offers.forEach((offer, index) => {
+              if (offer.room) {
+                const roomData = Array.isArray(offer.room) ? offer.room : [offer.room];
+                roomList.push(...roomData.map(r => ({ ...r, offerIndex: index })));
+              }
+            });
+          }
+          
+          // 4. 如果仍然没有房间信息，但知道房间数量，创建一个占位房间
+          if (roomList.length === 0 && booking.roomQuantity) {
+            roomList = Array.from({ length: booking.roomQuantity }, (_, index) => ({
+              type: '-',
+              guests: booking.adults || 1,
+            }));
+          }
+          
+          // 5. 如果还是没有，至少显示一个房间（使用默认值）
+          if (roomList.length === 0) {
+            roomList = [{
+              type: '-',
+              guests: booking.adults || 1,
+            }];
+          }
+          
+          return (
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <BedIcon color="primary" />
+                  {t('hotel.bookingDetail.rooms') || '房间信息'}
+                </Typography>
+                <Grid container spacing={2}>
+                  {roomList.map((room, index) => {
+                    // 获取房间类型
+                    const roomType = room.type || room.typeEstimated?.category || '-';
+                    
+                    // 获取床信息
+                    const beds = room.typeEstimated?.beds;
+                    const bedType = room.typeEstimated?.bedType;
+                    const bedInfo = beds 
+                      ? `${beds} ${t('hotel.list.beds') || '张床'}${bedType ? ` (${bedType})` : ''}`
+                      : null;
+                    
+                    // 获取房间描述
+                    const description = room.description?.text || room.description || '';
+                    
+                    // 获取入住人数
+                    const guests = room.guests || room.typeEstimated?.guests || '-';
+                    
+                    return (
+                      <Grid item xs={12} md={6} key={index}>
+                        <Box sx={{ 
+                          p: 2, 
+                          borderRadius: 2, 
+                          bgcolor: 'rgba(0, 0, 0, 0.02)', 
+                          border: '1px solid', 
+                          borderColor: 'divider',
+                          height: '100%'
+                        }}>
+                          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
+                            {t('hotel.booking.room') || '房间'} {index + 1}
+                          </Typography>
+                          
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            {roomType && roomType !== '-' && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  {t('hotel.detail.roomType') || '房型'}
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {roomType}
+                                </Typography>
+                              </Box>
+                            )}
+                            
+                            {bedInfo && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  {t('hotel.bookingDetail.bedInfo') || '床型'}
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {bedInfo}
+                                </Typography>
+                              </Box>
+                            )}
+                            
+                            {guests && guests !== '-' && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  {t('hotel.bookingDetail.guestsPerRoom') || '入住人数'}
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {guests} {t('hotel.booking.guests') || '人'}
+                                </Typography>
+                              </Box>
+                            )}
+                            
+                            {description && (
+                              <Box sx={{ mt: 1 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  {t('hotel.bookingDetail.roomDescription') || '房间描述'}
+                                </Typography>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                  {description}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* 客人信息 */}
         {booking.guests && booking.guests.length > 0 && (
           <Card sx={{ mb: 3 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PeopleIcon color="primary" />
                 {t('hotel.booking.guestInfo') || '客人信息'}
               </Typography>
               <TableContainer>
@@ -477,21 +583,48 @@ const HotelBookingDetail = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {booking.guests.map((guest, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          {t('hotel.booking.guest') || '客人'} {index + 1}
-                        </TableCell>
-                        <TableCell>{guest.firstName || '-'}</TableCell>
-                        <TableCell>{guest.lastName || '-'}</TableCell>
-                        <TableCell>{guest.email || '-'}</TableCell>
-                        <TableCell>
-                          {guest.phone
-                            ? `${guest.phone.countryCode || ''} ${guest.phone.number || ''}`
-                            : '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {booking.guests.map((guest, index) => {
+                      const firstName = guest.name?.firstName || guest.firstName || '-';
+                      const lastName = guest.name?.lastName || guest.lastName || '-';
+                      const email = guest.contact?.emailAddress || guest.email || '-';
+                      
+                      // 处理电话号码显示
+                      let phoneDisplay = '-';
+                      const phone = guest.contact?.phones?.[0] || guest.phone;
+                      if (phone) {
+                        if (typeof phone === 'string') {
+                          // 如果 phone 是字符串，直接使用
+                          phoneDisplay = phone;
+                        } else if (phone.number) {
+                          // 如果 phone 是对象且有 number 字段
+                          const number = phone.number;
+                          const countryCode = phone.countryCallingCode;
+                          
+                          // 检查 number 是否已经包含国家代码（以 + 开头）
+                          if (number.startsWith('+')) {
+                            phoneDisplay = number;
+                          } else if (countryCode) {
+                            phoneDisplay = `+${countryCode}${number}`;
+                          } else {
+                            phoneDisplay = number;
+                          }
+                        } else {
+                          phoneDisplay = '-';
+                        }
+                      }
+                      
+                      return (
+                        <TableRow key={guest.id || index}>
+                          <TableCell>
+                            {t('hotel.booking.guest') || '客人'} {index + 1}
+                          </TableCell>
+                          <TableCell>{firstName}</TableCell>
+                          <TableCell>{lastName}</TableCell>
+                          <TableCell>{email}</TableCell>
+                          <TableCell>{phoneDisplay}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>

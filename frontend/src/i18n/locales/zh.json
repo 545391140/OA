@@ -84,7 +84,7 @@
     "dashboard": "仪表板",
     "travel": "差旅",
     "flightSearch": "机/酒搜索",
-    "flightBookings": "机/酒预订",
+    "flightBookings": "预订管理",
     "expenses": "费用",
     "approvals": "审批",
     "reports": "报告",
@@ -2621,7 +2621,10 @@
       "totalPrice": "总价",
       "basePrice": "基础价格",
       "taxes": "税费",
-      "rooms": "房间信息"
+      "rooms": "房间信息",
+      "bedInfo": "床型",
+      "guestsPerRoom": "入住人数",
+      "roomDescription": "房间描述"
     }
   }
 }

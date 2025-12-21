@@ -78,23 +78,56 @@ const HotelBookingTableRow = React.memo(({
   }, [booking.hotelOffer]);
 
   const location = useMemo(() => {
-    const address = booking.hotelOffer?.hotel?.address;
-    if (!address) return '-';
+    // 尝试多个数据源获取地址信息
+    const address = booking.hotel?.address || 
+                    booking.hotelOffer?.hotel?.address ||
+                    booking.hotelOffer?.hotel?.contact?.address;
     
-    const city = address.cityName || '';
-    const country = address.countryCode || '';
-    return city ? `${city}${country ? `, ${country}` : ''}` : '-';
-  }, [booking.hotelOffer]);
+    // 调试：打印地址信息（开发环境）
+    if (process.env.NODE_ENV === 'development' && !address) {
+      console.log('酒店预订位置信息调试:', {
+        'booking.hotel': booking.hotel,
+        'booking.hotel.address': booking.hotel?.address,
+        'booking.hotelOffer?.hotel?.address': booking.hotelOffer?.hotel?.address,
+        'booking.hotel.cityCode': booking.hotel?.cityCode,
+        'booking.hotelOffer?.hotel?.cityCode': booking.hotelOffer?.hotel?.cityCode,
+      });
+    }
+    
+    if (!address) {
+      // 如果地址不存在，尝试从其他字段构建位置信息
+      const cityCode = booking.hotel?.cityCode || booking.hotelOffer?.hotel?.cityCode;
+      const countryCode = booking.hotel?.address?.countryCode || 
+                         booking.hotelOffer?.hotel?.address?.countryCode ||
+                         booking.hotelOffer?.hotel?.countryCode;
+      
+      if (cityCode || countryCode) {
+        return [cityCode, countryCode].filter(Boolean).join(', ') || '-';
+      }
+      return '-';
+    }
+    
+    // 尝试多种可能的字段名
+    const city = address.cityName || address.city || address.cityCode || '';
+    const country = address.countryCode || address.country || '';
+    const state = address.stateCode || address.state || '';
+    
+    // 构建位置字符串：城市, 州, 国家
+    const parts = [city, state, country].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : '-';
+  }, [booking.hotel, booking.hotelOffer]);
 
   const checkInDate = useMemo(() => {
-    const date = booking.hotelOffer?.checkInDate;
+    // 优先使用 booking.checkIn，如果没有则使用 booking.hotelOffer?.checkInDate
+    const date = booking.checkIn || booking.hotelOffer?.checkInDate;
     return date ? formatDate(date) : '-';
-  }, [booking.hotelOffer, formatDate]);
+  }, [booking.checkIn, booking.hotelOffer, formatDate]);
 
   const checkOutDate = useMemo(() => {
-    const date = booking.hotelOffer?.checkOutDate;
+    // 优先使用 booking.checkOut，如果没有则使用 booking.hotelOffer?.checkOutDate
+    const date = booking.checkOut || booking.hotelOffer?.checkOutDate;
     return date ? formatDate(date) : '-';
-  }, [booking.hotelOffer, formatDate]);
+  }, [booking.checkOut, booking.hotelOffer, formatDate]);
 
   const price = useMemo(() => {
     const priceObj = booking.hotelOffer?.offers?.[0]?.price || booking.price;
