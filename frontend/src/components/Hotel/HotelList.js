@@ -223,14 +223,15 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
                 }}
                 onClick={() => handleSelectHotel(hotel)}
               >
-                <CardContent>
-                  <Grid container spacing={2}>
+                <CardContent sx={{ py: 2 }}>
+                  <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
                     {/* 酒店图片占位 */}
-                    <Grid item xs={12} sm={3}>
+                    <Grid item xs={12} sm={3} sx={{ display: 'flex' }}>
                       <Box
                         sx={{
                           width: '100%',
-                          height: { xs: 150, sm: 120 },
+                          height: '100%',
+                          minHeight: { xs: 120, sm: 140 },
                           bgcolor: 'grey.200',
                           borderRadius: 2,
                           display: 'flex',
@@ -238,7 +239,7 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
                           justifyContent: 'center',
                         }}
                       >
-                        <HotelIcon sx={{ fontSize: { xs: 48, sm: 40 }, color: 'grey.400' }} />
+                        <HotelIcon sx={{ fontSize: { xs: 48, sm: 64 }, color: 'grey.400' }} />
                       </Box>
                     </Grid>
 
