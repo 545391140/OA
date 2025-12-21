@@ -76,23 +76,24 @@ backend/
 frontend/
 ├── src/
 │   ├── pages/
-│   │   ├── Flight/                # 航班相关页面（已有）
-│   │   │   ├── FlightSearch.js
-│   │   │   ├── FlightList.js
-│   │   │   ├── FlightDetail.js
-│   │   │   └── BookingManagement.js
-│   │   └── Hotel/                # 酒店相关页面（新增）
-│   │       ├── HotelSearch.js     # 酒店搜索页面
-│   │       ├── HotelList.js       # 酒店列表页面
+│   │   ├── Flight/                # 航班相关页面（修改）
+│   │   │   ├── FlightSearch.js    # 修改：增加 Tab 页，包含机票和酒店搜索
+│   │   │   ├── FlightList.js      # 航班列表（已有，保持不变）
+│   │   │   ├── FlightDetail.js    # 航班详情（已有）
+│   │   │   └── BookingManagement.js # 预订管理（已有，可扩展支持酒店）
+│   │   └── Hotel/                 # 酒店相关页面（新增）
+│   │       ├── HotelList.js       # 酒店列表组件
 │   │       ├── HotelDetail.js     # 酒店详情页面
-│   │       └── BookingManagement.js # 预订管理页面
+│   │       └── HotelBookingForm.js # 酒店预订表单
 │   ├── components/
-│   │   ├── Flight/                # 航班组件（已有）
+│   │   ├── Flight/                # 航班组件（已有，保持不变）
+│   │   │   ├── FlightSearchForm.js # 机票搜索表单（已有）
+│   │   │   └── FlightFilterBar.js # 航班筛选栏（已有）
 │   │   └── Hotel/                 # 酒店组件（新增）
-│   │       ├── HotelSearchForm.js  # 搜索表单组件
+│   │       ├── HotelSearchForm.js  # 酒店搜索表单组件
 │   │       ├── HotelCard.js       # 酒店卡片组件
-│   │       ├── BookingForm.js     # 预订表单组件
-│   │       └── HotelFilters.js    # 筛选器组件
+│   │       ├── HotelFilterBar.js  # 酒店筛选栏组件
+│   │       └── HotelBookingForm.js # 酒店预订表单组件
 │   └── services/
 │       ├── flightService.js       # 前端航班 API 服务（已有）
 │       └── hotelService.js        # 前端酒店 API 服务（新增）
@@ -1817,22 +1818,292 @@ module.exports = mongoose.model('HotelBooking', HotelBookingSchema);
 
 ## 6. 前端实现
 
-### 6.1 酒店搜索页面 (`HotelSearch.js`)
+### 6.1 预订搜索页面（Tab 页设计）
+
+**设计说明：**
+- 修改现有的 `FlightSearch.js` 页面，增加 Tab 页切换功能
+- 页面顶部添加 Tab 切换器：**机票预订** Tab（现有功能）和 **酒店预订** Tab（新增功能）
+- 两个 Tab 共享页面布局，但展示不同的搜索表单和搜索结果
+- 保持现有机票搜索功能完全不变，仅增加 Tab 切换和酒店搜索功能
+
+**页面结构：**
+```
+┌─────────────────────────────────────┐
+│  Tab 切换器                          │
+│  [机票预订] [酒店预订]                │
+├─────────────────────────────────────┤
+│  根据选中的 Tab 显示对应的搜索表单      │
+│  - 机票 Tab: 显示航班搜索表单         │
+│  - 酒店 Tab: 显示酒店搜索表单         │
+├─────────────────────────────────────┤
+│  搜索结果区域                         │
+│  - 机票 Tab: 显示航班列表             │
+│  - 酒店 Tab: 显示酒店列表             │
+└─────────────────────────────────────┘
+```
+
+**修改后的页面组件结构：**
+
+```javascript
+// frontend/src/pages/Flight/FlightSearch.js（修改）
+import { Tabs, Tab, Box } from '@mui/material';
+import FlightSearchForm from './FlightSearchForm';  // 机票搜索表单（现有）
+import HotelSearchForm from '../Hotel/HotelSearchForm';  // 酒店搜索表单（新增）
+import FlightList from './FlightList';  // 航班列表（现有）
+import HotelList from '../Hotel/HotelList';  // 酒店列表（新增）
+
+const FlightSearch = () => {
+  const [activeTab, setActiveTab] = useState(0); // 0: 机票, 1: 酒店
+  
+  return (
+    <Container>
+      {/* Tab 切换器 */}
+      <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+        <Tab label="机票预订" icon={<FlightTakeoffIcon />} />
+        <Tab label="酒店预订" icon={<HotelIcon />} />
+      </Tabs>
+      
+      {/* 根据 Tab 显示对应的搜索表单和结果 */}
+      {activeTab === 0 ? (
+        <>
+          <FlightSearchForm onSearch={handleFlightSearch} />
+          {flightResults && <FlightList flights={flightResults} />}
+        </>
+      ) : (
+        <>
+          <HotelSearchForm onSearch={handleHotelSearch} />
+          {hotelResults && <HotelList hotels={hotelResults} />}
+        </>
+      )}
+    </Container>
+  );
+};
+```
+
+**Tab 页功能说明：**
+
+#### 6.1.1 机票预订 Tab（现有功能，保持不变）
 
 **功能：**
-- 搜索表单（城市/位置、入住日期、退房日期、客人数量、房间数量）
+- 航班搜索表单（出发地、目的地、日期、乘客数量、舱位等级）
+- 往返/单程切换
+- 航班搜索结果展示
+- 航班筛选和排序
+- 航班详情查看和预订
+
+**组件：**
+- `FlightSearchForm`: 机票搜索表单（现有）
+- `FlightList`: 航班列表（现有）
+- `FlightFilterBar`: 航班筛选栏（现有）
+
+#### 6.1.2 酒店预订 Tab（新增功能）
+
+**功能：**
+- 酒店搜索表单（城市/位置、入住日期、退房日期、客人数量、房间数量）
 - 日期选择器
 - 城市/位置自动完成
 - 酒店名称自动完成
-- 搜索结果展示
+- 酒店搜索结果展示
 - 筛选器（价格、评分、设施等）
 
 **主要组件：**
-- `HotelSearchForm`: 搜索表单
-- `HotelCard`: 酒店卡片（列表展示）
-- `HotelFilters`: 筛选器（价格、评分、设施等）
+- `HotelSearchForm`: 酒店搜索表单（新增）
+- `HotelCard`: 酒店卡片（列表展示，新增）
+- `HotelFilters`: 筛选器（价格、评分、设施等，新增）
 
-### 6.2 酒店详情页面 (`HotelDetail.js`)
+**Tab 切换逻辑：**
+- 切换 Tab 时，清空当前 Tab 的搜索结果
+- 保持各 Tab 的搜索条件独立（使用不同的 state）
+- 支持从 URL 参数或路由状态恢复 Tab 状态和搜索条件
+- 使用 sessionStorage 保存各 Tab 的搜索状态，便于页面刷新后恢复
+
+**实现细节：**
+
+1. **状态管理：**
+```javascript
+const [activeTab, setActiveTab] = useState(0); // 0: 机票, 1: 酒店
+const [flightSearchParams, setFlightSearchParams] = useState({});
+const [hotelSearchParams, setHotelSearchParams] = useState({});
+const [flightResults, setFlightResults] = useState(null);
+const [hotelResults, setHotelResults] = useState(null);
+```
+
+2. **Tab 切换处理：**
+```javascript
+const handleTabChange = (event, newValue) => {
+  setActiveTab(newValue);
+  // 切换 Tab 时，可以保存当前 Tab 的状态到 sessionStorage
+  if (newValue === 0) {
+    // 切换到机票 Tab，保存酒店搜索状态
+    saveHotelSearchState();
+  } else {
+    // 切换到酒店 Tab，保存机票搜索状态
+    saveFlightSearchState();
+  }
+};
+```
+
+3. **URL 参数支持：**
+```javascript
+// 支持从 URL 参数指定默认 Tab
+// /flight/search?tab=hotel 直接打开酒店 Tab
+const searchParams = new URLSearchParams(location.search);
+const tabParam = searchParams.get('tab');
+if (tabParam === 'hotel') {
+  setActiveTab(1);
+}
+```
+
+4. **路由集成：**
+```javascript
+// 从差旅申请详情页跳转时，可以指定 Tab
+// navigate('/flight/search', { state: { defaultTab: 'hotel' } });
+useEffect(() => {
+  if (location.state?.defaultTab === 'hotel') {
+    setActiveTab(1);
+  }
+}, [location.state]);
+```
+
+**页面布局示例：**
+```javascript
+<Container maxWidth="lg" sx={{ py: 4 }}>
+  {/* Tab 切换器 - 固定在顶部 */}
+  <Paper elevation={1} sx={{ mb: 3 }}>
+    <Tabs 
+      value={activeTab} 
+      onChange={handleTabChange}
+      variant="fullWidth"
+      sx={{
+        borderBottom: 1,
+        borderColor: 'divider',
+        '& .MuiTab-root': {
+          minHeight: 64,
+          fontSize: '16px',
+          fontWeight: 600,
+        },
+      }}
+    >
+      <Tab 
+        label="机票预订" 
+        icon={<FlightTakeoffIcon />} 
+        iconPosition="start"
+      />
+      <Tab 
+        label="酒店预订" 
+        icon={<HotelIcon />} 
+        iconPosition="start"
+      />
+    </Tabs>
+  </Paper>
+
+  {/* 根据 Tab 显示对应内容 */}
+  <Box>
+    {activeTab === 0 ? (
+      <>
+        {/* 机票搜索表单 */}
+        <FlightSearchForm 
+          initialValues={flightSearchParams}
+          onSearch={handleFlightSearch}
+        />
+        {/* 航班搜索结果 */}
+        {flightResults && (
+          <FlightList 
+            flights={flightResults}
+            searchParams={flightSearchParams}
+            onSelectFlight={handleSelectFlight}
+          />
+        )}
+      </>
+    ) : (
+      <>
+        {/* 酒店搜索表单 */}
+        <HotelSearchForm 
+          initialValues={hotelSearchParams}
+          onSearch={handleHotelSearch}
+        />
+        {/* 酒店搜索结果 */}
+        {hotelResults && (
+          <HotelList 
+            hotels={hotelResults}
+            searchParams={hotelSearchParams}
+            onSelectHotel={handleSelectHotel}
+          />
+        )}
+      </>
+    )}
+  </Box>
+</Container>
+```
+
+### 6.2 酒店搜索表单组件 (`HotelSearchForm.js`)
+
+**功能：**
+- 城市/位置输入（支持城市代码或经纬度）
+- 入住日期选择器
+- 退房日期选择器
+- 客人数量选择
+- 房间数量选择
+- 酒店名称搜索（可选）
+- 搜索按钮
+
+**组件设计：**
+```javascript
+// frontend/src/components/Hotel/HotelSearchForm.js
+const HotelSearchForm = ({ onSearch, initialValues }) => {
+  const [cityCode, setCityCode] = useState('');
+  const [checkInDate, setCheckInDate] = useState(null);
+  const [checkOutDate, setCheckOutDate] = useState(null);
+  const [adults, setAdults] = useState(1);
+  const [roomQuantity, setRoomQuantity] = useState(1);
+  
+  const handleSearch = () => {
+    onSearch({
+      cityCode,
+      checkInDate: checkInDate?.format('YYYY-MM-DD'),
+      checkOutDate: checkOutDate?.format('YYYY-MM-DD'),
+      adults,
+      roomQuantity,
+    });
+  };
+  
+  return (
+    <Paper>
+      {/* 搜索表单字段 */}
+      {/* 搜索按钮 */}
+    </Paper>
+  );
+};
+```
+
+### 6.3 酒店列表组件 (`HotelList.js`)
+
+**功能：**
+- 显示酒店搜索结果列表
+- 酒店卡片展示（名称、地址、价格、评分、设施等）
+- 酒店筛选和排序
+- 点击酒店卡片跳转到详情页
+
+**组件设计：**
+```javascript
+// frontend/src/components/Hotel/HotelList.js
+const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
+  return (
+    <Box>
+      <HotelFilterBar hotels={hotels} />
+      {hotels.map(hotel => (
+        <HotelCard 
+          key={hotel.hotel.hotelId} 
+          hotel={hotel}
+          onClick={() => onSelectHotel(hotel)}
+        />
+      ))}
+    </Box>
+  );
+};
+```
+
+### 6.4 酒店详情页面 (`HotelDetail.js`)
 
 **功能：**
 - 显示酒店详细信息
@@ -1842,7 +2113,7 @@ module.exports = mongoose.model('HotelBooking', HotelBookingSchema);
 - 预订按钮
 - 返回搜索列表
 
-### 6.3 预订表单 (`BookingForm.js`)
+### 6.5 酒店预订表单 (`HotelBookingForm.js`)
 
 **功能：**
 - 客人信息表单（姓名、联系方式）
@@ -1852,7 +2123,14 @@ module.exports = mongoose.model('HotelBooking', HotelBookingSchema);
 - 特殊要求输入
 - 提交预订
 
-### 6.4 预订管理页面 (`BookingManagement.js`)
+### 6.6 预订管理页面 (`BookingManagement.js`)
+
+**功能：**
+- 显示用户的所有预订（机票和酒店）
+- Tab 切换：机票预订 / 酒店预订
+- 预订状态筛选
+- 查看预订详情
+- 取消预订
 
 **功能：**
 - 显示用户的所有预订
@@ -1860,7 +2138,7 @@ module.exports = mongoose.model('HotelBooking', HotelBookingSchema);
 - 查看预订详情
 - 取消预订
 
-### 6.5 API 服务 (`hotelService.js`)
+### 6.7 API 服务 (`hotelService.js`)
 
 ```javascript
 // 搜索酒店
@@ -1972,18 +2250,42 @@ Travel 模型已有 `bookings` 数组，需要确保：
 #### 7.3.1 从差旅申请创建酒店预订
 
 **流程：**
-1. 用户在差旅申请详情页点击"预订酒店"
-2. 系统自动填充搜索条件：
-   - 城市：从 `destination` 获取
+1. 用户在差旅申请详情页点击"预订酒店"按钮
+2. 跳转到预订搜索页面（`/flight/search`），并自动切换到酒店 Tab
+3. 系统自动填充搜索条件：
+   - 城市：从 `destination` 获取（如果 destination 是 Location 对象，提取 cityCode）
    - 入住日期：从 `startDate` 获取
    - 退房日期：从 `endDate` 获取
-   - 客人信息：从 `employee` 关联的用户信息获取
-3. 用户搜索并选择酒店
-4. 创建预订时，自动关联 `travelId`
-5. 预订成功后，更新 Travel 模型：
+   - 客人数量：默认 1 人（可从用户信息获取）
+   - 房间数量：默认 1 间
+4. 用户搜索并选择酒店
+5. 点击酒店卡片，跳转到酒店详情/预订页面
+6. 在预订页面，`travelId` 自动填充（从路由参数或 state 传递）
+7. 用户填写客人信息和特殊要求，提交预订
+8. 创建预订时，自动关联 `travelId`
+9. 预订成功后，更新 Travel 模型：
    - 添加到 `bookings` 数组
    - 更新 `estimatedCost`（累加酒店费用）
    - 更新状态（如果所有预订都完成）
+
+**跳转代码示例：**
+```javascript
+// 在差旅申请详情页
+const handleBookHotel = () => {
+  navigate('/flight/search', {
+    state: {
+      defaultTab: 'hotel',  // 指定默认 Tab
+      travelId: travel._id,  // 传递差旅申请ID
+      prefillData: {         // 预填充数据
+        cityCode: getCityCode(travel.destination),
+        checkInDate: travel.startDate,
+        checkOutDate: travel.endDate,
+        adults: 1,
+      },
+    },
+  });
+};
+```
 
 #### 7.3.2 独立创建酒店预订（必须关联差旅申请）
 
@@ -2165,12 +2467,43 @@ DELETE /api/hotels/bookings/:id
 
 **添加酒店预订区域：**
 - 显示已关联的酒店预订列表
-- "预订酒店"按钮（跳转到酒店搜索页，自动填充信息）
+- "预订酒店"按钮（跳转到预订搜索页面，自动切换到酒店 Tab，并填充搜索条件）
 - 预订状态和费用显示
+- 与机票预订区域并列显示，保持一致的 UI 风格
 
-#### 7.6.2 酒店预订页面
+**跳转实现：**
+```javascript
+// 在差旅申请详情页添加"预订酒店"按钮
+<Button
+  variant="contained"
+  startIcon={<HotelIcon />}
+  onClick={() => {
+    navigate('/flight/search', {
+      state: {
+        defaultTab: 'hotel',
+        travelId: travel._id,
+        prefillData: {
+          cityCode: extractCityCode(travel.destination),
+          checkInDate: travel.startDate,
+          checkOutDate: travel.endDate,
+        },
+      },
+    });
+  }}
+>
+  预订酒店
+</Button>
+```
 
-**添加差旅申请选择：**
+#### 7.6.2 酒店预订页面（Tab 页）
+
+**在机票搜索页面的酒店 Tab 中：**
+- 酒店搜索表单（城市、日期、客人、房间）
+- 酒店搜索结果列表
+- 点击酒店卡片跳转到酒店详情页
+
+**在酒店详情/预订页面：**
+- 添加差旅申请选择
 - 必填字段：选择关联的差旅申请
 - 下拉选择：显示用户的所有可用差旅申请
 - 搜索功能：支持按差旅单号搜索
@@ -2300,11 +2633,16 @@ AMADEUS_API_ENV=test  # test 或 production
 - ✅ 扩展 Amadeus API 服务模块（添加酒店搜索功能）
 - ✅ 实现酒店搜索功能
 - ✅ 实现价格确认功能
+- ✅ 修改机票搜索页面，增加 Tab 页切换功能
+- ✅ 实现酒店搜索表单组件
+- ✅ 实现酒店列表组件
 - ✅ 基础前端页面
 
 ### 阶段 2: 预订功能（1-2周）
 - ✅ 实现预订创建功能
 - ✅ 实现预订管理功能
+- ✅ 完善 Tab 页切换逻辑和状态管理
+- ✅ 实现从差旅申请页面跳转到酒店 Tab 的功能
 - ✅ 完善前端界面
 - ✅ 错误处理
 
