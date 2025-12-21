@@ -5,10 +5,16 @@
 ### 1.1 功能描述
 基于 Amadeus Self-Service APIs 实现酒店查询和预订功能，集成到现有的差旅费用管理系统中。
 
+**实现方式：**
+- ✅ **酒店业务**：使用 Amadeus Node.js SDK（简化代码，自动认证管理）
+- ✅ **航班业务**：继续使用 Axios + `base.js` Token 管理（保持现有实现）
+
 ### 1.2 技术栈
 - **后端**: Node.js + Express + MongoDB
 - **前端**: React + Material-UI
 - **第三方API**: Amadeus for Developers (Self-Service APIs)
+- **SDK**: Amadeus Node.js SDK (`amadeus` 包) - 酒店业务使用
+- **HTTP客户端**: Axios - 航班业务使用
 - **参考文档**: https://developers.amadeus.com/self-service/apis-docs/guides/developer-guides/
 
 ### 1.3 功能范围
@@ -325,25 +331,31 @@ frontend/
 ```
 backend/services/amadeus/
 ├── index.js              # 统一导出入口（扩展）
-├── base.js               # 基础功能（复用）
-├── flightSearch.js       # 航班搜索（已有）
-├── booking.js            # 航班预订（已有）
-├── hotelSearch.js        # 酒店搜索和价格确认（新增）
-└── hotelBooking.js       # 酒店预订创建和订单管理（新增）
+├── base.js               # 基础功能（复用，航班业务使用）
+├── flightSearch.js       # 航班搜索（已有，Axios方式）
+├── booking.js            # 航班预订（已有，Axios方式）
+├── hotelSearchSdk.js     # 酒店搜索和价格确认（新增，SDK方式）
+└── hotelBookingSdk.js   # 酒店预订创建和订单管理（新增，SDK方式）
 ```
 
 **模块职责划分：**
 
-| 文件 | 职责 | 预估行数 |
-|------|------|---------|
-| `base.js` | 配置验证、Token 获取/刷新、基础工具函数（复用） | ~150 行 |
-| `hotelSearch.js` | 酒店搜索、价格确认、酒店名称自动完成、酒店评分 | ~300 行 |
-| `hotelBooking.js` | 创建预订、订单管理（获取/取消/修改） | ~350 行 |
-| `index.js` | 统一导出、向后兼容（扩展） | ~80 行 |
+| 文件 | 职责 | 实现方式 | 预估行数 |
+|------|------|---------|---------|
+| `base.js` | 配置验证、Token 获取/刷新、基础工具函数（航班业务使用） | Axios | ~150 行 |
+| `hotelSearchSdk.js` | 酒店搜索、价格确认、酒店名称自动完成、酒店评分 | SDK | ~250 行 |
+| `hotelBookingSdk.js` | 创建预订、订单管理（获取/取消/修改） | SDK | ~200 行 |
+| `index.js` | 统一导出、向后兼容（扩展） | - | ~80 行 |
+
+**重要说明：**
+- ✅ **航班业务**：继续使用 Axios + `base.js` Token 管理
+- ✅ **酒店业务**：使用 Amadeus SDK，SDK 内部自动管理 Token
+- ✅ **双 Token 方案**：两个独立的 Token 缓存，互不干扰
+- ✅ **统一接口**：通过统一的服务接口封装，控制器层调用方式一致
 
 ---
 
-### 5.1.1 酒店搜索模块 (`amadeus/hotelSearch.js`)
+### 5.1.1 酒店搜索模块 (`amadeus/hotelSearchSdk.js`)
 
 **职责：**
 - 酒店报价搜索
@@ -353,11 +365,29 @@ backend/services/amadeus/
 - 酒店评分查询
 
 **依赖：**
-- 依赖 `base.js` 获取 Token 和 Base URL
+- 使用 Amadeus Node.js SDK（`amadeus` 包）
+- SDK 内部自动管理 Token 和认证
+
+**安装 SDK：**
+```bash
+npm install amadeus --save
+```
 
 **导出接口：**
 ```javascript
-const { getAccessToken, getBaseURL } = require('./base');
+const Amadeus = require('amadeus');
+const config = require('../../config');
+const logger = require('../../utils/logger');
+
+// 初始化 SDK 实例
+const amadeus = new Amadeus({
+  clientId: config.AMADEUS_API_KEY || process.env.AMADEUS_API_KEY,
+  clientSecret: config.AMADEUS_API_SECRET || process.env.AMADEUS_API_SECRET,
+  hostname: (config.AMADEUS_API_ENV || process.env.AMADEUS_API_ENV || 'test') === 'production' 
+    ? 'production' 
+    : 'test',
+  logger: logger, // 可选：使用项目的 logger
+});
 
 module.exports = {
   // 酒店搜索（三个接口）
@@ -371,12 +401,15 @@ module.exports = {
   // 价格确认和评分
   confirmHotelPrice,            // 确认酒店价格
   getHotelRatings,              // 酒店评分查询
+  
+  // SDK 实例（可选导出，用于高级用法）
+  amadeus,
 };
 ```
 
 **详细实现：**
 
-#### 5.1.1.1 通过地理坐标搜索酒店
+#### 5.1.1.1 通过地理坐标搜索酒店（使用 SDK）
 
 ```javascript
 /**
@@ -404,37 +437,20 @@ async function searchHotelsByGeocode(searchParams) {
       throw new Error('缺少必填参数：latitude 和 longitude');
     }
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
-
-    // 构建查询参数
-    const params = {
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    const response = await amadeus.referenceData.locations.hotels.byGeocode.get({
       latitude: latitude.toString(),
       longitude: longitude.toString(),
       radius: radius.toString(),
       hotelSource,
-    };
+    });
 
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v1/reference-data/locations/hotels/by-geocode`,
-      {
-        params,
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
-      logger.debug(`找到 ${response.data.data.length} 个酒店`);
+    if (response.data && response.data) {
+      logger.debug(`找到 ${response.data.length} 个酒店`);
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       throw new Error('API响应格式错误');
@@ -442,18 +458,14 @@ async function searchHotelsByGeocode(searchParams) {
   } catch (error) {
     logger.error('通过地理坐标搜索酒店失败:', error.message);
     
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return searchHotelsByGeocode(searchParams);
-    }
-    
-    throw error;
+    // SDK 自动处理 Token 刷新，如果失败会抛出错误
+    // 统一错误处理适配器
+    throw handleSdkError(error);
   }
 }
 ```
 
-#### 5.1.1.2 通过城市搜索酒店
+#### 5.1.1.2 通过城市搜索酒店（使用 SDK）
 
 ```javascript
 /**
@@ -477,54 +489,30 @@ async function searchHotelsByCity(searchParams) {
       throw new Error('缺少必填参数：cityCode');
     }
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
-
-    // 构建查询参数
-    const params = {
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    const response = await amadeus.referenceData.locations.hotels.byCity.get({
       cityCode,
       hotelSource,
-    };
+    });
 
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v1/reference-data/locations/hotels/by-city`,
-      {
-        params,
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
-      logger.debug(`找到 ${response.data.data.length} 个酒店`);
+    if (response.data && response.data) {
+      logger.debug(`找到 ${response.data.length} 个酒店`);
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       throw new Error('API响应格式错误');
     }
   } catch (error) {
     logger.error('通过城市搜索酒店失败:', error.message);
-    
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return searchHotelsByCity(searchParams);
-    }
-    
-    throw error;
+    throw handleSdkError(error);
   }
 }
 ```
 
-#### 5.1.1.3 通过酒店ID搜索酒店
+#### 5.1.1.3 通过酒店ID搜索酒店（使用 SDK）
 
 ```javascript
 /**
@@ -544,189 +532,86 @@ async function searchHotelsByHotels(searchParams) {
       throw new Error('缺少必填参数：hotelIds');
     }
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
-
-    // 构建查询参数
-    const params = {
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    const response = await amadeus.referenceData.locations.hotels.byHotels.get({
       hotelIds: hotelIds, // 可以是单个ID或逗号分隔的多个ID
-    };
+    });
 
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v1/reference-data/locations/hotels/by-hotels`,
-      {
-        params,
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
-      logger.debug(`找到 ${response.data.data.length} 个酒店`);
+    if (response.data && response.data) {
+      logger.debug(`找到 ${response.data.length} 个酒店`);
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       throw new Error('API响应格式错误');
     }
   } catch (error) {
     logger.error('通过酒店ID搜索酒店失败:', error.message);
-    
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return searchHotelsByHotels(searchParams);
-    }
-    
-    throw error;
+    throw handleSdkError(error);
   }
 }
 ```
 
-#### 5.1.1.4 根据酒店ID搜索报价
+#### 5.1.1.4 搜索酒店报价（使用 SDK）
 
+**注意**：根据 API 文档 v3.0.9，酒店报价搜索 API (`/v3/shopping/hotel-offers`) 要求使用 `hotelIds` 参数（必填）。建议先通过 `by-geocode`、`by-city` 或 `by-hotels` 接口获取酒店列表，然后使用 `hotelIds` 搜索报价。
+
+**推荐流程：**
+1. 用户输入搜索条件（城市、坐标等）
+2. 调用 `searchHotelsByGeocode` 或 `searchHotelsByCity` 获取酒店列表
+3. 提取酒店ID（建议使用多个酒店ID）
+4. 调用 `searchHotelOffersByHotel` 搜索报价
+
+**实现示例：**
 ```javascript
-/**
- * 搜索酒店报价
- * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-search
- * 
- * @param {Object} searchParams - 搜索参数
- * @param {String} searchParams.cityCode - 城市代码（IATA代码，如：NYC）
- * @param {String} searchParams.checkInDate - 入住日期 (YYYY-MM-DD)
- * @param {String} searchParams.checkOutDate - 退房日期 (YYYY-MM-DD)
- * @param {Number} searchParams.adults - 成人数量（1-9）
- * @param {Number} searchParams.roomQuantity - 房间数量（默认1）
- * @param {String} searchParams.currencyCode - 货币代码（可选，如：USD, CNY）
- * @param {Number} searchParams.priceRange - 价格范围（可选）
- * @param {Number} searchParams.ratings - 评分筛选（可选，1-5）
- * @param {Array} searchParams.hotelIds - 酒店ID列表（可选）
- * @param {String} searchParams.hotelName - 酒店名称（可选）
- * @param {Number} searchParams.latitude - 纬度（可选，与经度一起使用）
- * @param {Number} searchParams.longitude - 经度（可选，与纬度一起使用）
- * @param {Number} searchParams.radius - 搜索半径（可选，单位：公里）
- * @param {Number} searchParams.radiusUnit - 半径单位（可选，KM 或 MI）
- * @returns {Promise<Object>} 包含data和meta的响应对象
- */
-async function searchHotelOffers(searchParams) {
+// 完整的酒店搜索流程（使用 SDK）
+async function searchHotelsWithOffers(searchParams) {
   try {
-    const {
-      cityCode,
-      checkInDate,
-      checkOutDate,
-      adults = 1,
-      roomQuantity = 1,
-      currencyCode = 'USD',
-      priceRange,
-      ratings,
-      hotelIds,
-      hotelName,
-      latitude,
-      longitude,
-      radius,
-      radiusUnit = 'KM',
-    } = searchParams;
-
-    // 参数验证
-    if (!cityCode && !(latitude && longitude)) {
-      throw new Error('缺少必填参数：cityCode 或 (latitude 和 longitude)');
-    }
-    if (!checkInDate || !checkOutDate) {
-      throw new Error('缺少必填参数：checkInDate 和 checkOutDate');
-    }
-    if (adults < 1 || adults > 9) {
-      throw new Error('成人数量必须在1-9之间');
-    }
-
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
-
-    // 构建查询参数
-    const params = new URLSearchParams({
-      checkInDate,
-      checkOutDate,
-      adults: adults.toString(),
-      roomQuantity: roomQuantity.toString(),
-      currencyCode,
-    });
-
+    const { cityCode, checkInDate, checkOutDate, adults, roomQuantity } = searchParams;
+    
+    // 步骤1：获取酒店列表
+    let hotels = [];
     if (cityCode) {
-      params.append('cityCode', cityCode);
+      const hotelsResult = await searchHotelsByCity({ cityCode });
+      hotels = hotelsResult.data || [];
     }
-    if (latitude && longitude) {
-      params.append('latitude', latitude.toString());
-      params.append('longitude', longitude.toString());
-      if (radius) {
-        params.append('radius', radius.toString());
-        params.append('radiusUnit', radiusUnit);
-      }
+    
+    // 步骤2：提取酒店ID（使用前5个）
+    const hotelIds = hotels.slice(0, 5).map(h => h.hotelId).filter(Boolean);
+    
+    if (hotelIds.length === 0) {
+      return { success: true, data: [], meta: {} };
     }
-    if (priceRange) {
-      params.append('priceRange', priceRange.toString());
-    }
-    if (ratings) {
-      params.append('ratings', ratings.toString());
-    }
-    if (hotelIds && Array.isArray(hotelIds)) {
-      hotelIds.forEach(id => params.append('hotelIds', id));
-    }
-    if (hotelName) {
-      params.append('hotelName', hotelName);
-    }
-
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v3/shopping/hotel-offers?${params.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
-      logger.debug(`搜索到 ${response.data.data.length} 个酒店报价`);
-      return {
-        success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
-      };
-    } else {
-      throw new Error('API响应格式错误');
-    }
+    
+    // 步骤3：搜索报价
+    const offersResult = await searchHotelOffersByHotel({
+      hotelIds,
+      checkInDate,
+      checkOutDate,
+      adults,
+      roomQuantity,
+    });
+    
+    return offersResult;
   } catch (error) {
     logger.error('搜索酒店报价失败:', error.message);
-    
-    // 如果是认证错误，尝试刷新Token后重试一次
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return searchHotelOffers(searchParams);
-    }
-    
     throw error;
   }
 }
 ```
 
-#### 5.1.1.5 根据酒店ID搜索报价
+#### 5.1.1.5 根据酒店ID搜索报价（使用 SDK）
 
 ```javascript
 /**
  * 根据酒店ID搜索报价
- * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-offers-search
+ * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-search
+ * API v3.0.9: getMultiHotelOffers
  * 
  * @param {Object} searchParams - 搜索参数
- * @param {String} searchParams.hotelId - 酒店ID（必填）
+ * @param {String|Array} searchParams.hotelIds - 酒店ID（单个或多个，建议使用多个以提高成功率）
  * @param {String} searchParams.checkInDate - 入住日期 (YYYY-MM-DD)
  * @param {String} searchParams.checkOutDate - 退房日期 (YYYY-MM-DD)
  * @param {Number} searchParams.adults - 成人数量（1-9）
@@ -737,7 +622,7 @@ async function searchHotelOffers(searchParams) {
 async function searchHotelOffersByHotel(searchParams) {
   try {
     const {
-      hotelId,
+      hotelIds,
       checkInDate,
       checkOutDate,
       adults = 1,
@@ -746,19 +631,20 @@ async function searchHotelOffersByHotel(searchParams) {
     } = searchParams;
 
     // 参数验证
-    if (!hotelId) {
-      throw new Error('缺少必填参数：hotelId');
+    if (!hotelIds) {
+      throw new Error('缺少必填参数：hotelIds');
     }
     if (!checkInDate || !checkOutDate) {
       throw new Error('缺少必填参数：checkInDate 和 checkOutDate');
     }
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
+    // 处理 hotelIds：如果是数组，转换为逗号分隔的字符串
+    const hotelIdsParam = Array.isArray(hotelIds) ? hotelIds.join(',') : hotelIds;
 
-    // 构建查询参数
-    const params = new URLSearchParams({
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    // 注意：SDK 的 hotelOffersSearch.get 方法需要 hotelIds 作为字符串参数
+    const response = await amadeus.shopping.hotelOffersSearch.get({
+      hotelIds: hotelIdsParam,
       checkInDate,
       checkOutDate,
       adults: adults.toString(),
@@ -766,48 +652,30 @@ async function searchHotelOffersByHotel(searchParams) {
       currencyCode,
     });
 
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v3/shopping/hotel-offers/by-hotel?hotelIds=${hotelId}&${params.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
-      logger.debug(`搜索到酒店 ${hotelId} 的报价`);
+    if (response.data && response.data) {
+      logger.debug(`搜索到 ${response.data.length} 个酒店报价`);
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       throw new Error('API响应格式错误');
     }
   } catch (error) {
     logger.error('根据酒店ID搜索报价失败:', error.message);
-    
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return searchHotelOffersByHotel(searchParams);
-    }
-    
-    throw error;
+    throw handleSdkError(error);
   }
 }
 ```
 
-#### 5.1.1.6 确认酒店价格
+#### 5.1.1.6 确认酒店价格（使用 SDK）
 
 ```javascript
 /**
  * 确认酒店价格
- * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-offers-price
+ * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-search
+ * API v3.0.9: getOfferPricing
  * 
  * @param {String} offerId - 酒店报价ID（必填）
  * @returns {Promise<Object>} 确认后的价格信息
@@ -818,28 +686,16 @@ async function confirmHotelPrice(offerId) {
       throw new Error('offerId参数必填');
     }
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    // 注意：SDK 使用 hotelOfferSearch(offerId).get() 方法
+    const response = await amadeus.shopping.hotelOfferSearch(offerId).get();
 
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v3/shopping/hotel-offers/${offerId}/price`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
+    if (response.data && response.data) {
       logger.debug('酒店价格确认成功');
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       throw new Error('价格确认API响应格式错误');
@@ -847,108 +703,61 @@ async function confirmHotelPrice(offerId) {
   } catch (error) {
     logger.error('确认酒店价格失败:', error.message);
     
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return confirmHotelPrice(offerId);
-    }
-    
     // 处理价格变更错误
-    if (error.response?.status === 400) {
-      const errorDetail = error.response.data?.errors?.[0]?.detail;
+    if (error.code === 400 || error.statusCode === 400) {
+      const errorDetail = error.description || error.message;
       if (errorDetail && errorDetail.includes('price')) {
         throw new Error('酒店价格已变更，请重新搜索');
       }
     }
     
-    throw error;
+    throw handleSdkError(error);
   }
 }
 ```
 
-#### 5.1.1.7 酒店名称自动完成（已废弃，使用 searchHotelsByGeocode 替代）
+#### 5.1.1.7 酒店名称自动完成（使用 searchHotelsByGeocode 替代）
 
+**说明**：酒店名称自动完成功能可以直接使用 `searchHotelsByGeocode` 接口实现，无需单独的自动完成接口。
+
+**前端实现示例：**
 ```javascript
-/**
- * 酒店名称自动完成
- * 参考：https://developers.amadeus.com/self-service/category/hotel/api-doc/hotel-name-autocomplete
- * 
- * @param {Object} searchParams - 搜索参数
- * @param {Number} searchParams.latitude - 纬度（必填）
- * @param {Number} searchParams.longitude - 经度（必填）
- * @param {String} searchParams.keyword - 关键词（可选）
- * @param {Number} searchParams.radius - 搜索半径（可选，单位：公里）
- * @param {String} searchParams.hotelSource - 酒店来源（可选，ALL, AMADEUS, EXPEDIA）
- * @returns {Promise<Object>} 酒店列表
- */
-async function getHotelNameAutocomplete(searchParams) {
-  try {
-    const {
-      latitude,
-      longitude,
-      keyword,
-      radius = 5,
-      hotelSource = 'ALL',
-    } = searchParams;
-
-    // 参数验证
-    if (!latitude || !longitude) {
-      throw new Error('缺少必填参数：latitude 和 longitude');
-    }
-
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
-
-    // 构建查询参数
-    const params = new URLSearchParams({
-      latitude: latitude.toString(),
-      longitude: longitude.toString(),
-      radius: radius.toString(),
-      hotelSource,
-    });
-
-    if (keyword) {
-      params.append('keyword', keyword);
-    }
-
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v1/reference-data/locations/hotels/by-geocode?${params.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
-      logger.debug(`找到 ${response.data.data.length} 个酒店`);
-      return {
-        success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
-      };
-    } else {
-      throw new Error('API响应格式错误');
-    }
-  } catch (error) {
-    logger.error('酒店名称自动完成失败:', error.message);
-    
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return getHotelNameAutocomplete(searchParams);
-    }
-    
-    throw error;
-  }
-}
+// 前端：酒店名称自动完成
+const handleHotelNameInput = async (keyword) => {
+  if (!keyword || keyword.length < 2) return;
+  
+  // 使用当前用户位置或默认位置
+  const { latitude, longitude } = getUserLocation();
+  
+  // 调用搜索接口（SDK方式）
+  const result = await searchHotelsByGeocode({
+    latitude,
+    longitude,
+    radius: 10, // 扩大搜索半径
+  });
+  
+  // 在前端过滤包含关键词的酒店
+  const filteredHotels = result.data.filter(hotel => 
+    hotel.name.toLowerCase().includes(keyword.toLowerCase())
+  );
+  
+  return filteredHotels;
+};
 ```
 
-#### 5.1.1.8 酒店评分查询
+**注意**：如果 API 支持 `keyword` 参数，也可以直接使用：
+```javascript
+// 如果 API 支持 keyword 参数（需要验证）
+const response = await amadeus.referenceData.locations.hotels.byGeocode.get({
+  latitude: latitude.toString(),
+  longitude: longitude.toString(),
+  radius: radius.toString(),
+  hotelSource: 'ALL',
+  keyword: keyword, // 如果支持
+});
+```
+
+#### 5.1.1.8 酒店评分查询（使用 SDK）
 
 ```javascript
 /**
@@ -968,49 +777,55 @@ async function getHotelRatings(searchParams) {
       throw new Error('缺少必填参数：hotelIds');
     }
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    const response = await amadeus.eReputation.hotelSentiments.get({
+      hotelIds: hotelIds, // 逗号分隔的酒店ID列表
+    });
 
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v2/e-reputation/hotel-sentiments?hotelIds=${hotelIds}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
-      logger.debug(`获取到 ${response.data.data.length} 个酒店的评分`);
+    if (response.data && response.data) {
+      logger.debug(`获取到 ${response.data.length} 个酒店的评分`);
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       throw new Error('API响应格式错误');
     }
   } catch (error) {
     logger.error('获取酒店评分失败:', error.message);
-    
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return getHotelRatings(searchParams);
-    }
-    
-    throw error;
+    throw handleSdkError(error);
   }
+}
+
+/**
+ * 统一错误处理适配器
+ * 将 SDK 错误格式转换为统一的错误格式
+ */
+function handleSdkError(error) {
+  // SDK 错误格式
+  if (error.description) {
+    return {
+      code: error.code,
+      message: error.description,
+      status: error.statusCode || 500,
+      originalError: error,
+    };
+  }
+  
+  // 其他错误
+  return {
+    code: 'UNKNOWN_ERROR',
+    message: error.message,
+    status: 500,
+    originalError: error,
+  };
 }
 ```
 
 ---
 
-### 5.1.2 酒店预订管理模块 (`amadeus/hotelBooking.js`)
+### 5.1.2 酒店预订管理模块 (`amadeus/hotelBookingSdk.js`)
 
 **职责：**
 - 创建酒店预订
@@ -1019,11 +834,23 @@ async function getHotelRatings(searchParams) {
 - 修改订单（如果支持）
 
 **依赖：**
-- 依赖 `base.js` 获取 Token 和 Base URL
+- 使用 Amadeus Node.js SDK（`amadeus` 包）
+- SDK 内部自动管理 Token 和认证
 
 **导出接口：**
 ```javascript
-const { getAccessToken, getBaseURL } = require('./base');
+const Amadeus = require('amadeus');
+const config = require('../../config');
+const logger = require('../../utils/logger');
+
+// 初始化 SDK 实例（与 hotelSearchSdk.js 共享）
+const amadeus = new Amadeus({
+  clientId: config.AMADEUS_API_KEY || process.env.AMADEUS_API_KEY,
+  clientSecret: config.AMADEUS_API_SECRET || process.env.AMADEUS_API_SECRET,
+  hostname: (config.AMADEUS_API_ENV || process.env.AMADEUS_API_ENV || 'test') === 'production' 
+    ? 'production' 
+    : 'test',
+});
 
 module.exports = {
   createHotelBooking,
@@ -1034,7 +861,7 @@ module.exports = {
 
 **详细实现：**
 
-#### 5.1.2.1 创建酒店预订
+#### 5.1.2.1 创建酒店预订（使用 SDK）
 
 ```javascript
 /**
@@ -1077,11 +904,7 @@ async function createHotelBooking(bookingData) {
       }
     });
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
-
-    // 构建请求体
+    // 构建请求体（SDK 格式）
     const requestBody = {
       data: {
         offerId,
@@ -1106,46 +929,27 @@ async function createHotelBooking(bookingData) {
       requestBody.data.rooms = rooms;
     }
 
-    // 调用 API
-    const response = await axios.post(
-      `${baseURL}/v1/booking/hotel-bookings`,
-      requestBody,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/vnd.amadeus+json',
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 60000, // 预订可能需要更长时间
-      }
-    );
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    const response = await amadeus.booking.hotelBookings.post(requestBody);
 
-    if (response.data && response.data.data) {
+    if (response.data && response.data) {
       logger.debug('酒店预订成功');
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       throw new Error('预订API响应格式错误');
     }
   } catch (error) {
     logger.error('创建酒店预订失败:', error.message);
-    
-    // 如果是认证错误，尝试刷新Token后重试一次
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return createHotelBooking(bookingData);
-    }
-    
-    throw error;
+    throw handleSdkError(error);
   }
 }
 ```
 
-#### 5.1.2.2 获取订单详情
+#### 5.1.2.2 获取订单详情（使用 SDK）
 
 ```javascript
 /**
@@ -1161,47 +965,26 @@ async function getHotelBooking(bookingId) {
       throw new Error('bookingId参数必填');
     }
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    const response = await amadeus.booking.hotelBooking(bookingId).get();
 
-    // 调用 API
-    const response = await axios.get(
-      `${baseURL}/v1/booking/hotel-bookings/${bookingId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
+    if (response.data && response.data) {
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       throw new Error('获取订单详情API响应格式错误');
     }
   } catch (error) {
     logger.error('获取订单详情失败:', error.message);
-    
-    // 如果是认证错误，尝试刷新Token后重试一次
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return getHotelBooking(bookingId);
-    }
-    
-    throw error;
+    throw handleSdkError(error);
   }
 }
 ```
 
-#### 5.1.2.3 取消订单
+#### 5.1.2.3 取消订单（使用 SDK）
 
 ```javascript
 /**
@@ -1217,28 +1000,15 @@ async function cancelHotelBooking(bookingId) {
       throw new Error('bookingId参数必填');
     }
 
-    // 获取 Access Token
-    const accessToken = await getAccessToken();
-    const baseURL = getBaseURL();
+    // 使用 SDK 调用 API（SDK 自动处理认证和 Token）
+    const response = await amadeus.booking.hotelBooking(bookingId).delete();
 
-    // 调用 API
-    const response = await axios.delete(
-      `${baseURL}/v1/booking/hotel-bookings/${bookingId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.amadeus+json',
-        },
-        timeout: 30000,
-      }
-    );
-
-    if (response.data && response.data.data) {
+    if (response.data && response.data) {
       logger.debug('订单取消成功');
       return {
         success: true,
-        data: response.data.data,
-        meta: response.data.meta || {},
+        data: response.data,
+        meta: response.meta || {},
       };
     } else {
       // DELETE请求可能返回204 No Content
@@ -1250,20 +1020,14 @@ async function cancelHotelBooking(bookingId) {
   } catch (error) {
     logger.error('取消订单失败:', error.message);
     
-    // 如果是认证错误，尝试刷新Token后重试一次
-    if (error.response?.status === 401) {
-      logger.debug('Token可能过期，尝试刷新后重试...');
-      await refreshAccessToken();
-      return cancelHotelBooking(bookingId);
-    }
-    
     // 处理订单无法取消的情况
-    if (error.response?.status === 400 || error.response?.status === 422) {
-      const errorDetail = error.response.data?.errors?.[0]?.detail;
+    if (error.code === 400 || error.statusCode === 400 || 
+        error.code === 422 || error.statusCode === 422) {
+      const errorDetail = error.description || error.message;
       throw new Error(errorDetail || '订单无法取消，可能已超过取消时限');
     }
     
-    throw error;
+    throw handleSdkError(error);
   }
 }
 ```
@@ -1276,28 +1040,28 @@ async function cancelHotelBooking(bookingId) {
 
 ```javascript
 // backend/services/amadeus/index.js
-const base = require('./base');
-const flightSearch = require('./flightSearch');
-const flightBooking = require('./booking');
-const hotelSearch = require('./hotelSearch');
-const hotelBooking = require('./hotelBooking');
+const base = require('./base');                    // 航班业务使用（Axios）
+const flightSearch = require('./flightSearch');     // 航班业务使用（Axios）
+const flightBooking = require('./booking');        // 航班业务使用（Axios）
+const hotelSearchSdk = require('./hotelSearchSdk'); // 酒店业务使用（SDK）
+const hotelBookingSdk = require('./hotelBookingSdk'); // 酒店业务使用（SDK）
 
 // 统一导出所有功能
 module.exports = {
-  // 基础功能
+  // 基础功能（航班业务使用）
   ...base,
   
-  // 航班搜索
+  // 航班搜索（Axios方式）
   ...flightSearch,
   
-  // 航班预订管理
+  // 航班预订管理（Axios方式）
   ...flightBooking,
   
-  // 酒店搜索
-  ...hotelSearch,
+  // 酒店搜索（SDK方式）
+  ...hotelSearchSdk,
   
-  // 酒店预订管理
-  ...hotelBooking,
+  // 酒店预订管理（SDK方式）
+  ...hotelBookingSdk,
 };
 ```
 
@@ -1305,13 +1069,25 @@ module.exports = {
 ```javascript
 // 方式一：直接导入（推荐）
 const amadeusApi = require('./services/amadeus');
-await amadeusApi.searchHotelOffers({...});
+
+// 航班搜索（使用 Axios + base.js Token）
+await amadeusApi.searchFlightOffers({...});
+
+// 酒店搜索（使用 SDK，SDK 内部管理 Token）
+await amadeusApi.searchHotelsByGeocode({...});
+await amadeusApi.searchHotelOffersByHotel({...});
 await amadeusApi.createHotelBooking({...});
 
 // 方式二：按需导入
-const { searchHotelOffers } = require('./services/amadeus/hotelSearch');
-const { createHotelBooking } = require('./services/amadeus/hotelBooking');
+const { searchHotelsByGeocode } = require('./services/amadeus/hotelSearchSdk');
+const { createHotelBooking } = require('./services/amadeus/hotelBookingSdk');
 ```
+
+**重要说明：**
+- ✅ 航班业务继续使用 `base.js` 的 Token 管理（Axios 方式）
+- ✅ 酒店业务使用 SDK 的 Token 管理（SDK 内部自动处理）
+- ✅ 两个 Token 缓存完全独立，互不干扰
+- ✅ 通过统一的服务接口封装，控制器层调用方式一致
 
 ---
 
@@ -2875,10 +2651,18 @@ DELETE /api/hotels/bookings/:id
 ### 11.2 依赖安装
 
 ```bash
-# 无需额外安装依赖，复用现有依赖
+# 安装 Amadeus Node.js SDK（酒店业务使用）
+npm install amadeus --save
+
+# 现有依赖（航班业务使用，保持不变）
 # axios 已在项目中安装
 # Amadeus API 配置已存在
 ```
+
+**依赖说明：**
+- ✅ **amadeus** (新增)：Amadeus Node.js SDK，用于酒店业务
+- ✅ **axios** (已有)：用于航班业务和基础 API 调用
+- ✅ 两个依赖可以共存，互不影响
 
 ### 11.3 环境变量
 
@@ -2901,27 +2685,32 @@ AMADEUS_API_ENV=test  # test 或 production
 ## 12. 开发阶段
 
 ### 阶段 1: 基础功能（1-2周）
-- ✅ 扩展 Amadeus API 服务模块（添加酒店搜索功能）
-- ✅ 实现酒店搜索功能
-- ✅ 实现价格确认功能
+- ✅ 安装 Amadeus Node.js SDK：`npm install amadeus --save`
+- ✅ 创建酒店搜索模块（`hotelSearchSdk.js`），使用 SDK 实现
+- ✅ 实现酒店搜索功能（三个接口：by-geocode, by-city, by-hotels）
+- ✅ 实现酒店报价搜索功能（`hotelOffersSearch.get`）
+- ✅ 实现价格确认功能（`hotelOfferSearch(offerId).get`）
+- ✅ 实现酒店评分查询（`hotelSentiments.get`）
 - ✅ 修改机票搜索页面，增加 Tab 页切换功能
 - ✅ 实现酒店搜索表单组件
 - ✅ 实现酒店列表组件
 - ✅ 基础前端页面
 
 ### 阶段 2: 预订功能（1-2周）
-- ✅ 实现预订创建功能
-- ✅ 实现预订管理功能
+- ✅ 创建酒店预订模块（`hotelBookingSdk.js`），使用 SDK 实现
+- ✅ 实现预订创建功能（`hotelBookings.post`）
+- ✅ 实现预订管理功能（`hotelBooking(bookingId).get/delete`）
 - ✅ 完善 Tab 页切换逻辑和状态管理
 - ✅ 实现从差旅申请页面跳转到酒店 Tab 的功能
 - ✅ 完善前端界面
-- ✅ 错误处理
+- ✅ 统一错误处理适配器（`handleSdkError`）
 
 ### 阶段 3: 集成与优化（1周）
 - ✅ 与差旅申请集成
 - ✅ 数据权限控制
 - ✅ 性能优化
 - ✅ 测试和文档
+- ✅ 验证双 Token 方案正常工作
 
 ## 13. 参考资料
 
@@ -2943,10 +2732,17 @@ AMADEUS_API_ENV=test  # test 或 production
 
 ### 13.3 SDK 和工具
 
-- [Amadeus Node.js SDK](https://github.com/amadeus4dev/amadeus-node)
+- [Amadeus Node.js SDK](https://github.com/amadeus4dev/amadeus-node) ⭐ **酒店业务使用**
 - [Amadeus Node.js SDK 文档](https://amadeus4dev.github.io/amadeus-node/)
+- [SDK GitHub 仓库](https://github.com/amadeus4dev/amadeus-node) - 217 stars, 1.6k+ 项目使用
 - [Postman Collection](https://developers.amadeus.com/self-service/apis-docs/guides/developer-tools/postman-collection-5)
 - [Mock Server](https://developers.amadeus.com/self-service/apis-docs/guides/developer-tools/mock-server-5)
+
+**SDK 使用说明：**
+- ✅ 酒店业务使用 Amadeus Node.js SDK
+- ✅ SDK 自动处理 OAuth 2.0 认证和 Token 刷新
+- ✅ SDK 提供简洁的 API 调用接口
+- ✅ SDK 版本：v11.0.0（最新版本）
 
 ### 13.4 认证和授权
 
@@ -3012,7 +2808,37 @@ Accept: application/vnd.amadeus+json
 
 ## 15. 注意事项
 
-### 15.1 ⚠️ 代码隔离原则（重要）
+### 15.1 ⚠️ SDK 使用说明
+
+**SDK 初始化：**
+```javascript
+const Amadeus = require('amadeus');
+
+const amadeus = new Amadeus({
+  clientId: process.env.AMADEUS_API_KEY,
+  clientSecret: process.env.AMADEUS_API_SECRET,
+  hostname: 'test' // 或 'production'
+});
+```
+
+**SDK 优势：**
+- ✅ 自动处理 Token 获取和刷新
+- ✅ 代码更简洁，减少样板代码
+- ✅ 官方维护，API 更新及时
+- ✅ 提供 TypeScript 类型定义（如果使用 TypeScript）
+
+**双 Token 方案：**
+- ✅ 航班业务：使用 `base.js` 的 Token 缓存（Axios 方式）
+- ✅ 酒店业务：使用 SDK 的 Token 缓存（SDK 内部管理）
+- ✅ 两个 Token 缓存完全独立，互不干扰
+- ✅ 不会影响原有业务功能
+
+**错误处理：**
+- ✅ 使用统一的错误处理适配器（`handleSdkError`）
+- ✅ 将 SDK 错误格式转换为统一的错误格式
+- ✅ 确保控制器层错误处理一致
+
+### 15.2 ⚠️ 代码隔离原则（重要）
 
 **核心约束：**
 - **严禁修改机票预订相关代码**：在实现酒店预订功能期间，不得修改任何机票预订相关的现有代码
