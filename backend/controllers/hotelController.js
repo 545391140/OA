@@ -3,7 +3,10 @@ const { ReadPreference } = require('mongodb');
 const logger = require('../utils/logger');
 const HotelBooking = require('../models/HotelBooking');
 const Travel = require('../models/Travel');
+const User = require('../models/User');
+const Role = require('../models/Role');
 const { checkResourceAccess } = require('../middleware/dataAccess');
+const { buildDataScopeQuery } = require('../utils/dataScope');
 const { ErrorFactory } = require('../utils/AppError');
 const amadeusApiService = require('../services/amadeus');
 const notificationService = require('../services/notificationService');
@@ -621,8 +624,38 @@ exports.getBookings = async (req, res) => {
   try {
     const { travelId, status } = req.query;
     
-    let query = {};
-    query.employee = req.user.id; // 数据权限：只能查看自己的预订
+    // 获取用户和角色信息
+    const [user, role] = await Promise.all([
+      User.findById(req.user.id),
+      Role.findOne({ code: req.user.role, isActive: true }).lean(),
+    ]);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在',
+      });
+    }
+    
+    // 检查功能权限：是否有查看酒店预订的权限
+    const hasPermission = role && (
+      role.code === 'ADMIN' || 
+      role.permissions?.includes('hotel.booking.view') ||
+      role.permissions?.includes('hotels:manage:all')
+    );
+    
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: '无权查看酒店预订列表',
+      });
+    }
+    
+    // 使用统一的数据权限管理构建查询条件
+    const dataScopeQuery = await buildDataScopeQuery(user, role, 'employee');
+    
+    // 合并查询条件
+    let query = { ...dataScopeQuery };
     
     if (travelId) {
       query.travelId = travelId; // 按差旅申请筛选
