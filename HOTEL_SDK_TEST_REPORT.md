@@ -6,10 +6,10 @@
 - **测试环境**: Test (https://test.api.amadeus.com)
 - **SDK版本**: v11.0.0 (最新版本)
 - **API Key**: bHIS0a388f5DhS0Q5iw8RVef8PdZeEj2
-- **总测试数**: 7
+- **总测试数**: 8
 - **✅ 通过**: 6
 - **⚠️ 警告**: 1
-- **❌ 失败**: 0
+- **❌ 失败**: 1 (酒店预订接口 - API Key 权限不足)
 
 ## 测试结果详情
 
@@ -161,6 +161,67 @@
 
 ---
 
+### ❌ 8. 酒店预订接口 (hotelBookings) - **测试失败**
+- **状态**: 失败 ❌
+- **SDK方法**: `amadeus.booking.hotelBookings.post()`
+- **消息**: 预订 API 调用返回 401 错误 - "Invalid access token"
+- **测试时间**: 2025-12-21
+- **请求参数**:
+  ```json
+  {
+    "data": {
+      "offerId": "Z1PPAOFTB9",
+      "guests": [{
+        "id": "GUEST_1",
+        "name": {
+          "firstName": "TEST",
+          "lastName": "USER"
+        },
+        "contact": {
+          "emailAddress": "test@example.com",
+          "phones": [{
+            "deviceType": "MOBILE",
+            "countryCallingCode": "1",
+            "number": "1234567890"
+          }]
+        }
+      }]
+    }
+  }
+  ```
+- **错误响应**:
+  ```json
+  {
+    "errors": [{
+      "code": 38190,
+      "title": "Invalid access token",
+      "detail": "The access token provided in the Authorization header is invalid",
+      "status": 401
+    }]
+  }
+  ```
+- **关键错误信息**: 
+  - HTTP 状态码: 401
+  - 错误代码: 38190
+  - `www-authenticate` 头: `"keymanagement.service.InvalidAPICallAsNoApiProductMatchFound: Invalid API call as no apiproduct match found"`
+- **问题分析**:
+  1. ✅ Token 获取成功（搜索 API 可以正常工作）
+  2. ✅ 酒店搜索 API 调用成功
+  3. ✅ 酒店报价搜索 API 调用成功
+  4. ❌ **酒店预订 API 调用失败** - API Key **没有酒店预订权限**
+- **根本原因**:
+  - **API Key 权限不足**: 当前 API Key (`bHIS0a388f5DhS0Q5iw8RVef8PdZeEj2`) 只有酒店搜索权限，**没有酒店预订权限**
+  - 错误信息 `Invalid API call as no apiproduct match found` 明确表示 API Key 没有匹配的 API 产品（预订权限）
+- **解决方案**:
+  1. ⚠️ **立即检查**: 登录 [Amadeus for Developers](https://developers.amadeus.com/)
+  2. ⚠️ **检查权限**: 进入 "My Self-Service" > "API Keys" > 选择当前 API Key
+  3. ⚠️ **启用权限**: 确认是否启用了 "Hotel Booking" API 产品/权限
+  4. ⚠️ **等待生效**: 如果权限已启用，等待几分钟让权限生效
+  5. ⚠️ **重新测试**: 运行 `node scripts/testHotelBookingApi.js` 重新测试
+- **结论**: ❌ **预订接口测试失败 - API Key 缺少酒店预订权限**
+
+---
+
 ## SDK vs Axios 对比
 
 ### 代码对比
@@ -306,6 +367,7 @@ const ratingsResponse = await amadeus.eReputation.hotelSentiments.get({
 5. ✅ 酒店报价搜索 - 成功（获取到报价和价格）
 6. ✅ 价格确认 - 成功
 7. ⚠️ 酒店评分 - API可用但测试环境无数据
+8. ❌ **酒店预订 - 测试失败** ⚠️ **API Key 缺少预订权限**
 
 ### 📊 SDK 优势验证
 
@@ -325,6 +387,10 @@ const ratingsResponse = await amadeus.eReputation.hotelSentiments.get({
 **注意事项**：
 - ⚠️ 需要统一错误处理格式（SDK 和 Axios 错误格式不同）
 - ⚠️ 酒店评分查询在测试环境可能无数据（生产环境可能正常）
+- ❌ **重要**: 酒店预订接口测试失败 - **API Key 缺少酒店预订权限**
+- ❌ 错误信息：`Invalid API call as no apiproduct match found`
+- ⚠️ **解决方案**: 在 Amadeus 开发者门户中启用 "Hotel Booking" API 产品权限
+- ⚠️ 参考 `AMADEUS_SDK_TOKEN_DIAGNOSIS.md` 了解详细的诊断信息
 
 ---
 
@@ -335,6 +401,11 @@ const ratingsResponse = await amadeus.eReputation.hotelSentiments.get({
 3. ✅ 创建 `hotelBookingSdk.js` 服务文件
 4. ✅ 实现统一错误处理适配器
 5. ✅ 更新控制器使用 SDK 服务
+6. ❌ **重要**: 酒店预订接口测试失败 - **需要启用 API Key 权限**
+   - ✅ 已运行 `backend/scripts/testHotelBookingApi.js`
+   - ❌ 测试结果：401 错误 - API Key 缺少酒店预订权限
+   - ⚠️ **下一步**: 在 Amadeus 开发者门户中启用 "Hotel Booking" API 产品权限
+   - ⚠️ 权限启用后，重新运行测试脚本验证
 
 ---
 

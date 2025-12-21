@@ -2550,7 +2550,16 @@
       "landline": "Landline",
       "countryCode": "Country Code",
       "phoneNumber": "Phone Number",
-      "specialRequests": "Special Requests"
+      "specialRequests": "Special Requests",
+      "confirm": "Confirm",
+      "bookingSummary": "Booking Summary",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "guests": "Guests",
+      "rooms": "Rooms",
+      "room": "Room",
+      "submit": "Submit",
+      "submitting": "Submitting..."
     }
   }
 }

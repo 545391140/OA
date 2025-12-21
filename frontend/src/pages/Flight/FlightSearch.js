@@ -455,7 +455,46 @@ const FlightSearch = () => {
         }
       }
       
-      const results = allResults;
+      let results = allResults;
+      
+      // 合并酒店基本信息到报价结果中
+      // 创建酒店ID到酒店信息的映射
+      const hotelInfoMap = new Map();
+      hotels.forEach(hotel => {
+        if (hotel.hotelId) {
+          hotelInfoMap.set(hotel.hotelId, hotel);
+        }
+      });
+      
+      // 将基本信息合并到报价结果中
+      results = results.map(offerResult => {
+        const hotelId = offerResult.hotel?.hotelId;
+        const baseInfo = hotelInfoMap.get(hotelId);
+        
+        if (baseInfo && offerResult.hotel) {
+          // 合并基本信息（地址、联系方式、描述、媒体等）
+          return {
+            ...offerResult,
+            hotel: {
+              ...offerResult.hotel,
+              // 如果报价结果中没有这些字段，使用基本信息中的
+              address: offerResult.hotel.address || baseInfo.address,
+              contact: offerResult.hotel.contact || baseInfo.contact,
+              description: offerResult.hotel.description || baseInfo.description,
+              media: offerResult.hotel.media || baseInfo.media,
+              amenities: offerResult.hotel.amenities || baseInfo.amenities,
+              // 保留报价结果中的其他字段
+              hotelId: offerResult.hotel.hotelId,
+              name: offerResult.hotel.name || baseInfo.name,
+              cityCode: offerResult.hotel.cityCode || baseInfo.cityCode,
+              geoCode: offerResult.hotel.geoCode || baseInfo.geoCode,
+              rating: offerResult.hotel.rating || baseInfo.rating,
+            },
+          };
+        }
+        return offerResult;
+      });
+      
       const successRate = hotelIds.length > 0 ? ((results.length / hotelIds.length) * 100).toFixed(1) : 0;
       
       console.log(`💰 总计找到 ${results.length} 个酒店报价（从 ${hotelIds.length} 个酒店中，成功率: ${successRate}%）`);
@@ -463,15 +502,19 @@ const FlightSearch = () => {
       // 详细分析结果
       if (results.length > 0) {
         console.log('📊 报价数据结构分析:');
-        results.forEach((hotel, index) => {
-          console.log(`   酒店 ${index + 1}:`, {
-            hotelId: hotel.hotel?.hotelId,
-            hotelName: hotel.hotel?.name,
-            offersCount: hotel.offers?.length || 0,
-            price: hotel.offers?.[0]?.price?.total,
-            currency: hotel.offers?.[0]?.price?.currency,
-          });
-        });
+        const firstResult = results[0];
+        console.log('📋 第一个酒店完整数据结构:', JSON.stringify({
+          hotel: {
+            hotelId: firstResult.hotel?.hotelId,
+            name: firstResult.hotel?.name,
+            address: firstResult.hotel?.address,
+            contact: firstResult.hotel?.contact,
+            description: firstResult.hotel?.description,
+            media: firstResult.hotel?.media,
+            rating: firstResult.hotel?.rating,
+          },
+          offersCount: firstResult.offers?.length || 0,
+        }, null, 2));
       } else {
         console.log('⚠️  未找到任何报价，可能原因：');
         console.log('   1. 指定日期没有可用房间');

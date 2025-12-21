@@ -3,18 +3,11 @@
  * 负责酒店搜索、价格确认、酒店评分等功能
  */
 
-const Amadeus = require('amadeus');
-const config = require('../../config');
 const logger = require('../../utils/logger');
+const { getAmadeusInstance } = require('./amadeusSdkInstance');
 
-// 初始化 SDK 实例
-const amadeus = new Amadeus({
-  clientId: process.env.AMADEUS_HOTEL_API_KEY || config.AMADEUS_API_KEY || process.env.AMADEUS_API_KEY,
-  clientSecret: process.env.AMADEUS_HOTEL_API_SECRET || config.AMADEUS_API_SECRET || process.env.AMADEUS_API_SECRET,
-  hostname: (config.AMADEUS_API_ENV || process.env.AMADEUS_API_ENV || 'test') === 'production' 
-    ? 'production' 
-    : 'test',
-});
+// 获取共享的 SDK 实例（确保与 hotelBookingSdk.js 使用相同的配置）
+const amadeus = getAmadeusInstance();
 
 /**
  * 统一错误处理适配器
@@ -240,18 +233,25 @@ async function searchHotelOffersByHotel(searchParams) {
           meta: response.meta || {},
         };
       }
-      // 如果data不是数组，记录详细信息
-      logger.warn('API响应data不是数组:', {
+      // 如果data不是数组，记录详细信息并返回空数组（而不是抛出错误）
+      // 这种情况通常发生在API返回空对象或其他非预期格式时
+      logger.warn('API响应data不是数组，返回空结果:', {
         dataType: typeof response.data,
         data: response.data,
+        hotelIdsCount: Array.isArray(hotelIds) ? hotelIds.length : 1,
       });
-      throw new Error(`API响应格式错误：期望数组，实际为 ${typeof response.data}`);
+      // 返回空数组而不是抛出错误
+      return {
+        success: true,
+        data: [],
+        meta: response?.meta || {},
+      };
     } else {
       // 响应为空或data不存在
       logger.warn('API响应为空或data不存在:', {
         hasResponse: !!response,
         hasData: !!response?.data,
-        response: response,
+        hotelIdsCount: Array.isArray(hotelIds) ? hotelIds.length : 1,
       });
       // 返回空数组而不是抛出错误（某些酒店可能没有可用报价）
       return {

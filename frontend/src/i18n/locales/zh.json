@@ -2523,7 +2523,16 @@
       "nights": "晚",
       "select": "选择",
       "searchName": "按酒店名称搜索",
-      "searchNamePlaceholder": "请输入酒店名称"
+      "searchNamePlaceholder": "请输入酒店名称",
+      "noResults": "未找到酒店",
+      "unknownHotel": "未知酒店",
+      "city": "城市",
+      "address": "地址",
+      "phone": "电话",
+      "email": "邮箱",
+      "description": "描述",
+      "freeCancellation": "免费取消",
+      "nonRefundable": "不可退款"
     },
     "detail": {
       "back": "返回",
@@ -2561,7 +2570,16 @@
       "landline": "座机",
       "countryCode": "国家代码",
       "phoneNumber": "电话号码",
-      "specialRequests": "特殊要求"
+      "specialRequests": "特殊要求",
+      "confirm": "确认",
+      "bookingSummary": "预订摘要",
+      "checkIn": "入住日期",
+      "checkOut": "退房日期",
+      "guests": "客人",
+      "rooms": "房间数",
+      "room": "房间",
+      "submit": "提交",
+      "submitting": "提交中..."
     }
   }
 }

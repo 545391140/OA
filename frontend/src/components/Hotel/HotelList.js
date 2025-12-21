@@ -3,7 +3,7 @@
  * 显示搜索结果中的酒店列表
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -25,6 +25,8 @@ import {
   AttachMoney as MoneyIcon,
   Bed as BedIcon,
   People as PeopleIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
@@ -38,6 +40,16 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
   const [priceRange, setPriceRange] = useState([0, 100000]); // 增加价格上限，避免过滤掉高价格酒店
   const [minRating, setMinRating] = useState(0);
   const [hotelNameFilter, setHotelNameFilter] = useState(''); // 酒店名称搜索
+  const [imageErrors, setImageErrors] = useState({}); // 记录图片加载失败的酒店ID
+  const isMountedRef = useRef(true); // 跟踪组件挂载状态
+
+  // 组件挂载/卸载时更新 ref
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // 格式化价格
   const formatPrice = (price) => {
@@ -60,14 +72,22 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
     if (!hotels || hotels.length === 0) return [];
 
     console.log(`🏨 HotelList 收到 ${hotels.length} 个酒店数据`);
-    console.log('📋 第一个酒店数据结构:', hotels[0] ? {
-      hasHotel: !!hotels[0].hotel,
-      hotelId: hotels[0].hotel?.hotelId,
-      hotelName: hotels[0].hotel?.name,
-      offersCount: hotels[0].offers?.length || 0,
-      hasOffers: !!hotels[0].offers && Array.isArray(hotels[0].offers),
-      price: hotels[0].offers?.[0]?.price,
-    } : '无数据');
+    if (hotels[0]) {
+      const firstHotel = hotels[0];
+      console.log('📋 第一个酒店完整数据结构:', JSON.stringify({
+        hotel: {
+          hotelId: firstHotel.hotel?.hotelId,
+          name: firstHotel.hotel?.name,
+          address: firstHotel.hotel?.address,
+          contact: firstHotel.hotel?.contact,
+          description: firstHotel.hotel?.description,
+          media: firstHotel.hotel?.media,
+          rating: firstHotel.hotel?.rating,
+        },
+        offersCount: firstHotel.offers?.length || 0,
+        hasOffers: !!firstHotel.offers && Array.isArray(firstHotel.offers),
+      }, null, 2));
+    }
 
     let filtered = [...hotels];
 
@@ -225,33 +245,64 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
               >
                 <CardContent sx={{ py: 2 }}>
                   <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
-                    {/* 酒店图片占位 */}
+                    {/* 酒店图片 */}
                     <Grid item xs={12} sm={3} sx={{ display: 'flex' }}>
                       <Box
                         sx={{
                           width: '100%',
                           height: '100%',
-                          minHeight: { xs: 120, sm: 140 },
+                          minHeight: { xs: 200, sm: 240 },
                           bgcolor: 'grey.200',
                           borderRadius: 2,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          position: 'relative',
                         }}
                       >
-                        <HotelIcon sx={{ fontSize: { xs: 48, sm: 64 }, color: 'grey.400' }} />
+                        {hotelInfo.media && hotelInfo.media.length > 0 && !imageErrors[hotelInfo.hotelId] ? (
+                          <img
+                            src={hotelInfo.media[0].uri}
+                            alt={hotelInfo.name || '酒店图片'}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                            onError={() => {
+                              // 图片加载失败时记录错误，但只在组件仍然挂载时更新状态
+                              if (isMountedRef.current && hotelInfo.hotelId) {
+                                setImageErrors(prev => ({
+                                  ...prev,
+                                  [hotelInfo.hotelId]: true,
+                                }));
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <HotelIcon sx={{ fontSize: { xs: 48, sm: 64 }, color: 'grey.400' }} />
+                          </Box>
+                        )}
                       </Box>
                     </Grid>
 
                     {/* 酒店信息 */}
                     <Grid item xs={12} sm={6}>
-                      <Typography variant="h6" gutterBottom>
+                      {/* 酒店名称 */}
+                      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 1.5 }}>
                         {hotelInfo.name || t('hotel.list.unknownHotel') || '未知酒店'}
                       </Typography>
 
                       {/* 评分 */}
                       {hotelInfo.rating && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                           <Rating value={hotelInfo.rating} readOnly size="small" />
                           <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
                             {hotelInfo.rating}
@@ -259,22 +310,93 @@ const HotelList = ({ hotels, searchParams, onSelectHotel }) => {
                         </Box>
                       )}
 
-                      {/* 地址 */}
-                      {hotelInfo.address && (
+                      {/* 城市 */}
+                      {hotelInfo.address?.cityName && (
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                          <LocationIcon fontSize="small" color="action" sx={{ mt: 0.5, mr: 1, flexShrink: 0 }} />
+                          <Typography variant="body2" color="text.secondary">
+                            <strong style={{ marginRight: '4px' }}>{t('hotel.list.city') || '城市'}:</strong>
+                            {hotelInfo.address.cityName}
+                            {hotelInfo.address.countryCode && `, ${hotelInfo.address.countryCode}`}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {/* 详细地址 */}
+                      {hotelInfo.address && (hotelInfo.address.lines?.length > 0 || hotelInfo.address.postalCode || hotelInfo.address.stateCode) && (
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                          <LocationIcon fontSize="small" color="action" sx={{ mt: 0.5, mr: 1, flexShrink: 0 }} />
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                              <strong>{t('hotel.list.address') || '地址'}:</strong>
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {hotelInfo.address.lines && hotelInfo.address.lines.length > 0
+                                ? hotelInfo.address.lines.join(', ')
+                                : ''}
+                              {hotelInfo.address.postalCode && (hotelInfo.address.lines?.length > 0 ? ', ' : '') + hotelInfo.address.postalCode}
+                              {hotelInfo.address.stateCode && (hotelInfo.address.postalCode || hotelInfo.address.lines?.length > 0 ? ', ' : '') + hotelInfo.address.stateCode}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      )}
+
+                      {/* 电话 */}
+                      {hotelInfo.contact?.phone && (
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <LocationIcon fontSize="small" color="action" />
-                          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                            {hotelInfo.address.lines?.[0] || hotelInfo.address.cityName || ''}
-                            {hotelInfo.address.cityName && hotelInfo.address.countryCode && `, ${hotelInfo.address.cityName}, ${hotelInfo.address.countryCode}`}
+                          <PhoneIcon fontSize="small" color="action" sx={{ mr: 1, flexShrink: 0 }} />
+                          <Typography variant="body2" color="text.secondary">
+                            <strong style={{ marginRight: '4px' }}>{t('hotel.list.phone') || '电话'}:</strong>
+                            <a 
+                              href={`tel:${hotelInfo.contact.phone}`} 
+                              style={{ color: 'inherit', textDecoration: 'none' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {hotelInfo.contact.phone}
+                            </a>
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {/* 邮箱 */}
+                      {hotelInfo.contact?.email && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <EmailIcon fontSize="small" color="action" sx={{ mr: 1, flexShrink: 0 }} />
+                          <Typography variant="body2" color="text.secondary">
+                            <strong style={{ marginRight: '4px' }}>{t('hotel.list.email') || '邮箱'}:</strong>
+                            <a 
+                              href={`mailto:${hotelInfo.contact.email}`} 
+                              style={{ color: 'inherit', textDecoration: 'none' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {hotelInfo.contact.email}
+                            </a>
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {/* 酒店描述 */}
+                      {hotelInfo.description?.text && (
+                        <Box sx={{ mt: 1.5, mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ 
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: 1.5,
+                          }}>
+                            <strong style={{ marginRight: '4px' }}>{t('hotel.list.description') || '描述'}:</strong>
+                            {hotelInfo.description.text}
                           </Typography>
                         </Box>
                       )}
 
                       {/* 房间信息 */}
                       {offer.room && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                          <BedIcon fontSize="small" color="action" />
-                          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, mt: 1 }}>
+                          <BedIcon fontSize="small" color="action" sx={{ mr: 1, flexShrink: 0 }} />
+                          <Typography variant="body2" color="text.secondary">
                             {offer.room.typeEstimated?.beds || 1} {t('hotel.list.beds') || '张床'}
                             {offer.room.typeEstimated?.bedType && ` (${offer.room.typeEstimated.bedType})`}
                           </Typography>
