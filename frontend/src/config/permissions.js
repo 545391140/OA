@@ -20,6 +20,12 @@ export const PERMISSIONS = {
   FLIGHT_BOOKING_CREATE: 'flight.booking.create',
   FLIGHT_BOOKING_CANCEL: 'flight.booking.cancel',
   
+  // 酒店管理
+  HOTEL_SEARCH: 'hotel.search',
+  HOTEL_BOOKING_VIEW: 'hotel.booking.view',
+  HOTEL_BOOKING_CREATE: 'hotel.booking.create',
+  HOTEL_BOOKING_CANCEL: 'hotel.booking.cancel',
+  
   // 费用管理
   EXPENSE_VIEW: 'expense.view',
   EXPENSE_CREATE: 'expense.create',

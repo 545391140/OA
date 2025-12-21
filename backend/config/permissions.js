@@ -20,6 +20,12 @@ const PERMISSIONS = {
   FLIGHT_BOOKING_CREATE: 'flight.booking.create',
   FLIGHT_BOOKING_CANCEL: 'flight.booking.cancel',
   
+  // 酒店管理
+  HOTEL_SEARCH: 'hotel.search',
+  HOTEL_BOOKING_VIEW: 'hotel.booking.view',
+  HOTEL_BOOKING_CREATE: 'hotel.booking.create',
+  HOTEL_BOOKING_CANCEL: 'hotel.booking.cancel',
+  
   // 费用管理
   EXPENSE_VIEW: 'expense.view',
   EXPENSE_CREATE: 'expense.create',
@@ -183,6 +189,19 @@ const PERMISSION_GROUPS = [
       { code: PERMISSIONS.FLIGHT_BOOKING_VIEW, label: '查看预订', labelEn: 'View Bookings', labelJa: '予約を表示', labelKo: '예약 보기' },
       { code: PERMISSIONS.FLIGHT_BOOKING_CREATE, label: '创建预订', labelEn: 'Create Booking', labelJa: '予約を作成', labelKo: '예약 생성' },
       { code: PERMISSIONS.FLIGHT_BOOKING_CANCEL, label: '取消预订', labelEn: 'Cancel Booking', labelJa: '予約をキャンセル', labelKo: '예약 취소' }
+    ]
+  },
+  {
+    name: 'hotel',
+    label: '酒店管理',
+    labelEn: 'Hotel Management',
+    labelJa: 'ホテル管理',
+    labelKo: '호텔 관리',
+    permissions: [
+      { code: PERMISSIONS.HOTEL_SEARCH, label: '搜索酒店', labelEn: 'Search Hotels', labelJa: 'ホテルを検索', labelKo: '호텔 검색' },
+      { code: PERMISSIONS.HOTEL_BOOKING_VIEW, label: '查看预订', labelEn: 'View Bookings', labelJa: '予約を表示', labelKo: '예약 보기' },
+      { code: PERMISSIONS.HOTEL_BOOKING_CREATE, label: '创建预订', labelEn: 'Create Booking', labelJa: '予約を作成', labelKo: '예약 생성' },
+      { code: PERMISSIONS.HOTEL_BOOKING_CANCEL, label: '取消预订', labelEn: 'Cancel Booking', labelJa: '予約をキャンセル', labelKo: '예약 취소' }
     ]
   },
   {
@@ -477,6 +496,8 @@ const MENU_PERMISSIONS = {
   '/travel': PERMISSIONS.TRAVEL_VIEW,
   '/flight/search': PERMISSIONS.FLIGHT_SEARCH,
   '/flight/bookings': PERMISSIONS.FLIGHT_BOOKING_VIEW,
+  '/hotel/search': PERMISSIONS.HOTEL_SEARCH,
+  '/hotel/bookings': PERMISSIONS.HOTEL_BOOKING_VIEW,
   '/expenses': PERMISSIONS.EXPENSE_VIEW,
   '/approvals': PERMISSIONS.APPROVAL_VIEW,
   '/reports': PERMISSIONS.REPORT_VIEW,
