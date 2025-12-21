@@ -82,7 +82,7 @@
     "dashboard": "仪表板",
     "travel": "差旅",
     "flightSearch": "机/酒搜索",
-    "flightBookings": "机票预订",
+    "flightBookings": "机/酒预订",
     "expenses": "费用",
     "approvals": "审批",
     "reports": "报告",
@@ -2425,7 +2425,7 @@
       "fee": "费用"
     },
     "booking": {
-      "title": "机票预订",
+      "title": "机/酒预订",
       "selectTravel": "选择差旅申请",
       "travelApplication": "差旅申请",
       "noTravelAvailable": "没有可用的差旅申请，请先创建差旅申请",

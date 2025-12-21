@@ -452,7 +452,7 @@ const BookingManagement = () => {
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" gutterBottom>
-            {t('flight.booking.title') || '机票预订管理'}
+            {t('flight.booking.title') || '机/酒预订管理'}
           </Typography>
           <Button
             variant="contained"

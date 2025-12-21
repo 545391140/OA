@@ -508,7 +508,7 @@ const FlightSearch = () => {
               }}
             >
               <Tab 
-                label={t('flight.search.tab') || '机票预订'} 
+                label={t('flight.search.tab') || '机/酒预订'} 
                 icon={<FlightTakeoffIcon />} 
                 iconPosition="start"
               />
