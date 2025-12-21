@@ -68,7 +68,9 @@
       "KRW": "韩元",
       "EUR": "欧元",
       "GBP": "英镑"
-    }
+    },
+    "copied": "已复制",
+    "copyFailed": "复制失败"
   },
   "notifications": {
     "title": "通知",
@@ -234,7 +236,8 @@
         "passwordMinLength": "密码至少需要6个字符",
         "roleRequired": "请选择角色",
         "positionRequired": "请选择岗位",
-        "departmentRequired": "部门不能为空"
+        "departmentRequired": "部门不能为空",
+        "noPermission": "您没有访问此页面的权限"
       },
       "tableHeaders": {
         "employeeId": "员工ID",
@@ -2425,7 +2428,8 @@
       "fee": "费用"
     },
     "booking": {
-      "title": "机/酒预订",
+      "title": "机票预订列表",
+      "managementTitle": "预订管理",
       "selectTravel": "选择差旅申请",
       "travelApplication": "差旅申请",
       "noTravelAvailable": "没有可用的差旅申请，请先创建差旅申请",
@@ -2553,12 +2557,33 @@
       "confirming": "确认中..."
     },
     "booking": {
+      "title": "酒店预订列表",
+      "newBooking": "新建预订",
+      "search": "搜索预订...",
+      "status": "状态",
+      "bookingReference": "预订参考号",
+      "travelNumber": "差旅单号",
+      "hotelName": "酒店名称",
+      "location": "位置",
+      "dates": "入住日期",
+      "price": "价格",
+      "confirmed": "已确认",
+      "pending": "待确认",
+      "cancelled": "已取消",
+      "noBookings": "暂无预订记录",
+      "tryAdjustingSearch": "请尝试调整搜索条件",
+      "createFirstBooking": "创建您的第一个预订",
+      "cancel": "取消",
+      "cancelBooking": "取消预订",
+      "cancelReason": "取消原因",
+      "cancelSuccess": "预订已取消",
+      "cancelError": "取消失败",
+      "fetchError": "获取预订列表失败",
       "back": "返回",
       "selectTravel": "选择差旅申请",
       "selectTravelDesc": "酒店预订需要关联已审批通过的差旅申请。请选择差旅申请或创建新的差旅申请。",
       "travel": "差旅申请",
       "noTravels": "没有可用的差旅申请，请先创建差旅申请",
-      "cancel": "取消",
       "next": "下一步",
       "guestInfo": "客人信息",
       "addGuest": "添加客人",
@@ -2581,6 +2606,22 @@
       "room": "房间",
       "submit": "提交",
       "submitting": "提交中..."
+    },
+    "bookingDetail": {
+      "title": "酒店预订详情",
+      "notFound": "预订记录不存在",
+      "basicInfo": "基本信息",
+      "bookingReference": "预订参考号",
+      "travelNumber": "差旅单号",
+      "createdAt": "创建时间",
+      "cancelledAt": "取消时间",
+      "checkInOut": "入住/退房信息",
+      "nights": "入住天数",
+      "price": "价格信息",
+      "totalPrice": "总价",
+      "basePrice": "基础价格",
+      "taxes": "税费",
+      "rooms": "房间信息"
     }
   }
 }

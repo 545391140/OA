@@ -250,7 +250,7 @@ const BookingTableRow = React.memo(({ booking, onMenuOpen, getStatusColor, t, sh
 
 BookingTableRow.displayName = 'BookingTableRow';
 
-const BookingManagement = () => {
+const BookingManagement = ({ currentTabType = 'flight' }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
@@ -438,30 +438,29 @@ const BookingManagement = () => {
 
   if (loading && bookings.length === 0) {
     return (
-      <Container maxWidth="xl">
-        <Box sx={{ width: '100%', mt: 2 }}>
-          <LinearProgress />
-        </Box>
-      </Container>
+      <Box sx={{ width: '100%', mt: 2 }}>
+        <LinearProgress />
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ py: 3 }}>
-        {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" gutterBottom>
-            {t('flight.booking.title') || '机/酒预订管理'}
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/flight/search')}
-          >
-            {t('flight.booking.newBooking') || '新建预订'}
-          </Button>
-        </Box>
+    <>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3 }}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            // 根据当前Tab类型跳转到对应的搜索Tab
+            navigate('/flight/search', { 
+              state: { defaultTab: currentTabType } 
+            });
+          }}
+        >
+          {t('flight.booking.newBooking') || '新建预订'}
+        </Button>
+      </Box>
 
         {/* Filters */}
         <Paper sx={{ p: 2, mb: 3 }}>
@@ -576,7 +575,12 @@ const BookingManagement = () => {
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
-                onClick={() => navigate('/flight/search')}
+                onClick={() => {
+                  // 根据当前Tab类型跳转到对应的搜索Tab
+                  navigate('/flight/search', { 
+                    state: { defaultTab: currentTabType } 
+                  });
+                }}
                 sx={{ mt: 2 }}
               >
                 {t('flight.booking.newBooking') || '新建预订'}
@@ -623,11 +627,10 @@ const BookingManagement = () => {
             </Button>
             <Button onClick={handleCancelConfirm} color="error" variant="contained">
               {t('common.confirm') || '确认'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    </Container>
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

@@ -616,13 +616,13 @@ exports.createBooking = async (req, res) => {
 };
 
 /**
- * 获取预订列表（支持按差旅申请筛选）
+ * 获取预订列表（支持按差旅申请筛选、分页和搜索）
  * @route GET /api/hotels/bookings
  * @access Private
  */
 exports.getBookings = async (req, res) => {
   try {
-    const { travelId, status } = req.query;
+    const { travelId, status, page = 1, limit = 20, search } = req.query;
     
     // 获取用户和角色信息
     const [user, role] = await Promise.all([
@@ -661,20 +661,57 @@ exports.getBookings = async (req, res) => {
       query.travelId = travelId; // 按差旅申请筛选
     }
     
-    if (status) {
+    if (status && status !== 'all') {
       query.status = status;
     }
     
+    // 搜索功能：支持按预订参考号、差旅单号搜索
+    // 如果搜索差旅单号，需要先查找对应的 Travel 文档
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      const searchRegex = { $regex: searchTerm, $options: 'i' };
+      
+      // 如果搜索差旅单号，先查找对应的 Travel 文档
+      // 使用统一的数据权限管理构建差旅申请查询条件
+      const travelDataScopeQuery = await buildDataScopeQuery(user, role, 'employee');
+      const travelQuery = {
+        ...travelDataScopeQuery,
+        travelNumber: searchRegex,
+      };
+      
+      const matchingTravels = await Travel.find(travelQuery).select('_id').lean();
+      const travelIds = matchingTravels.map(t => t._id);
+      
+      query.$or = [
+        { bookingReference: searchRegex },
+        ...(travelIds.length > 0 ? [{ travelId: { $in: travelIds } }] : [])
+      ];
+    }
+    
+    // 分页参数
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const skip = (pageNum - 1) * limitNum;
+    
+    // 获取总数
+    const total = await HotelBooking.countDocuments(query);
+    
+    // 获取数据
     const bookings = await HotelBooking.find(query)
       .populate('travelId', 'travelNumber title status')
       .populate('employee', 'firstName lastName email')
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
       .lean();
     
     res.json({
       success: true,
-      count: bookings.length,
       data: bookings,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      pages: Math.ceil(total / limitNum),
     });
   } catch (error) {
     logger.error('获取预订列表失败:', error);

@@ -52,9 +52,11 @@ import FlightSearch from './pages/Flight/FlightSearch';
 import FlightDetail from './pages/Flight/FlightDetail';
 import BookingForm from './pages/Flight/BookingForm';
 import BookingManagement from './pages/Flight/BookingManagement';
+import BookingManagementTabs from './pages/Flight/BookingManagementTabs';
 import BookingDetail from './pages/Flight/BookingDetail';
 import HotelDetail from './pages/Hotel/HotelDetail';
 import HotelBookingForm from './pages/Hotel/HotelBookingForm';
+import HotelBookingDetail from './pages/Hotel/HotelBookingDetail';
 
 function App() {
   const { i18n } = useTranslation();
@@ -169,8 +171,14 @@ function App() {
               <Route 
                 path="flight/bookings" 
                 element={
-                  <PermissionRoute requiredPermissions={PERMISSIONS.FLIGHT_BOOKING_VIEW}>
-                    <BookingManagement />
+                  <PermissionRoute 
+                    requiredPermissions={[
+                      PERMISSIONS.FLIGHT_BOOKING_VIEW, 
+                      PERMISSIONS.HOTEL_BOOKING_VIEW
+                    ]}
+                    requireAll={false}
+                  >
+                    <BookingManagementTabs />
                   </PermissionRoute>
                 } 
               />
@@ -197,6 +205,14 @@ function App() {
                 element={
                   <PermissionRoute requiredPermissions={PERMISSIONS.HOTEL_BOOKING_CREATE}>
                     <HotelBookingForm />
+                  </PermissionRoute>
+                } 
+              />
+              <Route 
+                path="hotel/bookings/:id" 
+                element={
+                  <PermissionRoute requiredPermissions={PERMISSIONS.HOTEL_BOOKING_VIEW}>
+                    <HotelBookingDetail />
                   </PermissionRoute>
                 } 
               />
