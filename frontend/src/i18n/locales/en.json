@@ -2354,7 +2354,9 @@
       "transfer": "Transfer",
       "transferOnce": "1 stop",
       "transferCount": "{count} stops",
-      "days": "d"
+      "days": "d",
+      "selectOutbound": "Select Outbound",
+      "selectReturn": "Select Return"
     },
     "filter": {
       "directOnly": "Direct/Non-stop",

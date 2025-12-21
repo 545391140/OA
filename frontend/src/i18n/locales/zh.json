@@ -2365,7 +2365,9 @@
       "transfer": "中转",
       "transferOnce": "转1次",
       "transferCount": "转{count}次",
-      "days": "天"
+      "days": "天",
+      "selectOutbound": "选择去程",
+      "selectReturn": "选择返程"
     },
     "filter": {
       "directOnly": "直飞/经停",

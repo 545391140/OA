@@ -15,6 +15,9 @@ import {
   Button,
   Divider,
   Avatar,
+  Tabs,
+  Tab,
+  Paper,
 } from '@mui/material';
 import {
   Flight as FlightIcon,
@@ -23,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 import { getAirportInfo, getAirlineInfo, getAircraftName } from '../../utils/flightUtils';
 import FlightFilterBar from './FlightFilterBar';
 
@@ -31,6 +35,7 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
   const navigate = useNavigate();
   const [airportInfoMap, setAirportInfoMap] = useState(new Map());
   const [airlineLogoErrors, setAirlineLogoErrors] = useState(new Set());
+  const [activeTab, setActiveTab] = useState(0); // 0: 去程, 1: 返程
   
   // 过滤和排序状态
   const [filters, setFilters] = useState({
@@ -308,28 +313,312 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
     }
   }, [flights]);
 
-  return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        {t('flight.list.results') || '搜索结果'} ({sortedFlights.length})
-      </Typography>
+  // 分离去程和返程航班，同时保存原始航班引用
+  const { outboundFlights, returnFlights, flightMap } = useMemo(() => {
+    if (!isRoundTrip) {
+      return { outboundFlights: sortedFlights, returnFlights: [], flightMap: new Map() };
+    }
 
-      {/* 过滤和排序栏 */}
-      {flights.length > 0 && (
-        <FlightFilterBar
-          flights={flights}
-          onFilterChange={setFilters}
-          onSortChange={setSortType}
-        />
+    const outbound = [];
+    const returnFlights = [];
+    const map = new Map(); // 用于查找完整航班
+
+    sortedFlights.forEach(flight => {
+      if (flight.itineraries && flight.itineraries.length >= 1) {
+        // 去程：第一个 itinerary
+        const outboundFlight = {
+          ...flight,
+          itineraries: [flight.itineraries[0]],
+          _originalFlight: flight, // 保存原始航班引用
+        };
+        outbound.push(outboundFlight);
+        map.set(outboundFlight.id || outbound.length - 1, flight);
+      }
+      if (flight.itineraries && flight.itineraries.length >= 2) {
+        // 返程：第二个 itinerary
+        const returnFlight = {
+          ...flight,
+          itineraries: [flight.itineraries[1]],
+          _originalFlight: flight, // 保存原始航班引用
+        };
+        returnFlights.push(returnFlight);
+        map.set(returnFlight.id || returnFlights.length - 1, flight);
+      }
+    });
+
+    return { outboundFlights: outbound, returnFlights, flightMap: map };
+  }, [sortedFlights, isRoundTrip]);
+
+  // 根据当前 Tab 选择显示的航班
+  const displayFlights = useMemo(() => {
+    if (!isRoundTrip) {
+      return sortedFlights;
+    }
+    return activeTab === 0 ? outboundFlights : returnFlights;
+  }, [isRoundTrip, activeTab, sortedFlights, outboundFlights, returnFlights]);
+
+  // 获取路线和日期信息
+  const getRouteInfo = (itineraryIndex) => {
+    if (!isRoundTrip || sortedFlights.length === 0) return null;
+    
+    const firstFlight = sortedFlights[0];
+    if (!firstFlight.itineraries || firstFlight.itineraries.length <= itineraryIndex) return null;
+
+    const itinerary = firstFlight.itineraries[itineraryIndex];
+    const firstSegment = itinerary.segments?.[0];
+    const lastSegment = itinerary.segments?.[itinerary.segments.length - 1];
+
+    if (!firstSegment || !lastSegment) return null;
+
+    const originCode = firstSegment.departure?.iataCode;
+    const destinationCode = lastSegment.arrival?.iataCode;
+    const departureDate = firstSegment.departure?.at;
+
+    const originInfo = airportInfoMap.get(originCode);
+    const destinationInfo = airportInfoMap.get(destinationCode);
+
+    const getDisplayName = (info, code) => {
+      if (!info) return code;
+      if (info.city && info.city.trim()) return info.city;
+      if (info.name && info.name !== code && info.name.trim()) return info.name;
+      return code;
+    };
+
+    const originDisplay = getDisplayName(originInfo, originCode);
+    const destinationDisplay = getDisplayName(destinationInfo, destinationCode);
+
+    // 获取中文星期
+    const getWeekday = (date) => {
+      if (!date) return '';
+      const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      return weekdays[dayjs(date).day()];
+    };
+
+    return {
+      route: `${originDisplay}-${destinationDisplay}`,
+      date: departureDate ? dayjs(departureDate).format('MM-DD') : '',
+      weekday: getWeekday(departureDate),
+    };
+  };
+
+  const outboundInfo = getRouteInfo(0);
+  const returnInfo = getRouteInfo(1);
+
+  return (
+    <Box sx={{ mt: 4 }}>
+      {/* 往返行程的 Tab 切换和过滤栏合并 */}
+      {isRoundTrip && outboundInfo && returnInfo ? (
+        <Paper
+          elevation={0}
+          sx={{
+            mb: 3,
+            borderRadius: 2,
+            bgcolor: 'white',
+            border: '1px solid',
+            borderColor: 'divider',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Tab 切换部分 */}
+          <Box
+            sx={{
+              bgcolor: 'grey.50',
+              p: 1,
+              pb: 1,
+              mb: 1.5,
+            }}
+          >
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              sx={{
+                '& .MuiTabs-indicator': {
+                  display: 'none',
+                },
+              }}
+            >
+              {/* 去程 Tab */}
+              <Tab
+                label={
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.5,
+                        py: 0.75,
+                        borderRadius: 2,
+                        bgcolor: activeTab === 0 ? 'white' : 'transparent',
+                        transition: 'all 0.3s',
+                        width: '100%',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          bgcolor: activeTab === 0 ? 'primary.main' : 'grey.400',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                          flexShrink: 0,
+                        }}
+                      >
+                        1
+                      </Box>
+                      <Box sx={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: activeTab === 0 ? 'primary.main' : 'text.secondary',
+                            mb: 0,
+                            fontSize: '0.8125rem',
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {t('flight.list.selectOutbound') || '选择去程'}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap', mt: 0.25 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                            {outboundInfo.route}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                            {outboundInfo.date}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                            {outboundInfo.weekday}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                }
+                sx={{
+                  textTransform: 'none',
+                  minHeight: 'auto',
+                  p: 0,
+                  flex: 1,
+                  '&.Mui-selected': {
+                    color: 'inherit',
+                  },
+                }}
+              />
+              {/* 返程 Tab */}
+              <Tab
+                label={
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.5,
+                        py: 0.75,
+                        borderRadius: 2,
+                        bgcolor: activeTab === 1 ? 'white' : 'transparent',
+                        transition: 'all 0.3s',
+                        width: '100%',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          bgcolor: activeTab === 1 ? 'primary.main' : 'grey.400',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                          flexShrink: 0,
+                        }}
+                      >
+                        2
+                      </Box>
+                      <Box sx={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: activeTab === 1 ? 'primary.main' : 'text.secondary',
+                            mb: 0,
+                            fontSize: '0.8125rem',
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {t('flight.list.selectReturn') || '选择返程'}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap', mt: 0.25 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                            {returnInfo.route}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                            {returnInfo.date}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                            {returnInfo.weekday}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                }
+                sx={{
+                  textTransform: 'none',
+                  minHeight: 'auto',
+                  p: 0,
+                  flex: 1,
+                  '&.Mui-selected': {
+                    color: 'inherit',
+                  },
+                }}
+              />
+          </Tabs>
+        </Box>
+
+          {/* 过滤和排序栏 */}
+          {flights.length > 0 && (
+            <Box sx={{ 
+              p: 1.5,
+              pt: 1.5,
+            }}>
+              <FlightFilterBar
+                flights={flights}
+                onFilterChange={setFilters}
+                onSortChange={setSortType}
+                embedded={true}
+              />
+            </Box>
+          )}
+        </Paper>
+      ) : (
+        <>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            {t('flight.list.results') || '搜索结果'} ({displayFlights.length})
+          </Typography>
+
+          {/* 过滤和排序栏 */}
+          {flights.length > 0 && (
+            <FlightFilterBar
+              flights={flights}
+              onFilterChange={setFilters}
+              onSortChange={setSortType}
+            />
+          )}
+        </>
       )}
 
-      {sortedFlights.length === 0 ? (
+      {displayFlights.length === 0 ? (
         <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
           {t('flight.list.noResults') || '未找到符合条件的航班'}
         </Typography>
       ) : (
         <Grid container spacing={2}>
-          {sortedFlights.map((flight, index) => (
+          {displayFlights.map((flight, index) => (
             <Grid item xs={12} key={flight.id || index}>
               <Card
                 sx={{
@@ -338,7 +627,13 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                     boxShadow: 4,
                   },
                 }}
-                onClick={() => onSelectFlight && onSelectFlight(flight)}
+                onClick={() => {
+                  if (onSelectFlight) {
+                    // 如果是往返行程且显示的是分离后的航班，使用原始完整航班
+                    const fullFlight = flight._originalFlight || flight;
+                    onSelectFlight(fullFlight);
+                  }
+                }}
               >
                 <CardContent sx={{ py: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2 }, flexWrap: { xs: 'wrap', md: 'nowrap' }, '& > *:nth-of-type(3)': { mr: { xs: 0, md: 2 } } }}>
@@ -602,7 +897,11 @@ const FlightList = ({ flights, searchParams, originLocation, destinationLocation
                               }}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onSelectFlight && onSelectFlight(flight);
+                                if (onSelectFlight) {
+                                  // 如果是往返行程且显示的是分离后的航班，使用原始完整航班
+                                  const fullFlight = flight._originalFlight || flight;
+                                  onSelectFlight(fullFlight);
+                                }
                               }}
                             >
                               {t('flight.list.book') || '预订'}

@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { getAirlineInfo } from '../../utils/flightUtils';
 
-const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
+const FlightFilterBar = ({ flights, onFilterChange, onSortChange, embedded = false }) => {
   const { t } = useTranslation();
 
   // 过滤状态
@@ -207,17 +207,8 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
   const hasActiveFilters = directOnly || selectedAirlines.length > 0 || 
     selectedTimeRange || selectedAirport || selectedCabin;
 
-  return (
-    <Paper 
-      elevation={0} 
-      sx={{ 
-        p: 2, 
-        mb: 2, 
-        borderBottom: '1px solid #e5e7eb',
-        borderRadius: 2, // 8px，与卡片保持一致
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+  const content = (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 1 }}>
         {/* 直飞/经停复选框 */}
         <FormControlLabel
           control={
@@ -225,13 +216,19 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
               checked={directOnly}
               onChange={handleDirectChange}
               size="small"
+              sx={{ py: 0 }}
             />
           }
           label={t('flight.filter.directOnly') || '直飞/经停'}
-          sx={{ mr: 2 }}
+          sx={{ 
+            m: 0,
+            '& .MuiFormControlLabel-label': {
+              fontSize: '0.8125rem',
+            }
+          }}
         />
 
-        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+        <Divider orientation="vertical" flexItem sx={{ mx: 1, height: 24, alignSelf: 'center' }} />
 
         {/* 航空公司筛选 */}
         <Button
@@ -243,6 +240,9 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             bgcolor: selectedAirlines.length > 0 ? 'primary.light' : 'transparent',
             color: selectedAirlines.length > 0 ? 'primary.main' : 'text.primary',
             borderColor: '#d1d5db',
+            minHeight: '32px',
+            py: 0.5,
+            fontSize: '0.8125rem',
             '&:hover': {
               borderColor: '#9ca3af',
               bgcolor: 'action.hover',
@@ -285,6 +285,9 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             bgcolor: selectedTimeRange ? 'primary.light' : 'transparent',
             color: selectedTimeRange ? 'primary.main' : 'text.primary',
             borderColor: '#d1d5db',
+            minHeight: '32px',
+            py: 0.5,
+            fontSize: '0.8125rem',
             '&:hover': {
               borderColor: '#9ca3af',
               bgcolor: 'action.hover',
@@ -320,6 +323,9 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             bgcolor: selectedAirport ? 'primary.light' : 'transparent',
             color: selectedAirport ? 'primary.main' : 'text.primary',
             borderColor: '#d1d5db',
+            minHeight: '32px',
+            py: 0.5,
+            fontSize: '0.8125rem',
             '&:hover': {
               borderColor: '#9ca3af',
               bgcolor: 'action.hover',
@@ -358,6 +364,9 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             bgcolor: selectedCabin ? 'primary.light' : 'transparent',
             color: selectedCabin ? 'primary.main' : 'text.primary',
             borderColor: '#d1d5db',
+            minHeight: '32px',
+            py: 0.5,
+            fontSize: '0.8125rem',
             '&:hover': {
               borderColor: '#9ca3af',
               bgcolor: 'action.hover',
@@ -395,7 +404,10 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             color: 'primary.main',
             fontWeight: 600,
             minWidth: 'auto',
+            minHeight: '32px',
             px: 1,
+            py: 0.5,
+            fontSize: '0.8125rem',
           }}
         >
           {sortOptions.find(s => s.value === currentSort)?.label || (t('flight.filter.sort') || '排序')}
@@ -422,12 +434,37 @@ const FlightFilterBar = ({ flights, onFilterChange, onSortChange }) => {
             variant="text"
             size="small"
             onClick={handleClearFilters}
-            sx={{ color: 'text.secondary', minWidth: 'auto', px: 1 }}
+            sx={{ 
+              color: 'text.secondary', 
+              minWidth: 'auto', 
+              minHeight: '32px',
+              px: 1,
+              py: 0.5,
+              fontSize: '0.8125rem',
+            }}
           >
             {t('common.clearFilters') || '清除'}
           </Button>
         )}
       </Box>
+  );
+
+  // 如果 embedded 模式，直接返回内容，否则包装在 Paper 中
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <Paper 
+      elevation={0} 
+      sx={{ 
+        p: 2, 
+        mb: 2, 
+        borderBottom: '1px solid #e5e7eb',
+        borderRadius: 2,
+      }}
+    >
+      {content}
     </Paper>
   );
 };
