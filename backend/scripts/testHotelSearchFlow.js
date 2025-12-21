@@ -120,11 +120,11 @@ async function testSearchHotelOffers(hotels) {
   }
 
   try {
-    // 提取前50个酒店ID
-    const hotelIds = hotels.slice(0, 50).map(h => h.hotelId).filter(Boolean);
-    console.log(`   📋 准备查询 ${hotelIds.length} 个酒店的报价`);
+    // 提取全部酒店ID（不再限制为50个）
+    const hotelIds = hotels.map(h => h.hotelId).filter(Boolean);
+    console.log(`   📋 准备查询 ${hotelIds.length} 个酒店的报价（全部酒店）`);
 
-    // 分批查询（每批20个）
+    // 分批查询（每批20个，避免API限制）
     const BATCH_SIZE = 20;
     const batches = [];
     for (let i = 0; i < hotelIds.length; i += BATCH_SIZE) {
@@ -181,7 +181,9 @@ async function testSearchHotelOffers(hotels) {
     }
 
     console.log(`\n   📊 汇总结果:`);
+    console.log(`      - 查询酒店总数: ${hotelIds.length}`);
     console.log(`      - 总报价数: ${allOffers.length}`);
+    console.log(`      - 成功率: ${((allOffers.length / hotelIds.length) * 100).toFixed(2)}%`);
     console.log(`      - 成功批次: ${successBatches}/${batches.length}`);
     console.log(`      - 失败批次: ${failedBatches}/${batches.length}`);
 
@@ -194,13 +196,15 @@ async function testSearchHotelOffers(hotels) {
       });
     }
 
-    addTestResult('搜索酒店报价', 'passed', `找到 ${allOffers.length} 个报价`, {
-      totalOffers: allOffers.length,
-      successBatches,
-      failedBatches,
-      totalBatches: batches.length,
-      sampleOffers: allOffers.slice(0, 5),
-    });
+      addTestResult('搜索酒店报价', 'passed', `找到 ${allOffers.length} 个报价（查询了 ${hotelIds.length} 个酒店）`, {
+        totalHotels: hotelIds.length,
+        totalOffers: allOffers.length,
+        successRate: hotelIds.length > 0 ? ((allOffers.length / hotelIds.length) * 100).toFixed(2) + '%' : '0%',
+        successBatches,
+        failedBatches,
+        totalBatches: batches.length,
+        sampleOffers: allOffers.slice(0, 5),
+      });
 
     return allOffers;
   } catch (error) {
@@ -380,7 +384,9 @@ function generateReport() {
 
   if (offersResult?.data) {
     console.log(`\n💰 酒店报价:`);
-    console.log(`   - 找到 ${offersResult.data.totalOffers} 个报价`);
+    console.log(`   - 查询酒店总数: ${hotelSearchResult?.data?.total || 'N/A'}`);
+    console.log(`   - 找到报价数: ${offersResult.data.totalOffers}`);
+    console.log(`   - 成功率: ${offersResult.data.totalOffers > 0 && hotelSearchResult?.data?.total ? ((offersResult.data.totalOffers / hotelSearchResult.data.total) * 100).toFixed(2) : '0.00'}%`);
     console.log(`   - 成功批次: ${offersResult.data.successBatches}/${offersResult.data.totalBatches}`);
     console.log(`   - 失败批次: ${offersResult.data.failedBatches}`);
   }
