@@ -683,7 +683,7 @@ const BookingDetail = () => {
                                  fee.type === 'FORM_OF_PAYMENT' ? (t('flight.detail.paymentFee') || '支付手续费') :
                                  fee.type === 'SERVICE' ? (t('flight.detail.serviceFee') || '服务费') :
                                  fee.type === 'TAX' ? (t('flight.detail.tax') || '税费') :
-                                 (t('flight.detail.fee') || '费用')} {fee.type !== 'UNKNOWN' ? `(${fee.type})` : ''}
+                                 (t('flight.detail.fee') || '费用')}
                               </Typography>
                               <Typography variant="h6" fontWeight="medium">
                                 {parseFloat(fee.amount || 0).toFixed(2)} {booking.price.currency}
@@ -765,9 +765,21 @@ const BookingDetail = () => {
                         </TableCell>
                         <TableCell>{traveler.contact?.emailAddress || '-'}</TableCell>
                         <TableCell>
-                          {traveler.contact?.phones?.[0]
-                            ? `${traveler.contact.phones[0].countryCallingCode} ${traveler.contact.phones[0].number}`
-                            : '-'}
+                          {traveler.contact?.phones?.[0]?.number ? (
+                            <>
+                              {traveler.contact.phones[0].countryCallingCode ? (
+                                <>
+                                  {traveler.contact.phones[0].countryCallingCode.startsWith('+') 
+                                    ? traveler.contact.phones[0].countryCallingCode 
+                                    : `+${traveler.contact.phones[0].countryCallingCode}`}
+                                  {' '}
+                                </>
+                              ) : (
+                                <>+86{' '}</>
+                              )}
+                              {traveler.contact.phones[0].number}
+                            </>
+                          ) : '-'}
                         </TableCell>
                       </TableRow>
                     ))}

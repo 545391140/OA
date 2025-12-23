@@ -279,44 +279,114 @@ const BookingForm = () => {
 
   // 当用户信息加载后，自动更新第一个乘客的信息（包括手机号和生日）
   useEffect(() => {
+    // 调试：打印用户信息
+    console.log('🔍 [BookingForm] useEffect 触发 - 用户信息:', {
+      user: user ? {
+        phone: user.phone,
+        dateOfBirth: user.dateOfBirth,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      } : null,
+      hasUser: !!user
+    });
+
     if (user) {
       setTravelers(prev => {
         // 如果第一个乘客的信息为空，则自动填入用户信息
         if (prev.length > 0) {
           const firstTraveler = prev[0];
+          const currentPhone = firstTraveler.contact.phones[0]?.number?.trim();
+          // 注意：user.phone 可能是空字符串，需要明确检查
+          const userPhone = user.phone !== undefined && user.phone !== null ? String(user.phone).trim() : '';
+          const hasUserPhone = userPhone && userPhone.length > 0;
+          
+          // 检查出生日期：如果当前日期为空（null 或无效），且用户有日期，则需要更新
+          const currentDateOfBirth = firstTraveler.dateOfBirth;
+          const hasValidDateOfBirth = currentDateOfBirth && dayjs.isDayjs(currentDateOfBirth) && currentDateOfBirth.isValid();
+          const userDateOfBirth = user.dateOfBirth ? dayjs(user.dateOfBirth) : null;
+          const hasValidUserDateOfBirth = userDateOfBirth && dayjs.isDayjs(userDateOfBirth) && userDateOfBirth.isValid();
+          
+          // 调试：打印当前状态
+          console.log('🔍 [BookingForm] 检查更新条件:', {
+            currentPhone,
+            userPhone,
+            hasUserPhone,
+            userPhoneRaw: user.phone,
+            currentDateOfBirth: currentDateOfBirth ? currentDateOfBirth.format('YYYY-MM-DD') : null,
+            hasValidDateOfBirth,
+            userDateOfBirth: userDateOfBirth ? userDateOfBirth.format('YYYY-MM-DD') : null,
+            hasValidUserDateOfBirth,
+            currentFirstName: firstTraveler.name.firstName,
+            currentLastName: firstTraveler.name.lastName,
+            currentEmail: firstTraveler.contact.emailAddress,
+            userFirstName: user.firstName,
+            userLastName: user.lastName,
+            userEmail: user.email
+          });
+          
+          // 检查是否需要更新：如果任何字段为空或需要更新，则更新
+          // 注意：即使 phone 或 dateOfBirth 为空，也要更新其他字段（firstName, lastName, email）
           const shouldUpdate = 
-            !firstTraveler.contact.phones[0]?.number ||
-            !firstTraveler.dateOfBirth ||
             !firstTraveler.name.firstName ||
             !firstTraveler.name.lastName ||
-            !firstTraveler.contact.emailAddress;
+            !firstTraveler.contact.emailAddress ||
+            (!currentPhone && hasUserPhone) ||
+            (!hasValidDateOfBirth && hasValidUserDateOfBirth);
+          
+          console.log('🔍 [BookingForm] shouldUpdate:', shouldUpdate, {
+            reason: {
+              noFirstName: !firstTraveler.name.firstName,
+              noLastName: !firstTraveler.name.lastName,
+              noEmail: !firstTraveler.contact.emailAddress,
+              shouldUpdatePhone: !currentPhone && hasUserPhone,
+              shouldUpdateDate: !hasValidDateOfBirth && hasValidUserDateOfBirth
+            }
+          });
           
           if (shouldUpdate) {
             const updated = [...prev];
             updated[0] = {
               ...updated[0],
               name: {
+                // 如果当前值为空，使用用户值；否则保持当前值（允许用户修改）
                 firstName: updated[0].name.firstName || user.firstName || '',
                 lastName: updated[0].name.lastName || user.lastName || '',
               },
               contact: {
                 ...updated[0].contact,
+                // 如果当前值为空，使用用户值；否则保持当前值
                 emailAddress: updated[0].contact.emailAddress || user.email || '',
                 phones: [{
                   deviceType: 'MOBILE',
                   countryCallingCode: updated[0].contact.phones[0]?.countryCallingCode || '+86',
-                  number: updated[0].contact.phones[0]?.number || user.phone || '',
+                  // 如果当前电话为空且用户有电话（非空字符串），使用用户电话；否则保持当前值
+                  number: (!currentPhone && hasUserPhone) ? userPhone : (currentPhone || ''),
                 }],
               },
-              dateOfBirth: updated[0].dateOfBirth || (user.dateOfBirth ? dayjs(user.dateOfBirth) : null),
+              // 如果当前日期无效且用户有有效日期，使用用户日期；否则保持当前值
+              dateOfBirth: (!hasValidDateOfBirth && hasValidUserDateOfBirth) ? userDateOfBirth : (hasValidDateOfBirth ? currentDateOfBirth : null),
             };
+            
+            console.log('✅ [BookingForm] 更新乘客信息:', {
+              phone: updated[0].contact.phones[0]?.number,
+              dateOfBirth: updated[0].dateOfBirth ? updated[0].dateOfBirth.format('YYYY-MM-DD') : null,
+              firstName: updated[0].name.firstName,
+              lastName: updated[0].name.lastName,
+              email: updated[0].contact.emailAddress
+            });
+            
             return updated;
+          } else {
+            console.log('⏭️  [BookingForm] 跳过更新（条件不满足）');
           }
         }
         return prev;
       });
+    } else {
+      console.log('⚠️  [BookingForm] user 为 null，跳过更新');
     }
-  }, [user?.phone, user?.firstName, user?.lastName, user?.email, user?.dateOfBirth]);
+  }, [user]); // 直接依赖 user 对象，确保当 user 从 null 变为对象时能触发更新
 
   const fetchTravels = async () => {
     setTravelsLoading(true);

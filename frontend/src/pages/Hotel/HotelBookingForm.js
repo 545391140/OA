@@ -156,10 +156,11 @@ const HotelBookingForm = () => {
           const updated = [...prev];
           const firstGuest = updated[0];
           
-          // 检查是否需要更新电话：如果当前电话为空，且用户有电话，则更新
+          // 检查是否需要更新电话：如果当前电话为空或未设置，且用户有电话，则更新
           const currentPhoneNumber = firstGuest.contact?.phones?.[0]?.number?.trim();
           const userPhone = user.phone?.trim();
-          const shouldUpdatePhone = !currentPhoneNumber && userPhone;
+          // 如果当前电话为空且用户有电话，则使用用户电话；否则保持当前电话
+          const phoneNumberToUse = (!currentPhoneNumber && userPhone) ? userPhone : (currentPhoneNumber || '');
           
           updated[0] = {
             ...updated[0],
@@ -171,15 +172,11 @@ const HotelBookingForm = () => {
             contact: {
               ...updated[0].contact,
               emailAddress: updated[0].contact.emailAddress || user.email || '',
-              phones: shouldUpdatePhone ? [{
-                deviceType: 'MOBILE',
-                countryCallingCode: '+86', // 默认中国区号
-                number: userPhone,
-              }] : (updated[0].contact.phones.length > 0 ? updated[0].contact.phones : [{
-                deviceType: 'MOBILE',
-                countryCallingCode: '+86',
-                number: '', // 如果用户没有电话，留空让用户填写
-              }]),
+              phones: [{
+                deviceType: updated[0].contact.phones?.[0]?.deviceType || 'MOBILE',
+                countryCallingCode: updated[0].contact.phones?.[0]?.countryCallingCode || '+86',
+                number: phoneNumberToUse,
+              }],
             },
           };
           return updated;
